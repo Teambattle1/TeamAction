@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Game, Coordinate, MapStyleId, Language } from '../types';
 import { haversineMeters } from '../utils/geo';
 import { t } from '../utils/i18n';
-import { Camera, MapPin, CheckCircle, XCircle, Settings, Users, PlayCircle, Loader2, Globe, Languages, QrCode, Mic, HardDrive, Lock, Info, AlertTriangle, Hammer, User } from 'lucide-react';
+import { Camera, MapPin, CheckCircle, XCircle, Settings, Users, PlayCircle, Loader2, Globe, Languages, QrCode, Mic, HardDrive, Lock, Info, AlertTriangle, Hammer, User, RefreshCw } from 'lucide-react';
 
 interface WelcomeScreenProps {
   games: Game[];
@@ -239,24 +239,31 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             {isIOS ? (
                                 <>
                                     <div className="flex gap-3">
-                                        <div className="bg-white/10 w-6 h-6 rounded flex items-center justify-center font-bold text-xs">1</div>
+                                        <div className="bg-white/10 w-6 h-6 rounded flex items-center justify-center font-bold text-xs shrink-0">1</div>
                                         <div>
-                                            <p className="text-sm font-bold text-orange-400 mb-1">If using Safari:</p>
-                                            <p className="text-xs text-slate-300">Tap the <span className="font-bold text-white">"Aa"</span> or <span className="font-bold text-white">Puzzle</span> icon in the address bar (bottom or top). Select <span className="font-bold text-white">Website Settings</span>, then set Location to <span className="font-bold text-white">Allow</span>.</p>
+                                            <p className="text-sm font-bold text-orange-400 mb-1">Check iOS Settings:</p>
+                                            <p className="text-xs text-slate-300">
+                                                Open the <strong>Settings App</strong> on your device. Scroll down and tap on <strong>Chrome</strong> (or your browser).
+                                                Ensure <strong>Camera</strong>, <strong>Microphone</strong>, and <strong>Location</strong> are toggled <strong>ON</strong>.
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        <div className="bg-white/10 w-6 h-6 rounded flex items-center justify-center font-bold text-xs">2</div>
+                                        <div className="bg-white/10 w-6 h-6 rounded flex items-center justify-center font-bold text-xs shrink-0">2</div>
                                         <div>
-                                            <p className="text-sm font-bold text-blue-400 mb-1">If using Chrome:</p>
-                                            <p className="text-xs text-slate-300">Tap the <span className="font-bold text-white">Three Dots (...)</span> menu. Go to <span className="font-bold text-white">Settings</span> {'>'} <span className="font-bold text-white">Content Settings</span> {'>'} <span className="font-bold text-white">Location</span>.</p>
+                                            <p className="text-sm font-bold text-blue-400 mb-1">Refresh Required:</p>
+                                            <p className="text-xs text-slate-300">
+                                                After changing settings, you <strong>MUST refresh this page</strong> for changes to take effect.
+                                            </p>
                                         </div>
                                     </div>
                                     <div className="flex gap-3">
-                                        <div className="bg-white/10 w-6 h-6 rounded flex items-center justify-center font-bold text-xs">3</div>
+                                        <div className="bg-white/10 w-6 h-6 rounded flex items-center justify-center font-bold text-xs shrink-0">3</div>
                                         <div>
-                                            <p className="text-sm font-bold text-slate-200 mb-1">System Settings:</p>
-                                            <p className="text-xs text-slate-300">Go to iPhone <span className="font-bold text-white">Settings</span> App {'>'} <span className="font-bold text-white">Privacy</span> {'>'} <span className="font-bold text-white">Location Services</span>. Ensure it is ON and your browser is set to "While Using".</p>
+                                            <p className="text-sm font-bold text-slate-200 mb-1">Still blocked?</p>
+                                            <p className="text-xs text-slate-300">
+                                                Try opening this page in <strong>Safari</strong> instead. Chrome on iOS sometimes blocks access even if settings are correct.
+                                            </p>
                                         </div>
                                     </div>
                                 </>
@@ -271,9 +278,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
                         <button 
                             onClick={() => { setPermissionHelp(null); window.location.reload(); }}
-                            className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold transition-colors"
+                            className="w-full bg-orange-600 hover:bg-orange-500 text-white py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
                         >
-                            {t('permHelpButton', language)}
+                            <RefreshCw className="w-4 h-4" />
+                            {isIOS ? "Refresh Page Now" : t('permHelpButton', language)}
                         </button>
                     </div>
                 </div>

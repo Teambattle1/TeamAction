@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Game, GamePoint, TaskList, TaskTemplate, IconId, GameMode } from '../types';
-import { Plus, Play, Edit2, Trash2, GripVertical, Wand2, Trophy, Calendar, Map, ChevronRight, ArrowLeft, FolderOpen, Layers, Library, Eraser, MousePointerClick, Save, LayoutTemplate, Check, X, Database, QrCode, Users, Disc, ChevronUp, GraduationCap } from 'lucide-react';
+import { Plus, Play, Edit2, Trash2, GripVertical, Wand2, Trophy, Calendar, Map, ChevronRight, ArrowLeft, FolderOpen, Layers, Library, Eraser, MousePointerClick, Save, LayoutTemplate, Check, X, Database, QrCode, Users, Disc, ChevronUp, GraduationCap, Gamepad2 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { seedDatabase } from '../utils/demoContent';
 import {
@@ -258,19 +258,6 @@ const GameManager: React.FC<GameManagerProps> = ({
   return (
     <div className="absolute top-0 left-0 bottom-0 z-[1100] w-full sm:w-[400px] bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 border-r border-gray-200 dark:border-gray-800">
       
-      {/* FLOATING VIEW TOGGLE - Positioned at top-4 to avoid HUD overlap */}
-      <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1500] bg-slate-900/90 backdrop-blur text-white p-1 rounded-full shadow-2xl border border-slate-700 flex gap-1 animate-in slide-in-from-top-4">
-          <button onClick={() => onSetMode(GameMode.PLAY)} className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${mode === GameMode.PLAY ? 'bg-orange-600 text-white shadow-lg' : 'hover:bg-white/10 text-slate-400'}`}>
-              <Users className="w-4 h-4" /> Team
-          </button>
-          <button onClick={() => onSetMode(GameMode.INSTRUCTOR)} className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${mode === GameMode.INSTRUCTOR ? 'bg-amber-500 text-white shadow-lg' : 'hover:bg-white/10 text-slate-400'}`}>
-              <GraduationCap className="w-4 h-4" /> GM
-          </button>
-          <button onClick={() => onSetMode(GameMode.EDIT)} className={`px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 transition-all ${mode === GameMode.EDIT ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-white/10 text-slate-400'}`}>
-              <Edit2 className="w-4 h-4" /> Edit
-          </button>
-      </div>
-
       {/* --- MODALS --- */}
       {showCreateGameModal && (
           <div className="fixed inset-0 z-[1300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
@@ -284,7 +271,6 @@ const GameManager: React.FC<GameManagerProps> = ({
               </div>
           </div>
       )}
-      {/* ... Save Template Modal logic same as before, preserving ... */}
       {showSaveTemplateModal && (
           <div className="fixed inset-0 z-[1300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
               <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-sm border border-gray-200 dark:border-gray-700">
@@ -298,9 +284,9 @@ const GameManager: React.FC<GameManagerProps> = ({
           </div>
       )}
 
-      {/* Header */}
-      <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="flex justify-between items-center mb-1">
+      {/* Header with Integrated Mode Switcher */}
+      <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex justify-between items-center mb-3">
           {view === 'DETAILS' && isEditingMetadata ? (
               <div className="flex-1 mr-2">
                   <input autoFocus className="w-full text-xl font-black bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 outline-none text-gray-900 dark:text-white" value={editName} onChange={e => setEditName(e.target.value)} />
@@ -322,7 +308,7 @@ const GameManager: React.FC<GameManagerProps> = ({
                   <button onClick={onExplicitSaveGame} className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 p-2 rounded-full hover:bg-green-200 dark:hover:bg-green-800 transition-colors" title="Save Changes"><Disc className="w-5 h-5" /></button>
               )}
               
-              {/* EXPLICIT CLOSE BUTTON */}
+              {/* EXPLICIT CLOSE BUTTON - NOW UNBLOCKED */}
               <button 
                  onClick={onClose} 
                  className="text-white bg-red-500 hover:bg-red-600 p-2 rounded-full transition-colors flex-shrink-0 shadow-lg"
@@ -332,8 +318,31 @@ const GameManager: React.FC<GameManagerProps> = ({
               </button>
           </div>
         </div>
+
+        {/* Integrated Mode Switcher */}
+        <div className="grid grid-cols-3 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
+            <button 
+                onClick={() => { onSetMode(GameMode.PLAY); onClose(); }} 
+                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === GameMode.PLAY ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+                <Gamepad2 className="w-4 h-4" /> Team Play
+            </button>
+            <button 
+                onClick={() => { onSetMode(GameMode.INSTRUCTOR); onClose(); }} 
+                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === GameMode.INSTRUCTOR ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+                <GraduationCap className="w-4 h-4" /> GM View
+            </button>
+            <button 
+                onClick={() => onSetMode(GameMode.EDIT)} 
+                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === GameMode.EDIT ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+            >
+                <Edit2 className="w-4 h-4" /> Editor
+            </button>
+        </div>
+
         {view === 'DETAILS' && (
-           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+           <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-2">
              <button onClick={() => setView('LIST')} className="hover:text-orange-600 hover:underline flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> All Games</button>
            </div>
         )}
