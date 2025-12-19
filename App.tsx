@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import GameMap from './components/GameMap';
 import TaskModal from './components/TaskModal';
 import GameHUD from './components/GameHUD';
+import GameStats from './components/GameStats';
 import GameManager from './components/GameManager';
 import TaskEditor from './components/TaskEditor';
 import GameChooser from './components/GameChooser';
@@ -187,15 +188,20 @@ const App: React.FC = () => {
       return activeGame.points.filter(p => !p.isSectionHeader).reduce((sum, p) => sum + (p.points || 100), 0);
   }, [activeGame]);
 
+  const pointsCount = useMemo(() => ({
+      total: activePoints.filter(p => !p.isSectionHeader).length,
+      completed: activePoints.filter(p => p.isCompleted).length
+  }), [activePoints]);
+
   // Handlers
 
-  const handleStartGame = (gameId: string, teamName: string, selectedStyle: MapStyleId) => {
-      setGameState(prev => ({ ...prev, activeGameId: gameId, teamName }));
+  const handleStartGame = (gameId: string, teamName: string, userName: string, selectedStyle: MapStyleId) => {
+      setGameState(prev => ({ ...prev, activeGameId: gameId, teamName, userName }));
       setMapStyle(selectedStyle);
       setMode(GameMode.PLAY);
       
-      // Initialize Sync
-      teamSync.connect(gameId, teamName);
+      // Initialize Sync with Player Name
+      teamSync.connect(gameId, teamName, userName);
   };
 
   const handleCreateGame = (name: string, fromTaskListId?: string, description?: string) => {
@@ -779,14 +785,23 @@ const App: React.FC = () => {
         />
       </div>
 
-      {/* HUD Layer */}
+      {/* INDEPENDENT GAME STATS (Always visible in PLAY Mode if active game) */}
+      {mode === GameMode.PLAY && gameState.activeGameId && !showResults && (
+          <GameStats 
+              score={gameState.score}
+              pointsCount={pointsCount}
+              nearestPointDistance={nearestPointDistance}
+              language={appLanguage}
+              className={showGameManager ? 'z-[1200] md:pl-[400px]' : ''} // Push right if sidebar open on desktop
+          />
+      )}
+
+      {/* HUD Layer (Menu & Toggles) */}
       {!showGameManager && !showGameChooser && !showTaskMaster && !showPlaylistModal && !showResults && (
           <GameHUD 
-            score={gameState.score} 
             accuracy={gameState.gpsAccuracy}
             mode={mode}
             toggleMode={toggleMode}
-            nearestPointDistance={nearestPointDistance}
             onOpenGameChooser={() => { refreshData(); setShowGameChooser(true); }}
             onOpenGameManager={() => {
                 setMode(GameMode.EDIT);
@@ -795,10 +810,6 @@ const App: React.FC = () => {
             onOpenTaskMaster={() => {
                 setIsTaskMasterSelectionMode(false);
                 setShowTaskMaster(true);
-            }}
-            pointsCount={{
-              total: activePoints.filter(p => !p.isSectionHeader).length,
-              completed: activePoints.filter(p => p.isCompleted).length
             }}
             mapStyle={mapStyle}
             onSetMapStyle={setMapStyle}
@@ -846,6 +857,8 @@ const App: React.FC = () => {
             onOpenPlaylist={() => setShowPlaylistModal(true)}
             onEditGameMetadata={handleEditGameMetadata}
             onShowResults={() => setShowResults(true)}
+            mode={mode} // Pass current mode
+            onSetMode={setMode} // Allow switching mode
           />
       )}
 

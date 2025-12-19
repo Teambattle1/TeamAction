@@ -1,8 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import { TaskTemplate } from '../types';
 import { generateAiTasks, generateAiImage } from '../services/ai';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag } from 'lucide-react';
+import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon } from 'lucide-react';
 
 interface AiTaskGeneratorProps {
   onClose: () => void;
@@ -21,12 +22,35 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
   const [approvedTasks, setApprovedTasks] = useState<TaskTemplate[]>([]);
   const [error, setError] = useState<string | null>(null);
   
+  // Logo Generation State
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
+  const [useLogoForTasks, setUseLogoForTasks] = useState(false);
+
   // Track if a batch was fully processed to show the "What's Next?" screen
   const [batchFinished, setBatchFinished] = useState(false);
   
   // Ref to track if component is still "interested" in the result
   const isActiveRef = useRef(false);
   const topicInputRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleGenerateLogo = async () => {
+      if (!topic.trim()) return;
+      setIsGeneratingLogo(true);
+      try {
+          const url = await generateAiImage(topic, 'logo');
+          if (url) {
+              setLogoUrl(url);
+              setUseLogoForTasks(true); // Default to using it once generated
+          } else {
+              setError("Failed to generate logo. Please try again.");
+          }
+      } catch (e) {
+          setError("Error generating logo.");
+      } finally {
+          setIsGeneratingLogo(false);
+      }
+  };
 
   const handleGenerate = async () => {
     if (!topic.trim()) return;
@@ -56,14 +80,21 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
           return;
       }
 
-      // 2. Generate matching thematic image
-      // We generate ONE image for the TOPIC to keep it fast.
-      const thematicImage = await generateAiImage(topic);
+      // 2. Handle Image Generation
+      let imageUrlToUse = logoUrl && useLogoForTasks ? logoUrl : null;
 
-      if (thematicImage && isActiveRef.current) {
+      if (!imageUrlToUse) {
+          // If not using logo, generate a thematic image for the topic
+          const thematicImage = await generateAiImage(topic, 'scavenger');
+          if (thematicImage) {
+              imageUrlToUse = thematicImage;
+          }
+      }
+
+      if (imageUrlToUse && isActiveRef.current) {
           // Assign this image to all tasks
           newTasks.forEach(t => {
-              t.task.imageUrl = thematicImage;
+              t.task.imageUrl = imageUrlToUse!;
           });
       }
 
@@ -113,6 +144,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
   const handleChangeTopic = () => {
       setBatchFinished(false);
       setGeneratedBuffer([]);
+      setLogoUrl(null); // Reset logo on topic change
       // Focus and select the input for easy editing
       if (topicInputRef.current) {
           topicInputRef.current.focus();
@@ -168,7 +200,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
             
             {/* Left Panel: Controls & Approved List */}
-            <div className="w-full md:w-1/3 bg-gray-50 dark:bg-gray-800 p-5 border-r border-gray-200 dark:border-gray-700 flex flex-col gap-6 overflow-y-auto">
+            <div className="w-full md:w-1/3 bg-gray-50 dark:bg-gray-800 p-5 border-r border-gray-200 dark:border-gray-700 flex flex-col gap-4 overflow-y-auto">
                 
                 {/* Input Section */}
                 <div className="space-y-4">
@@ -178,7 +210,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                         ref={topicInputRef}
                         value={topic}
                         onChange={(e) => setTopic(e.target.value)}
-                        placeholder="e.g. 'Historical monuments in Copenhagen', 'Math puzzles for kids'..."
+                        placeholder="e.g. 'Danfoss Universe', 'Copenhagen History'..."
                         className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none text-sm min-h-[80px] resize-none"
                         onKeyDown={(e) => {
                             if(e.key === 'Enter' && !e.shiftKey) {
@@ -187,6 +219,41 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                             }
                         }}
                       />
+                    </div>
+
+                    {/* Logo Generation Section */}
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                            <ImageIcon className="w-3 h-3" /> Company / Brand Logo
+                        </label>
+                        {!logoUrl ? (
+                            <button 
+                                onClick={handleGenerateLogo}
+                                disabled={isGeneratingLogo || !topic.trim()}
+                                className="w-full py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                {isGeneratingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                Show Logo from Topic
+                            </button>
+                        ) : (
+                            <div className="bg-white dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600">
+                                <div className="relative h-24 w-full bg-gray-100 dark:bg-gray-800 rounded mb-2 flex items-center justify-center overflow-hidden">
+                                    <img src={logoUrl} alt="Generated Logo" className="h-full object-contain" />
+                                    <button onClick={() => setLogoUrl(null)} className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                                <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={useLogoForTasks} 
+                                        onChange={(e) => setUseLogoForTasks(e.target.checked)}
+                                        className="rounded text-orange-600 focus:ring-orange-500"
+                                    />
+                                    Use this logo for all tasks
+                                </label>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 gap-3">
@@ -224,7 +291,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                         className="w-full bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                     >
                         {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        Generate Tasks & Art
+                        Generate Tasks
                     </button>
                 </div>
 
@@ -236,7 +303,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                 )}
 
                 {/* Approved List */}
-                <div className="flex-1 flex flex-col min-h-0 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="flex-1 flex flex-col min-h-0 pt-2 border-t border-gray-200 dark:border-gray-700 mt-2">
                     <div className="flex justify-between items-center mb-2">
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Approved ({approvedTasks.length})</label>
                         {approvedTasks.length > 0 && (

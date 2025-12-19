@@ -94,6 +94,10 @@ export const generateAiTasks = async (topic: string, count: number = 10, languag
       if (additionalTag && additionalTag.trim()) {
           tags.push(additionalTag.trim());
       }
+      // Add language as a tag for easier filtering
+      if (language) {
+          tags.push(language);
+      }
 
       return {
         id: `ai-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
@@ -139,14 +143,19 @@ export const generateAiTasks = async (topic: string, count: number = 10, languag
   }
 };
 
-export const generateAiImage = async (prompt: string): Promise<string | null> => {
+export const generateAiImage = async (prompt: string, type: 'scavenger' | 'logo' = 'scavenger'): Promise<string | null> => {
   try {
+    let textPrompt = `Create a realistic yet fun image for a scavenger hunt task. Context: ${prompt}`;
+    if (type === 'logo') {
+        textPrompt = `Create a professional, modern, and clean logo design for: ${prompt}. The logo should be on a white background or have transparency if possible.`;
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
           {
-            text: `Create a realistic yet fun image for a scavenger hunt task. Context: ${prompt}`,
+            text: textPrompt,
           },
         ],
       },

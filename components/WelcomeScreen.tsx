@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Game, Coordinate, MapStyleId, Language } from '../types';
 import { haversineMeters } from '../utils/geo';
 import { t } from '../utils/i18n';
-import { Camera, MapPin, CheckCircle, XCircle, Settings, Users, PlayCircle, Loader2, Globe, Languages, QrCode, Mic, HardDrive, Lock, Info, AlertTriangle, Hammer } from 'lucide-react';
+import { Camera, MapPin, CheckCircle, XCircle, Settings, Users, PlayCircle, Loader2, Globe, Languages, QrCode, Mic, HardDrive, Lock, Info, AlertTriangle, Hammer, User } from 'lucide-react';
 
 interface WelcomeScreenProps {
   games: Game[];
   userLocation: Coordinate | null;
-  onStartGame: (gameId: string, teamName: string, mapStyle: MapStyleId) => void;
+  onStartGame: (gameId: string, teamName: string, userName: string, mapStyle: MapStyleId) => void;
   onSetMapStyle: (style: MapStyleId) => void;
   language: Language;
   onSetLanguage: (lang: Language) => void;
@@ -25,7 +25,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
   const [selectedGameId, setSelectedGameId] = useState<string>('');
   const [teamName, setTeamName] = useState('');
+  const [playerName, setPlayerName] = useState('');
   const [mapStyle, setMapStyleInternal] = useState<MapStyleId>('osm');
+  
+  // Joining State (via QR)
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinTeamName, setJoinTeamName] = useState('');
   
   // Checks
   const [geoPermission, setGeoPermission] = useState<'granted' | 'denied' | 'prompt'>('prompt');
@@ -61,31 +66,50 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         setStoragePermission('denied');
     }
     
-    // Auto-select best game
-    if (userLocation && games.length > 0) {
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        
-        // Find games created today OR within 10km
-        const nearby = games.filter(g => {
-            if (g.points.length === 0) return false;
-            // Center of game (avg of points)
-            const center = {
-                lat: g.points.reduce((sum, p) => sum + p.location.lat, 0) / g.points.length,
-                lng: g.points.reduce((sum, p) => sum + p.location.lng, 0) / g.points.length,
-            };
-            const dist = haversineMeters(userLocation, center);
-            const gDate = new Date(g.createdAt);
+    // Recover player name
+    const savedName = localStorage.getItem('geohunt_player_name');
+    if (savedName) setPlayerName(savedName);
+
+    // Parse URL Params for QR Code Joining
+    // Format: ?gameId=...&team=...
+    const params = new URLSearchParams(window.location.search);
+    const qGameId = params.get('gameId');
+    const qTeam = params.get('team');
+
+    if (qGameId && qTeam) {
+        setIsJoining(true);
+        setJoinTeamName(qTeam);
+        setTeamName(qTeam); // Pre-fill
+        if (games.find(g => g.id === qGameId)) {
+            setSelectedGameId(qGameId);
+        }
+    } else {
+        // Auto-select best game if not joining via specific link
+        if (userLocation && games.length > 0 && !selectedGameId) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
             
-            // Logic: Created today OR within 10km
-            const isToday = gDate >= today;
-            return isToday || dist < 10000;
-        });
-        
-        if (nearby.length > 0) {
-            setSelectedGameId(nearby[0].id);
-        } else if (games.length > 0) {
-            setSelectedGameId(games[games.length - 1].id); // Fallback to newest
+            // Find games created today OR within 10km
+            const nearby = games.filter(g => {
+                if (g.points.length === 0) return false;
+                // Center of game (avg of points)
+                const center = {
+                    lat: g.points.reduce((sum, p) => sum + p.location.lat, 0) / g.points.length,
+                    lng: g.points.reduce((sum, p) => sum + p.location.lng, 0) / g.points.length,
+                };
+                const dist = haversineMeters(userLocation, center);
+                const gDate = new Date(g.createdAt);
+                
+                // Logic: Created today OR within 10km
+                const isToday = gDate >= today;
+                return isToday || dist < 10000;
+            });
+            
+            if (nearby.length > 0) {
+                setSelectedGameId(nearby[0].id);
+            } else if (games.length > 0) {
+                setSelectedGameId(games[games.length - 1].id); // Fallback to newest
+            }
         }
     }
   }, [userLocation, games]);
@@ -121,6 +145,20 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   };
 
   const selectedGame = games.find(g => g.id === selectedGameId);
+
+  // Check if all systems are ready
+  const isLocationReady = !!userLocation || geoPermission === 'granted';
+  const isCameraReady = cameraPermission === 'granted';
+  const isMicReady = micPermission === 'granted';
+  const isStorageReady = storagePermission === 'granted';
+  const allSystemsReady = isLocationReady && isCameraReady && isMicReady && isStorageReady;
+
+  const handleStart = () => {
+      if (selectedGameId && teamName && playerName) {
+          localStorage.setItem('geohunt_player_name', playerName);
+          onStartGame(selectedGameId, teamName, playerName, mapStyle);
+      }
+  };
 
   // Reusable Status Row
   const StatusRow = ({ 
@@ -241,102 +279,121 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 </div>
             )}
 
-            {/* System Checks */}
-            <div className="w-full bg-slate-800/50 rounded-2xl p-4 mb-6 border border-slate-700 backdrop-blur-sm">
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">{t('systemReadiness', language)}</h3>
-                
-                <div className="space-y-1">
-                    <StatusRow 
-                        icon={MapPin} 
-                        label={t('locationServices', language)}
-                        status={userLocation ? 'granted' : geoPermission}
-                        onRequest={requestGeo}
-                        isVital={true}
-                    />
-                    <StatusRow 
-                        icon={Camera} 
-                        label={t('cameraAccess', language)} 
-                        status={cameraPermission}
-                        onRequest={requestCamera}
-                    />
-                    <StatusRow 
-                        icon={Mic} 
-                        label={t('microphoneAccess', language)} 
-                        status={micPermission}
-                        onRequest={requestMicrophone}
-                    />
-                    <StatusRow 
-                        icon={HardDrive} 
-                        label={t('storageAccess', language)} 
-                        status={storagePermission}
-                    />
+            {/* System Checks - Hidden when all ready */}
+            {!allSystemsReady && (
+                <div className="w-full bg-slate-800/50 rounded-2xl p-4 mb-6 border border-slate-700 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">{t('systemReadiness', language)}</h3>
+                    
+                    <div className="space-y-1">
+                        <StatusRow 
+                            icon={MapPin} 
+                            label={t('locationServices', language)}
+                            status={userLocation ? 'granted' : geoPermission}
+                            onRequest={requestGeo}
+                            isVital={true}
+                        />
+                        <StatusRow 
+                            icon={Camera} 
+                            label={t('cameraAccess', language)} 
+                            status={cameraPermission}
+                            onRequest={requestCamera}
+                        />
+                        <StatusRow 
+                            icon={Mic} 
+                            label={t('microphoneAccess', language)} 
+                            status={micPermission}
+                            onRequest={requestMicrophone}
+                        />
+                        <StatusRow 
+                            icon={HardDrive} 
+                            label={t('storageAccess', language)} 
+                            status={storagePermission}
+                        />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Game Setup Form */}
             <div className="w-full space-y-4 animate-in slide-in-from-bottom-10 duration-500 delay-100">
                 
-                {/* Settings Row */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="relative group">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-orange-400"><Languages className="w-4 h-4" /></div>
-                        <select 
-                            value={language}
-                            onChange={(e) => onSetLanguage(e.target.value as Language)}
-                            className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl py-3 pl-10 pr-3 appearance-none focus:ring-2 focus:ring-orange-500 outline-none transition-all cursor-pointer hover:bg-slate-750"
-                        >
-                            <option value="English">English</option>
-                            <option value="Danish">Danish</option>
-                            <option value="German">German</option>
-                            <option value="Spanish">Spanish</option>
-                        </select>
-                    </div>
-                    <div className="relative group">
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-orange-400"><Globe className="w-4 h-4" /></div>
-                        <select 
-                            value={mapStyle}
-                            onChange={(e) => { setMapStyleInternal(e.target.value as MapStyleId); onSetMapStyle(e.target.value as MapStyleId); }}
-                            className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl py-3 pl-10 pr-3 appearance-none focus:ring-2 focus:ring-orange-500 outline-none transition-all cursor-pointer hover:bg-slate-750"
-                        >
-                            <option value="osm">Standard Map</option>
-                            <option value="satellite">Satellite</option>
-                            <option value="dark">Dark Mode</option>
-                            <option value="light">Light Mode</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* Game Selector */}
-                <div className="relative">
-                    <label className="text-xs font-bold text-gray-400 uppercase mb-1 block ml-1">{t('selectGame', language)}</label>
-                    <select 
-                        value={selectedGameId}
-                        onChange={(e) => setSelectedGameId(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-xl py-4 px-4 appearance-none focus:ring-2 focus:ring-orange-500 outline-none transition-all cursor-pointer hover:border-slate-600"
-                    >
-                        {games.length === 0 && <option>{t('noGames', language)}</option>}
-                        {games.map(g => (
-                            <option key={g.id} value={g.id}>{g.name} ({g.points.length} tasks)</option>
-                        ))}
-                    </select>
-                    {selectedGame && (
-                        <div className="absolute right-3 top-9">
-                            <button onClick={() => setShowQr(!showQr)} className="p-2 text-gray-400 hover:text-white bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors">
-                                <QrCode className="w-5 h-5" />
-                            </button>
+                {isJoining && (
+                    <div className="bg-orange-600/20 border border-orange-600/50 rounded-xl p-4 mb-2 flex items-center gap-3">
+                        <Users className="w-6 h-6 text-orange-500" />
+                        <div>
+                            <p className="font-bold text-orange-100">Joining Team: {joinTeamName}</p>
+                            <p className="text-xs text-orange-300">Enter your name below to start.</p>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
 
-                {/* QR Display */}
-                {showQr && selectedGame && (
-                    <div className="bg-white p-4 rounded-xl flex flex-col items-center animate-in zoom-in-95">
+                {/* Settings Row */}
+                {!isJoining && (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="relative group">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-orange-400"><Languages className="w-4 h-4" /></div>
+                            <select 
+                                value={language}
+                                onChange={(e) => onSetLanguage(e.target.value as Language)}
+                                className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl py-3 pl-10 pr-3 appearance-none focus:ring-2 focus:ring-orange-500 outline-none transition-all cursor-pointer hover:bg-slate-750"
+                            >
+                                <option value="English">English</option>
+                                <option value="Danish">Danish</option>
+                                <option value="German">German</option>
+                                <option value="Spanish">Spanish</option>
+                            </select>
+                        </div>
+                        <div className="relative group">
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-orange-400"><Globe className="w-4 h-4" /></div>
+                            <select 
+                                value={mapStyle}
+                                onChange={(e) => { setMapStyleInternal(e.target.value as MapStyleId); onSetMapStyle(e.target.value as MapStyleId); }}
+                                className="w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-xl py-3 pl-10 pr-3 appearance-none focus:ring-2 focus:ring-orange-500 outline-none transition-all cursor-pointer hover:bg-slate-750"
+                            >
+                                <option value="osm">Standard Map</option>
+                                <option value="satellite">Satellite</option>
+                                <option value="dark">Dark Mode</option>
+                                <option value="light">Light Mode</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+
+                {/* Game Selector (Hidden if joining via link) */}
+                {!isJoining && (
+                    <div className="relative">
+                        <label className="text-xs font-bold text-gray-400 uppercase mb-1 block ml-1">{t('selectGame', language)}</label>
+                        <select 
+                            value={selectedGameId}
+                            onChange={(e) => setSelectedGameId(e.target.value)}
+                            className="w-full bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-xl py-4 px-4 appearance-none focus:ring-2 focus:ring-orange-500 outline-none transition-all cursor-pointer hover:border-slate-600"
+                        >
+                            {games.length === 0 && <option>{t('noGames', language)}</option>}
+                            {games.map(g => (
+                                <option key={g.id} value={g.id}>{g.name} ({g.points.length} tasks)</option>
+                            ))}
+                        </select>
+                        {selectedGame && teamName.trim().length > 0 && (
+                            <div className="absolute right-3 top-9">
+                                <button onClick={() => setShowQr(!showQr)} className="p-2 text-gray-400 hover:text-white bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors" title="Show Team QR">
+                                    <QrCode className="w-5 h-5" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* QR Display - MODIFIED to include Team Name */}
+                {showQr && selectedGame && teamName.trim() && (
+                    <div className="bg-white p-4 rounded-xl flex flex-col items-center animate-in zoom-in-95 relative">
+                        <button onClick={() => setShowQr(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"><XCircle className="w-5 h-5"/></button>
+                        <h4 className="text-slate-900 font-bold mb-2">Join {teamName}</h4>
+                        {/* URL must point to app origin with params */}
                         <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedGame.id)}`} 
-                            alt="Game QR" 
-                            className="w-32 h-32"
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${window.location.origin}${window.location.pathname}?gameId=${selectedGame.id}&team=${teamName}`)}`} 
+                            alt="Team Join QR" 
+                            className="w-40 h-40"
                         />
-                        <p className="text-slate-900 font-bold text-xs mt-2">{t('scanJoin', language)}</p>
+                        <p className="text-slate-500 font-medium text-xs mt-2 text-center max-w-[200px]">Scan to instantly join this team and sync up.</p>
                     </div>
                 )}
 
@@ -350,26 +407,40 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             value={teamName}
                             onChange={(e) => setTeamName(e.target.value)}
                             placeholder={t('enterTeamName', language)}
-                            className="w-full bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 outline-none placeholder:text-slate-600 transition-all hover:border-slate-600"
+                            disabled={isJoining}
+                            className="w-full bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 outline-none placeholder:text-slate-600 transition-all hover:border-slate-600 disabled:opacity-70 disabled:cursor-not-allowed"
                         />
                     </div>
-                    <div className="flex items-center gap-2 mt-2 px-1">
-                        <Info className="w-4 h-4 text-slate-500" />
-                        <p className="text-[10px] text-slate-400">Join same team name on multiple phones to play together.</p>
+                    {!isJoining && (
+                        <div className="flex items-center gap-2 mt-2 px-1">
+                            <Info className="w-4 h-4 text-slate-500" />
+                            <p className="text-[10px] text-slate-400">Enter a name, then click QR icon to share with others.</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Player Name - NEW */}
+                <div>
+                    <label className="text-xs font-bold text-gray-400 uppercase mb-1 block ml-1">Your Name</label>
+                    <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none group-focus-within:text-orange-400 transition-colors"><User className="w-5 h-5" /></div>
+                        <input 
+                            type="text" 
+                            value={playerName}
+                            onChange={(e) => setPlayerName(e.target.value)}
+                            placeholder="Your Name..."
+                            className="w-full bg-slate-800 border border-slate-700 text-white text-lg font-bold rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 outline-none placeholder:text-slate-600 transition-all hover:border-slate-600"
+                        />
                     </div>
                 </div>
 
                 <button 
-                    onClick={() => {
-                        if (selectedGameId && teamName) {
-                            onStartGame(selectedGameId, teamName, mapStyle);
-                        }
-                    }}
-                    disabled={!selectedGameId || !teamName || !userLocation}
+                    onClick={handleStart}
+                    disabled={!selectedGameId || !teamName || !playerName || !userLocation}
                     className="w-full bg-orange-600 hover:bg-orange-500 text-white text-xl font-black py-5 rounded-2xl shadow-xl shadow-orange-900/20 flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-4 disabled:transform-none"
                 >
                     <PlayCircle className="w-8 h-8" />
-                    {t('startAdventure', language)}
+                    {isJoining ? 'Join Team' : t('startAdventure', language)}
                 </button>
                 
                 {!userLocation && (
@@ -377,12 +448,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 )}
 
                 {/* BYPASS BUTTON */}
-                <button 
-                    onClick={onOpenEditor}
-                    className="w-full py-3 text-slate-500 text-xs font-bold hover:text-white hover:bg-slate-800 rounded-xl transition-colors mt-2 flex items-center justify-center gap-2"
-                >
-                    <Hammer className="w-3 h-3" /> Manage Games / Editor (Skip GPS)
-                </button>
+                {!isJoining && (
+                    <button 
+                        onClick={onOpenEditor}
+                        className="w-full py-3 text-slate-500 text-xs font-bold hover:text-white hover:bg-slate-800 rounded-xl transition-colors mt-2 flex items-center justify-center gap-2"
+                    >
+                        <Hammer className="w-3 h-3" /> Manage Games / Editor (Skip GPS)
+                    </button>
+                )}
 
             </div>
         </div>

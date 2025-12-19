@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TaskTemplate, TaskList, GamePoint } from '../types';
-import { X, Search, Plus, Tag, Layers, Edit2, Trash2, CheckSquare, FolderOpen, Palette, CheckCircle2, ChevronRight, GripVertical, ArrowLeft, Wand2, Square, CheckSquare as CheckSquareFilled, ListChecks } from 'lucide-react';
+import { X, Search, Plus, Tag, Layers, Edit2, Trash2, CheckSquare, FolderOpen, Palette, CheckCircle2, ChevronRight, GripVertical, ArrowLeft, Wand2, Square, CheckSquare as CheckSquareFilled, ListChecks, Globe } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import TaskEditor from './TaskEditor';
 import AiTaskGenerator from './AiTaskGenerator';
@@ -27,6 +27,16 @@ const COLORS = [
   '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6',
 ];
 
+const getFlagEmoji = (lang?: string) => {
+    if (!lang) return '🌐';
+    if (lang.includes('Danish') || lang.includes('Dansk')) return '🇩🇰';
+    if (lang.includes('English')) return '🇬🇧';
+    if (lang.includes('German') || lang.includes('Deutsch')) return '🇩🇪';
+    if (lang.includes('Spanish') || lang.includes('Español')) return '🇪🇸';
+    if (lang.includes('French') || lang.includes('Français')) return '🇫🇷';
+    return '🌐';
+};
+
 const TaskMaster: React.FC<TaskMasterProps> = ({ 
   library, 
   lists, 
@@ -41,6 +51,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'LIBRARY' | 'LISTS'>('LISTS');
   const [searchQuery, setSearchQuery] = useState('');
+  const [languageFilter, setLanguageFilter] = useState('All');
   
   // Library State
   const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
@@ -76,6 +87,15 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     window.addEventListener('storage', loadColors);
     return () => window.removeEventListener('storage', loadColors);
   }, [editingTemplate]);
+
+  // Extract unique languages for filter
+  const availableLanguages = useMemo(() => {
+      const langs = new Set<string>();
+      library.forEach(t => {
+          if (t.settings?.language) langs.add(t.settings.language);
+      });
+      return Array.from(langs).sort();
+  }, [library]);
 
   // Helpers
   const convertTemplateToPoint = (t: TaskTemplate): GamePoint => ({
@@ -149,7 +169,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
           task: { type: 'text', question: 'Question here...' },
           tags: [],
           iconId: 'default',
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          settings: {
+              language: 'English',
+              scoreDependsOnSpeed: false,
+              showAnswerStatus: true,
+              showCorrectAnswerOnMiss: false
+          }
       };
       setEditingTemplate(newTemplate);
   };
@@ -271,8 +297,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
   const filteredLibrary = library.filter(t => {
       const q = searchQuery.toLowerCase();
-      return t.title.toLowerCase().includes(q) || 
-             t.tags.some(tag => tag.toLowerCase().includes(q));
+      const matchesSearch = t.title.toLowerCase().includes(q) || 
+                            t.tags.some(tag => tag.toLowerCase().includes(q));
+      
+      const matchesLanguage = languageFilter === 'All' || t.settings?.language === languageFilter;
+      
+      return matchesSearch && matchesLanguage;
   });
 
   const selectedList = lists.find(l => l.id === selectedListId);
@@ -334,10 +364,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
               {/* Text Info */}
               <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
-                  <div className="md:col-span-4 min-w-0">
-                      <h3 className="font-bold text-gray-800 dark:text-gray-100 truncate text-sm" title={template.title}>{template.title}</h3>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 rounded text-gray-500 uppercase font-bold tracking-wider">{template.task.type.replace('_', ' ')}</span>
+                  <div className="md:col-span-4 min-w-0 flex items-center gap-2">
+                      <span className="text-lg" title={template.settings?.language}>{getFlagEmoji(template.settings?.language)}</span>
+                      <div className="min-w-0">
+                          <h3 className="font-bold text-gray-800 dark:text-gray-100 truncate text-sm" title={template.title}>{template.title}</h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[10px] bg-gray-100 dark:bg-gray-800 px-1.5 rounded text-gray-500 uppercase font-bold tracking-wider">{template.task.type.replace('_', ' ')}</span>
+                          </div>
                       </div>
                   </div>
                   
@@ -635,15 +668,30 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                              </div>
                          )}
                      </div>
-                     <div className="relative">
-                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                         <input 
-                            type="text" 
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search by title or tags..."
-                            className="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-transparent rounded-lg focus:bg-white dark:focus:bg-gray-700 focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900 dark:text-white"
-                         />
+                     <div className="flex gap-2">
+                         <div className="relative flex-1">
+                             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                             <input 
+                                type="text" 
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search by title or tags..."
+                                className="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-transparent rounded-lg focus:bg-white dark:focus:bg-gray-700 focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900 dark:text-white"
+                             />
+                         </div>
+                         <div className="relative w-40">
+                             <Globe className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                             <select
+                                value={languageFilter}
+                                onChange={(e) => setLanguageFilter(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border-transparent rounded-lg focus:bg-white dark:focus:bg-gray-700 focus:ring-2 focus:ring-orange-500 outline-none transition-all text-gray-900 dark:text-white appearance-none cursor-pointer"
+                             >
+                                <option value="All">All Languages</option>
+                                {availableLanguages.map(lang => (
+                                    <option key={lang} value={lang}>{getFlagEmoji(lang)} {lang.split(' ')[0]}</option>
+                                ))}
+                             </select>
+                         </div>
                      </div>
                  </div>
 

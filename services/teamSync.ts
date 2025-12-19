@@ -8,6 +8,7 @@ type MemberCallback = (count: number) => void;
 class TeamSyncService {
   private channel: any = null;
   private deviceId: string = '';
+  private userName: string = 'Anonymous'; // Default
   private votes: Record<string, TaskVote[]> = {}; // pointId -> votes
   private members: Set<string> = new Set();
   
@@ -28,13 +29,19 @@ class TeamSyncService {
       return this.deviceId;
   }
 
-  public connect(gameId: string, teamName: string) {
+  public getUserName() {
+      return this.userName;
+  }
+
+  public connect(gameId: string, teamName: string, userName: string) {
     if (this.channel) this.disconnect();
+
+    this.userName = userName;
 
     // Clean team name to be channel-safe
     const channelId = `game_${gameId}_team_${teamName.replace(/[^a-zA-Z0-9]/g, '_')}`;
     
-    console.log(`[TeamSync] Connecting to ${channelId}`);
+    console.log(`[TeamSync] Connecting to ${channelId} as ${userName}`);
 
     this.channel = supabase.channel(channelId);
 
@@ -70,6 +77,7 @@ class TeamSyncService {
 
     const vote: TaskVote = {
       deviceId: this.deviceId,
+      userName: this.userName,
       pointId,
       answer,
       timestamp: Date.now()
@@ -91,7 +99,10 @@ class TeamSyncService {
       this.channel.send({
           type: 'broadcast',
           event: 'presence',
-          payload: { deviceId: this.deviceId }
+          payload: { 
+              deviceId: this.deviceId,
+              userName: this.userName
+          }
       });
   }
 

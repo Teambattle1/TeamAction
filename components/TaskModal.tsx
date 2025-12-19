@@ -312,31 +312,50 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
       }
   };
 
-  const renderConsensusView = () => (
+  const renderConsensusView = () => {
+      // Group votes by answer
+      const groupedVotes: Record<string, TaskVote[]> = {};
+      
+      teamVotes.forEach(vote => {
+          const answerKey = Array.isArray(vote.answer) ? vote.answer.sort().join(', ') : String(vote.answer);
+          if (!groupedVotes[answerKey]) groupedVotes[answerKey] = [];
+          groupedVotes[answerKey].push(vote);
+      });
+
+      return (
       <div className="space-y-6">
           <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
               <div className="flex justify-between items-center mb-4">
                   <h3 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-indigo-500" /> Team Votes
+                      <Users className="w-5 h-5 text-indigo-500" /> Team Decisions
                   </h3>
                   <div className="text-xs font-bold px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300">
                       {teamVotes.length} Voted
                   </div>
               </div>
               
-              <div className="space-y-2">
-                  {teamVotes.map((vote, i) => {
-                      const isMe = vote.deviceId === myDeviceId;
+              <div className="space-y-3">
+                  {Object.entries(groupedVotes).map(([answerKey, votes]) => {
+                      const isMyVoteGroup = votes.some(v => v.deviceId === myDeviceId);
                       return (
-                          <div key={i} className={`flex justify-between items-center p-3 rounded-lg ${isMe ? 'bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800' : 'bg-white dark:bg-gray-700'}`}>
-                              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                                  {isMe ? "You" : `Teammate ${i+1}`}
-                              </span>
-                              <span className="font-bold text-gray-900 dark:text-white truncate max-w-[150px]">
-                                  {Array.isArray(vote.answer) ? vote.answer.join(', ') : vote.answer}
-                              </span>
+                          <div key={answerKey} className={`rounded-xl border p-3 ${isMyVoteGroup ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-white border-gray-200 dark:bg-gray-700 dark:border-gray-600'}`}>
+                              <div className="flex justify-between items-start mb-2">
+                                  <div className="font-bold text-lg text-gray-900 dark:text-white break-words flex-1 pr-2">
+                                      {answerKey}
+                                  </div>
+                                  <div className="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 font-bold px-2 py-0.5 rounded text-xs">
+                                      {votes.length}
+                                  </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                  {votes.map((v, i) => (
+                                      <span key={i} className="text-[10px] px-2 py-1 bg-white/50 dark:bg-black/20 rounded-full text-gray-600 dark:text-gray-300 border border-black/5 dark:border-white/10">
+                                          {v.userName || "Unknown"}
+                                      </span>
+                                  ))}
+                              </div>
                           </div>
-                      )
+                      );
                   })}
               </div>
           </div>
@@ -346,7 +365,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
                   <AlertTriangle className="w-6 h-6 flex-shrink-0" />
                   <div>
                       <h4 className="font-bold">Disagreement Detected!</h4>
-                      <p className="text-sm mt-1">Are you sure? Your teammates think something else. Discuss and agree on a single answer.</p>
+                      <p className="text-sm mt-1">Discuss with your team. You must all agree on one answer to submit.</p>
                   </div>
               </div>
           ) : consensusReached ? (
@@ -369,7 +388,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
                   onClick={() => setIsVoting(false)}
                   className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-xl hover:bg-gray-300 transition-colors"
               >
-                  Change Vote
+                  Change My Vote
               </button>
               {consensusReached && (
                   <button 
@@ -381,10 +400,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
               )}
           </div>
       </div>
-  );
+      );
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}

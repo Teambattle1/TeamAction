@@ -15,11 +15,13 @@ export type Language = 'English' | 'Danish' | 'German' | 'Spanish';
 // --- Team Sync Types ---
 export interface TeamMember {
   deviceId: string;
+  userName: string; // Added user name
   lastSeen: number;
 }
 
 export interface TaskVote {
   deviceId: string;
+  userName: string; // Added user name
   pointId: string;
   answer: string | number | string[]; // The actual answer value
   timestamp: number;
@@ -156,6 +158,7 @@ export interface GameState {
   userLocation: Coordinate | null;
   gpsAccuracy: number | null;
   teamName?: string;
+  userName?: string; // Added local user name
   deviceId: string; // Unique ID for this browser
 }
 
