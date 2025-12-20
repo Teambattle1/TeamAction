@@ -1,11 +1,12 @@
+
 import { supabase } from '../lib/supabase';
 import { Game, TaskTemplate, TaskList, Team } from '../types';
 
 // Helper to handle errors gracefully and avoid [object Object] logging
 const logError = (context: string, error: any) => {
-    // 42P01 is the Postgrest code for "undefined_table"
+    // 42P01 is the Postgrest code for "undefined_table" - table doesn't exist yet
     if (error.code === '42P01') {
-        console.warn(`[Supabase] Table missing in '${context}'. Please ensure you have run the SQL setup script in your Supabase dashboard.`);
+        console.warn(`[Supabase] Table missing in '${context}'. This feature will use local state or default empty values until the database migration is applied.`);
     } else {
         console.error(`[Supabase] Error in '${context}':`, error.message || error);
     }
@@ -38,65 +39,78 @@ export const deleteGame = async (id: string) => {
 // --- TEAMS ---
 
 export const fetchTeams = async (gameId: string): Promise<Team[]> => {
-    const { data, error } = await supabase
-        .from('teams')
-        .select('*')
-        .eq('game_id', gameId);
-    
-    if (error) {
-        logError('fetchTeams', error);
+    try {
+        const { data, error } = await supabase
+            .from('teams')
+            .select('*')
+            .eq('game_id', gameId);
+        
+        if (error) {
+            // If table doesn't exist, return empty array seamlessly
+            if (error.code === '42P01') return [];
+            logError('fetchTeams', error);
+            return [];
+        }
+        // Map snake_case DB columns to camelCase types
+        return data ? data.map((row: any) => ({
+            id: row.id,
+            gameId: row.game_id,
+            name: row.name,
+            joinCode: row.join_code, // Map if exists
+            photoUrl: row.photo_url,
+            members: row.members || [],
+            score: row.score || 0,
+            updatedAt: row.updated_at
+        })) : [];
+    } catch (e) {
         return [];
     }
-    // Map snake_case DB columns to camelCase types
-    return data ? data.map((row: any) => ({
-        id: row.id,
-        gameId: row.game_id,
-        name: row.name,
-        joinCode: row.join_code, // Map if exists
-        photoUrl: row.photo_url,
-        members: row.members || [],
-        score: row.score || 0,
-        updatedAt: row.updated_at
-    })) : [];
 };
 
 export const registerTeam = async (team: Team) => {
-    // Attempt 1: Try saving with all fields including join_code
-    const { error } = await supabase
-        .from('teams')
-        .upsert({
-            id: team.id,
-            game_id: team.gameId,
-            name: team.name,
-            join_code: team.joinCode, 
-            photo_url: team.photoUrl,
-            members: team.members,
-            score: team.score,
-            updated_at: new Date().toISOString()
-        });
-    
-    if (error) {
-        console.warn("[Supabase] First attempt to register team failed. Retrying without 'join_code' in case of schema mismatch...", error.message);
-        
-        // Attempt 2: Retry without join_code (in case column is missing in DB)
-        const { error: retryError } = await supabase
+    try {
+        // Attempt 1: Try saving with all fields including join_code
+        const { error } = await supabase
             .from('teams')
             .upsert({
                 id: team.id,
                 game_id: team.gameId,
                 name: team.name,
-                // join_code omitted
+                join_code: team.joinCode, 
                 photo_url: team.photoUrl,
                 members: team.members,
                 score: team.score,
                 updated_at: new Date().toISOString()
             });
+        
+        if (error) {
+            if (error.code === '42P01') {
+                console.warn("[Supabase] Teams table missing. Team registered locally in session only.");
+                return; // Graceful exit if table missing
+            }
+
+            console.warn("[Supabase] First attempt to register team failed. Retrying without 'join_code'...", error.message);
             
-        if (retryError) {
-            logError('registerTeam (Retry)', retryError);
-        } else {
-            console.log("[Supabase] Team registered successfully (fallback mode).");
+            // Attempt 2: Retry without join_code (in case column is missing in older DB schema)
+            const { error: retryError } = await supabase
+                .from('teams')
+                .upsert({
+                    id: team.id,
+                    game_id: team.gameId,
+                    name: team.name,
+                    // join_code omitted
+                    photo_url: team.photoUrl,
+                    members: team.members,
+                    score: team.score,
+                    updated_at: new Date().toISOString()
+                });
+                
+            if (retryError) {
+                logError('registerTeam (Retry)', retryError);
+            }
         }
+    } catch (e) {
+        console.error("Register team exception", e);
     }
 };
 
@@ -105,6 +119,7 @@ export const registerTeam = async (team: Team) => {
 export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
   const { data, error } = await supabase.from('library').select('*');
   if (error) {
+    if (error.code === '42P01') return [];
     logError('fetchLibrary', error);
     return [];
   }
@@ -129,6 +144,7 @@ export const deleteTemplate = async (id: string) => {
 export const fetchTaskLists = async (): Promise<TaskList[]> => {
   const { data, error } = await supabase.from('task_lists').select('*');
   if (error) {
+    if (error.code === '42P01') return [];
     logError('fetchTaskLists', error);
     return [];
   }

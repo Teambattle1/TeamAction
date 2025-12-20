@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Game, TaskList } from '../types';
-import { X, Calendar, CheckCircle, Clock, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home } from 'lucide-react';
+import { X, Calendar, CheckCircle, Clock, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home, Plus } from 'lucide-react';
 
 interface GameChooserProps {
   games: Game[];
@@ -111,8 +111,8 @@ const GameChooser: React.FC<GameChooserProps> = ({
                   <Home className="w-4 h-4" />
               </button>
               <div>
-                  <h2 className="text-xl font-black tracking-tight">My Games</h2>
-                  <p className="text-gray-400 text-sm">Resume playing or start new</p>
+                  <h2 className="text-xl font-black tracking-tight uppercase">MY GAMES</h2>
+                  <p className="text-gray-400 text-sm uppercase tracking-wide">RESUME PLAYING OR START NEW</p>
               </div>
           </div>
           <div className="flex items-center gap-1">
@@ -135,13 +135,13 @@ const GameChooser: React.FC<GameChooserProps> = ({
         <div className="flex p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
             <button
                 onClick={() => setMainView('GAMES')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${mainView === 'GAMES' ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all uppercase tracking-wide ${mainView === 'GAMES' ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
             >
                 <Gamepad2 className="w-4 h-4" /> GAMES
             </button>
             <button
                 onClick={() => setMainView('TEMPLATES')}
-                className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${mainView === 'TEMPLATES' ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                className={`flex-1 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all uppercase tracking-wide ${mainView === 'TEMPLATES' ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
             >
                 <LayoutTemplate className="w-4 h-4" /> TEMPLATES
             </button>
@@ -154,21 +154,21 @@ const GameChooser: React.FC<GameChooserProps> = ({
                     onClick={() => setSessionTab('TODAY')}
                     className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative ${sessionTab === 'TODAY' ? 'text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
-                    <Clock className="w-3 h-3" /> Today
+                    <Clock className="w-3 h-3" /> TODAY
                     {sessionTab === 'TODAY' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-600" />}
                 </button>
                 <button 
                     onClick={() => setSessionTab('PLANNED')}
                     className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative ${sessionTab === 'PLANNED' ? 'text-amber-600 dark:text-amber-400 bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
-                    <Calendar className="w-3 h-3" /> Planned
+                    <Calendar className="w-3 h-3" /> PLANNED
                     {sessionTab === 'PLANNED' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-600" />}
                 </button>
                 <button 
                     onClick={() => setSessionTab('COMPLETED')}
                     className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative ${sessionTab === 'COMPLETED' ? 'text-green-600 dark:text-green-400 bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
-                    <CheckCircle className="w-3 h-3" /> Done
+                    <CheckCircle className="w-3 h-3" /> DONE
                     {sessionTab === 'COMPLETED' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600" />}
                 </button>
             </div>
@@ -183,56 +183,54 @@ const GameChooser: React.FC<GameChooserProps> = ({
                     {filteredGames.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500">
                             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-3">
-                                {sessionTab === 'TODAY' ? <Clock className="w-8 h-8" /> : 
-                                sessionTab === 'PLANNED' ? <Calendar className="w-8 h-8" /> : 
-                                <Trophy className="w-8 h-8" />}
+                                <Gamepad2 className="w-8 h-8 opacity-50" />
                             </div>
-                            <p className="font-medium text-sm">No games found for {sessionTab.toLowerCase()}.</p>
+                            <p className="text-xs font-bold uppercase tracking-wide">NO GAMES FOUND</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {filteredGames.map(game => {
-                                const taskCount = game.points.length;
-                                const date = new Date(game.createdAt);
-                                const dateStr = date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-                                const timeStr = date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-
+                                const completedCount = game.points.filter(p => p.isCompleted).length;
+                                const totalCount = game.points.filter(p => !p.isSectionHeader).length;
+                                const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+                                
                                 return (
                                     <div 
-                                        key={game.id}
+                                        key={game.id} 
                                         onClick={() => onSelectGame(game.id)}
-                                        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700 hover:scale-[1.02] transition-all flex items-center justify-between group cursor-pointer"
+                                        className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-orange-400 dark:hover:border-orange-500 shadow-sm cursor-pointer group transition-all"
                                     >
-                                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 ${
-                                                sessionTab === 'COMPLETED' 
-                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                                : 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-                                            }`}>
-                                                {game.name.charAt(0).toUpperCase()}
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h3 className="font-bold text-gray-800 dark:text-white uppercase">{game.name}</h3>
+                                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                                    <Calendar className="w-3 h-3" />
+                                                    {new Date(game.createdAt).toLocaleDateString()}
+                                                </p>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold text-gray-800 dark:text-white group-hover:text-orange-700 dark:group-hover:text-orange-400 transition-colors truncate">{game.name}</h3>
-                                                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {dateStr}</span>
-                                                    {sessionTab === 'TODAY' && <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {timeStr}</span>}
-                                                    <span className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded"><MapPin className="w-3 h-3" /> {taskCount}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
                                             {onSaveAsTemplate && (
                                                 <button 
                                                     onClick={(e) => handleSaveTemplateClick(e, game)}
-                                                    className="p-2 text-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/30 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                    className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30 rounded-lg transition-colors"
                                                     title="Save as Template"
                                                 >
                                                     <Save className="w-4 h-4" />
                                                 </button>
                                             )}
-                                            <div className="text-gray-300 dark:text-gray-600 group-hover:text-orange-500 dark:group-hover:text-orange-400 transition-colors">
-                                                {sessionTab === 'COMPLETED' ? <Trophy className="w-5 h-5" /> : <Play className="w-5 h-5 fill-current" />}
+                                        </div>
+                                        
+                                        <div className="flex items-center justify-between text-xs mt-3">
+                                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-medium">
+                                                <MapPin className="w-3 h-3" />
+                                                {totalCount} TASKS
                                             </div>
+                                            <div className="flex items-center gap-1 font-bold text-orange-600 dark:text-orange-400">
+                                                <Trophy className="w-3 h-3" />
+                                                {progress}%
+                                            </div>
+                                        </div>
+                                        <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                                            <div className="bg-orange-500 h-full rounded-full transition-all" style={{ width: `${progress}%` }}></div>
                                         </div>
                                     </div>
                                 );
@@ -244,51 +242,40 @@ const GameChooser: React.FC<GameChooserProps> = ({
 
             {/* --- TEMPLATES LIST --- */}
             {mainView === 'TEMPLATES' && (
-                <>
+                <div className="space-y-3">
                     {taskLists.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500">
                             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-3">
-                                <LayoutTemplate className="w-8 h-8" />
+                                <LayoutTemplate className="w-8 h-8 opacity-50" />
                             </div>
-                            <p className="font-medium text-sm">No templates available.</p>
-                            <p className="text-xs mt-1">Create one in the Library Editor.</p>
+                            <p className="text-xs font-bold uppercase tracking-wide">NO TEMPLATES FOUND</p>
                         </div>
                     ) : (
-                        <div className="space-y-3">
-                            <p className="text-xs text-gray-400 uppercase font-bold tracking-wider mb-2">Start a new game</p>
-                            {taskLists.map(list => (
-                                <button 
-                                    key={list.id}
-                                    onClick={() => handleCreateFromTemplate(list)}
-                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-orange-300 dark:hover:border-orange-700 hover:scale-[1.02] transition-all flex items-center justify-between group text-left relative overflow-hidden"
-                                >
-                                    <div className="absolute left-0 top-0 bottom-0 w-1.5" style={{ backgroundColor: list.color }}></div>
-                                    <div className="flex items-center gap-4 pl-2">
-                                        <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-lg font-bold text-gray-500 dark:text-gray-400">
-                                            {list.tasks.length}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{list.name}</h3>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{list.description || "No description"}</p>
-                                        </div>
-                                    </div>
-                                    <div className="bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 p-2 rounded-full opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                                        <Play className="w-4 h-4 fill-current" />
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
+                        taskLists.map(list => (
+                            <button
+                                key={list.id}
+                                onClick={() => handleCreateFromTemplate(list)}
+                                className="w-full bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 shadow-sm text-left group transition-all"
+                            >
+                                <div className="flex justify-between items-center mb-1">
+                                    <h3 className="font-bold text-gray-800 dark:text-white uppercase">{list.name}</h3>
+                                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500" />
+                                </div>
+                                <p className="text-xs text-gray-500 line-clamp-2 mb-3">{list.description || 'No description'}</p>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded uppercase tracking-wide">
+                                        {list.tasks.length} TASKS
+                                    </span>
+                                    <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1 uppercase tracking-wide ml-auto group-hover:underline">
+                                        <Plus className="w-3 h-3" /> CREATE GAME
+                                    </span>
+                                </div>
+                            </button>
+                        ))
                     )}
-                </>
+                </div>
             )}
-
         </div>
-        
-        {/* Footer */}
-        <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center text-xs text-gray-400">
-             {mainView === 'GAMES' ? `Showing ${filteredGames.length} games` : `Showing ${taskLists.length} templates`}
-        </div>
-
       </div>
     </div>
   );

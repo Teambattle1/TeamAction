@@ -1,8 +1,10 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { GamePoint, Coordinate, GameMode, MapStyleId } from '../types';
 import { getLeafletIcon } from '../utils/icons';
+import { Trash2 } from 'lucide-react';
 
 const UserIcon = L.divIcon({
   className: 'custom-user-icon',
@@ -21,6 +23,7 @@ interface GameMapProps {
   onPointClick: (point: GamePoint) => void;
   onMapClick?: (coord: Coordinate) => void;
   onPointMove?: (pointId: string, newLoc: Coordinate) => void;
+  onDeletePoint?: (pointId: string) => void;
 }
 
 const MapClickParams = ({ onClick }: { onClick?: (c: Coordinate) => void }) => {
@@ -53,33 +56,76 @@ const DraggableMarker = ({
   isSelected,
   label,
   onClick, 
-  onMove 
+  onMove,
+  onDelete
 }: { 
   point: GamePoint, 
   mode: GameMode, 
   isSelected: boolean,
   label?: string,
   onClick: (p: GamePoint) => void,
-  onMove?: (id: string, loc: Coordinate) => void 
+  onMove?: (id: string, loc: Coordinate) => void,
+  onDelete?: (id: string) => void
 }) => {
   
   const markerRef = useRef<L.Marker>(null);
+  const map = useMap(); // Access map instance for projection
   const isDraggable = mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
 
   const eventHandlers = React.useMemo(
     () => ({
       click: () => onClick(point),
-      // Removed 'drag' event listener to prevent continuous state updates 
-      // which cause re-renders that interrupt the drag gesture.
+      dragstart: () => {
+          // Highlight bin
+          const trash = document.getElementById('map-trash-bin');
+          if (trash) {
+              trash.classList.add('scale-125', 'bg-red-600', 'text-white', 'border-red-600');
+              trash.classList.remove('bg-white', 'text-gray-400', 'border-gray-200');
+          }
+      },
       dragend(e: L.LeafletEvent) {
         const marker = e.target;
-        if (marker && onMove) {
-          const { lat, lng } = marker.getLatLng();
-          onMove(point.id, { lat, lng });
+        const trash = document.getElementById('map-trash-bin');
+        
+        // Reset bin style
+        if (trash) {
+            trash.classList.remove('scale-125', 'bg-red-600', 'text-white', 'border-red-600');
+            trash.classList.add('bg-white', 'text-gray-400', 'border-gray-200');
+        }
+
+        if (marker) {
+          if (mode === GameMode.EDIT && onDelete && trash) {
+              const markerPoint = map.latLngToContainerPoint(marker.getLatLng());
+              const trashRect = trash.getBoundingClientRect();
+              const mapRect = map.getContainer().getBoundingClientRect();
+              
+              // Marker position relative to viewport
+              const markerViewportX = mapRect.left + markerPoint.x;
+              const markerViewportY = mapRect.top + markerPoint.y;
+              
+              // Check if marker is roughly inside trash bin area (with generous margin)
+              // We expand the target area by 50px to make it easy to hit
+              const hitMargin = 50;
+              
+              if (
+                  markerViewportX >= trashRect.left - hitMargin &&
+                  markerViewportX <= trashRect.right + hitMargin &&
+                  markerViewportY >= trashRect.top - hitMargin &&
+                  markerViewportY <= trashRect.bottom + hitMargin
+              ) {
+                  onDelete(point.id);
+                  return; // Stop update
+              }
+          }
+
+          if (onMove) {
+            const { lat, lng } = marker.getLatLng();
+            onMove(point.id, { lat, lng });
+          }
         }
       },
     }),
-    [point, onClick, onMove]
+    [point, onClick, onMove, onDelete, map, mode]
   );
 
   // Apply a visual effect if selected in edit mode
@@ -135,7 +181,8 @@ const GameMap: React.FC<GameMapProps> = ({
   selectedPointId,
   onPointClick, 
   onMapClick,
-  onPointMove
+  onPointMove,
+  onDeletePoint
 }) => {
   
   const defaultCenter = { lat: 55.6761, lng: 12.5683 };
@@ -147,10 +194,6 @@ const GameMap: React.FC<GameMapProps> = ({
   // Filter out dividers for the map view
   const mapPoints = points.filter(p => !p.isSectionHeader);
   
-  // Calculate labels based on overall index to keep them consistent
-  // However, if we filter dividers, indices might shift relative to map. 
-  // Ideally, user wants to see the ID that corresponds to the playlist order.
-  // So we map the original list to find the index.
   const getLabel = (point: GamePoint) => {
       if (mode !== GameMode.EDIT) return undefined;
       const idx = points.findIndex(p => p.id === point.id);
@@ -158,65 +201,79 @@ const GameMap: React.FC<GameMapProps> = ({
   };
 
   return (
-    <MapContainer 
-      center={[center.lat, center.lng]} 
-      zoom={15} 
-      style={{ height: '100%', width: '100%' }}
-      zoomControl={false}
-    >
-      <TileLayer
-        attribution={currentLayer.attribution}
-        url={currentLayer.url}
-      />
+    <div className="relative w-full h-full">
+        <MapContainer 
+        center={[center.lat, center.lng]} 
+        zoom={15} 
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+        >
+        <TileLayer
+            attribution={currentLayer.attribution}
+            url={currentLayer.url}
+        />
 
-      <RecenterMap center={userLocation} />
-      
-      {mode === GameMode.EDIT && <MapClickParams onClick={onMapClick} />}
+        <RecenterMap center={userLocation} />
+        
+        {mode === GameMode.EDIT && <MapClickParams onClick={onMapClick} />}
 
-      {/* User Position */}
-      {userLocation && (
-        <>
-          <Marker position={[userLocation.lat, userLocation.lng]} icon={UserIcon} zIndexOffset={500} />
-          {accuracy && (
-            <Circle 
-              center={[userLocation.lat, userLocation.lng]} 
-              radius={accuracy} 
-              pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.1, color: '#3b82f6', weight: 1 }} 
-            />
-          )}
-        </>
-      )}
+        {/* User Position */}
+        {userLocation && (
+            <>
+            <Marker position={[userLocation.lat, userLocation.lng]} icon={UserIcon} zIndexOffset={500} />
+            {accuracy && (
+                <Circle 
+                center={[userLocation.lat, userLocation.lng]} 
+                radius={accuracy} 
+                pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.1, color: '#3b82f6', weight: 1 }} 
+                />
+            )}
+            </>
+        )}
 
-      {/* Game Points */}
-      {mapPoints.map(point => {
-        const isSelected = selectedPointId === point.id;
-        return (
-            <React.Fragment key={point.id}>
-            <DraggableMarker 
-                point={point} 
-                mode={mode} 
-                isSelected={isSelected}
-                label={getLabel(point)}
-                onClick={onPointClick} 
-                onMove={onPointMove}
-            />
-            
-            {/* Geofence Visualization */}
-            <Circle 
-                center={[point.location.lat, point.location.lng]} 
-                radius={point.radiusMeters} 
-                pathOptions={{ 
-                color: isSelected ? '#4f46e5' : (point.isUnlocked ? (point.isCompleted ? '#22c55e' : '#eab308') : '#ef4444'), 
-                fillColor: isSelected ? '#6366f1' : (point.isUnlocked ? (point.isCompleted ? '#22c55e' : '#eab308') : '#ef4444'),
-                fillOpacity: showGeofence ? (isSelected ? 0.4 : 0.2) : 0.1,
-                weight: showGeofence ? (isSelected ? 3 : 2) : 1,
-                dashArray: point.isUnlocked ? undefined : '5, 5'
-                }} 
-            />
-            </React.Fragment>
-        );
-      })}
-    </MapContainer>
+        {/* Game Points */}
+        {mapPoints.map(point => {
+            const isSelected = selectedPointId === point.id;
+            return (
+                <React.Fragment key={point.id}>
+                <DraggableMarker 
+                    point={point} 
+                    mode={mode} 
+                    isSelected={isSelected}
+                    label={getLabel(point)}
+                    onClick={onPointClick} 
+                    onMove={onPointMove}
+                    onDelete={onDeletePoint}
+                />
+                
+                {/* Geofence Visualization */}
+                <Circle 
+                    center={[point.location.lat, point.location.lng]} 
+                    radius={point.radiusMeters} 
+                    pathOptions={{ 
+                    color: isSelected ? '#4f46e5' : (point.isUnlocked ? (point.isCompleted ? '#22c55e' : '#eab308') : '#ef4444'), 
+                    fillColor: isSelected ? '#6366f1' : (point.isUnlocked ? (point.isCompleted ? '#22c55e' : '#eab308') : '#ef4444'),
+                    fillOpacity: showGeofence ? (isSelected ? 0.4 : 0.2) : 0.1,
+                    weight: showGeofence ? (isSelected ? 3 : 2) : 1,
+                    dashArray: point.isUnlocked ? undefined : '5, 5'
+                    }} 
+                />
+                </React.Fragment>
+            );
+        })}
+        </MapContainer>
+
+        {/* Trash Bin for Drag-to-Delete */}
+        {mode === GameMode.EDIT && (
+            <div 
+                id="map-trash-bin"
+                className="absolute bottom-24 right-4 z-[2000] w-16 h-16 bg-white dark:bg-gray-800 rounded-full shadow-2xl flex items-center justify-center border-4 border-gray-200 dark:border-gray-700 text-gray-400 transition-all duration-200 pointer-events-auto"
+                title="Drag task here to delete"
+            >
+                <Trash2 className="w-8 h-8 pointer-events-none" />
+            </div>
+        )}
+    </div>
   );
 };
 

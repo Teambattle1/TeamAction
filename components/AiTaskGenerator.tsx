@@ -222,8 +222,8 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                <Wand2 className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">AI Task Generator</h2>
-              <p className="text-xs text-orange-100">Powered by Google Gemini</p>
+              <h2 className="text-xl font-bold uppercase tracking-wider">AI TASK GENERATOR</h2>
+              <p className="text-xs text-orange-100 uppercase tracking-wide">POWERED BY GOOGLE GEMINI</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
@@ -240,7 +240,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                 {/* Input Section */}
                 <div className="space-y-4">
                     <div>
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Topic / Theme</label>
+                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">TOPIC / THEME</label>
                       <textarea 
                         ref={topicInputRef}
                         value={topic}
@@ -259,16 +259,16 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                     {/* Logo Search Section */}
                     <div>
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                            <ImageIcon className="w-3 h-3" /> Company / Brand Logo
+                            <ImageIcon className="w-3 h-3" /> COMPANY / BRAND LOGO
                         </label>
                         {!logoUrl ? (
                             <button 
                                 onClick={handleSearchLogo}
                                 disabled={isGeneratingLogo || !topic.trim()}
-                                className="w-full py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg text-xs font-bold hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"
                             >
                                 {isGeneratingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                                Search Logo Online
+                                SEARCH LOGO ONLINE
                             </button>
                         ) : (
                             <div className="bg-white dark:bg-gray-700 p-2 rounded-lg border border-gray-200 dark:border-gray-600">
@@ -285,7 +285,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                         onChange={(e) => setUseLogoForTasks(e.target.checked)}
                                         className="rounded text-orange-600 focus:ring-orange-500"
                                     />
-                                    Use this logo for all tasks
+                                    <span className="uppercase font-bold tracking-wide">USE THIS LOGO FOR ALL TASKS</span>
                                 </label>
                             </div>
                         )}
@@ -294,7 +294,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                     <div className="grid grid-cols-1 gap-3">
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                                <Globe className="w-3 h-3" /> Language
+                                <Globe className="w-3 h-3" /> LANGUAGE
                             </label>
                             <select 
                                 value={language}
@@ -308,7 +308,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                         </div>
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                                <Tag className="w-3 h-3" /> Auto-Tag (Optional)
+                                <Tag className="w-3 h-3" /> AUTO-TAG (OPTIONAL)
                             </label>
                             <input 
                                 type="text"
@@ -323,10 +323,10 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                     <button 
                         onClick={handleGenerate}
                         disabled={isGenerating || !topic.trim()}
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
                     >
                         {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        Generate Tasks
+                        GENERATE TASKS
                     </button>
                 </div>
 
@@ -340,16 +340,16 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                 {/* Approved List */}
                 <div className="flex-1 flex flex-col min-h-0 pt-2 border-t border-gray-200 dark:border-gray-700 mt-2">
                     <div className="flex justify-between items-center mb-2">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Approved ({approvedTasks.length})</label>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">APPROVED ({approvedTasks.length})</label>
                         {approvedTasks.length > 0 && (
-                            <button onClick={() => setApprovedTasks([])} className="text-[10px] text-red-500 hover:underline">Clear</button>
+                            <button onClick={() => setApprovedTasks([])} className="text-[10px] text-red-500 hover:underline uppercase font-bold tracking-wide">CLEAR</button>
                         )}
                     </div>
                     
                     <div className="flex-1 overflow-y-auto space-y-2 pr-1">
                         {approvedTasks.length === 0 && (
-                            <div className="h-full flex items-center justify-center text-gray-400 text-xs text-center p-4 italic">
-                                Approved tasks will appear here.
+                            <div className="h-full flex items-center justify-center text-gray-400 text-xs text-center p-4 italic uppercase tracking-wide">
+                                APPROVED TASKS WILL APPEAR HERE.
                             </div>
                         )}
                         {approvedTasks.map((task, idx) => (
@@ -374,10 +374,10 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                 <button 
                     onClick={handleFinish}
                     disabled={approvedTasks.length === 0}
-                    className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2 shrink-0"
+                    className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:grayscale transition-all flex items-center justify-center gap-2 shrink-0 uppercase tracking-wide"
                 >
                     <Plus className="w-5 h-5" />
-                    Add {approvedTasks.length} Tasks to Library
+                    ADD {approvedTasks.length} TASKS TO LIBRARY
                 </button>
             </div>
 
@@ -388,7 +388,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                     <div className="absolute inset-0 z-10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex flex-col items-center justify-center text-orange-600 animate-in fade-in duration-300">
                         <div className="w-64 space-y-4">
                             <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                <span>Generating...</span>
+                                <span>GENERATING...</span>
                                 <span>{progress}%</span>
                             </div>
                             <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -397,17 +397,17 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
-                            <p className="text-center text-sm font-medium text-gray-600 dark:text-gray-300 animate-pulse">
-                                {progress < 30 ? "Analyzing topic..." : progress < 70 ? "Drafting questions & images..." : "Finalizing tasks..."}
+                            <p className="text-center text-sm font-medium text-gray-600 dark:text-gray-300 animate-pulse uppercase tracking-wide">
+                                {progress < 30 ? "ANALYZING TOPIC..." : progress < 70 ? "DRAFTING QUESTIONS & IMAGES..." : "FINALIZING TASKS..."}
                             </p>
                             
                             {/* Cancel Button */}
                             <div className="flex justify-center mt-4">
                                 <button 
                                     onClick={handleCancelGeneration}
-                                    className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-2"
+                                    className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors flex items-center gap-2 uppercase tracking-wide"
                                 >
-                                    <Ban className="w-3 h-3" /> Cancel
+                                    <Ban className="w-3 h-3" /> CANCEL
                                 </button>
                             </div>
                         </div>
@@ -415,16 +415,16 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                 )}
 
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2">
-                        Generated Proposals 
+                    <h3 className="font-bold text-gray-800 dark:text-white flex items-center gap-2 uppercase tracking-wide">
+                        GENERATED PROPOSALS 
                         {generatedBuffer.length > 0 && <span className="bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-300 px-2 py-0.5 rounded-full text-xs">{generatedBuffer.length}</span>}
                     </h3>
                     {generatedBuffer.length > 0 && (
                         <button 
                             onClick={handleGenerateMore}
-                            className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 bg-orange-50 dark:bg-orange-900/30 px-3 py-1.5 rounded-lg border border-orange-100 dark:border-orange-800 transition-colors"
+                            className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 bg-orange-50 dark:bg-orange-900/30 px-3 py-1.5 rounded-lg border border-orange-100 dark:border-orange-800 transition-colors uppercase tracking-wide"
                         >
-                            <RefreshCw className="w-3 h-3" /> Generate 10 New
+                            <RefreshCw className="w-3 h-3" /> GENERATE 10 NEW
                         </button>
                     )}
                 </div>
@@ -437,44 +437,44 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                 <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6 text-green-600 dark:text-green-400 shadow-sm">
                                     <Check className="w-10 h-10" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">All caught up!</h3>
-                                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-sm">
-                                    You've reviewed all generated tasks. What would you like to do next?
+                                <h3 className="text-2xl font-bold text-gray-800 dark:text-white mb-2 uppercase tracking-wide">ALL CAUGHT UP!</h3>
+                                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-sm uppercase tracking-wide text-xs">
+                                    YOU'VE REVIEWED ALL GENERATED TASKS. WHAT WOULD YOU LIKE TO DO NEXT?
                                 </p>
                                 
                                 <div className="flex flex-col w-full max-w-xs gap-3">
                                     <button 
                                         onClick={handleGenerateMore}
-                                        className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
+                                        className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] uppercase tracking-wide"
                                     >
                                         <RefreshCw className="w-4 h-4" />
-                                        Generate more about this topic
+                                        GENERATE MORE ABOUT THIS TOPIC
                                     </button>
                                     
                                     <button 
                                         onClick={handleChangeTopic}
-                                        className="w-full py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2"
+                                        className="w-full py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center justify-center gap-2 uppercase tracking-wide"
                                     >
                                         <Edit2 className="w-4 h-4" />
-                                        Change Topic
+                                        CHANGE TOPIC
                                     </button>
 
                                     {approvedTasks.length > 0 && (
                                         <button 
                                             onClick={handleFinish}
-                                            className="w-full py-3 bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-800/30 rounded-xl font-bold hover:bg-green-100 dark:hover:bg-green-900/30 flex items-center justify-center gap-2 mt-4"
+                                            className="w-full py-3 bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-800/30 rounded-xl font-bold hover:bg-green-100 dark:hover:bg-green-900/30 flex items-center justify-center gap-2 mt-4 uppercase tracking-wide"
                                         >
                                             <Plus className="w-4 h-4" />
-                                            Finish & Add {approvedTasks.length} Tasks
+                                            FINISH & ADD {approvedTasks.length} TASKS
                                         </button>
                                     )}
                                 </div>
                             </div>
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400 uppercase tracking-wide">
                                 <Sparkles className="w-16 h-16 mb-4 text-orange-200 dark:text-orange-900" />
-                                <p className="text-lg font-medium mb-1">Ready to create.</p>
-                                <p className="text-sm">Enter a topic on the left to start.</p>
+                                <p className="text-lg font-medium mb-1">READY TO CREATE.</p>
+                                <p className="text-sm">ENTER A TOPIC ON THE LEFT TO START.</p>
                             </div>
                         )
                     )}
@@ -496,18 +496,18 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                             <h4 className="font-bold text-gray-800 dark:text-gray-100 text-lg">{task.title}</h4>
                                             <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 uppercase px-2 py-0.5 rounded font-bold">{task.task.type}</span>
                                             {task.tags.map(tag => (
-                                                <span key={tag} className="text-[10px] bg-orange-50 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400 px-1.5 rounded">{tag}</span>
+                                                <span key={tag} className="text-[10px] bg-orange-50 dark:bg-orange-900/30 text-orange-500 dark:text-orange-400 px-1.5 rounded uppercase">{tag}</span>
                                             ))}
                                         </div>
                                         <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">{task.task.question}</p>
                                         
                                         {/* Answer Preview */}
                                         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
-                                            <span className="font-bold mr-1">Solution:</span>
+                                            <span className="font-bold mr-1 uppercase">SOLUTION:</span>
                                             {task.task.options ? task.task.answer || task.task.correctAnswers?.join(', ') : task.task.answer || task.task.range?.correctValue}
                                             {task.task.options && (
                                                 <div className="mt-1 opacity-70">
-                                                    Options: {task.task.options.join(', ')}
+                                                    OPTIONS: {task.task.options.join(', ')}
                                                 </div>
                                             )}
                                         </div>
@@ -517,15 +517,15 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                 <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                                     <button 
                                         onClick={() => handleReject(task.id)}
-                                        className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-500 transition-colors flex items-center justify-center gap-2 text-sm font-bold"
+                                        className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-500 transition-colors flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wide"
                                     >
-                                        <ThumbsDown className="w-4 h-4" /> Reject
+                                        <ThumbsDown className="w-4 h-4" /> REJECT
                                     </button>
                                     <button 
                                         onClick={() => handleApprove(task)}
-                                        className="flex-1 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors flex items-center justify-center gap-2 text-sm font-bold"
+                                        className="flex-1 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-100 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wide"
                                     >
-                                        <ThumbsUp className="w-4 h-4" /> Approve
+                                        <ThumbsUp className="w-4 h-4" /> APPROVE
                                     </button>
                                 </div>
                             </div>

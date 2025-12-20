@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Game, Coordinate, MapStyleId, Language, TeamMember, Team } from '../types';
 import { haversineMeters } from '../utils/geo';
@@ -458,26 +459,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="absolute top-4 left-4 right-4 flex justify-between items-center">
                 <button 
                     onClick={onBack} 
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white font-bold transition-all shadow-lg text-xs"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white font-bold transition-all shadow-lg text-xs uppercase tracking-wide"
                 >
                     <Home className="w-4 h-4" /> WELCOME
                 </button>
                 <button 
                     onClick={() => { setShowTeamsPopup(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white font-bold transition-all shadow-lg text-xs"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white font-bold transition-all shadow-lg text-xs uppercase tracking-wide"
                 >
                     <Users className="w-4 h-4" /> TEAMS
                 </button>
             </div>
 
-            <h1 className="text-4xl font-black mb-12 tracking-widest text-center text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500">Choose Mode</h1>
+            <h1 className="text-4xl font-black mb-12 tracking-widest text-center text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 uppercase">CHOOSE MODE</h1>
             <div className="flex flex-col gap-6 w-full max-w-sm">
                 <button onClick={() => setViewStep('MAKE_TEAM')} className="group relative h-40 bg-orange-600 rounded-2xl flex items-center justify-center overflow-hidden shadow-2xl transition-transform hover:scale-105">
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-700 opacity-90" />
                     <div className="relative z-10 flex flex-col items-center">
                         <Users className="w-12 h-12 mb-2 text-white group-hover:scale-110 transition-transform" />
-                        <span className="text-2xl font-black tracking-widest">Make Team</span>
-                        <span className="text-[10px] font-bold text-orange-200 mt-1">Create & Invite</span>
+                        <span className="text-2xl font-black tracking-widest uppercase">MAKE TEAM</span>
+                        <span className="text-[10px] font-bold text-orange-200 mt-1 uppercase tracking-wide">CREATE & INVITE</span>
                     </div>
                 </button>
                 <div className="flex items-center gap-4 text-slate-500 font-bold text-xs"><div className="h-px bg-slate-700 flex-1"></div>OR<div className="h-px bg-slate-700 flex-1"></div></div>
@@ -485,8 +486,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900 opacity-90" />
                     <div className="relative z-10 flex flex-col items-center">
                         <ScanLine className="w-12 h-12 mb-2 text-blue-400 group-hover:scale-110 transition-transform" />
-                        <span className="text-2xl font-black tracking-widest">Join Team</span>
-                        <span className="text-[10px] font-bold text-slate-400 mt-1">Scan or Code</span>
+                        <span className="text-2xl font-black tracking-widest uppercase">JOIN TEAM</span>
+                        <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wide">SCAN OR CODE</span>
                     </div>
                 </button>
             </div>
@@ -496,11 +497,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <div className="fixed inset-0 z-[2200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
                     <div className="bg-slate-900 border border-slate-800 w-full max-w-md max-h-[80vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
                         <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2"><Users className="w-5 h-5"/> Teams Joined</h2>
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2 uppercase tracking-wide"><Users className="w-5 h-5"/> TEAMS JOINED</h2>
                             <button onClick={() => setShowTeamsPopup(false)}><X className="w-6 h-6 text-slate-400 hover:text-white" /></button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                            {existingTeams.length === 0 && <p className="text-center text-slate-500 py-8">No teams found for this game yet.</p>}
+                            {existingTeams.length === 0 && <p className="text-center text-slate-500 py-8 uppercase tracking-wide font-bold">NO TEAMS FOUND FOR THIS GAME YET.</p>}
                             {existingTeams.map(team => (
                                 <div key={team.id} className="bg-slate-800 rounded-xl p-3 flex gap-3 border border-slate-700">
                                     <div className="w-16 h-16 bg-slate-700 rounded-lg flex-shrink-0 overflow-hidden">
@@ -512,14 +513,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start">
-                                            <h3 className="font-bold text-white truncate text-lg">{team.name}</h3>
-                                            <span className="text-orange-500 font-black text-lg">{team.score} pts</span>
+                                            <h3 className="font-bold text-white truncate text-lg uppercase">{team.name}</h3>
+                                            <span className="text-orange-500 font-black text-lg">{team.score} PTS</span>
                                         </div>
-                                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                                            <Users className="w-3 h-3" /> {team.members?.length || 0} Players
+                                        <div className="text-xs text-slate-400 mt-1 flex items-center gap-1 uppercase tracking-wide">
+                                            <Users className="w-3 h-3" /> {team.members?.length || 0} PLAYERS
                                         </div>
-                                        <p className="text-[10px] text-slate-500 mt-1 truncate">
-                                            {team.members?.join(', ') || "No members"}
+                                        <p className="text-[10px] text-slate-500 mt-1 truncate uppercase">
+                                            {team.members?.join(', ') || "NO MEMBERS"}
                                         </p>
                                     </div>
                                 </div>
@@ -541,7 +542,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <button onClick={goBack} className="p-2 bg-slate-800 rounded-full hover:bg-slate-700 text-white"><Home className="w-6 h-6" /></button>
              </div>
 
-             <h1 className="text-3xl font-black mb-8 tracking-widest text-center text-white">How to Join?</h1>
+             <h1 className="text-3xl font-black mb-8 tracking-widest text-center text-white uppercase">HOW TO JOIN?</h1>
              
              <div className="flex flex-col gap-6 w-full max-w-sm">
                 <button 
@@ -550,7 +551,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 >
                     <div className="flex flex-col items-center">
                         <QrCode className="w-10 h-10 mb-2 text-white group-hover:text-orange-500 transition-colors" />
-                        <span className="text-xl font-black tracking-widest">Scan QR</span>
+                        <span className="text-xl font-black tracking-widest uppercase">SCAN QR</span>
                     </div>
                 </button>
 
@@ -560,7 +561,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 >
                     <div className="flex flex-col items-center">
                         <Keyboard className="w-10 h-10 mb-2 text-white group-hover:text-orange-500 transition-colors" />
-                        <span className="text-xl font-black tracking-widest">Enter Code</span>
+                        <span className="text-xl font-black tracking-widest uppercase">ENTER CODE</span>
                     </div>
                 </button>
              </div>
@@ -595,15 +596,15 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   <div className="flex bg-black/40 rounded-lg p-1 backdrop-blur-md">
                       <button 
                         onClick={() => setJoinMethod('SCAN')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${joinMethod === 'SCAN' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors uppercase ${joinMethod === 'SCAN' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
                       >
-                          Scan QR
+                          SCAN QR
                       </button>
                       <button 
                         onClick={() => setJoinMethod('MANUAL')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${joinMethod === 'MANUAL' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors uppercase ${joinMethod === 'MANUAL' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
                       >
-                          Enter Code
+                          ENTER CODE
                       </button>
                   </div>
                   {joinMethod === 'SCAN' && (
@@ -621,22 +622,22 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                           <div className="w-16 h-16 bg-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-slate-800 -mt-10 shadow-lg">
                               <Users className="w-8 h-8 text-white" />
                           </div>
-                          <h3 className="text-xl font-black text-white mb-2 tracking-wide">Join Team?</h3>
-                          <p className="text-slate-400 text-sm mb-6">
-                              Are you sure you want to join team <span className="text-orange-500 font-bold">{pendingJoinTeam.name}</span>?
+                          <h3 className="text-xl font-black text-white mb-2 tracking-wide uppercase">JOIN TEAM?</h3>
+                          <p className="text-slate-400 text-sm mb-6 uppercase tracking-wide">
+                              ARE YOU SURE YOU WANT TO JOIN TEAM <span className="text-orange-500 font-bold">{pendingJoinTeam.name}</span>?
                           </p>
                           <div className="flex gap-3">
                               <button 
                                   onClick={() => setPendingJoinTeam(null)} 
-                                  className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors"
+                                  className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-bold hover:bg-slate-700 transition-colors uppercase tracking-wide"
                               >
-                                  Cancel
+                                  CANCEL
                               </button>
                               <button 
                                   onClick={handleConfirmJoin} 
-                                  className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-bold hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/20"
+                                  className="flex-1 py-3 rounded-xl bg-orange-600 text-white font-bold hover:bg-orange-700 transition-colors shadow-lg shadow-orange-600/20 uppercase tracking-wide"
                               >
-                                  Yes, Join
+                                  YES, JOIN
                               </button>
                           </div>
                       </div>
@@ -657,13 +658,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                           </div>
                       </div>
                       {scanError && (
-                          <div className="absolute bottom-24 bg-red-600/90 px-4 py-3 rounded-xl font-bold max-w-sm text-center mx-4 text-xs backdrop-blur-sm shadow-xl flex flex-col items-center gap-2">
+                          <div className="absolute bottom-24 bg-red-600/90 px-4 py-3 rounded-xl font-bold max-w-sm text-center mx-4 text-xs backdrop-blur-sm shadow-xl flex flex-col items-center gap-2 uppercase">
                               <AlertTriangle className="w-5 h-5 text-white" />
                               {scanError}
                           </div>
                       )}
                       <div className="absolute bottom-8 text-center w-full z-20 px-4">
-                          <p className="text-slate-400 text-xs font-bold drop-shadow-md">Point camera at host's QR code</p>
+                          <p className="text-slate-400 text-xs font-bold drop-shadow-md uppercase tracking-widest">POINT CAMERA AT HOST'S QR CODE</p>
                       </div>
                   </div>
               ) : (
@@ -671,26 +672,26 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       <div className="w-full max-w-sm space-y-6">
                           <div className="text-center mb-8">
                               <Keyboard className="w-12 h-12 text-orange-500 mx-auto mb-4" />
-                              <h2 className="text-xl font-black tracking-widest text-white">Manual Entry</h2>
-                              <p className="text-slate-400 text-xs mt-2">Enter the Game and 6-digit code.</p>
+                              <h2 className="text-xl font-black tracking-widest text-white uppercase">MANUAL ENTRY</h2>
+                              <p className="text-slate-400 text-xs mt-2 uppercase tracking-wide">ENTER THE GAME AND 6-DIGIT CODE.</p>
                           </div>
 
                           <div className="space-y-4">
                               <div>
-                                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Select Game</label>
+                                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">SELECT GAME</label>
                                   <select 
                                       value={selectedGameId} 
                                       onChange={(e) => setSelectedGameId(e.target.value)}
                                       className="w-full p-4 rounded-xl bg-slate-800 border-2 border-slate-700 text-white font-bold outline-none focus:border-orange-500 transition-all appearance-none"
                                   >
-                                      <option value="" disabled>-- Select Game --</option>
+                                      <option value="" disabled>-- SELECT GAME --</option>
                                       {relevantGames.map(g => (
                                           <option key={g.id} value={g.id}>{g.name}</option>
                                       ))}
                                   </select>
                               </div>
                               <div>
-                                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">6-Digit Team Code</label>
+                                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">6-DIGIT TEAM CODE</label>
                                   <input 
                                       type="tel" 
                                       maxLength={6}
@@ -707,7 +708,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                               disabled={!selectedGameId || teamJoinCode.length !== 6 || isJoining}
                               className="w-full py-4 bg-orange-600 text-white rounded-xl font-black uppercase tracking-widest hover:bg-orange-700 disabled:opacity-50 disabled:grayscale transition-all shadow-lg flex items-center justify-center gap-2"
                           >
-                              {isJoining ? <Loader2 className="w-5 h-5 animate-spin"/> : "Find & Join Team"}
+                              {isJoining ? <Loader2 className="w-5 h-5 animate-spin"/> : "FIND & JOIN TEAM"}
                           </button>
                       </div>
                   </div>
@@ -727,13 +728,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   {/* Lobby Header */}
                   <div className="text-center mb-8 pt-10">
                       <h2 className="text-sm font-bold text-slate-500 tracking-widest mb-2 uppercase">TEAM LOBBY</h2>
-                      <h1 className="text-4xl font-black text-white tracking-widest break-words leading-none text-orange-500">{teamName}</h1>
+                      <h1 className="text-4xl font-black text-white tracking-widest break-words leading-none text-orange-500 uppercase">{teamName}</h1>
                   </div>
 
                   {/* QR Card */}
                   <div className="bg-white text-slate-900 p-6 rounded-3xl shadow-2xl mb-8 flex flex-col items-center relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-full h-2 bg-orange-500"></div>
-                      <h3 className="font-black text-lg mb-4 tracking-widest flex items-center gap-2"><ScanLine className="w-5 h-5 text-orange-600" /> Join This Team</h3>
+                      <h3 className="font-black text-lg mb-4 tracking-widest flex items-center gap-2 uppercase"><ScanLine className="w-5 h-5 text-orange-600" /> JOIN THIS TEAM</h3>
                       
                       <div className="p-2 border-4 border-slate-900 rounded-xl mb-4 bg-white">
                           <img src={generateTeamQr()} alt="Team QR" className="w-48 h-48 mix-blend-multiply" />
@@ -741,7 +742,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                       
                       {/* Manual Code Section */}
                       <div className="w-full mt-2 pt-4 border-t border-slate-200 text-center">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Manual Join Code</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">MANUAL JOIN CODE</p>
                           <div className="bg-slate-100 p-4 rounded-2xl inline-block shadow-inner">
                               <span className="text-4xl font-black text-slate-800 tracking-[0.2em]">{joinCode}</span>
                           </div>
@@ -751,7 +752,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   {/* Members List */}
                   <div className="flex-1">
                       <div className="flex justify-between items-end mb-4">
-                          <h3 className="font-bold text-slate-400 text-xs tracking-widest flex items-center gap-2"><Users className="w-4 h-4" /> Team Members ({lobbyMembers.length})</h3>
+                          <h3 className="font-bold text-slate-400 text-xs tracking-widest flex items-center gap-2 uppercase"><Users className="w-4 h-4" /> TEAM MEMBERS ({lobbyMembers.length})</h3>
                       </div>
                       <div className="bg-slate-800/50 rounded-2xl p-4 space-y-3 border border-slate-700">
                           {lobbyMembers.map((m, i) => (
@@ -761,11 +762,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                           {m.userName.charAt(0)}
                                       </div>
                                       <span className={`font-bold text-sm ${m.userName === playerName ? 'text-white' : 'text-slate-300'}`}>
-                                          {m.userName} {m.userName === playerName && '(You)'}
+                                          {m.userName} {m.userName === playerName && '(YOU)'}
                                       </span>
                                   </div>
                                   <div className="flex flex-col items-end">
-                                      <span className="text-[10px] text-green-400 font-bold flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> Online</span>
+                                      <span className="text-[10px] text-green-400 font-bold flex items-center gap-1 uppercase"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div> ONLINE</span>
                                   </div>
                               </div>
                           ))}
@@ -776,9 +777,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   <div className="mt-8 pt-6 border-t border-slate-800">
                       <button 
                           onClick={handleStartGameAction}
-                          className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-2xl font-black text-lg shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 tracking-widest"
+                          className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-2xl font-black text-lg shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 tracking-widest uppercase"
                       >
-                          <PlayCircle className="w-6 h-6" /> Start Game
+                          <PlayCircle className="w-6 h-6" /> START GAME
                       </button>
                   </div>
               </div>
@@ -804,7 +805,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     <MapPin className="w-10 h-10 text-white" />
                 </div>
                 <h1 className="text-4xl font-black tracking-tight mb-2 text-white">{t('welcomeTitle', language)}</h1>
-                <p className="text-gray-400 text-lg font-medium">{t('welcomeSubtitle', language)}</p>
+                <p className="text-gray-400 text-lg font-medium uppercase tracking-wide">{t('welcomeSubtitle', language)}</p>
             </div>
 
             {/* Permission Modal */}
@@ -812,9 +813,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <div className="fixed inset-0 z-[2100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
                     <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full text-center relative shadow-2xl">
                         <button onClick={() => setPermissionHelp(null)} className="absolute top-3 right-3 text-slate-500 hover:text-white"><XCircle className="w-6 h-6" /></button>
-                        <h3 className="text-lg font-bold mb-2">{isIOS ? "iOS Permission Help" : t('permHelpTitle', language)}</h3>
+                        <h3 className="text-lg font-bold mb-2 uppercase">{isIOS ? "iOS Permission Help" : t('permHelpTitle', language)}</h3>
                         <p className="text-sm text-slate-300 mb-6">{t('permHelpInstruction', language)}</p>
-                        <button onClick={() => setPermissionHelp(null)} className="w-full py-3 bg-white text-slate-900 font-bold rounded-xl">{t('permHelpButton', language)}</button>
+                        <button onClick={() => setPermissionHelp(null)} className="w-full py-3 bg-white text-slate-900 font-bold rounded-xl uppercase tracking-wide">{t('permHelpButton', language)}</button>
                     </div>
                 </div>
             )}
@@ -826,8 +827,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 <div className="mb-6">
                     <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center justify-between">
                         {t('systemReadiness', language)}
-                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1">
-                            <Info className="w-3 h-3" /> Required
+                        <span className="bg-slate-700 text-slate-300 px-2 py-0.5 rounded text-[10px] flex items-center gap-1 uppercase font-bold">
+                            <Info className="w-3 h-3" /> REQUIRED
                         </span>
                     </h2>
                     <div className="space-y-1 bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
@@ -873,13 +874,13 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                         value={teamName}
                                         onChange={(e) => setTeamName(e.target.value)}
                                         placeholder={t('enterTeamName', language)}
-                                        className="w-full pl-12 pr-4 py-4 rounded-xl bg-slate-700 border-2 border-slate-600 text-white font-bold placeholder:text-slate-500 outline-none focus:border-orange-500 focus:bg-slate-800 transition-all"
+                                        className="w-full pl-12 pr-4 py-4 rounded-xl bg-slate-700 border-2 border-slate-600 text-white font-bold placeholder:text-slate-500 outline-none focus:border-orange-500 focus:bg-slate-800 transition-all uppercase"
                                     />
                                 </div>
                             </div>
                             
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Team Photo</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">TEAM PHOTO</label>
                                 {teamPhoto ? (
                                     <div className="relative w-full h-32 rounded-xl overflow-hidden bg-slate-700 group cursor-pointer border-2 border-slate-600" onClick={() => setViewStep('TAKE_PHOTO')}>
                                         <img src={teamPhoto} className="w-full h-full object-cover" alt="Team" />
@@ -890,24 +891,24 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                 ) : (
                                     <button 
                                         onClick={() => setViewStep('TAKE_PHOTO')}
-                                        className="w-full h-24 rounded-xl border-2 border-dashed border-slate-600 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-800 hover:text-orange-500 hover:border-orange-500 transition-all"
+                                        className="w-full h-24 rounded-xl border-2 border-dashed border-slate-600 flex flex-col items-center justify-center text-slate-500 hover:bg-slate-800 hover:text-orange-500 hover:border-orange-500 transition-all uppercase font-bold"
                                     >
                                         <Camera className="w-8 h-8 mb-1" />
-                                        <span className="text-xs font-bold">Take Team Photo</span>
+                                        <span className="text-xs font-bold">TAKE TEAM PHOTO</span>
                                     </button>
                                 )}
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">Your Name</label>
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1 block">YOUR NAME</label>
                                 <div className="relative">
                                     <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                                     <input 
                                         type="text" 
                                         value={playerName}
                                         onChange={(e) => setPlayerName(e.target.value)}
-                                        placeholder="Enter your name..."
-                                        className="w-full pl-12 pr-4 py-4 rounded-xl bg-slate-700 border-2 border-slate-600 text-white font-bold placeholder:text-slate-500 outline-none focus:border-orange-500 focus:bg-slate-800 transition-all"
+                                        placeholder="ENTER YOUR NAME..."
+                                        className="w-full pl-12 pr-4 py-4 rounded-xl bg-slate-700 border-2 border-slate-600 text-white font-bold placeholder:text-slate-500 outline-none focus:border-orange-500 focus:bg-slate-800 transition-all uppercase"
                                     />
                                 </div>
                             </div>
@@ -921,7 +922,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     disabled={!allSystemsReady || !selectedGameId || !teamName || !playerName}
                     className="w-full py-4 rounded-xl font-black uppercase tracking-widest text-lg shadow-lg flex items-center justify-center gap-3 transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-orange-500/25 hover:shadow-2xl"
                 >
-                    Enter Lobby <ArrowLeft className="w-6 h-6 rotate-180" />
+                    ENTER LOBBY <ArrowLeft className="w-6 h-6 rotate-180" />
                 </button>
             </div>
 
@@ -940,7 +941,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 {onOpenEditor && (
                     <button onClick={onOpenEditor} className="flex items-center gap-2 text-slate-500 hover:text-orange-500 transition-colors">
                         <Hammer className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase">Editor</span>
+                        <span className="text-xs font-bold uppercase">EDITOR</span>
                     </button>
                 )}
             </div>

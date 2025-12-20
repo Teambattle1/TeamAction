@@ -149,6 +149,7 @@ export interface TaskList {
   description: string;
   tasks: TaskTemplate[];
   color: string; 
+  iconId?: IconId; // Added icon for lists
   createdAt: number;
 }
 

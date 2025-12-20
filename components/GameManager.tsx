@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Game, GamePoint, TaskList, TaskTemplate, IconId, GameMode, MapStyleId } from '../types';
 import { Plus, Play, Edit2, Trash2, GripVertical, Wand2, Trophy, Calendar, Map, ChevronRight, ArrowLeft, FolderOpen, Layers, Library, Eraser, MousePointerClick, Save, LayoutTemplate, Check, X, Database, QrCode, Users, Disc, ChevronUp, GraduationCap, Gamepad2, Clock, CheckCircle2, Globe, Moon, Sun, Home, AlertCircle } from 'lucide-react';
@@ -311,9 +312,9 @@ const GameManager: React.FC<GameManagerProps> = ({
   const totalCount = activeGamePoints.filter(p => !p.isSectionHeader).length;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const selectedListName = useMemo(() => {
-    if (!selectedListId) return "Start from Empty";
+    if (!selectedListId) return "START FROM EMPTY";
     const list = taskLists.find(l => l.id === selectedListId);
-    return list ? list.name : "Start from Empty";
+    return list ? list.name : "START FROM EMPTY";
   }, [selectedListId, taskLists]);
   const activeSourceList = taskLists.find(l => l.id === sourceListId);
 
@@ -337,20 +338,20 @@ const GameManager: React.FC<GameManagerProps> = ({
       {showCreateGameModal && (
           <div className="fixed inset-0 z-[1300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
               <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-sm border border-gray-200 dark:border-gray-700">
-                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">New Game Setup</h3>
+                  <h3 className="text-xl font-bold mb-4 text-gray-900 dark:text-white uppercase tracking-wide">NEW GAME SETUP</h3>
                   <form onSubmit={handleConfirmCreateGame} className="space-y-4">
-                      <div><label className="text-xs font-bold text-gray-500 uppercase">Game Name</label><input autoFocus className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white" value={createGameName} onChange={e => setCreateGameName(e.target.value)} placeholder="e.g. City Hunt 2024" /></div>
-                      <div><label className="text-xs font-bold text-gray-500 uppercase">Description / Date</label><input className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white" value={createGameDesc} onChange={e => setCreateGameDesc(e.target.value)} placeholder="Optional info..." /></div>
+                      <div><label className="text-xs font-bold text-gray-500 uppercase">GAME NAME</label><input autoFocus className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white" value={createGameName} onChange={e => setCreateGameName(e.target.value)} placeholder="e.g. City Hunt 2024" /></div>
+                      <div><label className="text-xs font-bold text-gray-500 uppercase">DESCRIPTION / DATE</label><input className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-orange-500 text-gray-900 dark:text-white" value={createGameDesc} onChange={e => setCreateGameDesc(e.target.value)} placeholder="Optional info..." /></div>
                       
                       {/* Map Style Selector */}
                       <div>
-                          <label className="text-xs font-bold text-gray-500 uppercase">Default Map Style</label>
+                          <label className="text-xs font-bold text-gray-500 uppercase">DEFAULT MAP STYLE</label>
                           <div className="grid grid-cols-4 gap-2 mt-1">
                               {[
-                                  { id: 'osm', label: 'Standard', icon: Map },
-                                  { id: 'satellite', label: 'Sat', icon: Globe },
-                                  { id: 'dark', label: 'Dark', icon: Moon },
-                                  { id: 'light', label: 'Light', icon: Sun },
+                                  { id: 'osm', label: 'STANDARD', icon: Map },
+                                  { id: 'satellite', label: 'SAT', icon: Globe },
+                                  { id: 'dark', label: 'DARK', icon: Moon },
+                                  { id: 'light', label: 'LIGHT', icon: Sun },
                               ].map(style => (
                                   <button
                                       key={style.id}
@@ -359,13 +360,13 @@ const GameManager: React.FC<GameManagerProps> = ({
                                       className={`flex flex-col items-center justify-center p-2 rounded-lg border transition-all ${createGameMapStyle === style.id ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-500 text-orange-600 dark:text-orange-400' : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400'}`}
                                   >
                                       <style.icon className="w-5 h-5 mb-1" />
-                                      <span className="text-[10px] font-bold">{style.label}</span>
+                                      <span className="text-[10px] font-bold uppercase">{style.label}</span>
                                   </button>
                               ))}
                           </div>
                       </div>
 
-                      <div className="flex gap-3 pt-2"><button type="button" onClick={() => { setShowCreateGameModal(false); setIsWizardMode(false); }} className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">Cancel</button><button type="submit" disabled={!createGameName.trim()} className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-50">Create Game</button></div>
+                      <div className="flex gap-3 pt-2"><button type="button" onClick={() => { setShowCreateGameModal(false); setIsWizardMode(false); }} className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors uppercase tracking-wide">CANCEL</button><button type="submit" disabled={!createGameName.trim()} className="flex-1 py-3 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-50 uppercase tracking-wide">CREATE GAME</button></div>
                   </form>
               </div>
           </div>
@@ -379,14 +380,14 @@ const GameManager: React.FC<GameManagerProps> = ({
                           <LayoutTemplate className="w-6 h-6" />
                       </div>
                       <div>
-                          <h3 className="text-xl font-bold text-gray-900 dark:text-white">Save as Template</h3>
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-wide">SAVE AS TEMPLATE</h3>
                           <p className="text-xs text-gray-500 dark:text-gray-400">Create a reusable copy of this game</p>
                       </div>
                   </div>
                   
                   <form onSubmit={handleConfirmSaveTemplate} className="space-y-4">
                       <div>
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Template Name</label>
+                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">TEMPLATE NAME</label>
                           <input 
                               autoFocus 
                               className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 dark:text-white font-bold" 
@@ -396,7 +397,7 @@ const GameManager: React.FC<GameManagerProps> = ({
                           />
                       </div>
                       <div>
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">Description</label>
+                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">DESCRIPTION</label>
                           <textarea 
                               className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 outline-none focus:ring-2 focus:ring-teal-500 text-gray-900 dark:text-white text-sm min-h-[80px]" 
                               value={tplDesc} 
@@ -405,8 +406,8 @@ const GameManager: React.FC<GameManagerProps> = ({
                           />
                       </div>
                       <div className="flex gap-3 pt-2">
-                          <button type="button" onClick={() => setShowSaveTemplateModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
-                          <button type="submit" disabled={!tplName.trim()} className="flex-1 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 shadow-lg shadow-teal-600/20 transition-all disabled:opacity-50 disabled:shadow-none">Save Template</button>
+                          <button type="button" onClick={() => setShowSaveTemplateModal(false)} className="flex-1 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors uppercase tracking-wide">CANCEL</button>
+                          <button type="submit" disabled={!tplName.trim()} className="flex-1 py-3 bg-teal-600 text-white font-bold rounded-xl hover:bg-teal-700 shadow-lg shadow-teal-600/20 transition-all disabled:opacity-50 disabled:shadow-none uppercase tracking-wide">SAVE TEMPLATE</button>
                       </div>
                   </form>
               </div>
@@ -422,7 +423,7 @@ const GameManager: React.FC<GameManagerProps> = ({
                   <div className="flex-1 mr-2">
                       <input 
                         autoFocus 
-                        className="w-full text-xl font-black bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 outline-none text-gray-900 dark:text-white border-2 border-transparent focus:border-orange-500 transition-colors" 
+                        className="w-full text-xl font-black bg-gray-100 dark:bg-gray-800 rounded px-2 py-1 outline-none text-gray-900 dark:text-white border-2 border-transparent focus:border-orange-500 transition-colors uppercase tracking-wide" 
                         value={editName} 
                         onChange={e => setEditName(e.target.value)} 
                         onKeyDown={handleKeyDown}
@@ -436,15 +437,15 @@ const GameManager: React.FC<GameManagerProps> = ({
                         placeholder="Description..." 
                       />
                       <div className="flex gap-2 mt-2">
-                          <button onClick={handleSaveMetadata} className="text-xs bg-green-600 text-white px-3 py-1 rounded font-bold hover:bg-green-700">Save</button>
-                          <button onClick={() => setIsEditingMetadata(false)} className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded font-bold hover:bg-gray-300">Cancel</button>
+                          <button onClick={handleSaveMetadata} className="text-xs bg-green-600 text-white px-3 py-1 rounded font-bold hover:bg-green-700 uppercase">SAVE</button>
+                          <button onClick={() => setIsEditingMetadata(false)} className="text-xs bg-gray-200 text-gray-600 px-3 py-1 rounded font-bold hover:bg-gray-300 uppercase">CANCEL</button>
                       </div>
                   </div>
               ) : (
                 <div className="flex-1 min-w-0 group/header">
                     <div className="flex items-center gap-2">
-                        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate">
-                            {view === 'LIST' ? 'GAMES' : (activeGame?.name || 'Game Details')}
+                        <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight truncate uppercase">
+                            {view === 'LIST' ? 'GAMES' : (activeGame?.name || 'GAME DETAILS')}
                         </h2>
                         {view === 'DETAILS' && (
                             <button 
@@ -486,27 +487,27 @@ const GameManager: React.FC<GameManagerProps> = ({
         <div className="grid grid-cols-3 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl border border-gray-200 dark:border-gray-700">
             <button 
                 onClick={() => { onSetMode(GameMode.PLAY); onClose(); }} 
-                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === GameMode.PLAY ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all uppercase tracking-wide ${mode === GameMode.PLAY ? 'bg-white dark:bg-gray-700 text-orange-600 dark:text-orange-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
-                <Gamepad2 className="w-4 h-4" /> Team Play
+                <Gamepad2 className="w-4 h-4" /> TEAM PLAY
             </button>
             <button 
                 onClick={() => { onSetMode(GameMode.INSTRUCTOR); onClose(); }} 
-                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === GameMode.INSTRUCTOR ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all uppercase tracking-wide ${mode === GameMode.INSTRUCTOR ? 'bg-white dark:bg-gray-700 text-amber-600 dark:text-amber-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
-                <GraduationCap className="w-4 h-4" /> GM View
+                <GraduationCap className="w-4 h-4" /> GM VIEW
             </button>
             <button 
                 onClick={() => onSetMode(GameMode.EDIT)} 
-                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all ${mode === GameMode.EDIT ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all uppercase tracking-wide ${mode === GameMode.EDIT ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
             >
-                <Edit2 className="w-4 h-4" /> Editor
+                <Edit2 className="w-4 h-4" /> EDITOR
             </button>
         </div>
 
         {view === 'DETAILS' && (
            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-2">
-             <button onClick={() => setView('LIST')} className="hover:text-orange-600 hover:underline flex items-center gap-1"><ArrowLeft className="w-3 h-3" /> All Games</button>
+             <button onClick={() => setView('LIST')} className="hover:text-orange-600 hover:underline flex items-center gap-1 uppercase font-bold text-xs tracking-wider"><ArrowLeft className="w-3 h-3" /> ALL GAMES</button>
            </div>
         )}
       </div>
@@ -518,10 +519,10 @@ const GameManager: React.FC<GameManagerProps> = ({
         {showQrModal && activeGameId && (
             <div className="fixed inset-0 z-[1600] bg-black/80 flex items-center justify-center p-4" onClick={() => setShowQrModal(false)}>
                 <div className="bg-white p-6 rounded-2xl flex flex-col items-center animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-                    <h3 className="text-xl font-bold text-gray-900 mb-4">{activeGame?.name}</h3>
+                    <h3 className="text-xl font-bold text-gray-900 mb-4 uppercase">{activeGame?.name}</h3>
                     <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(activeGameId)}`} alt="Game QR" className="w-64 h-64 mb-4" />
                     <p className="text-gray-500 text-sm text-center max-w-xs">Teams can scan this code on the Welcome Screen to instantly join this game.</p>
-                    <button onClick={() => setShowQrModal(false)} className="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold text-gray-600">Close</button>
+                    <button onClick={() => setShowQrModal(false)} className="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold text-gray-600 uppercase">CLOSE</button>
                 </div>
             </div>
         )}
@@ -531,22 +532,26 @@ const GameManager: React.FC<GameManagerProps> = ({
             <div className="absolute inset-0 bg-white dark:bg-gray-900 z-50 flex flex-col animate-in slide-in-from-right-10 duration-200">
                 <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-3 bg-gray-50 dark:bg-gray-800">
                     <button onClick={() => setShowTemplateSelector(false)} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300"><ArrowLeft className="w-5 h-5" /></button>
-                    <div><h3 className="font-bold text-gray-900 dark:text-white">Select Starting Template</h3><p className="text-xs text-gray-500 dark:text-gray-400">Choose a list to preload tasks</p></div>
+                    <div><h3 className="font-bold text-gray-900 dark:text-white uppercase tracking-wide">SELECT STARTING TEMPLATE</h3><p className="text-xs text-gray-500 dark:text-gray-400">Choose a list to preload tasks</p></div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                     <button onClick={() => handleTemplateSelected('')} className={`w-full p-4 rounded-xl border-2 text-left flex items-center gap-3 transition-all ${selectedListId === '' ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/30' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'}`}>
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedListId === '' ? 'bg-orange-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}><Eraser className="w-5 h-5" /></div>
-                        <div className="flex-1"><h4 className={`font-bold ${selectedListId === '' ? 'text-orange-700 dark:text-orange-300' : 'text-gray-800 dark:text-gray-200'}`}>Start from Empty</h4><p className="text-xs text-gray-500">Blank canvas with no tasks</p></div>
+                        <div className="flex-1"><h4 className={`font-bold uppercase ${selectedListId === '' ? 'text-orange-700 dark:text-orange-300' : 'text-gray-800 dark:text-gray-200'}`}>START FROM EMPTY</h4><p className="text-xs text-gray-500">Blank canvas with no tasks</p></div>
                         {selectedListId === '' && <Check className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
                     </button>
-                    {taskLists.map(list => (
+                    {taskLists.map(list => {
+                        const ListIcon = list.iconId ? ICON_COMPONENTS[list.iconId] : LayoutTemplate;
+                        return (
                         <button key={list.id} onClick={() => handleTemplateSelected(list.id)} className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 transition-all group relative overflow-hidden ${selectedListId === list.id ? 'border-orange-500 ring-1 ring-orange-500 bg-white dark:bg-gray-800' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-orange-300 dark:hover:border-orange-700'}`}>
                             <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: list.color }}></div>
-                            <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold ml-2">{list.tasks.length}</div>
-                            <div className="flex-1 min-w-0"><h4 className="font-bold text-gray-800 dark:text-gray-100 truncate">{list.name}</h4><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{list.description || 'No description'}</p></div>
+                            <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold ml-2">
+                                <ListIcon className="w-5 h-5" />
+                            </div>
+                            <div className="flex-1 min-w-0"><h4 className="font-bold text-gray-800 dark:text-gray-100 truncate uppercase">{list.name}</h4><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{list.description || 'No description'}</p></div>
                             {selectedListId === list.id && <Check className="w-5 h-5 text-orange-600 dark:text-orange-400" />}
                         </button>
-                    ))}
+                    )})}
                 </div>
             </div>
         )}
@@ -554,43 +559,43 @@ const GameManager: React.FC<GameManagerProps> = ({
         {view === 'LIST' ? (
           <div className="p-5 space-y-6">
             <div className="space-y-3">
-              <div className="flex justify-between items-center"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Create New</label><button onClick={onOpenTaskMaster} className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-800 px-2 py-1 rounded-lg border border-amber-100"><FolderOpen className="w-3 h-3" /> TASKS</button></div>
+              <div className="flex justify-between items-center"><label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">CREATE NEW</label><button onClick={onOpenTaskMaster} className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 dark:bg-amber-900/30 dark:border-amber-800 px-2 py-1 rounded-lg border border-amber-100 uppercase tracking-wide"><FolderOpen className="w-3 h-3" /> TASKS</button></div>
               <div className="grid grid-cols-2 gap-2">
-                  <button onClick={handleStartAutoGenerate} className="py-3 px-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-750 transition-all flex flex-col items-center justify-center gap-1 shadow-sm"><Wand2 className="w-5 h-5" /> Auto-Generate</button>
-                  <button onClick={onOpenTaskMaster} className="py-3 px-2 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-xl font-bold text-xs hover:shadow-lg transition-all flex flex-col items-center justify-center gap-1 shadow-md"><FolderOpen className="w-5 h-5" /> Task Library</button>
+                  <button onClick={handleStartAutoGenerate} className="py-3 px-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs hover:bg-gray-50 dark:hover:bg-gray-750 transition-all flex flex-col items-center justify-center gap-1 shadow-sm uppercase tracking-wide"><Wand2 className="w-5 h-5" /> AUTO-GENERATE</button>
+                  <button onClick={onOpenTaskMaster} className="py-3 px-2 bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-xl font-bold text-xs hover:shadow-lg transition-all flex flex-col items-center justify-center gap-1 shadow-md uppercase tracking-wide"><FolderOpen className="w-5 h-5" /> TASK LIBRARY</button>
               </div>
               <form onSubmit={handleInlineCreate} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
                 <input type="text" value={newGameName} onChange={(e) => setNewGameName(e.target.value)} placeholder="New game name..." className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none text-sm text-gray-900 dark:text-white" />
                 <button type="button" onClick={() => { setShowTemplateSelector(true); setIsWizardMode(false); }} className={`w-full px-4 py-2.5 border rounded-lg text-left flex items-center justify-between group transition-colors ${selectedListId ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'}`}>
-                    <div className="flex items-center gap-2 overflow-hidden"><LayoutTemplate className={`w-4 h-4 flex-shrink-0 ${selectedListId ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400'}`} /><span className={`text-sm truncate ${selectedListId ? 'font-bold text-orange-700 dark:text-orange-300' : 'text-gray-600 dark:text-gray-300'}`}>{selectedListName}</span></div><ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                    <div className="flex items-center gap-2 overflow-hidden"><LayoutTemplate className={`w-4 h-4 flex-shrink-0 ${selectedListId ? 'text-orange-600 dark:text-orange-400' : 'text-gray-400'}`} /><span className={`text-sm truncate uppercase font-bold ${selectedListId ? 'text-orange-700 dark:text-orange-300' : 'text-gray-600 dark:text-gray-300'}`}>{selectedListName}</span></div><ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
                 </button>
-                <button type="submit" disabled={!newGameName.trim()} className="w-full bg-orange-600 text-white py-2 rounded-lg font-bold hover:bg-orange-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"><Plus className="w-4 h-4" /> Create Game</button>
+                <button type="submit" disabled={!newGameName.trim()} className="w-full bg-orange-600 text-white py-2 rounded-lg font-bold hover:bg-orange-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2 uppercase tracking-wide"><Plus className="w-4 h-4" /> CREATE GAME</button>
               </form>
             </div>
             
             {/* YOUR GAMES SECTION */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Your Games</label>
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">YOUR GAMES</label>
               </div>
               
               {/* TABS */}
               <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-                  <button onClick={() => setGameTab('TODAY')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${gameTab === 'TODAY' ? 'bg-white dark:bg-gray-700 shadow text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                      <Clock className="w-3 h-3" /> Today
+                  <button onClick={() => setGameTab('TODAY')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 uppercase tracking-wide ${gameTab === 'TODAY' ? 'bg-white dark:bg-gray-700 shadow text-orange-600 dark:text-orange-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                      <Clock className="w-3 h-3" /> TODAY
                   </button>
-                  <button onClick={() => setGameTab('PLANNED')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${gameTab === 'PLANNED' ? 'bg-white dark:bg-gray-700 shadow text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                      <Calendar className="w-3 h-3" /> Planned
+                  <button onClick={() => setGameTab('PLANNED')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 uppercase tracking-wide ${gameTab === 'PLANNED' ? 'bg-white dark:bg-gray-700 shadow text-amber-600 dark:text-amber-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                      <Calendar className="w-3 h-3" /> PLANNED
                   </button>
-                  <button onClick={() => setGameTab('COMPLETED')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 ${gameTab === 'COMPLETED' ? 'bg-white dark:bg-gray-700 shadow text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                      <CheckCircle2 className="w-3 h-3" /> Done
+                  <button onClick={() => setGameTab('COMPLETED')} className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1 uppercase tracking-wide ${gameTab === 'COMPLETED' ? 'bg-white dark:bg-gray-700 shadow text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                      <CheckCircle2 className="w-3 h-3" /> DONE
                   </button>
               </div>
 
               {filteredGames.length === 0 && (
                   <div className="text-center py-8 px-6 bg-white dark:bg-gray-800 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
                       <Map className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
-                      <p className="text-gray-500 dark:text-gray-400 font-medium text-xs">No games found in '{gameTab.toLowerCase()}'.</p>
+                      <p className="text-gray-500 dark:text-gray-400 font-medium text-xs uppercase">NO GAMES FOUND IN '{gameTab.toLowerCase()}'.</p>
                   </div>
               )}
 
@@ -609,7 +614,7 @@ const GameManager: React.FC<GameManagerProps> = ({
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-xl ${theme.bg} ${theme.text} flex items-center justify-center shadow-inner`}><GameIcon className="w-6 h-6" /></div>
-                        <div><h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg leading-tight group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{game.name}</h3><div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"><Calendar className="w-3 h-3" /><span>{dateStr}</span></div></div>
+                        <div><h3 className="font-bold text-gray-800 dark:text-gray-100 text-lg leading-tight group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors uppercase">{game.name}</h3><div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1"><Calendar className="w-3 h-3" /><span>{dateStr}</span></div></div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                         <button onClick={() => onSelectGame(game.id)} className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors" title="Play/Map"><Play className="w-4 h-4 fill-current" /></button>
@@ -618,31 +623,31 @@ const GameManager: React.FC<GameManagerProps> = ({
                         <button onClick={() => onDeleteGame(game.id)} className="p-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
-                    <div className="mt-2"><div className="flex justify-between text-xs mb-1.5"><span className="font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> {gCompleted}/{gTotal} Tasks</span><span className="font-bold text-orange-600 dark:text-orange-400">{gProgress}%</span></div><div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden"><div className="bg-gradient-to-r from-orange-500 to-amber-500 h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${gProgress}%` }} /></div></div>
+                    <div className="mt-2"><div className="flex justify-between text-xs mb-1.5"><span className="font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1 uppercase tracking-wide"><Trophy className="w-3 h-3" /> {gCompleted}/{gTotal} TASKS</span><span className="font-bold text-orange-600 dark:text-orange-400">{gProgress}%</span></div><div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden"><div className="bg-gradient-to-r from-orange-500 to-amber-500 h-full rounded-full transition-all duration-500 ease-out" style={{ width: `${gProgress}%` }} /></div></div>
                   </div>
                 );
               })}
             </div>
             
-            <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 text-center"><button onClick={handleSeedData} disabled={isSeeding} className="text-xs font-bold text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 flex items-center justify-center gap-2 mx-auto disabled:opacity-50"><Database className="w-3 h-3" />{isSeeding ? 'Installing Demo Data...' : 'Install Demo Data'}</button></div>
+            <div className="pt-4 mt-6 border-t border-gray-100 dark:border-gray-800 text-center"><button onClick={handleSeedData} disabled={isSeeding} className="text-xs font-bold text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 flex items-center justify-center gap-2 mx-auto disabled:opacity-50 uppercase tracking-wide"><Database className="w-3 h-3" />{isSeeding ? 'INSTALLING DEMO DATA...' : 'INSTALL DEMO DATA'}</button></div>
           </div>
         ) : (
           <div className="p-5 pb-20">
             <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col items-center justify-center"><span className="text-2xl font-black text-gray-800 dark:text-white">{totalCount}</span><span className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Total Tasks</span></div>
-                <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col items-center justify-center"><span className="text-2xl font-black text-green-600 dark:text-green-400">{progress}%</span><span className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">Completed</span></div>
+                <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col items-center justify-center"><span className="text-2xl font-black text-gray-800 dark:text-white">{totalCount}</span><span className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">TOTAL TASKS</span></div>
+                <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col items-center justify-center"><span className="text-2xl font-black text-green-600 dark:text-green-400">{progress}%</span><span className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase">COMPLETED</span></div>
             </div>
             <div className="grid grid-cols-2 gap-3 mb-6">
-                <button onClick={onShowResults} className="w-full py-4 bg-gradient-to-br from-orange-400 to-red-500 text-white rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 transition-transform hover:scale-[1.02]"><Trophy className="w-6 h-6" /><span className="text-xs font-bold uppercase">View Results</span></button>
-                <button onClick={onOpenPlaylist} className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 transition-transform hover:scale-[1.02]"><Layers className="w-6 h-6" /><span className="text-xs font-bold uppercase">Edit Playlist</span></button>
+                <button onClick={onShowResults} className="w-full py-4 bg-gradient-to-br from-orange-400 to-red-500 text-white rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 transition-transform hover:scale-[1.02]"><Trophy className="w-6 h-6" /><span className="text-xs font-bold uppercase tracking-wide">VIEW RESULTS</span></button>
+                <button onClick={onOpenPlaylist} className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 transition-transform hover:scale-[1.02]"><Layers className="w-6 h-6" /><span className="text-xs font-bold uppercase tracking-wide">EDIT PLAYLIST</span></button>
             </div>
             <div className="mb-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-                <div className="flex justify-between items-center mb-2"><h3 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2"><Users className="w-4 h-4" /> Active Teams</h3><button onClick={() => setShowQrModal(true)} className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold hover:bg-orange-200 flex items-center gap-1"><QrCode className="w-3 h-3" /> Show QR</button></div>
+                <div className="flex justify-between items-center mb-2"><h3 className="text-xs font-bold text-gray-500 uppercase flex items-center gap-2"><Users className="w-4 h-4" /> ACTIVE TEAMS</h3><button onClick={() => setShowQrModal(true)} className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold hover:bg-orange-200 flex items-center gap-1 uppercase tracking-wide"><QrCode className="w-3 h-3" /> SHOW QR</button></div>
                 <div className="space-y-1"><div className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-lg"><div className="flex items-center gap-2"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div><span className="text-sm font-bold text-gray-700 dark:text-gray-300">Team Alpha</span></div><span className="text-xs font-mono text-gray-400">0 pts</span></div></div>
             </div>
             {onSetSourceListId && (
                 <div className="mb-6 relative z-30" ref={menuRef}>
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block ml-1">Map Click Behavior</label>
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block ml-1">MAP CLICK BEHAVIOR</label>
                     <button 
                         onClick={() => setShowSourceMenu(!showSourceMenu)} 
                         className={`w-full bg-white dark:bg-gray-800 p-2.5 rounded-xl border flex items-center gap-3 shadow-sm hover:shadow-md transition-all group ${
@@ -660,11 +665,11 @@ const GameManager: React.FC<GameManagerProps> = ({
                         </div>
                         <div className="flex-1 text-left min-w-0">
                             <span className={`text-[10px] uppercase font-bold block mb-0.5 ${sourceListStats?.exhausted ? 'text-red-500' : 'text-gray-400'}`}>
-                                {sourceListStats?.exhausted ? "List Empty!" : "Placing from:"}
+                                {sourceListStats?.exhausted ? "List Empty!" : "PLACING FROM:"}
                             </span>
-                            <span className="font-bold text-gray-800 dark:text-white text-sm truncate block">{activeSourceList ? activeSourceList.name : "Default (New Empty Task)"}</span>
+                            <span className="font-bold text-gray-800 dark:text-white text-sm truncate block uppercase">{activeSourceList ? activeSourceList.name : "DEFAULT (NEW EMPTY TASK)"}</span>
                             {sourceListStats && (
-                                <span className={`text-[10px] font-bold ${sourceListStats.exhausted ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                                <span className={`text-[10px] font-bold uppercase ${sourceListStats.exhausted ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                                     {sourceListStats.exhausted ? `⚠️ All ${sourceListStats.total} tasks placed` : `${sourceListStats.remaining} tasks remaining`}
                                 </span>
                             )}
@@ -673,25 +678,26 @@ const GameManager: React.FC<GameManagerProps> = ({
                     </button>
                     {showSourceMenu && (
                         <div className="absolute bottom-full left-0 right-0 mb-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 shadow-2xl rounded-2xl overflow-hidden animate-in slide-in-from-bottom-2 zoom-in-95 duration-200 origin-bottom">
-                            <div className="p-3 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/50"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">Select Source</span></div>
+                            <div className="p-3 border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/50"><span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">SELECT SOURCE</span></div>
                             <div className="max-h-60 overflow-y-auto p-1.5 space-y-1 custom-scrollbar">
-                                <button onClick={() => { onSetSourceListId(''); setShowSourceMenu(false); }} className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all ${!sourceListId ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'}`}><div className={`p-2 rounded-lg ${!sourceListId ? 'bg-amber-200 dark:bg-amber-800' : 'bg-gray-200 dark:bg-gray-600'}`}><Plus className="w-4 h-4" /></div><span className="font-bold text-sm flex-1 text-left">Default (New Empty Task)</span>{!sourceListId && <Check className="w-4 h-4" />}</button>
+                                <button onClick={() => { onSetSourceListId(''); setShowSourceMenu(false); }} className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all ${!sourceListId ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'}`}><div className={`p-2 rounded-lg ${!sourceListId ? 'bg-amber-200 dark:bg-amber-800' : 'bg-gray-200 dark:bg-gray-600'}`}><Plus className="w-4 h-4" /></div><span className="font-bold text-sm flex-1 text-left uppercase">DEFAULT (NEW EMPTY TASK)</span>{!sourceListId && <Check className="w-4 h-4" />}</button>
                                 {taskLists.map(list => {
                                     const placed = activeGamePoints.filter(p => list.tasks.some(t => t.title === p.title)).length;
                                     const total = list.tasks.length;
                                     const exhausted = placed >= total;
+                                    const ListIcon = list.iconId ? ICON_COMPONENTS[list.iconId] : LayoutTemplate;
                                     
                                     return (
                                     <button key={list.id} onClick={() => { onSetSourceListId(list.id); setShowSourceMenu(false); }} className={`w-full p-2.5 rounded-xl flex items-center gap-3 transition-all ${sourceListId === list.id ? 'bg-gray-100 dark:bg-gray-700 shadow-inner' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300'}`}>
-                                        <div className="p-2 rounded-lg text-white shadow-sm" style={{ backgroundColor: list.color }}><LayoutTemplate className="w-4 h-4" /></div>
+                                        <div className="p-2 rounded-lg text-white shadow-sm" style={{ backgroundColor: list.color }}><ListIcon className="w-4 h-4" /></div>
                                         <div className="flex-1 text-left">
-                                            <span className={`font-bold text-sm block ${sourceListId === list.id ? 'text-gray-900 dark:text-white' : ''}`}>{list.name}</span>
+                                            <span className={`font-bold text-sm block uppercase ${sourceListId === list.id ? 'text-gray-900 dark:text-white' : ''}`}>{list.name}</span>
                                             <div className="flex justify-between items-center">
-                                                <span className="text-[10px] text-gray-400 opacity-80">{total} tasks</span>
+                                                <span className="text-[10px] text-gray-400 opacity-80 uppercase">{total} tasks</span>
                                                 {exhausted ? (
-                                                    <span className="text-[10px] text-red-500 font-bold bg-red-100 dark:bg-red-900/30 px-1.5 rounded">All Placed</span>
+                                                    <span className="text-[10px] text-red-500 font-bold bg-red-100 dark:bg-red-900/30 px-1.5 rounded uppercase">ALL PLACED</span>
                                                 ) : (
-                                                    <span className="text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-100 dark:bg-green-900/30 px-1.5 rounded">{total - placed} left</span>
+                                                    <span className="text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-100 dark:bg-green-900/30 px-1.5 rounded uppercase">{total - placed} LEFT</span>
                                                 )}
                                             </div>
                                         </div>
@@ -703,12 +709,12 @@ const GameManager: React.FC<GameManagerProps> = ({
                     )}
                 </div>
             )}
-            <div className="flex items-center justify-between mb-3 ml-1"><h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center"><span>Task Preview</span><span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md text-[10px]">{activeGamePoints.length} Items</span></h3><div className="flex items-center gap-1">{onSaveAsTemplate && activeGameId && <button onClick={() => handleOpenSaveTemplateModal(activeGameId)} className="p-1.5 text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-900/30 rounded-lg" title="Save current game tasks as a template"><Save className="w-4 h-4" /></button>}<button onClick={onClearMap} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg" title="Delete all tasks from map"><Eraser className="w-4 h-4" /></button></div></div>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}><SortableContext items={activeGamePoints.map(p => p.id)} strategy={verticalListSortingStrategy}><div className="space-y-2.5 min-h-[100px]">{activeGamePoints.length === 0 && (<div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl"><Map className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" /><p className="text-gray-400 text-sm font-medium">No tasks yet.</p><p className="text-xs text-gray-400 mt-1">Tap the map to add one.</p></div>)}{activeGamePoints.map((point, index) => (<SortablePointItem key={point.id} point={point} onEdit={onEditPoint} index={index} />))}</div></SortableContext></DndContext>
+            <div className="flex items-center justify-between mb-3 ml-1"><h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center"><span>TASK PREVIEW</span><span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-md text-[10px]">{activeGamePoints.length} ITEMS</span></h3><div className="flex items-center gap-1">{onSaveAsTemplate && activeGameId && <button onClick={() => handleOpenSaveTemplateModal(activeGameId)} className="p-1.5 text-teal-600 hover:bg-teal-50 dark:text-teal-400 dark:hover:bg-teal-900/30 rounded-lg" title="Save current game tasks as a template"><Save className="w-4 h-4" /></button>}<button onClick={onClearMap} className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg" title="Delete all tasks from map"><Eraser className="w-4 h-4" /></button></div></div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}><SortableContext items={activeGamePoints.map(p => p.id)} strategy={verticalListSortingStrategy}><div className="space-y-2.5 min-h-[100px]">{activeGamePoints.length === 0 && (<div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl"><Map className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" /><p className="text-gray-400 text-sm font-medium uppercase">NO TASKS YET.</p><p className="text-xs text-gray-400 mt-1">TAP THE MAP TO ADD ONE.</p></div>)}{activeGamePoints.map((point, index) => (<SortablePointItem key={point.id} point={point} onEdit={onEditPoint} index={index} />))}</div></SortableContext></DndContext>
           </div>
         )}
       </div>
-      <div className="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center"><p className="text-[10px] text-gray-400 font-medium">TeamAction v1.0 • Drag to reorder • Click map to add</p></div>
+      <div className="p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-center"><p className="text-[10px] text-gray-400 font-medium uppercase tracking-wide">TeamAction v1.0 • Drag to reorder • Click map to add</p></div>
     </div>
   );
 };

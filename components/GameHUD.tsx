@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { GameMode, MapStyleId, Language } from '../types';
 import { t } from '../utils/i18n';
-import { ShieldCheck, Map as MapIcon, Layers, GraduationCap, Menu, Settings, X, Globe, Moon, Sun, Gamepad2, Library, Plus, Users } from 'lucide-react';
+import { ShieldCheck, Map as MapIcon, Layers, GraduationCap, Menu, Settings, X, Globe, Moon, Sun, Gamepad2, Library, Plus, Users, Home, ChevronDown } from 'lucide-react';
 
 interface GameHUDProps {
   accuracy: number | null;
@@ -14,6 +15,8 @@ interface GameHUDProps {
   mapStyle: MapStyleId;
   onSetMapStyle: (style: MapStyleId) => void;
   language: Language;
+  onBackToHub: () => void;
+  activeGameName?: string;
 }
 
 const GameHUD: React.FC<GameHUDProps> = ({ 
@@ -26,7 +29,9 @@ const GameHUD: React.FC<GameHUDProps> = ({
   onOpenTeams,
   mapStyle,
   onSetMapStyle,
-  language
+  language,
+  onBackToHub,
+  activeGameName
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -68,6 +73,17 @@ const GameHUD: React.FC<GameHUDProps> = ({
                         </button>
                     </div>
                     <div className="flex flex-col gap-1 mb-2">
+                        {/* Hub Button */}
+                        <button 
+                            onClick={() => { onBackToHub(); setIsMenuOpen(false); }}
+                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition-colors text-left font-medium border-b border-gray-100 dark:border-gray-700 mb-1"
+                        >
+                            <div className="bg-gray-200 dark:bg-gray-700 p-2 rounded-lg text-gray-600 dark:text-gray-300">
+                                <Home className="w-4 h-4" />
+                            </div>
+                            CREATOR HUB
+                        </button>
+
                         <button 
                             onClick={() => { onOpenGameChooser(); setIsMenuOpen(false); }}
                             className="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/30 text-gray-700 dark:text-gray-200 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-left font-medium"
@@ -126,6 +142,20 @@ const GameHUD: React.FC<GameHUDProps> = ({
             )}
          </div>
          <span className="text-[10px] font-black text-white drop-shadow-md uppercase tracking-wider bg-black/20 px-1.5 py-0.5 rounded backdrop-blur-md">Menu</span>
+      </div>
+
+      {/* --- TOP CENTER: GAME CHOOSER --- */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] flex flex-col items-center pointer-events-auto">
+          <button 
+            onClick={onOpenGameChooser}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95 group border-2 border-white/20"
+          >
+              <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span className="font-black text-sm uppercase tracking-wide max-w-[150px] sm:max-w-[250px] truncate">
+                  {activeGameName || "SELECT GAME"}
+              </span>
+              <ChevronDown className="w-4 h-4 text-orange-200 group-hover:text-white transition-colors" />
+          </button>
       </div>
 
       {/* --- TOP RIGHT: MODE SELECTOR --- */}

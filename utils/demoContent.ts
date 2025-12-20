@@ -1,4 +1,5 @@
-import { TaskTemplate, TaskList, IconId } from '../types';
+
+import { TaskTemplate, TaskList, IconId, Team } from '../types';
 import * as db from '../services/db';
 
 const createDemoTask = (
@@ -116,6 +117,13 @@ export const DEMO_LISTS: TaskList[] = [
   }
 ];
 
+export const DEMO_TEAMS: Partial<Team>[] = [
+    { name: 'Red Rockets', score: 1250, members: ['Alice', 'Bob', 'Charlie'] },
+    { name: 'Blue Bandits', score: 980, members: ['Dave', 'Eve'] },
+    { name: 'Green Giants', score: 1500, members: ['Frank', 'Grace', 'Heidi', 'Ivan'] },
+    { name: 'Yellow Yaks', score: 450, members: ['Judy'] }
+];
+
 export const seedDatabase = async () => {
   let count = 0;
   try {
@@ -133,4 +141,29 @@ export const seedDatabase = async () => {
     console.error(e);
     return { success: false, message: `Error seeding data: ${e.message}` };
   }
+};
+
+export const seedTeams = async (gameId: string) => {
+    try {
+        for (const t of DEMO_TEAMS) {
+            const teamId = `team-${t.name?.replace(/\s+/g, '-').toLowerCase()}-${gameId}`;
+            // Simple deterministic fake join code
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            const team: Team = {
+                id: teamId,
+                gameId: gameId,
+                name: t.name!,
+                joinCode: code,
+                score: t.score!,
+                members: t.members!,
+                updatedAt: new Date().toISOString()
+            };
+            await db.registerTeam(team);
+        }
+        return true;
+    } catch(e) {
+        console.error("Error seeding teams", e);
+        return false;
+    }
 };
