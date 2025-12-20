@@ -1,21 +1,27 @@
+
 import { supabase } from '../lib/supabase';
-import { TaskVote, TeamMember } from '../types';
+import { TaskVote, TeamMember, ChatMessage, Coordinate } from '../types';
 
 type VoteCallback = (votes: TaskVote[]) => void;
 type MemberCallback = (members: TeamMember[]) => void;
+type ChatCallback = (message: ChatMessage) => void;
 
 class TeamSyncService {
   private channel: any = null;
+  private globalChannel: any = null;
+  
   private deviceId: string = '';
-  private userName: string = 'Anonymous'; // Default
-  private votes: Record<string, TaskVote[]> = {}; // pointId -> votes
+  private userName: string = 'Anonymous'; 
+  private userLocation: Coordinate | null = null; // Track local location
+  
+  private votes: Record<string, TaskVote[]> = {}; 
   private members: Map<string, TeamMember> = new Map();
   
   private voteListeners: VoteCallback[] = [];
   private memberListeners: MemberCallback[] = [];
+  private chatListeners: ChatCallback[] = [];
 
   constructor() {
-    // Generate a semi-persistent device ID if not exists
     let storedId = localStorage.getItem('geohunt_device_id');
     if (!storedId) {
         storedId = Math.random().toString(36).substr(2, 9);
@@ -37,7 +43,7 @@ class TeamSyncService {
 
     this.userName = userName;
 
-    // Clean team name to be channel-safe
+    // 1. Team-Specific Channel (For Voting & Presence)
     const channelId = `game_${gameId}_team_${teamName.replace(/[^a-zA-Z0-9]/g, '_')}`;
     
     console.log(`[TeamSync] Connecting to ${channelId} as ${userName}`);
@@ -60,12 +66,34 @@ class TeamSyncService {
            setInterval(() => this.sendPresence(), 5000); 
         }
       });
+
+    // 2. Global Game Channel (For Messages from Instructor)
+    this.connectGlobal(gameId);
+  }
+
+  public connectGlobal(gameId: string) {
+      if (this.globalChannel) supabase.removeChannel(this.globalChannel);
+
+      const globalId = `game_${gameId}_global`;
+      console.log(`[TeamSync] Connecting to Global: ${globalId}`);
+
+      this.globalChannel = supabase.channel(globalId);
+      
+      this.globalChannel
+        .on('broadcast', { event: 'chat' }, (payload: any) => {
+            this.handleIncomingChat(payload.payload as ChatMessage);
+        })
+        .subscribe();
   }
 
   public disconnect() {
     if (this.channel) {
       supabase.removeChannel(this.channel);
       this.channel = null;
+    }
+    if (this.globalChannel) {
+        supabase.removeChannel(this.globalChannel);
+        this.globalChannel = null;
     }
     this.votes = {};
     this.members.clear();
@@ -82,10 +110,8 @@ class TeamSyncService {
       timestamp: Date.now()
     };
 
-    // Store locally immediately
     this.handleIncomingVote(vote);
 
-    // Broadcast to team
     this.channel.send({
       type: 'broadcast',
       event: 'vote',
@@ -93,53 +119,80 @@ class TeamSyncService {
     });
   }
 
+  public sendChatMessage(gameId: string, message: string, targetTeamId: string | null = null) {
+      if (!this.globalChannel) {
+          this.connectGlobal(gameId);
+      }
+
+      setTimeout(() => {
+          const chatPayload: ChatMessage = {
+              id: `msg-${Date.now()}`,
+              gameId,
+              targetTeamId,
+              message,
+              sender: 'Instructor',
+              timestamp: Date.now()
+          };
+
+          this.globalChannel.send({
+              type: 'broadcast',
+              event: 'chat',
+              payload: chatPayload
+          });
+      }, 500);
+  }
+
+  // Called by App.tsx whenever location updates
+  public updateLocation(location: Coordinate) {
+      this.userLocation = location;
+      // Optionally trigger immediate presence update if needed, but 5s interval is usually fine for battery
+  }
+
   private sendPresence() {
       if(!this.channel) return;
       const me: TeamMember = {
           deviceId: this.deviceId,
           userName: this.userName,
-          lastSeen: Date.now()
+          lastSeen: Date.now(),
+          location: this.userLocation || undefined
       };
       this.channel.send({
           type: 'broadcast',
           event: 'presence',
           payload: me
       });
-      // Add self to map just in case
       this.members.set(this.deviceId, me);
       this.notifyMemberListeners();
   }
 
   private handleIncomingVote(vote: TaskVote) {
-    // Initialize array if needed
     if (!this.votes[vote.pointId]) {
         this.votes[vote.pointId] = [];
     }
-
-    // Remove existing vote from this device if exists (update logic)
     this.votes[vote.pointId] = this.votes[vote.pointId].filter(v => v.deviceId !== vote.deviceId);
-    
-    // Add new vote
     this.votes[vote.pointId].push(vote);
 
-    // Ensure member is counted (if voting implies presence)
     this.members.set(vote.deviceId, { 
         deviceId: vote.deviceId, 
         userName: vote.userName, 
-        lastSeen: Date.now() 
+        lastSeen: Date.now(),
+        // Preserve location if we have it already, vote doesn't carry loc usually
+        location: this.members.get(vote.deviceId)?.location
     });
     this.notifyMemberListeners();
 
-    // Notify listeners
     this.voteListeners.forEach(cb => cb(this.votes[vote.pointId]));
   }
 
+  private handleIncomingChat(msg: ChatMessage) {
+      this.chatListeners.forEach(cb => cb(msg));
+  }
+
   private notifyMemberListeners() {
-      // Filter out stale members (offline > 20s)
       const now = Date.now();
       const active: TeamMember[] = [];
       this.members.forEach((m) => {
-          if (now - m.lastSeen < 20000) active.push(m);
+          if (now - m.lastSeen < 60000) active.push(m); // Increased timeout to 60s for map stability
       });
       
       this.memberListeners.forEach(cb => cb(active));
@@ -154,14 +207,19 @@ class TeamSyncService {
   
   public subscribeToMembers(callback: MemberCallback) {
       this.memberListeners.push(callback);
-      // Immediate callback with current state
       callback(Array.from(this.members.values()));
       return () => {
           this.memberListeners = this.memberListeners.filter(cb => cb !== callback);
       }
   }
 
-  // Deprecated wrapper
+  public subscribeToChat(callback: ChatCallback) {
+      this.chatListeners.push(callback);
+      return () => {
+          this.chatListeners = this.chatListeners.filter(cb => cb !== callback);
+      };
+  }
+
   public subscribeToMemberCount(callback: (c: number) => void) {
       return this.subscribeToMembers((members) => callback(members.length));
   }

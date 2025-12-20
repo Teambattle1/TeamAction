@@ -15,44 +15,55 @@ export type Language = 'English' | 'Danish' | 'German' | 'Spanish';
 // --- Team Sync Types ---
 export interface TeamMember {
   deviceId: string;
-  userName: string; // Added user name
+  userName: string;
   lastSeen: number;
+  location?: Coordinate; // Added location
 }
 
 export interface Team {
   id: string;
   gameId: string;
   name: string;
-  joinCode?: string; // 6-digit code
-  photoUrl?: string; // Base64 or URL
-  members: string[]; // List of names
+  joinCode?: string;
+  photoUrl?: string;
+  members: string[];
   score: number;
+  completedPointIds?: string[]; // Added task history
   updatedAt: string;
 }
 
 export interface TaskVote {
   deviceId: string;
-  userName: string; // Added user name
+  userName: string;
   pointId: string;
-  answer: string | number | string[]; // The actual answer value
+  answer: string | number | string[];
+  timestamp: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  gameId: string;
+  targetTeamId?: string | null;
+  message: string;
+  sender: string;
   timestamp: number;
 }
 
 export interface TeamSyncState {
   members: TeamMember[];
-  votes: Record<string, TaskVote[]>; // Keyed by pointId
+  votes: Record<string, TaskVote[]>;
 }
 // -----------------------
 
 export interface GameTask {
-  question: string; // Now acts as HTML/RTF
+  question: string;
   type: TaskType;
   
   // Media
   imageUrl?: string; 
-  videoUrl?: string; // YouTube or Vimeo
-  audioUrl?: string; // Task audio
-  backgroundAudioUrl?: string; // Ambient audio
+  videoUrl?: string;
+  audioUrl?: string;
+  backgroundAudioUrl?: string;
   
   // Answers
   answer?: string; 
@@ -71,9 +82,9 @@ export interface GameTask {
 }
 
 export interface TaskFeedback {
-  correctMessage: string; // RTF
+  correctMessage: string;
   showCorrectMessage: boolean;
-  incorrectMessage: string; // RTF
+  incorrectMessage: string;
   showIncorrectMessage: boolean;
   hint: string;
   hintCost: number;
@@ -83,17 +94,17 @@ export interface TaskSettings {
   timeLimitSeconds?: number;
   scoreDependsOnSpeed: boolean;
   language: string;
-  showAnswerStatus: boolean; // Show if correct/incorrect
-  showCorrectAnswerOnMiss: boolean; // Show correct answer after incorrect
+  showAnswerStatus: boolean;
+  showCorrectAnswerOnMiss: boolean;
 }
 
 export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click';
 
 export type PointCompletionLogic = 
-  | 'remove_any' // Remove when answered (correct or incorrect)
-  | 'keep_until_correct' // Keep until answered correctly
-  | 'keep_always' // Keep until end of game
-  | 'allow_close'; // Allow close without answering
+  | 'remove_any'
+  | 'keep_until_correct'
+  | 'keep_always'
+  | 'allow_close';
 
 // --- LOGIC SYSTEM ---
 export type ActionType = 'unlock' | 'lock' | 'score' | 'message' | 'sound' | 'reveal';
@@ -101,8 +112,8 @@ export type ActionType = 'unlock' | 'lock' | 'score' | 'message' | 'sound' | 're
 export interface GameAction {
   id: string;
   type: ActionType;
-  targetId?: string; // ID of target point
-  value?: string | number; // Payload (score amount, message text, sound URL)
+  targetId?: string;
+  value?: string | number;
 }
 
 export interface TaskLogic {
@@ -115,19 +126,19 @@ export interface TaskLogic {
 export interface GamePoint {
   id: string;
   title: string; 
-  shortIntro?: string; // Hover text
+  shortIntro?: string;
   
   task: GameTask;
   
   // Location & Activation
   location: Coordinate;
   radiusMeters: number;
-  activationTypes: PointActivationType[]; // ['radius', 'click', 'qr', etc.]
+  activationTypes: PointActivationType[];
   manualUnlockCode?: string; 
   
   // Appearance
   iconId: IconId;
-  areaColor?: string; // Custom geofence color
+  areaColor?: string;
 
   // Logic & Scoring
   points: number;
@@ -146,7 +157,7 @@ export interface GamePoint {
   logic?: TaskLogic;
   
   // Structural
-  isSectionHeader?: boolean; // If true, acts as a divider/group header in the list
+  isSectionHeader?: boolean;
 }
 
 export interface TaskTemplate {
@@ -156,7 +167,6 @@ export interface TaskTemplate {
   tags: string[];
   iconId: IconId;
   createdAt: number;
-  // Template copies of point config
   points?: number;
   intro?: string;
   feedback?: TaskFeedback;
@@ -170,7 +180,7 @@ export interface TaskList {
   description: string;
   tasks: TaskTemplate[];
   color: string; 
-  iconId?: IconId; // Added icon for lists
+  iconId?: IconId;
   createdAt: number;
 }
 
@@ -180,7 +190,7 @@ export interface Game {
   description: string;
   points: GamePoint[];
   createdAt: number;
-  defaultMapStyle?: MapStyleId; // Added map style preference
+  defaultMapStyle?: MapStyleId;
 }
 
 export interface GameState {
@@ -192,8 +202,9 @@ export interface GameState {
   userLocation: Coordinate | null;
   gpsAccuracy: number | null;
   teamName?: string;
-  userName?: string; // Added local user name
-  deviceId: string; // Unique ID for this browser
+  teamId?: string;
+  userName?: string;
+  deviceId: string;
 }
 
 export enum GameMode {

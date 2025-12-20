@@ -1,12 +1,13 @@
+
 import React, { useState, useMemo } from 'react';
 import { Game, TaskList } from '../types';
-import { X, Calendar, CheckCircle, Clock, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home, Plus } from 'lucide-react';
+import { X, Calendar, CheckCircle, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home, Plus, Zap, Clock } from 'lucide-react';
 
 interface GameChooserProps {
   games: Game[];
   taskLists: TaskList[];
   onSelectGame: (id: string) => void;
-  onCreateGame: (name: string, fromTaskListId: string) => void;
+  onCreateGame: (name: string, fromTaskListId?: string) => void;
   onClose: () => void;
   onSaveAsTemplate?: (gameId: string, name: string) => void;
   onRefresh?: () => void;
@@ -14,6 +15,11 @@ interface GameChooserProps {
 
 type MainView = 'GAMES' | 'TEMPLATES';
 type SessionTab = 'TODAY' | 'PLANNED' | 'COMPLETED';
+
+const isSameDay = (d1: Date, d2: Date) => 
+  d1.getFullYear() === d2.getFullYear() &&
+  d1.getMonth() === d2.getMonth() &&
+  d1.getDate() === d2.getDate();
 
 const GameChooser: React.FC<GameChooserProps> = ({ 
   games, 
@@ -28,59 +34,41 @@ const GameChooser: React.FC<GameChooserProps> = ({
   const [sessionTab, setSessionTab] = useState<SessionTab>('TODAY');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Helper to check dates
-  const isSameDay = (d1: Date, d2: Date) => 
-    d1.getFullYear() === d2.getFullYear() &&
-    d1.getMonth() === d2.getMonth() &&
-    d1.getDate() === d2.getDate();
-
   const filteredGames = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const checkCompletion = (game: Game) => {
-        if (game.points.length === 0) return false;
+        if (!game.points || game.points.length === 0) return false;
         return game.points.every(p => p.isCompleted);
     };
 
-    let list = [];
+    return games.filter(g => {
+        const gDate = new Date(g.createdAt);
+        gDate.setHours(0, 0, 0, 0);
+        const isFinished = checkCompletion(g);
 
-    switch (sessionTab) {
-      case 'TODAY':
-        list = games.filter(g => {
-            const gDate = new Date(g.createdAt);
-            const isCompleted = checkCompletion(g);
-            return isSameDay(gDate, today) && !isCompleted;
-        });
-        // Sort by time (earliest first)
-        list.sort((a, b) => a.createdAt - b.createdAt);
-        break;
-      
-      case 'PLANNED':
-        list = games.filter(g => {
-            const gDate = new Date(g.createdAt);
-            const isCompleted = checkCompletion(g);
-            // Future dates AND not completed
-            return gDate > today && !isSameDay(gDate, today) && !isCompleted;
-        });
-        // Sort by date (earliest first)
-        list.sort((a, b) => a.createdAt - b.createdAt);
-        break;
+        if (sessionTab === 'COMPLETED') return isFinished;
+        if (isFinished) return false;
 
-      case 'COMPLETED':
-        list = games.filter(g => checkCompletion(g));
-        // Sort by date (newest first)
-        list.sort((a, b) => b.createdAt - a.createdAt);
-        break;
-    }
-
-    return list;
+        if (sessionTab === 'TODAY') return isSameDay(gDate, today);
+        if (sessionTab === 'PLANNED') return !isSameDay(gDate, today);
+        
+        return true;
+    }).sort((a, b) => b.createdAt - a.createdAt);
   }, [games, sessionTab]);
 
   const handleCreateFromTemplate = (list: TaskList) => {
       const name = prompt(`Name for new game based on "${list.name}":`, list.name);
       if (name) {
           onCreateGame(name, list.id);
+      }
+  };
+
+  const handleCreateBlankGame = () => {
+      const name = prompt("Name for new empty game:", "New Game");
+      if (name) {
+          onCreateGame(name);
       }
   };
 
@@ -97,11 +85,11 @@ const GameChooser: React.FC<GameChooserProps> = ({
     if (!onRefresh) return;
     setIsRefreshing(true);
     await onRefresh();
-    setTimeout(() => setIsRefreshing(false), 500); // Visual feedback
+    setTimeout(() => setIsRefreshing(false), 500);
   };
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
         
         {/* Header */}
@@ -112,7 +100,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
               </button>
               <div>
                   <h2 className="text-xl font-black tracking-tight uppercase">MY GAMES</h2>
-                  <p className="text-gray-400 text-sm uppercase tracking-wide">RESUME PLAYING OR START NEW</p>
+                  <p className="text-gray-400 text-sm uppercase tracking-wide">CHOOSE SESSION</p>
               </div>
           </div>
           <div className="flex items-center gap-1">
@@ -147,7 +135,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
             </button>
         </div>
 
-        {/* GAMES VIEW: Session Tabs */}
+        {/* GAMES VIEW: Sub Tabs */}
         {mainView === 'GAMES' && (
             <div className="flex border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
                 <button 
@@ -176,16 +164,21 @@ const GameChooser: React.FC<GameChooserProps> = ({
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900">
-            
-            {/* --- GAMES LIST --- */}
             {mainView === 'GAMES' && (
                 <>
+                    <button 
+                        onClick={handleCreateBlankGame}
+                        className="w-full mb-3 py-3 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 dark:text-gray-400 hover:border-orange-500 hover:text-orange-600 dark:hover:border-orange-400 dark:hover:text-orange-400 font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all bg-white dark:bg-gray-800"
+                    >
+                        <Plus className="w-5 h-5" /> Create Blank Game
+                    </button>
+
                     {filteredGames.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-gray-500">
                             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-3">
                                 <Gamepad2 className="w-8 h-8 opacity-50" />
                             </div>
-                            <p className="text-xs font-bold uppercase tracking-wide">NO GAMES FOUND</p>
+                            <p className="text-xs font-bold uppercase tracking-wide">NO {sessionTab} GAMES FOUND</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -218,10 +211,9 @@ const GameChooser: React.FC<GameChooserProps> = ({
                                                 </button>
                                             )}
                                         </div>
-                                        
                                         <div className="flex items-center justify-between text-xs mt-3">
-                                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-medium">
-                                                <MapPin className="w-3 h-3" />
+                                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300 font-medium uppercase">
+                                                <MapPin className="w-3 h-3 text-orange-500" />
                                                 {totalCount} TASKS
                                             </div>
                                             <div className="flex items-center gap-1 font-bold text-orange-600 dark:text-orange-400">
@@ -240,7 +232,6 @@ const GameChooser: React.FC<GameChooserProps> = ({
                 </>
             )}
 
-            {/* --- TEMPLATES LIST --- */}
             {mainView === 'TEMPLATES' && (
                 <div className="space-y-3">
                     {taskLists.length === 0 ? (
@@ -263,7 +254,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
                                 </div>
                                 <p className="text-xs text-gray-500 line-clamp-2 mb-3">{list.description || 'No description'}</p>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded uppercase tracking-wide">
+                                    <span className="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded uppercase tracking-wide">
                                         {list.tasks.length} TASKS
                                     </span>
                                     <span className="text-[10px] font-bold text-blue-500 flex items-center gap-1 uppercase tracking-wide ml-auto group-hover:underline">

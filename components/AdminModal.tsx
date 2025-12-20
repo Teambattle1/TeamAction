@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Game } from '../types';
-import { X, Trash2, Calendar, MapPin, Database, AlertTriangle } from 'lucide-react';
+import { X, Trash2, Calendar, MapPin, Database, AlertTriangle, Terminal, Copy } from 'lucide-react';
 
 interface AdminModalProps {
   games: Game[];
@@ -11,6 +11,7 @@ interface AdminModalProps {
 
 const AdminModal: React.FC<AdminModalProps> = ({ games, onClose, onDeleteGame }) => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showSql, setShowSql] = useState(false);
 
   const handleDeleteClick = (id: string) => {
     if (deleteConfirmId === id) {
@@ -20,6 +21,57 @@ const AdminModal: React.FC<AdminModalProps> = ({ games, onClose, onDeleteGame })
       setDeleteConfirmId(id);
       setTimeout(() => setDeleteConfirmId(null), 3000); // Reset confirm after 3s
     }
+  };
+
+  const sqlCode = `-- COPY THIS INTO THE SUPABASE SQL EDITOR
+
+-- 1. Create GAMES table
+CREATE TABLE IF NOT EXISTS public.games (
+    id TEXT PRIMARY KEY,
+    data JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public games access" ON public.games FOR ALL USING (true) WITH CHECK (true);
+
+-- 2. Create TEAMS table
+CREATE TABLE IF NOT EXISTS public.teams (
+    id TEXT PRIMARY KEY,
+    game_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    join_code TEXT,
+    photo_url TEXT,
+    members TEXT[] DEFAULT '{}',
+    score INTEGER DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public teams access" ON public.teams FOR ALL USING (true) WITH CHECK (true);
+
+-- 3. Create LIBRARY table
+CREATE TABLE IF NOT EXISTS public.library (
+    id TEXT PRIMARY KEY,
+    data JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.library ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public library access" ON public.library FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. Create TASK_LISTS table
+CREATE TABLE IF NOT EXISTS public.task_lists (
+    id TEXT PRIMARY KEY,
+    data JSONB,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.task_lists ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public task_lists access" ON public.task_lists FOR ALL USING (true) WITH CHECK (true);
+
+-- 5. Enable Realtime for TEAMS
+ALTER PUBLICATION supabase_realtime ADD TABLE public.teams;`;
+
+  const copyToClipboard = () => {
+      navigator.clipboard.writeText(sqlCode);
+      alert("SQL copied to clipboard!");
   };
 
   return (
@@ -40,6 +92,31 @@ const AdminModal: React.FC<AdminModalProps> = ({ games, onClose, onDeleteGame })
 
         {/* List */}
         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-900">
+          
+          <button 
+            onClick={() => setShowSql(!showSql)}
+            className="w-full p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-xl flex items-center justify-between text-indigo-400 hover:bg-indigo-900/40 hover:text-indigo-300 transition-all mb-4"
+          >
+              <span className="text-xs font-bold uppercase flex items-center gap-2"><Terminal className="w-4 h-4" /> Setup Database Tables</span>
+              <span className="text-[10px] bg-indigo-500/20 px-2 py-1 rounded">CLICK TO VIEW SQL</span>
+          </button>
+
+          {showSql && (
+              <div className="bg-black rounded-xl p-4 border border-slate-700 mb-4 relative">
+                  <pre className="text-[10px] text-green-400 font-mono overflow-x-auto whitespace-pre-wrap max-h-40">
+                      {sqlCode}
+                  </pre>
+                  <button 
+                    onClick={copyToClipboard}
+                    className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                    title="Copy SQL"
+                  >
+                      <Copy className="w-4 h-4" />
+                  </button>
+                  <p className="text-[10px] text-slate-500 mt-2 italic">Paste this into the Supabase SQL Editor to fix "missing table" errors.</p>
+              </div>
+          )}
+
           {games.length === 0 && (
             <div className="text-center py-12 text-slate-500">
               <Database className="w-12 h-12 mx-auto mb-3 opacity-20" />

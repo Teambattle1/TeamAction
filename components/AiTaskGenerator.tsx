@@ -1,9 +1,9 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon, Home, Search, Hash } from 'lucide-react';
 import { TaskTemplate } from '../types';
 import { generateAiTasks, generateAiImage, findCompanyDomain } from '../services/ai';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon, Home, Search } from 'lucide-react';
 
 interface AiTaskGeneratorProps {
   onClose: () => void;
@@ -15,6 +15,7 @@ const LANGUAGES = ['English', 'Danish (Dansk)', 'German (Deutsch)', 'Spanish (Es
 const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }) => {
   const [topic, setTopic] = useState('');
   const [language, setLanguage] = useState('English');
+  const [taskCount, setTaskCount] = useState(5);
   const [autoTag, setAutoTag] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -22,15 +23,12 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
   const [approvedTasks, setApprovedTasks] = useState<TaskTemplate[]>([]);
   const [error, setError] = useState<string | null>(null);
   
-  // Logo Generation State
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
   const [useLogoForTasks, setUseLogoForTasks] = useState(false);
 
-  // Track if a batch was fully processed to show the "What's Next?" screen
   const [batchFinished, setBatchFinished] = useState(false);
   
-  // Ref to track if component is still "interested" in the result
   const isActiveRef = useRef(false);
   const topicInputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -53,7 +51,6 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                   });
               };
 
-              // Strategy 1: Clearbit (Best for logos)
               const clearbitUrl = `https://logo.clearbit.com/${domain}`;
               if (await checkImage(clearbitUrl)) {
                   setLogoUrl(clearbitUrl);
@@ -62,8 +59,6 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                   return;
               }
 
-              // Strategy 2: Google Favicon (Reliable fallback)
-              // size=256 often gives a nice high-res square logo/icon
               const googleUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=256`;
               if (await checkImage(googleUrl)) {
                   setLogoUrl(googleUrl);
@@ -93,30 +88,26 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
     setBatchFinished(false);
     isActiveRef.current = true;
     
-    // Simulate progress while waiting for API
     const interval = setInterval(() => {
         setProgress(prev => {
-            // Slower progress as it gets higher to avoid reaching 100 before done
-            const increment = prev < 50 ? 10 : (prev < 80 ? 5 : 1);
+            const increment = prev < 40 ? 5 : (prev < 70 ? 2 : (prev < 90 ? 1 : 0.5));
             const next = prev + increment;
-            return next >= 95 ? 95 : next;
+            return next >= 98 ? 98 : next;
         });
-    }, 200);
+    }, 400);
     
     try {
-      // 1. Generate text content
-      const newTasks = await generateAiTasks(topic, 10, language, autoTag);
+      const newTasks = await generateAiTasks(topic, taskCount, language, autoTag);
       
       if (!isActiveRef.current) {
           clearInterval(interval);
           return;
       }
 
-      // 2. Handle Image Generation
       let imageUrlToUse = logoUrl && useLogoForTasks ? logoUrl : null;
 
       if (!imageUrlToUse) {
-          // If not using logo, generate a thematic image for the topic
+          // Only generate thematic image if logo isn't set, to save time/tokens
           const thematicImage = await generateAiImage(topic, 'scavenger');
           if (thematicImage) {
               imageUrlToUse = thematicImage;
@@ -124,7 +115,6 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
       }
 
       if (imageUrlToUse && isActiveRef.current) {
-          // Assign this image to all tasks
           newTasks.forEach(t => {
               t.task.imageUrl = imageUrlToUse!;
           });
@@ -133,7 +123,6 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
       clearInterval(interval);
       setProgress(100);
       
-      // Brief delay to show 100% completion
       setTimeout(() => {
           if (isActiveRef.current) {
               setGeneratedBuffer(newTasks);
@@ -153,7 +142,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
       if (msg.includes("xhr") || msg.includes("fetch")) {
           msg = "Connection failed. Please check your internet connection.";
       } else if (msg.includes("timed out")) {
-          msg = "The AI is taking too long to respond. Please try again or use a simpler topic.";
+          msg = "The AI is taking a bit too long. The topic might be complex or the service is busy. Please try again with a simpler topic or fewer tasks.";
       }
       setError(msg);
     }
@@ -168,7 +157,6 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
   };
 
   const handleGenerateMore = async () => {
-      // Keep approved, discard current buffer (already empty if batchFinished), fetch 10 new
       setGeneratedBuffer([]); 
       await handleGenerate();
   };
@@ -176,8 +164,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
   const handleChangeTopic = () => {
       setBatchFinished(false);
       setGeneratedBuffer([]);
-      setLogoUrl(null); // Reset logo on topic change
-      // Focus and select the input for easy editing
+      setLogoUrl(null); 
       if (topicInputRef.current) {
           topicInputRef.current.focus();
           topicInputRef.current.select();
@@ -206,7 +193,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
     onClose();
   };
 
-  const stripHtml = (html: string) => html.replace(/<[^>]*>?/gm, '');
+  const stripHtml = (html: any) => typeof html === 'string' ? html.replace(/<[^>]*>?/gm, '') : '';
 
   return (
     <div className="fixed inset-0 z-[1400] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -291,8 +278,8 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
-                        <div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2">
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
                                 <Globe className="w-3 h-3" /> LANGUAGE
                             </label>
@@ -306,15 +293,28 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                 ))}
                             </select>
                         </div>
-                        <div>
+                        <div className="col-span-1">
                             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                                <Tag className="w-3 h-3" /> AUTO-TAG (OPTIONAL)
+                                <Hash className="w-3 h-3" /> COUNT
+                            </label>
+                            <input 
+                                type="number"
+                                min={1}
+                                max={20}
+                                value={taskCount}
+                                onChange={(e) => setTaskCount(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
+                                className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                            />
+                        </div>
+                        <div className="col-span-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                                <Tag className="w-3 h-3" /> AUTO-TAG
                             </label>
                             <input 
                                 type="text"
                                 value={autoTag}
                                 onChange={(e) => setAutoTag(e.target.value)}
-                                placeholder="e.g. 'hard-mode'"
+                                placeholder="e.g. 'hard'"
                                 className="w-full p-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-orange-500 outline-none"
                             />
                         </div>
@@ -326,12 +326,12 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                         className="w-full bg-orange-600 hover:bg-orange-700 text-white p-3 rounded-xl font-bold shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wide"
                     >
                         {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                        GENERATE TASKS
+                        GENERATE {taskCount} TASKS
                     </button>
                 </div>
 
                 {error && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg flex items-center gap-2">
+                    <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm rounded-lg flex items-center gap-2 border border-red-200 dark:border-red-900/40">
                         <AlertCircle className="w-4 h-4 shrink-0" />
                         {error}
                     </div>
@@ -383,13 +383,12 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
 
             {/* Right Panel: Proposals */}
             <div className="w-full md:w-2/3 bg-white dark:bg-gray-900 p-5 flex flex-col h-full overflow-hidden relative">
-                
                 {isGenerating && (
                     <div className="absolute inset-0 z-10 bg-white/50 dark:bg-gray-900/50 backdrop-blur-md flex flex-col items-center justify-center text-orange-600 animate-in fade-in duration-300">
                         <div className="w-64 space-y-4">
                             <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-300">
                                 <span>GENERATING...</span>
-                                <span>{progress}%</span>
+                                <span>{Math.round(progress)}%</span>
                             </div>
                             <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div 
@@ -397,11 +396,13 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                     style={{ width: `${progress}%` }}
                                 />
                             </div>
-                            <p className="text-center text-sm font-medium text-gray-600 dark:text-gray-300 animate-pulse uppercase tracking-wide">
-                                {progress < 30 ? "ANALYZING TOPIC..." : progress < 70 ? "DRAFTING QUESTIONS & IMAGES..." : "FINALIZING TASKS..."}
+                            <p className="text-center text-xs font-bold text-gray-600 dark:text-gray-300 animate-pulse uppercase tracking-widest leading-relaxed px-4">
+                                {progress < 20 ? "INITIATING CREATIVE ENGINE..." : 
+                                 progress < 50 ? "RESEARCHING TOPIC & CULTURE..." : 
+                                 progress < 80 ? "DRAFTING QUESTIONS & MEDIA..." : 
+                                 "PACKAGING GAME ASSETS..."}
                             </p>
                             
-                            {/* Cancel Button */}
                             <div className="flex justify-center mt-4">
                                 <button 
                                     onClick={handleCancelGeneration}
@@ -424,13 +425,12 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                             onClick={handleGenerateMore}
                             className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 bg-orange-50 dark:bg-orange-900/30 px-3 py-1.5 rounded-lg border border-orange-100 dark:border-orange-800 transition-colors uppercase tracking-wide"
                         >
-                            <RefreshCw className="w-3 h-3" /> GENERATE 10 NEW
+                            <RefreshCw className="w-3 h-3" /> GENERATE {taskCount} NEW
                         </button>
                     )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto pr-2 pb-20 space-y-4">
-                    {/* EMPTY STATE */}
                     {generatedBuffer.length === 0 && !isGenerating && (
                         batchFinished ? (
                              <div className="h-full flex flex-col items-center justify-center text-center p-8 animate-in zoom-in-95 duration-300">
@@ -448,7 +448,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                         className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold shadow-md flex items-center justify-center gap-2 transition-transform hover:scale-[1.02] uppercase tracking-wide"
                                     >
                                         <RefreshCw className="w-4 h-4" />
-                                        GENERATE MORE ABOUT THIS TOPIC
+                                        GENERATE MORE TASKS
                                     </button>
                                     
                                     <button 
@@ -501,7 +501,6 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks }
                                         </div>
                                         <p className="text-gray-600 dark:text-gray-300 text-sm mb-3">{task.task.question}</p>
                                         
-                                        {/* Answer Preview */}
                                         <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-2 text-xs text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
                                             <span className="font-bold mr-1 uppercase">SOLUTION:</span>
                                             {task.task.options ? task.task.answer || task.task.correctAnswers?.join(', ') : task.task.answer || task.task.range?.correctValue}
