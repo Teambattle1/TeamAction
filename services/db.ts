@@ -1,6 +1,6 @@
 
 import { supabase } from '../lib/supabase.ts';
-import { Game, TaskTemplate, TaskList, Team } from '../types.ts';
+import { Game, TaskTemplate, TaskList, Team, TeamMemberData } from '../types.ts';
 
 const logError = (context: string, error: any) => {
     const message = error?.message || (typeof error === 'string' ? error : JSON.stringify(error));
@@ -50,7 +50,7 @@ export const fetchTeams = async (gameId: string): Promise<Team[]> => {
             name: row.name, 
             joinCode: row.join_code, 
             photoUrl: row.photo_url, 
-            members: row.members || [], 
+            members: (row.members as any[]) || [], 
             score: row.score || 0,
             completedPointIds: row.completed_point_ids || [], 
             updatedAt: row.updated_at,
@@ -70,7 +70,7 @@ export const fetchTeam = async (teamId: string): Promise<Team | null> => {
             name: data.name,
             joinCode: data.join_code,
             photoUrl: data.photo_url,
-            members: data.members || [],
+            members: (data.members as any[]) || [],
             score: data.score || 0,
             completedPointIds: data.completed_point_ids || [],
             updatedAt: data.updated_at,
@@ -88,7 +88,7 @@ export const registerTeam = async (team: Team) => {
             name: team.name, 
             join_code: team.joinCode, 
             photo_url: team.photoUrl, 
-            members: team.members, 
+            members: team.members, // JSONB supports objects/arrays automatically
             score: team.score,
             completed_point_ids: team.completedPointIds || [], 
             updated_at: new Date().toISOString(),

@@ -1,5 +1,5 @@
 
-import { TaskTemplate, TaskList, IconId, Team } from '../types';
+import { TaskTemplate, TaskList, IconId, Team, TeamMemberData } from '../types';
 import * as db from '../services/db';
 
 const createDemoTask = (
@@ -117,11 +117,42 @@ export const DEMO_LISTS: TaskList[] = [
   }
 ];
 
+// Correcting the DEMO_TEAMS members to match the TeamMemberData interface
 export const DEMO_TEAMS: Partial<Team>[] = [
-    { name: 'Red Rockets', score: 1250, members: ['Alice', 'Bob', 'Charlie'] },
-    { name: 'Blue Bandits', score: 980, members: ['Dave', 'Eve'] },
-    { name: 'Green Giants', score: 1500, members: ['Frank', 'Grace', 'Heidi', 'Ivan'] },
-    { name: 'Yellow Yaks', score: 450, members: ['Judy'] }
+    { 
+        name: 'Red Rockets', 
+        score: 1250, 
+        members: [
+            { name: 'Alice', deviceId: 'demo-alice' },
+            { name: 'Bob', deviceId: 'demo-bob' },
+            { name: 'Charlie', deviceId: 'demo-charlie' }
+        ] 
+    },
+    { 
+        name: 'Blue Bandits', 
+        score: 980, 
+        members: [
+            { name: 'Dave', deviceId: 'demo-dave' },
+            { name: 'Eve', deviceId: 'demo-eve' }
+        ] 
+    },
+    { 
+        name: 'Green Giants', 
+        score: 1500, 
+        members: [
+            { name: 'Frank', deviceId: 'demo-frank' },
+            { name: 'Grace', deviceId: 'demo-grace' },
+            { name: 'Heidi', deviceId: 'demo-heidi' },
+            { name: 'Ivan', deviceId: 'demo-ivan' }
+        ] 
+    },
+    { 
+        name: 'Yellow Yaks', 
+        score: 450, 
+        members: [
+            { name: 'Judy', deviceId: 'demo-judy' }
+        ] 
+    }
 ];
 
 export const seedDatabase = async () => {

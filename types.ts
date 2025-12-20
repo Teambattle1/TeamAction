@@ -18,6 +18,8 @@ export interface TeamMember {
   userName: string;
   lastSeen: number;
   location?: Coordinate; 
+  photoUrl?: string; // New: Profile photo
+  role?: 'captain' | 'member'; // New: Role identification
 }
 
 export interface Team {
@@ -25,13 +27,19 @@ export interface Team {
   gameId: string;
   name: string;
   joinCode?: string;
-  photoUrl?: string;
-  members: string[];
+  photoUrl?: string; // Team-wide photo/logo
+  members: TeamMemberData[]; // Updated: Detailed member data
   score: number;
   completedPointIds?: string[];
   updatedAt: string;
-  captainDeviceId?: string; // New: To identify the team captain
-  isStarted?: boolean; // New: To track if mission has moved from lobby to active
+  captainDeviceId?: string; 
+  isStarted?: boolean; 
+}
+
+export interface TeamMemberData {
+    name: string;
+    photo?: string;
+    deviceId: string;
 }
 
 export interface TaskVote {

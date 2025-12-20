@@ -15,8 +15,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ activeGameName, onAction, onC
     <div className="fixed inset-0 z-[3000] bg-black/60 backdrop-blur-md flex items-center justify-center p-6 font-sans uppercase animate-in fade-in duration-300">
       
       <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-8 relative">
+          {/* Footprint Background Pattern */}
+          <div className="absolute inset-0 opacity-[0.07] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/footprints.png')]" />
           
-          <div className="text-center mb-8">
+          <div className="text-center mb-8 relative z-10">
               <h1 className="text-3xl font-black text-white tracking-[0.2em] mb-1 leading-none">CREATOR HUB</h1>
               <div className="flex flex-col gap-0.5 mb-4">
                   <p className="text-[10px] text-slate-500 font-bold tracking-[0.3em]">TEAMBATTLE</p>
@@ -46,7 +48,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ activeGameName, onAction, onC
               )}
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 relative z-10">
               {/* PLAY BUTTON */}
               <button 
                 onClick={() => onAction('PLAY')}
