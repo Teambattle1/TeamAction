@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { TaskTemplate, IconId, TaskType } from "../types";
 
@@ -53,6 +52,51 @@ const responseSchema = {
   }
 };
 
+// Schema for single task generation from image
+const singleTaskSchema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING, description: "Short catchy title for the task" },
+    question: { type: Type.STRING, description: "The actual question or challenge text based on the image" },
+    type: { 
+      type: Type.STRING, 
+      enum: ["text", "multiple_choice", "boolean", "slider", "checkbox", "dropdown"],
+      description: "The type of input required"
+    },
+    answer: { type: Type.STRING, description: "The correct answer (for text/boolean/dropdown)", nullable: true },
+    options: { 
+      type: Type.ARRAY, 
+      items: { type: Type.STRING },
+      description: "Options for multiple_choice, checkbox, dropdown",
+      nullable: true
+    },
+    correctAnswers: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Array of correct answers if type is checkbox",
+      nullable: true
+    },
+    numericRange: {
+      type: Type.OBJECT,
+      properties: {
+        min: { type: Type.NUMBER },
+        max: { type: Type.NUMBER },
+        correctValue: { type: Type.NUMBER }
+      },
+      description: "Only for slider type",
+      nullable: true
+    },
+    iconId: { 
+      type: Type.STRING, 
+      enum: ['default', 'star', 'flag', 'trophy', 'camera', 'question', 'skull', 'treasure'],
+      description: "The visual icon for the map"
+    },
+    hint: { type: Type.STRING, description: "A helpful hint for the player", nullable: true },
+    tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Tags describing the content" }
+  },
+  required: ["title", "question", "type", "iconId"]
+};
+
 export const generateAiTasks = async (topic: string, count: number = 10, language: string = 'English', additionalTag?: string): Promise<TaskTemplate[]> => {
   // Create a timeout promise (60 seconds)
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -90,4 +134,160 @@ export const generateAiTasks = async (topic: string, count: number = 10, languag
 
     // Map the raw JSON to our TypeScript TaskTemplate structure
     return rawData.map((item: any, index: number) => {
-      const tags = ['ai-generated', ...topic.split(' ').map(s => s.
+      const tags = ['ai-generated', ...topic.split(' ').map(s => s.toLowerCase().replace(/[^a-z0-9]/g, ''))];
+      if (additionalTag) tags.push(additionalTag);
+
+      return {
+        id: `ai-${Date.now()}-${index}`,
+        title: item.title,
+        iconId: item.iconId as IconId,
+        tags: tags.filter(Boolean),
+        createdAt: Date.now(),
+        points: 100,
+        task: {
+          type: item.type as TaskType,
+          question: item.question,
+          answer: item.answer,
+          options: item.options,
+          correctAnswers: item.correctAnswers,
+          range: item.numericRange ? {
+            min: item.numericRange.min,
+            max: item.numericRange.max,
+            step: 1,
+            correctValue: item.numericRange.correctValue,
+            tolerance: 0
+          } : undefined
+        },
+        feedback: {
+          correctMessage: 'Correct!',
+          showCorrectMessage: true,
+          incorrectMessage: 'Incorrect, try again.',
+          showIncorrectMessage: true,
+          hint: item.hint || 'No hint available.',
+          hintCost: 10
+        },
+        settings: {
+          scoreDependsOnSpeed: false,
+          language: language,
+          showAnswerStatus: true,
+          showCorrectAnswerOnMiss: false
+        }
+      };
+    });
+  } catch (error) {
+    console.error("AI Generation Error:", error);
+    throw error;
+  }
+};
+
+export const generateTaskFromImage = async (base64Image: string): Promise<TaskTemplate | null> => {
+  try {
+    // Extract base64 data and mime type. base64Image is likely a data URL "data:image/png;base64,..."
+    const matches = base64Image.match(/^data:(.+);base64,(.+)$/);
+    if (!matches) return null;
+    
+    const mimeType = matches[1];
+    const data = matches[2];
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: data
+            }
+          },
+          {
+            text: "Analyze this image and create a fun scavenger hunt task based on it. Generate a title, a question, the answer type, and the answer. Return the result as JSON."
+          }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: singleTaskSchema,
+      }
+    });
+
+    const item = JSON.parse(response.text || "{}");
+    if (!item.title) return null;
+
+    return {
+        id: `ai-img-${Date.now()}`,
+        title: item.title,
+        iconId: item.iconId as IconId,
+        tags: ['image-generated', ...(item.tags || [])],
+        createdAt: Date.now(),
+        points: 100,
+        task: {
+          type: item.type as TaskType,
+          question: item.question,
+          answer: item.answer,
+          options: item.options,
+          correctAnswers: item.correctAnswers,
+          imageUrl: base64Image, // Use the uploaded image for the task
+          range: item.numericRange ? {
+            min: item.numericRange.min,
+            max: item.numericRange.max,
+            step: 1,
+            correctValue: item.numericRange.correctValue,
+            tolerance: 0
+          } : undefined
+        },
+        feedback: {
+          correctMessage: 'Correct!',
+          showCorrectMessage: true,
+          incorrectMessage: 'Incorrect, try again.',
+          showIncorrectMessage: true,
+          hint: item.hint || 'No hint available.',
+          hintCost: 10
+        },
+        settings: {
+          scoreDependsOnSpeed: false,
+          language: 'English',
+          showAnswerStatus: true,
+          showCorrectAnswerOnMiss: false
+        }
+    };
+
+  } catch (error) {
+    console.error("AI Image Task Generation Error:", error);
+    return null;
+  }
+};
+
+export const generateAiImage = async (prompt: string, style: string = 'cartoon'): Promise<string | null> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image', 
+            contents: `Generate a simplified, colorful, vector-style icon/illustration for a scavenger hunt task about: ${prompt}. Style: ${style}. Keep it simple and recognizable at small sizes. White background.`,
+        });
+        
+        // Check for inline data in response parts
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
+            }
+        }
+        return null;
+    } catch (e) {
+        console.error("Image Generation Error", e);
+        return null;
+    }
+};
+
+export const findCompanyDomain = async (query: string): Promise<string | null> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Find the official website domain for: "${query}". Return ONLY the domain name (e.g., "google.com"), nothing else. If not found or not a specific entity, return "null".`,
+        });
+        const text = response.text?.trim() || "";
+        return text !== "null" ? text : null;
+    } catch (e) {
+        return null;
+    }
+};
