@@ -1,18 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { GamePoint, TaskVote } from '../types';
-import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp } from 'lucide-react';
+
+import React, { useState, useEffect, useMemo } from 'react';
+import { GamePoint, TaskVote, GameMode } from '../types';
+import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
 
 interface TaskModalProps {
   point: GamePoint | null;
   onClose: () => void;
-  onComplete: (pointId: string, answer?: string) => void;
+  onComplete: (pointId: string, customScore?: number) => void;
+  onPenalty?: (amount: number) => void;
   onUnlock?: (pointId: string) => void;
   distance: number;
   isInstructorMode?: boolean;
+  mode?: GameMode;
+  onOpenActions?: () => void;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnlock, distance, isInstructorMode = false }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onPenalty, onUnlock, distance, isInstructorMode = false, mode, onOpenActions }) => {
   const [answer, setAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [sliderValue, setSliderValue] = useState<number>(point?.task.range?.min || 0);
@@ -29,17 +33,30 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
   const [showUnlockInput, setShowUnlockInput] = useState(false);
   const [unlockError, setUnlockError] = useState(false);
 
+  const isEditMode = mode === GameMode.EDIT;
+  const isInstructor = isInstructorMode || mode === GameMode.INSTRUCTOR;
+
+  const hasActions = useMemo(() => {
+      if (!point?.logic) return false;
+      return (point.logic.onOpen?.length || 0) > 0 || 
+             (point.logic.onCorrect?.length || 0) > 0 || 
+             (point.logic.onIncorrect?.length || 0) > 0;
+  }, [point]);
+
+  // Check for DOUBLE TROUBLE
+  const isDoubleTrouble = useMemo(() => {
+      return point?.logic?.onOpen?.some(action => action.type === 'double_trouble');
+  }, [point]);
+
   // Subscribe to Realtime Updates
   useEffect(() => {
-      if (!point) return;
+      if (!point || isEditMode) return; // Don't sync votes in edit mode
       
       const unsubscribeVotes = teamSync.subscribeToVotes((votes) => {
           setTeamVotes(votes);
       });
       
       const unsubscribeMembers = teamSync.subscribeToMemberCount((count) => {
-          // Add self (1) if count is just others, typically broadcast gives total listeners
-          // We'll estimate based on unique vote IDs + 1 if needed, but simplistic approach:
           setMemberCount(Math.max(teamSync.getVotesForTask(point.id).length, 1)); 
       });
 
@@ -47,12 +64,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
       const existing = teamSync.getVotesForTask(point.id);
       if (existing.length > 0) {
           setTeamVotes(existing);
-          // If we have voted, enter voting mode
           const myId = teamSync.getDeviceId();
           const myVote = existing.find(v => v.deviceId === myId);
           if (myVote) {
               setIsVoting(true);
-              // Restore answer state potentially? Not strictly necessary for MVP flow
           }
       }
 
@@ -60,11 +75,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
           unsubscribeVotes();
           unsubscribeMembers();
       };
-  }, [point]);
+  }, [point, isEditMode]);
 
   if (!point) return null;
 
-  const isLocked = !point.isUnlocked && !isInstructorMode;
+  const isLocked = !point.isUnlocked && !isInstructor && !isEditMode;
 
   // --- Logic for Agreement ---
   const checkConsensus = () => {
@@ -76,7 +91,6 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
   const consensusReached = checkConsensus();
   const hasConflict = teamVotes.length > 1 && !consensusReached;
   const myDeviceId = teamSync.getDeviceId();
-  const hasEveryoneVoted = teamVotes.length >= memberCount && memberCount > 1; // Simplistic logic
 
   const handleSubmitVote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,18 +103,14 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
         finalAnswer = sliderValue;
     }
 
-    // Instead of completing locally immediately, we cast a vote
     teamSync.castVote(point.id, finalAnswer);
     setIsVoting(true);
   };
 
   const handleFinalize = () => {
-      // Logic for checking correctness (Instructor or Auto)
-      // We assume if consensus is reached, we check that SINGLE agreed answer against the correct one
       const agreedAnswer = teamVotes[0].answer;
       let isCorrect = false;
 
-      // Validation Logic (Reused)
       if (point.task.type === 'multiple_choice' || point.task.type === 'boolean' || point.task.type === 'dropdown') {
           isCorrect = agreedAnswer === point.task.answer;
       } 
@@ -122,12 +132,18 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
           isCorrect = val.toLowerCase().trim() === correct.toLowerCase().trim();
       }
 
-      if (isCorrect || isInstructorMode) {
-          onComplete(point.id, isInstructorMode ? "Verified by Instructor" : "Correct");
+      if (isCorrect || isInstructor) {
+          const finalScore = isDoubleTrouble ? point.points * 2 : point.points;
+          onComplete(point.id, finalScore);
           onClose();
       } else {
-          setErrorMsg("Team answer is incorrect. Try again!");
-          setIsVoting(false); // Reset to allow re-voting
+          if (isDoubleTrouble && onPenalty) {
+              onPenalty(point.points);
+              setErrorMsg(`DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`);
+          } else {
+              setErrorMsg("Team answer is incorrect. Try again!");
+          }
+          setIsVoting(false); 
       }
   };
 
@@ -152,6 +168,29 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
   const renderInput = () => {
       const { type, options, range, placeholder } = point.task;
 
+      // In Edit mode, show options as read-only or simplified
+      if (isEditMode) {
+          if (type === 'multiple_choice' || type === 'checkbox' || type === 'dropdown' || type === 'multi_select_dropdown') {
+              return (
+                  <div className="space-y-2 opacity-80 pointer-events-none">
+                      {options?.map((opt, idx) => (
+                          <div key={idx} className="p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm">
+                              {opt}
+                          </div>
+                      ))}
+                  </div>
+              );
+          }
+          if (type === 'boolean') {
+              return <div className="flex gap-2 opacity-80 pointer-events-none"><div className="flex-1 p-3 border rounded-xl text-center">True</div><div className="flex-1 p-3 border rounded-xl text-center">False</div></div>;
+          }
+          if (type === 'slider') {
+              return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center font-mono">SLIDER {range?.min} - {range?.max}</div>;
+          }
+          return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm italic text-gray-500">Text Input Field</div>;
+      }
+
+      // Normal Gameplay Rendering
       switch(type) {
           case 'multiple_choice':
               return (
@@ -306,7 +345,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
                     onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
                     placeholder="Type your answer here..."
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-                    autoFocus={!isInstructorMode}
+                    autoFocus={!isInstructor && !isEditMode}
                 />
               );
       }
@@ -414,15 +453,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
               {point.isCompleted ? (
                 <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-500" />
               ) : !isLocked ? (
-                isInstructorMode ? <Glasses className="w-8 h-8 text-orange-600 dark:text-orange-400" /> : <MapPin className="w-8 h-8 text-orange-600 dark:text-orange-500" />
+                (isInstructor || isEditMode) ? <Glasses className="w-8 h-8 text-orange-600 dark:text-orange-400" /> : <MapPin className="w-8 h-8 text-orange-600 dark:text-orange-500" />
               ) : (
                 <Lock className="w-8 h-8 text-red-500 dark:text-red-400" />
               )}
               <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{point.title}</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {isInstructorMode 
-                    ? 'Instructor View (Unlocked)' 
+                  {isInstructor || isEditMode
+                    ? (isEditMode ? 'Editor View' : 'Instructor View')
                     : (point.isUnlocked ? 'You are at the location!' : `Distance: ${Math.round(distance)}m`)}
                 </p>
               </div>
@@ -481,21 +520,29 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
             </div>
           ) : (
             <>
+              {isDoubleTrouble && !point.isCompleted && !isEditMode && (
+                  <div className="bg-red-600 text-white p-4 rounded-xl mb-6 shadow-lg animate-pulse flex items-center gap-3">
+                      <div className="bg-white/20 p-2 rounded-full"><Skull className="w-6 h-6" /></div>
+                      <div>
+                          <h3 className="font-black text-lg uppercase tracking-wider leading-none mb-1">DOUBLE TROUBLE!</h3>
+                          <p className="text-xs font-bold uppercase opacity-90">
+                              WIN {point.points * 2} PTS OR LOSE {point.points} PTS!
+                          </p>
+                      </div>
+                  </div>
+              )}
+
               <div className="prose prose-sm mb-6 dark:prose-invert">
-                <p className="text-gray-800 dark:text-gray-100 text-lg leading-relaxed font-medium">{point.task.question}</p>
+                <p className="text-gray-800 dark:text-gray-100 text-lg leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: point.task.question }} />
                 
                 {point.task.imageUrl ? (
                   <div className="mt-4 rounded-lg overflow-hidden shadow-sm">
                     <img src={point.task.imageUrl} alt="Task" className="w-full h-auto object-cover max-h-60" />
                   </div>
-                ) : (
-                  <div className="mt-4 rounded-lg bg-gray-100 dark:bg-gray-800 h-32 w-full flex items-center justify-center text-gray-400 dark:text-gray-600">
-                    {/* No image placeholder */}
-                  </div>
-                )}
+                ) : null}
               </div>
 
-              {isInstructorMode && (
+              {(isInstructor || isEditMode) && (
                 <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-3">
                   <span className="text-xs font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">Solution</span>
                   <p className="text-orange-900 dark:text-orange-200 font-medium">
@@ -506,7 +553,22 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
                 </div>
               )}
 
-              {!point.isCompleted ? (
+              {/* EDITOR ACTION BUTTON */}
+              {isEditMode && onOpenActions && (
+                  <button 
+                      onClick={onOpenActions}
+                      className="relative w-full mb-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg overflow-hidden group"
+                  >
+                      <Zap className="w-5 h-5" /> LOGIC & ACTIONS
+                      {hasActions && (
+                          <div className="absolute top-0 right-0 p-2">
+                              <div className="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_8px_2px_rgba(239,68,68,0.8)] animate-pulse" />
+                          </div>
+                      )}
+                  </button>
+              )}
+
+              {!point.isCompleted && !isEditMode ? (
                 isVoting ? renderConsensusView() : (
                     <form onSubmit={handleSubmitVote} className="space-y-4">
                     
@@ -522,16 +584,16 @@ const TaskModal: React.FC<TaskModalProps> = ({ point, onClose, onComplete, onUnl
                         type="submit"
                         className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-orange-600/20 mt-4"
                     >
-                        {isInstructorMode ? 'Verify Answer' : 'Submit to Team'}
+                        {isInstructor ? 'Verify Answer' : 'Submit to Team'}
                     </button>
                     </form>
                 )
-              ) : (
+              ) : (!isEditMode && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
                   <p className="text-green-800 dark:text-green-300 font-medium">Task Completed!</p>
-                  <p className="text-sm text-green-600 dark:text-green-400">You earned 100 points.</p>
+                  <p className="text-sm text-green-600 dark:text-green-400">You earned {isDoubleTrouble ? point.points * 2 : point.points} points.</p>
                 </div>
-              )}
+              ))}
             </>
           )}
         </div>

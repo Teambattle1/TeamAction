@@ -1,13 +1,15 @@
 
 import React, { useState } from 'react';
-import { GamePoint, GameAction, TaskLogic, ActionType } from '../types';
-import { X, Plus, Trash2, Zap, CheckCircle, XCircle, Unlock, Lock, Eye, MessageSquare, Music, Coins, Save, ArrowRight } from 'lucide-react';
+import { GamePoint, GameAction, TaskLogic, ActionType, Playground } from '../types';
+import { X, Plus, Trash2, Zap, CheckCircle, XCircle, Unlock, Lock, Eye, MessageSquare, Music, Coins, Save, ArrowRight, Skull, PenTool, LayoutGrid } from 'lucide-react';
 
 interface TaskActionModalProps {
   point: GamePoint;
   allPoints: GamePoint[];
+  playgrounds?: Playground[]; // Added
   onSave: (point: GamePoint) => void;
   onClose: () => void;
+  onStartDrawMode: (trigger: 'onOpen' | 'onCorrect' | 'onIncorrect') => void;
 }
 
 type TriggerType = 'onOpen' | 'onCorrect' | 'onIncorrect';
@@ -23,11 +25,11 @@ const ACTION_TYPES: { id: ActionType; label: string; icon: any }[] = [
     { id: 'lock', label: 'Lock Task', icon: Lock },
     { id: 'score', label: 'Give/Take Points', icon: Coins },
     { id: 'message', label: 'Show Message', icon: MessageSquare },
-    // { id: 'reveal', label: 'Reveal on Map', icon: Eye },
-    // { id: 'sound', label: 'Play Sound', icon: Music },
+    { id: 'double_trouble', label: 'Double Trouble', icon: Skull },
+    { id: 'open_playground', label: 'Open Playground', icon: LayoutGrid }, // New
 ];
 
-const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, onSave, onClose }) => {
+const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, playgrounds, onSave, onClose, onStartDrawMode }) => {
   const [activeTrigger, setActiveTrigger] = useState<TriggerType>('onCorrect');
   const [logic, setLogic] = useState<TaskLogic>(point.logic || {});
 
@@ -95,6 +97,19 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, onS
                       </select>
                   )}
 
+                  {action.type === 'open_playground' && (
+                      <select 
+                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm"
+                          value={action.targetId || ''}
+                          onChange={(e) => handleUpdateAction(action.id, { targetId: e.target.value })}
+                      >
+                          <option value="" disabled>Select Playground...</option>
+                          {playgrounds?.map(pg => (
+                              <option key={pg.id} value={pg.id}>{pg.title}</option>
+                          ))}
+                      </select>
+                  )}
+
                   {action.type === 'score' && (
                       <div className="flex items-center gap-2">
                           <input 
@@ -115,6 +130,12 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, onS
                           onChange={(e) => handleUpdateAction(action.id, { value: e.target.value })}
                           placeholder="Enter message to display..."
                       />
+                  )}
+
+                  {action.type === 'double_trouble' && (
+                      <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded text-xs text-red-800 dark:text-red-200 font-bold uppercase">
+                          ⚠️ Correct: 2x Points | Incorrect: -1x Points
+                      </div>
                   )}
               </div>
           </div>
@@ -156,6 +177,24 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, onS
 
         {/* Action List Area */}
         <div className="flex-1 overflow-y-auto p-4 bg-white dark:bg-gray-900">
+            {/* Draw Connections Button - Now Available for Correct AND Incorrect */}
+            {(activeTrigger === 'onCorrect' || activeTrigger === 'onIncorrect') && (
+                <button 
+                    onClick={() => {
+                        onSave({ ...point, logic });
+                        onStartDrawMode(activeTrigger);
+                    }}
+                    className={`w-full mb-4 py-3 text-white rounded-xl font-bold uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg transition-all ${
+                        activeTrigger === 'onCorrect' 
+                        ? 'bg-green-600 hover:bg-green-700' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                >
+                    <PenTool className="w-4 h-4" /> 
+                    {activeTrigger === 'onCorrect' ? 'DRAW "IF CORRECT" FLOW' : 'DRAW "IF INCORRECT" FLOW'}
+                </button>
+            )}
+
             {activeActions.length === 0 ? (
                 <div className="text-center py-10 opacity-50 flex flex-col items-center">
                     <ArrowRight className="w-8 h-8 mb-2 text-gray-400" />

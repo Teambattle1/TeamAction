@@ -16,11 +16,6 @@ interface GameChooserProps {
 type MainView = 'GAMES' | 'TEMPLATES';
 type SessionTab = 'TODAY' | 'PLANNED' | 'COMPLETED';
 
-const isSameDay = (d1: Date, d2: Date) => 
-  d1.getFullYear() === d2.getFullYear() &&
-  d1.getMonth() === d2.getMonth() &&
-  d1.getDate() === d2.getDate();
-
 const GameChooser: React.FC<GameChooserProps> = ({ 
   games, 
   taskLists,
@@ -46,13 +41,22 @@ const GameChooser: React.FC<GameChooserProps> = ({
     return games.filter(g => {
         const gDate = new Date(g.createdAt);
         gDate.setHours(0, 0, 0, 0);
+        
         const isFinished = checkCompletion(g);
+        const isOverdue = gDate.getTime() < today.getTime();
+        const isToday = gDate.getTime() === today.getTime();
+        const isFuture = gDate.getTime() > today.getTime();
 
-        if (sessionTab === 'COMPLETED') return isFinished;
-        if (isFinished) return false;
+        if (sessionTab === 'COMPLETED') {
+            // Show if finished OR overdue (past date)
+            return isFinished || isOverdue;
+        }
+        
+        // For TODAY and PLANNED, exclude finished or overdue games
+        if (isFinished || isOverdue) return false;
 
-        if (sessionTab === 'TODAY') return isSameDay(gDate, today);
-        if (sessionTab === 'PLANNED') return !isSameDay(gDate, today);
+        if (sessionTab === 'TODAY') return isToday;
+        if (sessionTab === 'PLANNED') return isFuture;
         
         return true;
     }).sort((a, b) => b.createdAt - a.createdAt);
@@ -156,7 +160,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
                     onClick={() => setSessionTab('COMPLETED')}
                     className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative ${sessionTab === 'COMPLETED' ? 'text-green-600 dark:text-green-400 bg-white dark:bg-gray-800' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 >
-                    <CheckCircle className="w-3 h-3" /> DONE
+                    <CheckCircle className="w-3 h-3" /> COMPLETED
                     {sessionTab === 'COMPLETED' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-600" />}
                 </button>
             </div>

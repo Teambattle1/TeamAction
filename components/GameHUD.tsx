@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { GameMode, MapStyleId, Language } from '../types';
-import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard } from 'lucide-react';
+import { GameMode, MapStyleId, Language, Playground } from '../types';
+import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2 } from 'lucide-react';
 
 interface GameHUDProps {
   accuracy: number | null;
@@ -16,6 +16,10 @@ interface GameHUDProps {
   onBackToHub: () => void;
   activeGameName?: string;
   onOpenInstructorDashboard?: () => void;
+  isMeasuring?: boolean;
+  onToggleMeasure?: () => void;
+  playgrounds?: Playground[];
+  onOpenPlayground?: (id: string) => void;
 }
 
 const GameHUD: React.FC<GameHUDProps> = ({ 
@@ -27,7 +31,11 @@ const GameHUD: React.FC<GameHUDProps> = ({
   mapStyle,
   onSetMapStyle,
   onBackToHub,
-  onOpenInstructorDashboard
+  onOpenInstructorDashboard,
+  isMeasuring,
+  onToggleMeasure,
+  playgrounds,
+  onOpenPlayground
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEditBanner, setShowEditBanner] = useState(false);
@@ -49,13 +57,34 @@ const GameHUD: React.FC<GameHUDProps> = ({
       { id: 'light', label: 'Light Mode', icon: Sun },
   ];
 
+  // Find active visible playgrounds
+  const visiblePlaygrounds = playgrounds?.filter(p => p.buttonVisible) || [];
+
   return (
     <>
-      {showEditBanner && (
+      {showEditBanner && !isMeasuring && (
           <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-black/80 text-white px-5 py-2.5 rounded-full backdrop-blur-md z-[2000] animate-in fade-in slide-in-from-top-4 pointer-events-none shadow-xl border border-white/10">
               <span className="text-xs font-bold uppercase tracking-widest flex items-center gap-2">
                   <MapIcon className="w-3 h-3 text-orange-500" /> Tap map to place tasks
               </span>
+          </div>
+      )}
+
+      {/* PLAYGROUND BUTTONS (Bottom Center/Left) */}
+      {visiblePlaygrounds.length > 0 && mode === GameMode.PLAY && (
+          <div className="absolute bottom-24 left-4 z-[1000] flex flex-col gap-2 pointer-events-auto">
+              {visiblePlaygrounds.map(pg => (
+                  <button
+                      key={pg.id}
+                      onClick={() => onOpenPlayground?.(pg.id)}
+                      className="h-14 w-14 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl shadow-xl flex items-center justify-center text-white hover:scale-105 active:scale-95 transition-all border-2 border-white/20 group relative"
+                  >
+                      <Gamepad2 className="w-8 h-8" />
+                      <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-black/80 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                          {pg.title}
+                      </div>
+                  </button>
+              ))}
           </div>
       )}
 
@@ -68,7 +97,6 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 >
                   <Menu className="w-6 h-6" />
                 </button>
-                {/* Visual Tooltip for Menu */}
                 <div className="absolute top-full left-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap z-[1100]">
                     Menu
                 </div>
@@ -114,6 +142,17 @@ const GameHUD: React.FC<GameHUDProps> = ({
       </div>
 
       <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2 h-12 pointer-events-auto">
+        {mode === GameMode.EDIT && onToggleMeasure && (
+            <button
+                onClick={onToggleMeasure}
+                title={isMeasuring ? "Stop Measuring" : "Measure Distance"}
+                className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${isMeasuring ? 'bg-pink-600 text-white border-pink-500' : 'bg-slate-900/95 dark:bg-gray-800 text-pink-500 border-pink-500/50 hover:bg-pink-600 hover:text-white'}`}
+            >
+                <Ruler className="w-6 h-6" />
+                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">Measure</div>
+            </button>
+        )}
+
         {mode === GameMode.INSTRUCTOR && onOpenInstructorDashboard && (
             <button 
               onClick={onOpenInstructorDashboard} 

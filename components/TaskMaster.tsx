@@ -18,6 +18,7 @@ interface TaskMasterProps {
   onCreateGameFromList: (listId: string) => void;
   isSelectionMode?: boolean;
   onSelectTasksForGame?: (tasks: TaskTemplate[]) => void;
+  initialTab?: 'CREATE' | 'LIBRARY' | 'LISTS';
 }
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
@@ -42,9 +43,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
   onDeleteList, 
   onCreateGameFromList, 
   isSelectionMode = false, 
-  onSelectTasksForGame 
+  onSelectTasksForGame,
+  initialTab = 'LISTS'
 }) => {
-  const [activeTab, setActiveTab] = useState<'CREATE' | 'LIBRARY' | 'LISTS'>('LISTS');
+  const [activeTab, setActiveTab] = useState<'CREATE' | 'LIBRARY' | 'LISTS'>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [languageFilter, setLanguageFilter] = useState('All');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);

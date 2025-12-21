@@ -117,7 +117,7 @@ export type PointCompletionLogic =
   | 'allow_close';
 
 // --- LOGIC SYSTEM ---
-export type ActionType = 'unlock' | 'lock' | 'score' | 'message' | 'sound' | 'reveal';
+export type ActionType = 'unlock' | 'lock' | 'score' | 'message' | 'sound' | 'reveal' | 'double_trouble' | 'open_playground';
 
 export interface GameAction {
   id: string;
@@ -133,6 +133,15 @@ export interface TaskLogic {
 }
 // --------------------
 
+export interface Playground {
+  id: string;
+  title: string;
+  imageUrl?: string;
+  buttonVisible: boolean; // If true, shows in HUD
+  buttonLabel?: string;
+  iconId?: IconId;
+}
+
 export interface GamePoint {
   id: string;
   title: string; 
@@ -145,6 +154,10 @@ export interface GamePoint {
   radiusMeters: number;
   activationTypes: PointActivationType[];
   manualUnlockCode?: string; 
+  
+  // Playground Specific
+  playgroundId?: string; // If set, does NOT appear on map
+  playgroundPosition?: { x: number; y: number }; // Percentage 0-100
   
   // Appearance
   iconId: IconId;
@@ -199,6 +212,7 @@ export interface Game {
   name: string;
   description: string;
   points: GamePoint[];
+  playgrounds?: Playground[]; // New
   createdAt: number;
   defaultMapStyle?: MapStyleId;
 }

@@ -1,3 +1,4 @@
+
 import L from 'leaflet';
 import { IconId } from '../types';
 import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem } from 'lucide-react';
@@ -31,7 +32,7 @@ const ICON_COLORS: Record<IconId, string> = {
  * Generates a Leaflet DivIcon based on the icon ID and state.
  * We use SVGs as strings because Leaflet doesn't render React components directly easily.
  */
-export const getLeafletIcon = (iconId: IconId, isUnlocked: boolean, isCompleted: boolean, label?: string) => {
+export const getLeafletIcon = (iconId: IconId, isUnlocked: boolean, isCompleted: boolean, label?: string, hasActions?: boolean) => {
   const color = isCompleted ? '#22c55e' : (isUnlocked ? '#eab308' : ICON_COLORS[iconId] || '#3b82f6');
   const size = isUnlocked ? 40 : 32;
   
@@ -53,6 +54,11 @@ export const getLeafletIcon = (iconId: IconId, isUnlocked: boolean, isCompleted:
   
   if (label) {
       html += `<div style="position: absolute; top: -5px; right: -5px; background-color: #0f172a; color: white; font-size: 10px; font-weight: bold; padding: 2px 5px; border-radius: 9999px; border: 1px solid white;">${label}</div>`;
+  }
+
+  if (hasActions) {
+      // Red glowing badge top left
+      html += `<div class="animate-pulse" style="position: absolute; top: -2px; left: -2px; width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; box-shadow: 0 0 8px 2px rgba(239,68,68,0.8); border: 2px solid white; z-index: 10;"></div>`;
   }
   
   html += `</div>`;

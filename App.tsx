@@ -8,26 +8,29 @@ import GameManager from './components/GameManager.tsx';
 import GameChooser from './components/GameChooser.tsx';
 import TaskMaster from './components/TaskMaster.tsx';
 import WelcomeScreen from './components/WelcomeScreen.tsx';
-import LandingPage from './components/LandingPage.tsx';
+import InitialLanding from './components/InitialLanding.tsx';
+import CreatorHub from './components/CreatorHub.tsx';
 import TeamsModal from './components/TeamsModal.tsx';
 import EditorDrawer from './components/EditorDrawer.tsx';
 import AdminModal from './components/AdminModal.tsx'; 
 import InstructorDashboard from './components/InstructorDashboard.tsx'; 
-import MessagePopup from './components/MessagePopup.tsx'; 
+import TaskActionModal from './components/TaskActionModal.tsx';
 import LocationSearch from './components/LocationSearch.tsx';
-import TaskPreview from './components/TaskPreview.tsx';
 import AiTaskGenerator from './components/AiTaskGenerator.tsx';
-import { GamePoint, Coordinate, GameState, GameMode, Game, MapStyleId, Language, ChatMessage, TaskTemplate, Team } from './types.ts';
-import { haversineMeters, isWithinRadius } from './utils/geo.ts';
-import { X, Copy, ClipboardPaste, ChevronDown, AlertTriangle, Plus, Sparkles, Library, FilePlus, CheckCircle, RefreshCw } from 'lucide-react';
+import PlaygroundModal from './components/PlaygroundModal.tsx';
+import PlaygroundEditor from './components/PlaygroundEditor.tsx';
+import { GamePoint, Coordinate, GameState, GameMode, Game, MapStyleId, Language, Team, TaskTemplate, GameAction } from './types.ts';
+import { haversineMeters, isWithinRadius, formatDistance } from './utils/geo.ts';
+import { X, ChevronDown, AlertTriangle, CheckCircle, RefreshCw, Plus, Wand2, Library, MapPin, Ruler, RotateCcw, Check, PenTool } from 'lucide-react';
 import * as db from './services/db.ts';
 import { teamSync } from './services/teamSync.ts';
 
 const APP_VERSION = "1.0.1";
-// Standardized key for persistence
 const STORAGE_KEY_GAME_ID = 'teambattle_last_game_id';
 const STORAGE_KEY_TEAM_ID = 'teambattle_last_team_id';
 const STORAGE_KEY_PLAYER_NAME = 'teambattle_player_name';
+
+type AppView = 'LANDING' | 'CREATOR_HUB' | 'PLAYER_LOBBY' | 'MAP';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -37,31 +40,46 @@ const App: React.FC = () => {
     teamId: localStorage.getItem(STORAGE_KEY_TEAM_ID) || undefined
   });
 
+  const [currentView, setCurrentView] = useState<AppView>('LANDING');
   const [mode, setMode] = useState<GameMode>(GameMode.PLAY);
   const [mapStyle, setMapStyle] = useState<MapStyleId>('osm'); 
   const [appLanguage, setAppLanguage] = useState<Language>('English');
   const [selectedPoint, setSelectedPoint] = useState<GamePoint | null>(null);
-  const [hoveredPoint, setHoveredPoint] = useState<GamePoint | null>(null);
   
   const [showGameChooser, setShowGameChooser] = useState(false);
   const [showTaskMaster, setShowTaskMaster] = useState(false);
+  const [showAiGenerator, setShowAiGenerator] = useState(false);
+  const [taskMasterTab, setTaskMasterTab] = useState<'LISTS' | 'LIBRARY' | 'CREATE'>('LISTS');
+  const [taskMasterSelectionMode, setTaskMasterSelectionMode] = useState(false);
+
   const [showTeamsModal, setShowTeamsModal] = useState(false);
   const [showGameManager, setShowGameManager] = useState(false); 
   const [showAdminModal, setShowAdminModal] = useState(false); 
   const [showInstructorDashboard, setShowInstructorDashboard] = useState(false); 
-  const [showAiGenerator, setShowAiGenerator] = useState(false);
-  const [isTaskSelectionMode, setIsTaskSelectionMode] = useState(false);
+  const [showPlaygroundEditor, setShowPlaygroundEditor] = useState(false);
+  const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(null);
+
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [forceExpandDrawer, setForceExpandDrawer] = useState(false);
-  // Fix: Added missing state for sourceListId and setSourceListId
   const [sourceListId, setSourceListId] = useState<string>('');
+  
+  const [showAddMenu, setShowAddMenu] = useState(false); 
+  const [pendingClickLocation, setPendingClickLocation] = useState<Coordinate | null>(null);
+  const targetLocationRef = useRef<Coordinate | null>(null);
+  const targetPlaygroundIdRef = useRef<string | null>(null);
+
+  // Measuring Tool State
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [measurePathIds, setMeasurePathIds] = useState<string[]>([]);
+
+  // Action Logic State
+  const [actionPoint, setActionPoint] = useState<GamePoint | null>(null);
+  const [drawSourcePointId, setDrawSourcePointId] = useState<string | null>(null);
+  const [drawTriggerType, setDrawTriggerType] = useState<'onOpen' | 'onCorrect' | 'onIncorrect'>('onCorrect');
 
   const [completedPointIds, setCompletedPointIds] = useState<string[]>([]);
   const [unlockedPointIds, setUnlockedPointIds] = useState<string[]>([]);
 
-  const [instructorGame, setInstructorGame] = useState<Game | null>(null);
-  const [showLanding, setShowLanding] = useState(true);
-  const [bypassWelcome, setBypassWelcome] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,7 +95,8 @@ const App: React.FC = () => {
   }, [gameState, unlockedPointIds]);
 
   const refreshData = useCallback(async () => {
-    setLoading(true); setError(null);
+    if (gameState.games.length === 0) setLoading(true); 
+    setError(null);
     try {
         const [games, library, lists] = await Promise.all([db.fetchGames(), db.fetchLibrary(), db.fetchTaskLists()]);
         
@@ -106,9 +125,14 @@ const App: React.FC = () => {
   }, [refreshData]);
 
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
+    if (!navigator.geolocation) {
+        console.error("Geolocation not supported by this browser.");
+        return;
+    }
+
+    let watchId: number;
+
+    const handlePosition = (pos: GeolocationPosition) => {
         const { latitude, longitude, accuracy } = pos.coords;
         const newLoc = { lat: latitude, lng: longitude };
         setGameState(prev => ({ ...prev, userLocation: newLoc, gpsAccuracy: accuracy }));
@@ -118,16 +142,41 @@ const App: React.FC = () => {
         if (activeGame && mode === GameMode.PLAY) {
              activeGame.points.forEach(point => {
                  if (!unlockedIdsRef.current.includes(point.id) && !completedPointIds.includes(point.id) && point.activationTypes.includes('radius')) {
-                     if (isWithinRadius(newLoc, point.location, point.radiusMeters)) {
+                     // Only check GPS unlock for non-playground points
+                     if (!point.playgroundId && isWithinRadius(newLoc, point.location, point.radiusMeters)) {
                          setUnlockedPointIds(prev => [...prev, point.id]);
                      }
                  }
              });
         }
-      },
-      (err) => { if (err.code !== 3) console.error("Geo Error:", err.message); },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-    );
+    };
+
+    const startWatching = (highAccuracy: boolean) => {
+        watchId = navigator.geolocation.watchPosition(
+            handlePosition,
+            (err) => {
+                if (highAccuracy && (err.code === 2 || err.code === 3)) {
+                    console.warn("High accuracy geo failed, switching to low accuracy mode.");
+                    navigator.geolocation.clearWatch(watchId);
+                    startWatching(false);
+                } else {
+                    if (err.code !== 2 && err.code !== 3) {
+                        console.error(`Geo Error (${highAccuracy ? 'High' : 'Low'}):`, err.message);
+                    } else {
+                        console.log(`Position update unavailable (${highAccuracy ? 'High' : 'Low'}). Waiting for signal.`);
+                    }
+                }
+            },
+            { 
+                enableHighAccuracy: highAccuracy, 
+                maximumAge: 10000, 
+                timeout: 20000 
+            }
+        );
+    };
+
+    startWatching(true); 
+
     return () => navigator.geolocation.clearWatch(watchId);
   }, [mode, completedPointIds]); 
 
@@ -142,8 +191,7 @@ const App: React.FC = () => {
 
       setMode(GameMode.PLAY); 
       setMapStyle(style); 
-      setShowLanding(false); 
-      setBypassWelcome(true);
+      setCurrentView('MAP');
       teamSync.connect(gameId, teamName, userName);
       refreshData();
   };
@@ -153,9 +201,75 @@ const App: React.FC = () => {
       db.saveGame(activeGame).then(() => {
         setSaveStatus("GAME SAVED!");
         setTimeout(() => setSaveStatus(null), 3000);
-        refreshData();
       });
     }
+  };
+
+  const updateActiveGame = (updatedGame: Game) => {
+      setGameState(prev => ({
+          ...prev,
+          games: prev.games.map(g => g.id === updatedGame.id ? updatedGame : g)
+      }));
+      db.saveGame(updatedGame);
+  };
+
+  const handleAddManualTask = (overrideLoc?: Coordinate) => {
+      if (!activeGame) return;
+      const center = overrideLoc || mapRef.current?.getCenter() || gameState.userLocation || { lat: 0, lng: 0 };
+      const newPoint: GamePoint = { 
+          id: `pt-${Date.now()}`, 
+          title: 'New Task', 
+          location: center, 
+          radiusMeters: 30, 
+          iconId: 'default', 
+          points: 100, 
+          isUnlocked: false, 
+          isCompleted: false, 
+          activationTypes: ['radius'], 
+          order: activeGame.points.length, 
+          task: { question: 'New Question?', type: 'text' } 
+      }; 
+      updateActiveGame({...activeGame, points: [...activeGame.points, newPoint]});
+      setSelectedPoint(newPoint);
+      setShowAddMenu(false);
+      setPendingClickLocation(null);
+      targetLocationRef.current = null;
+  };
+
+  const handleAddTasksFromLibrary = (tasks: TaskTemplate[]) => {
+      if (!activeGame) return;
+      const baseLocation = targetLocationRef.current || mapRef.current?.getCenter() || { lat: 0, lng: 0 };
+      const targetPlayground = targetPlaygroundIdRef.current;
+      
+      const newPoints = tasks.map((t, i) => ({
+          id: `pt-${Date.now()}-${i}`,
+          title: t.title,
+          task: t.task,
+          location: { 
+              lat: baseLocation.lat + (Math.random() - 0.5) * 0.0005, 
+              lng: baseLocation.lng + (Math.random() - 0.5) * 0.0005 
+          },
+          radiusMeters: 30,
+          iconId: t.iconId,
+          points: t.points || 100,
+          isUnlocked: false,
+          isCompleted: false,
+          activationTypes: ['radius'],
+          order: activeGame.points.length + i,
+          tags: t.tags,
+          feedback: t.feedback,
+          settings: t.settings,
+          playgroundId: targetPlayground || undefined,
+          playgroundPosition: targetPlayground ? { x: 50 + (i * 2), y: 50 + (i * 2) } : undefined
+      }));
+      
+      updateActiveGame({ ...activeGame, points: [...activeGame.points, ...newPoints] });
+      setShowTaskMaster(false);
+      setTaskMasterSelectionMode(false);
+      setShowAddMenu(false);
+      setPendingClickLocation(null);
+      targetLocationRef.current = null;
+      targetPlaygroundIdRef.current = null;
   };
 
   const activeGame = useMemo(() => {
@@ -171,12 +285,165 @@ const App: React.FC = () => {
       }));
   }, [activeGame, completedPointIds, unlockedPointIds, mode]);
 
+  const handleLandingAction = (action: 'PLAY' | 'CREATE' | 'EDIT') => {
+      if (action === 'PLAY') {
+          setCurrentView('PLAYER_LOBBY');
+      } else {
+          if (!activeGame) {
+              setShowGameChooser(true);
+              (window as any)._afterChooseView = action === 'CREATE' ? 'CREATOR_HUB' : 'MAP_EDIT';
+          } else {
+              if (action === 'CREATE') {
+                  setCurrentView('CREATOR_HUB');
+              } else {
+                  setMode(GameMode.EDIT);
+                  setForceExpandDrawer(false);
+                  setCurrentView('MAP');
+              }
+          }
+      }
+  };
+
+  // Measuring Calculation
+  const measureDistance = useMemo(() => {
+      if (measurePathIds.length < 2 || !activeGame) return 0;
+      let total = 0;
+      for (let i = 0; i < measurePathIds.length - 1; i++) {
+          const p1 = activeGame.points.find(p => p.id === measurePathIds[i]);
+          const p2 = activeGame.points.find(p => p.id === measurePathIds[i+1]);
+          if (p1 && p2) total += haversineMeters(p1.location, p2.location);
+      }
+      return total;
+  }, [measurePathIds, activeGame]);
+
+  const measurePathCoords = useMemo(() => {
+      if (!activeGame) return [];
+      return measurePathIds.map(id => activeGame.points.find(p => p.id === id)?.location).filter(Boolean) as Coordinate[];
+  }, [measurePathIds, activeGame]);
+
+  // Logic Links Visualization
+  const logicLinks = useMemo(() => {
+      if (!activeGame || mode === GameMode.PLAY) return [];
+      const links: { from: Coordinate; to: Coordinate; color?: string }[] = [];
+      
+      activeGame.points.forEach(p => {
+          // On Correct Links (Green)
+          if (p.logic?.onCorrect) {
+              p.logic.onCorrect.forEach(action => {
+                  if (action.type === 'unlock' && action.targetId) {
+                      const target = activeGame.points.find(tp => tp.id === action.targetId);
+                      if (target) {
+                          links.push({ from: p.location, to: target.location, color: '#22c55e' }); // Green for Correct
+                      }
+                  }
+              });
+          }
+          // On Incorrect Links (Red)
+          if (p.logic?.onIncorrect) {
+              p.logic.onIncorrect.forEach(action => {
+                  if (action.type === 'unlock' && action.targetId) {
+                      const target = activeGame.points.find(tp => tp.id === action.targetId);
+                      if (target) {
+                          links.push({ from: p.location, to: target.location, color: '#ef4444' }); // Red for Incorrect
+                      }
+                  }
+              });
+          }
+          // On Open Links (Blue)
+          if (p.logic?.onOpen) {
+              p.logic.onOpen.forEach(action => {
+                  if (action.type === 'unlock' && action.targetId) {
+                      const target = activeGame.points.find(tp => tp.id === action.targetId);
+                      if (target) {
+                          links.push({ from: p.location, to: target.location, color: '#3b82f6' }); // Blue for On Open
+                      }
+                  }
+              });
+          }
+      });
+      return links;
+  }, [activeGame, mode]);
+
+  const handlePointClick = (p: GamePoint) => {
+      if (isMeasuring) {
+          setMeasurePathIds(prev => [...prev, p.id]);
+          return;
+      }
+
+      if (drawSourcePointId && activeGame) {
+          // Drawing logic mode
+          if (p.id === drawSourcePointId) return; // Can't link to self
+
+          const sourcePoint = activeGame.points.find(pt => pt.id === drawSourcePointId);
+          if (!sourcePoint) return;
+
+          let updatedPoints = [...activeGame.points];
+          
+          let newLogic = { ...(sourcePoint.logic || {}) };
+          let targetTriggerArray = [...(newLogic[drawTriggerType] || [])];
+
+          // Check if link exists in this specific trigger type
+          const existingActionIndex = targetTriggerArray.findIndex(a => a.type === 'unlock' && a.targetId === p.id);
+
+          if (existingActionIndex !== undefined && existingActionIndex >= 0) {
+              // Remove link
+              targetTriggerArray.splice(existingActionIndex, 1);
+          } else {
+              // Add link
+              targetTriggerArray.push({
+                  id: `act-${Date.now()}`,
+                  type: 'unlock',
+                  targetId: p.id
+              });
+              
+              // Auto-lock the target point to make the flow meaningful
+              updatedPoints = updatedPoints.map(pt => pt.id === p.id ? { ...pt, isUnlocked: false } : pt);
+          }
+
+          newLogic[drawTriggerType] = targetTriggerArray;
+          
+          updatedPoints = updatedPoints.map(pt => pt.id === sourcePoint.id ? { ...pt, logic: newLogic } : pt);
+          updateActiveGame({ ...activeGame, points: updatedPoints });
+          return;
+      }
+
+      setSelectedPoint(p);
+  };
+
+  const handleCompleteTask = (id: string, customScore?: number) => {
+      if (!activeGame) return;
+      const point = activeGame.points.find(p => p.id === id);
+      if (!point) return;
+
+      setCompletedPointIds(prev => [...prev, id]); 
+      if (gameState.teamId) {
+          const pointsToAdd = customScore !== undefined ? customScore : point.points;
+          db.updateTeamProgress(gameState.teamId, id, gameState.score + pointsToAdd); 
+      }
+      setSelectedPoint(null);
+
+      // Handle Logic (e.g., Open Playground)
+      if (point.logic?.onCorrect) {
+          point.logic.onCorrect.forEach(action => {
+              if (action.type === 'open_playground' && action.targetId) {
+                  setActivePlaygroundId(action.targetId);
+              }
+              if (action.type === 'unlock' && action.targetId) {
+                  setUnlockedPointIds(prev => [...prev, action.targetId!]);
+              }
+          });
+      }
+  };
+
+  const currentDrawSourcePoint = activeGame?.points.find(p => p.id === drawSourcePointId);
+  const currentLinkedCount = currentDrawSourcePoint?.logic?.[drawTriggerType]?.filter(a => a.type === 'unlock').length || 0;
+
   return (
     <div className="w-full h-full relative overflow-hidden bg-slate-950 font-sans">
       {loading && !gameState.games.length && (
           <div className="fixed inset-0 z-[6000] bg-slate-950 flex items-center justify-center flex-col gap-4">
               <RefreshCw className="w-12 h-12 text-orange-600 animate-spin" />
-              <p className="text-white font-black uppercase tracking-widest text-sm">Initializing Connection...</p>
+              <p className="text-white font-black uppercase tracking-widest text-sm">Initializing...</p>
           </div>
       )}
 
@@ -199,11 +466,15 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {showLanding && !bypassWelcome && (
-          <LandingPage 
+      {/* Main Routing Logic */}
+      {currentView === 'LANDING' && <InitialLanding onAction={handleLandingAction} />}
+
+      {currentView === 'CREATOR_HUB' && (
+          <CreatorHub 
             activeGameName={activeGame?.name}
             version={APP_VERSION}
             onChooseGame={() => setShowGameChooser(true)}
+            onBack={() => setCurrentView('LANDING')}
             onAction={(action) => {
                   if (action === 'CREATE') {
                     const name = prompt("ENTER NAME FOR NEW GAME:", "NEW GAME");
@@ -212,22 +483,22 @@ const App: React.FC = () => {
                         db.saveGame(newGame).then(() => { 
                             setGameState(prev => ({ ...prev, activeGameId: newGame.id }));
                             localStorage.setItem(STORAGE_KEY_GAME_ID, newGame.id);
-                            setMode(GameMode.EDIT); setShowLanding(false); setBypassWelcome(true); setForceExpandDrawer(true);
+                            setMode(GameMode.EDIT); setForceExpandDrawer(false);
+                            setCurrentView('MAP');
                             refreshData();
                         });
                     }
                     return;
                   }
-                  setShowLanding(false);
-                  if (action !== 'PLAY') setBypassWelcome(true);
-                  if (action === 'EDIT') { setMode(GameMode.EDIT); setForceExpandDrawer(true); }
-                  if (action === 'TEAM') { setMode(GameMode.INSTRUCTOR); setShowTeamsModal(true); }
-                  if (action === 'TASKS') { setMode(GameMode.EDIT); setShowTaskMaster(true); }
+                  if (action === 'PLAY') { setCurrentView('PLAYER_LOBBY'); }
+                  if (action === 'EDIT') { setMode(GameMode.EDIT); setForceExpandDrawer(false); setCurrentView('MAP'); }
+                  if (action === 'TEAM') { setMode(GameMode.INSTRUCTOR); setShowTeamsModal(true); setCurrentView('MAP'); }
+                  if (action === 'TASKS') { setShowTaskMaster(true); }
                   if (action === 'ADMIN') { setShowAdminModal(true); }
-              }} onHome={() => setShowLanding(true)} />
+              }} />
       )}
 
-      {!showLanding && !bypassWelcome && (
+      {currentView === 'PLAYER_LOBBY' && (
           <WelcomeScreen 
             games={gameState.games} 
             userLocation={gameState.userLocation} 
@@ -235,39 +506,97 @@ const App: React.FC = () => {
             onSetMapStyle={setMapStyle} 
             language={appLanguage} 
             onSetLanguage={setAppLanguage} 
-            onBack={() => setShowLanding(true)} 
+            onBack={() => setCurrentView('LANDING')} 
           />
       )}
 
-      {bypassWelcome && (
+      {currentView === 'MAP' && (
           <>
+              {isMeasuring && (
+                  <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[3000] bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-2xl shadow-2xl p-4 border-2 border-pink-500 animate-in slide-in-from-top-4 flex flex-col items-center gap-3 min-w-[280px]">
+                      <div className="flex items-center gap-2 text-pink-600 font-black uppercase tracking-widest text-xs">
+                          <Ruler className="w-4 h-4" /> Distance Measure
+                      </div>
+                      <div className="text-3xl font-black text-gray-800 dark:text-white">
+                          {formatDistance(measureDistance)}
+                      </div>
+                      <div className="text-xs text-gray-500 font-bold uppercase tracking-wider mb-1">
+                          {measurePathIds.length} Points Selected
+                      </div>
+                      <div className="flex gap-2 w-full">
+                          <button onClick={() => setMeasurePathIds(prev => prev.slice(0, -1))} disabled={measurePathIds.length === 0} className="flex-1 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg text-xs font-bold uppercase hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"><RotateCcw className="w-3 h-3 mx-auto" /></button>
+                          <button onClick={() => setMeasurePathIds([])} disabled={measurePathIds.length === 0} className="flex-1 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold uppercase hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-50">Clear</button>
+                          <button onClick={() => { setIsMeasuring(false); setMeasurePathIds([]); }} className="flex-1 py-2 bg-green-600 text-white rounded-lg text-xs font-bold uppercase hover:bg-green-700 shadow-md">Done</button>
+                      </div>
+                  </div>
+              )}
+
+              {drawSourcePointId && activeGame && (
+                  <div className={`absolute top-20 left-1/2 -translate-x-1/2 z-[3000] ${drawTriggerType === 'onCorrect' ? 'bg-green-500 border-green-400' : 'bg-red-500 border-red-400'} text-white rounded-2xl shadow-2xl p-4 border-2 animate-in slide-in-from-top-4 flex flex-col items-center gap-2 min-w-[280px]`}>
+                      <div className="flex items-center gap-2 font-black uppercase tracking-widest text-xs">
+                          <PenTool className="w-4 h-4" /> Draw Connections
+                      </div>
+                      <div className="text-xs text-center font-bold">
+                          Select tasks to UNLOCK for <br/>
+                          <span className="text-black bg-white/30 px-2 py-0.5 rounded uppercase">{drawTriggerType === 'onCorrect' ? 'CORRECT ANSWER' : 'INCORRECT ANSWER'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full mt-1">
+                          <span className="text-[10px] font-black uppercase tracking-wider">{currentLinkedCount} TASKS LINKED</span>
+                      </div>
+                      <button 
+                          onClick={() => setDrawSourcePointId(null)}
+                          className={`mt-2 w-full py-2 bg-white ${drawTriggerType === 'onCorrect' ? 'text-green-600' : 'text-red-600'} rounded-lg text-xs font-black uppercase hover:bg-gray-100 shadow-md`}
+                      >
+                          DONE
+                      </button>
+                  </div>
+              )}
+
               <GameMap 
                 ref={mapRef} 
                 userLocation={gameState.userLocation} 
                 points={displayPoints} 
+                measurePath={isMeasuring ? measurePathCoords : undefined}
+                logicLinks={mode === GameMode.EDIT ? logicLinks : undefined}
                 accuracy={gameState.gpsAccuracy} 
                 mode={mode} 
                 mapStyle={mapStyle} 
                 selectedPointId={selectedPoint?.id} 
-                onPointClick={(p) => setSelectedPoint(p)} 
-                onPointHover={(p) => mode === GameMode.EDIT && setHoveredPoint(p)}
-                onPointMove={(id, loc) => { if (!activeGame) return; const updatedPoints = activeGame.points.map(p => p.id === id ? { ...p, location: loc } : p); db.saveGame({ ...activeGame, points: updatedPoints }).then(refreshData); }} 
-                onDeletePoint={(id) => { if (!activeGame) return; const updatedPoints = activeGame.points.filter(p => p.id !== id); db.saveGame({ ...activeGame, points: updatedPoints }).then(refreshData); }} 
-                onMapClick={(coord) => { if (mode === GameMode.EDIT && activeGame) { const newPoint: GamePoint = { id: `pt-${Date.now()}`, title: 'New Task', location: coord, radiusMeters: 30, iconId: 'default', points: 100, isUnlocked: false, isCompleted: false, activationTypes: ['radius'], order: activeGame.points.length, task: { question: 'New Question?', type: 'text' } }; db.saveGame({...activeGame, points: [...activeGame.points, newPoint]}).then(refreshData); } }} 
+                onPointClick={handlePointClick} 
+                onPointMove={(id, loc) => { 
+                    if (!activeGame) return; 
+                    const updatedPoints = activeGame.points.map(p => p.id === id ? { ...p, location: loc } : p); 
+                    updateActiveGame({ ...activeGame, points: updatedPoints });
+                }} 
+                onDeletePoint={(id) => { 
+                    if (!activeGame) return; 
+                    const updatedPoints = activeGame.points.filter(p => p.id !== id); 
+                    updateActiveGame({ ...activeGame, points: updatedPoints });
+                }} 
+                onMapClick={(coord) => { 
+                    if (mode === GameMode.EDIT && activeGame && !isMeasuring && !drawSourcePointId) { 
+                        setPendingClickLocation(coord);
+                        targetLocationRef.current = coord;
+                    } 
+                }} 
               />
               <GameHUD 
                 accuracy={gameState.gpsAccuracy} 
                 mode={mode} 
                 toggleMode={() => setMode(mode === GameMode.PLAY ? GameMode.EDIT : mode === GameMode.EDIT ? GameMode.INSTRUCTOR : GameMode.PLAY)} 
                 onOpenGameManager={() => setShowGameManager(true)} 
-                onOpenTaskMaster={() => { setIsTaskSelectionMode(false); setShowTaskMaster(true); }} 
+                onOpenTaskMaster={() => { setTaskMasterTab('LISTS'); setTaskMasterSelectionMode(false); setShowTaskMaster(true); targetLocationRef.current = null; }} 
                 onOpenTeams={() => setShowTeamsModal(true)} 
                 mapStyle={mapStyle} 
                 onSetMapStyle={setMapStyle} 
                 language={appLanguage} 
-                onBackToHub={() => { setBypassWelcome(false); setShowLanding(true); }} 
+                onBackToHub={() => setCurrentView('LANDING')} 
                 activeGameName={activeGame?.name} 
-                onOpenInstructorDashboard={() => { if (activeGame) { setInstructorGame(activeGame); setShowInstructorDashboard(true); } }} 
+                onOpenInstructorDashboard={() => setShowInstructorDashboard(true)} 
+                isMeasuring={isMeasuring}
+                onToggleMeasure={() => { setIsMeasuring(!isMeasuring); setMeasurePathIds([]); }}
+                playgrounds={activeGame?.playgrounds}
+                onOpenPlayground={(id) => setActivePlaygroundId(id)}
               />
               
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 h-12 pointer-events-auto">
@@ -277,13 +606,76 @@ const App: React.FC = () => {
                   <LocationSearch onSelectLocation={(coord) => mapRef.current?.jumpTo(coord)} onLocateMe={() => { if (gameState.userLocation) mapRef.current?.jumpTo(gameState.userLocation); }} onFitBounds={() => { if (activeGame && activeGame.points.length) mapRef.current?.fitBounds(activeGame.points); }} />
               </div>
 
+              {/* Floating Add Menu for Editor Mode */}
+              {mode === GameMode.EDIT && !isMeasuring && !drawSourcePointId && (
+                  <div className="absolute bottom-6 left-6 z-[2000] flex flex-col-reverse gap-3 items-start pointer-events-auto">
+                      <button 
+                        onClick={() => setShowAddMenu(!showAddMenu)} 
+                        className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all ${showAddMenu ? 'bg-white text-orange-600 rotate-45' : 'bg-orange-600 text-white hover:scale-110'}`}
+                      >
+                          <Plus className="w-8 h-8" />
+                      </button>
+                      
+                      {showAddMenu && (
+                          <div className="flex flex-col-reverse gap-3 animate-in slide-in-from-bottom-2 duration-300 mb-2">
+                              <button 
+                                onClick={() => handleAddManualTask()}
+                                className="flex items-center gap-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-white px-4 py-3 rounded-full shadow-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group whitespace-nowrap"
+                              >
+                                  <span className="text-xs font-black uppercase tracking-widest">New Blank Task</span>
+                                  <div className="bg-orange-100 dark:bg-orange-900/30 p-1.5 rounded-full"><Plus className="w-4 h-4 text-orange-600" /></div>
+                              </button>
+                              <button 
+                                onClick={() => { setShowAiGenerator(true); setShowAddMenu(false); targetLocationRef.current = null; }}
+                                className="flex items-center gap-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-white px-4 py-3 rounded-full shadow-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group whitespace-nowrap"
+                              >
+                                  <span className="text-xs font-black uppercase tracking-widest">Generate AI Task</span>
+                                  <div className="bg-purple-100 dark:bg-purple-900/30 p-1.5 rounded-full"><Wand2 className="w-4 h-4 text-purple-600" /></div>
+                              </button>
+                              <button 
+                                onClick={() => { setTaskMasterTab('LIBRARY'); setTaskMasterSelectionMode(true); setShowTaskMaster(true); setShowAddMenu(false); targetLocationRef.current = null; }}
+                                className="flex items-center gap-3 bg-white dark:bg-gray-800 text-gray-800 dark:text-white px-4 py-3 rounded-full shadow-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors group whitespace-nowrap"
+                              >
+                                  <span className="text-xs font-black uppercase tracking-widest">From Library</span>
+                                  <div className="bg-blue-100 dark:bg-blue-900/30 p-1.5 rounded-full"><Library className="w-4 h-4 text-blue-600" /></div>
+                              </button>
+                          </div>
+                      )}
+                  </div>
+              )}
+
+              {/* Map Click Choice Modal */}
+              {pendingClickLocation && !isMeasuring && (
+                  <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+                      <div className="bg-white dark:bg-gray-900 w-full max-w-sm rounded-2xl p-6 shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col gap-4 relative animate-in zoom-in-95">
+                          <button onClick={() => { setPendingClickLocation(null); targetLocationRef.current = null; }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"><X className="w-5 h-5"/></button>
+                          <h3 className="text-lg font-black uppercase tracking-widest text-center mb-2 text-gray-800 dark:text-white flex items-center justify-center gap-2"><MapPin className="w-5 h-5 text-orange-500" /> ADD TASK HERE</h3>
+                          
+                          <button onClick={() => handleAddManualTask(pendingClickLocation)} className="p-4 rounded-xl bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-100 dark:border-orange-900/50 hover:border-orange-500 transition-all flex items-center gap-4 group">
+                              <div className="bg-orange-500 text-white p-3 rounded-full group-hover:scale-110 transition-transform"><Plus className="w-5 h-5"/></div>
+                              <span className="font-bold text-sm uppercase text-gray-700 dark:text-gray-200">EMPTY TASK</span>
+                          </button>
+
+                          <button onClick={() => { setShowAiGenerator(true); setPendingClickLocation(null); }} className="p-4 rounded-xl bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-100 dark:border-purple-900/50 hover:border-purple-500 transition-all flex items-center gap-4 group">
+                              <div className="bg-purple-600 text-white p-3 rounded-full group-hover:scale-110 transition-transform"><Wand2 className="w-5 h-5"/></div>
+                              <span className="font-bold text-sm uppercase text-gray-700 dark:text-gray-200">AI GENERATOR</span>
+                          </button>
+
+                          <button onClick={() => { setTaskMasterTab('LIBRARY'); setTaskMasterSelectionMode(true); setShowTaskMaster(true); setPendingClickLocation(null); }} className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-100 dark:border-blue-900/50 hover:border-blue-500 transition-all flex items-center gap-4 group">
+                              <div className="bg-blue-600 text-white p-3 rounded-full group-hover:scale-110 transition-transform"><Library className="w-5 h-5"/></div>
+                              <span className="font-bold text-sm uppercase text-gray-700 dark:text-gray-200">FROM LIBRARY</span>
+                          </button>
+                      </div>
+                  </div>
+              )}
+
               {mode === GameMode.EDIT && (
                 <EditorDrawer 
                   onClose={() => setMode(GameMode.PLAY)} 
                   activeGame={activeGame}
                   activeGameName={activeGame?.name || "No game selected"} 
                   points={displayPoints} 
-                  allPoints={displayPoints} 
+                  allPoints={activeGame?.points} // Pass all including playground points to editor list
                   taskLists={gameState.taskLists} 
                   games={gameState.games}
                   onSelectGame={(id) => {
@@ -295,13 +687,24 @@ const App: React.FC = () => {
                   onSetSourceListId={setSourceListId} 
                   onEditPoint={(p) => setSelectedPoint(p)} 
                   onSelectPoint={(p) => { setSelectedPoint(p); mapRef.current?.jumpTo(p.location); }} 
-                  onDeletePoint={(id) => { if(!activeGame) return; const updated = activeGame.points.filter(p => p.id !== id); db.saveGame({...activeGame, points: updated}).then(refreshData); }} 
-                  onReorderPoints={(pts) => { if(!activeGame) return; db.saveGame({...activeGame, points: pts}).then(refreshData) }} 
-                  onClearMap={() => { if(!activeGame) return; db.saveGame({...activeGame, points: []}).then(refreshData) }} 
+                  onDeletePoint={(id) => { 
+                      if(!activeGame) return; 
+                      const updated = activeGame.points.filter(p => p.id !== id); 
+                      updateActiveGame({...activeGame, points: updated});
+                  }} 
+                  onReorderPoints={(pts) => { 
+                      if(!activeGame) return; 
+                      updateActiveGame({...activeGame, points: pts});
+                  }} 
+                  onClearMap={(ids) => { 
+                      if(!activeGame) return; 
+                      const updated = ids ? activeGame.points.filter(p => !ids.includes(p.id)) : [];
+                      updateActiveGame({...activeGame, points: updated});
+                  }} 
                   onSaveGame={handleSaveGame} 
-                  onOpenTaskMaster={() => { setIsTaskSelectionMode(false); setShowTaskMaster(true); }} 
+                  onOpenTaskMaster={() => { setTaskMasterTab('LISTS'); setTaskMasterSelectionMode(false); setShowTaskMaster(true); targetLocationRef.current = null; }} 
                   onFitBounds={() => activeGame && mapRef.current?.fitBounds(activeGame.points)} 
-                  onHoverPoint={setHoveredPoint}
+                  onOpenPlaygroundEditor={() => setShowPlaygroundEditor(true)}
                   initialExpanded={forceExpandDrawer}
                 />
               )}
@@ -310,6 +713,31 @@ const App: React.FC = () => {
       )}
 
       {/* GLOBAL MODALS */}
+      {showPlaygroundEditor && activeGame && (
+          <PlaygroundEditor 
+              game={activeGame} 
+              onUpdateGame={updateActiveGame} 
+              onClose={() => setShowPlaygroundEditor(false)}
+              onEditPoint={setSelectedPoint}
+              onCreateTask={(pgId) => {
+                  targetPlaygroundIdRef.current = pgId;
+                  setTaskMasterTab('LIBRARY'); 
+                  setTaskMasterSelectionMode(true); 
+                  setShowTaskMaster(true); 
+              }}
+          />
+      )}
+
+      {activePlaygroundId && activeGame && (
+          <PlaygroundModal 
+              playground={activeGame.playgrounds?.find(p => p.id === activePlaygroundId)!}
+              points={activeGame.points}
+              onClose={() => setActivePlaygroundId(null)}
+              onPointClick={setSelectedPoint}
+              mode={mode}
+          />
+      )}
+
       {showGameChooser && (
           <GameChooser 
             games={gameState.games} 
@@ -319,20 +747,78 @@ const App: React.FC = () => {
                 setGameState(prev => ({ ...prev, activeGameId: id })); 
                 localStorage.setItem(STORAGE_KEY_GAME_ID, id);
                 setShowGameChooser(false); 
+                
+                const target = (window as any)._afterChooseView;
+                if (target) {
+                    if (target === 'CREATOR_HUB') setCurrentView('CREATOR_HUB');
+                    else if (target === 'MAP_EDIT') { setMode(GameMode.EDIT); setForceExpandDrawer(false); setCurrentView('MAP'); }
+                    (window as any)._afterChooseView = null;
+                }
             }} 
-            onCreateGame={(name) => { 
-                const newGame: Game = { id: `game-${Date.now()}`, name, description: '', points: [], createdAt: Date.now() }; 
+            onCreateGame={(name, fromTaskListId) => { 
+                let initialPoints: GamePoint[] = [];
+                if (fromTaskListId) {
+                    const list = gameState.taskLists.find(l => l.id === fromTaskListId);
+                    if (list) {
+                        initialPoints = list.tasks.map((t, i) => ({
+                            id: `pt-${Date.now()}-${i}`,
+                            title: t.title,
+                            task: t.task,
+                            location: { lat: 0, lng: 0 },
+                            radiusMeters: 30,
+                            iconId: t.iconId,
+                            points: t.points || 100,
+                            isUnlocked: false,
+                            isCompleted: false,
+                            activationTypes: ['radius'],
+                            order: i,
+                            tags: t.tags,
+                            feedback: t.feedback,
+                            settings: t.settings
+                        }));
+                    }
+                }
+
+                const newGame: Game = { id: `game-${Date.now()}`, name, description: '', points: initialPoints, createdAt: Date.now() }; 
                 db.saveGame(newGame).then(() => { 
                     refreshData(); 
                     setGameState(prev => ({ ...prev, activeGameId: newGame.id })); 
                     localStorage.setItem(STORAGE_KEY_GAME_ID, newGame.id);
                     setShowGameChooser(false); 
+                    setMode(GameMode.EDIT);
+                    setForceExpandDrawer(false); 
+                    setCurrentView('MAP');
+                    (window as any)._afterChooseView = null;
                 }); 
             }} 
           />
       )}
-      {showTaskMaster && <TaskMaster library={gameState.taskLibrary} lists={gameState.taskLists} onClose={() => { setShowTaskMaster(false); setIsTaskSelectionMode(false); }} onSaveTemplate={(t) => db.saveTemplate(t).then(refreshData)} onDeleteTemplate={(id) => db.deleteTemplate(id).then(refreshData)} onSaveList={(l) => db.saveTaskList(l).then(refreshData)} onDeleteList={(id) => db.deleteTaskList(id).then(refreshData)} onCreateGameFromList={() => {}} isSelectionMode={isTaskSelectionMode} onSelectTasksForGame={(tasks) => { if(!activeGame) return; const center = mapRef.current?.getCenter() || {lat:0, lng:0}; const newPoints = tasks.map((t,i) => ({ ...t, id: `pt-${Date.now()}-${i}`, location: center, radiusMeters: 30, isUnlocked: false, isCompleted: false, order: activeGame.points.length + i, activationTypes: ['radius'] })); db.saveGame({...activeGame, points: [...activeGame.points, ...newPoints] as any}).then(refreshData); setShowTaskMaster(false); }} />}
-      {showAiGenerator && <AiTaskGenerator onClose={() => setShowAiGenerator(false)} onAddTasks={(tasks) => { if(!activeGame) return; const center = mapRef.current?.getCenter() || {lat:0, lng:0}; const newPoints = tasks.map((t,i) => ({ ...t, id: `pt-${Date.now()}-${i}`, location: center, radiusMeters: 30, isUnlocked: false, isCompleted: false, order: activeGame.points.length + i, activationTypes: ['radius'] })); db.saveGame({...activeGame, points: [...activeGame.points, ...newPoints] as any}).then(refreshData); setShowAiGenerator(false); }} />}
+      {showTaskMaster && (
+        <TaskMaster 
+            library={gameState.taskLibrary} 
+            lists={gameState.taskLists} 
+            onClose={() => { setShowTaskMaster(false); targetLocationRef.current = null; targetPlaygroundIdRef.current = null; }} 
+            onSaveTemplate={(t) => db.saveTemplate(t).then(refreshData)} 
+            onDeleteTemplate={(id) => db.deleteTemplate(id).then(refreshData)} 
+            onSaveList={(l) => db.saveTaskList(l).then(refreshData)} 
+            onDeleteList={(id) => db.deleteTaskList(id).then(refreshData)} 
+            onCreateGameFromList={() => {}} 
+            initialTab={taskMasterTab}
+            isSelectionMode={taskMasterSelectionMode}
+            onSelectTasksForGame={handleAddTasksFromLibrary}
+        />
+      )}
+      {showAiGenerator && (
+          <AiTaskGenerator 
+              onClose={() => setShowAiGenerator(false)} 
+              onAddTasks={(tasks) => {
+                  tasks.forEach(t => db.saveTemplate(t));
+                  refreshData();
+                  handleAddTasksFromLibrary(tasks);
+                  setShowAiGenerator(false);
+              }} 
+          />
+      )}
       {showTeamsModal && (
           <TeamsModal 
             gameId={gameState.activeGameId} 
@@ -345,7 +831,44 @@ const App: React.FC = () => {
           />
       )}
       {showAdminModal && <AdminModal games={gameState.games} onClose={() => setShowAdminModal(false)} onDeleteGame={(id) => db.deleteGame(id).then(refreshData)} />}
-      {selectedPoint && <TaskModal point={selectedPoint} onClose={() => setSelectedPoint(null)} onComplete={(id) => { setCompletedPointIds(prev => [...prev, id]); if (gameState.teamId) db.updateTeamProgress(gameState.teamId, id, gameState.score + selectedPoint.points); setSelectedPoint(null); }} distance={gameState.userLocation ? haversineMeters(gameState.userLocation, selectedPoint.location) : 0} />}
+      {showInstructorDashboard && activeGame && <InstructorDashboard game={activeGame} onClose={() => setShowInstructorDashboard(false)} />}
+      {selectedPoint && (
+        <TaskModal 
+            point={selectedPoint} 
+            onClose={() => setSelectedPoint(null)} 
+            onComplete={handleCompleteTask} 
+            onPenalty={(amount) => {
+                if (gameState.teamId) {
+                    db.updateTeamScore(gameState.teamId, -amount);
+                }
+            }}
+            distance={gameState.userLocation ? haversineMeters(gameState.userLocation, selectedPoint.location) : 0} 
+            mode={mode}
+            onOpenActions={() => {
+                setActionPoint(selectedPoint);
+                setSelectedPoint(null);
+            }}
+        />
+      )}
+      {actionPoint && activeGame && (
+          <TaskActionModal 
+              point={actionPoint} 
+              allPoints={activeGame.points}
+              playgrounds={activeGame.playgrounds}
+              onSave={(updatedPoint) => {
+                  const updatedPoints = activeGame.points.map(p => p.id === updatedPoint.id ? updatedPoint : p);
+                  updateActiveGame({ ...activeGame, points: updatedPoints });
+              }}
+              onClose={() => setActionPoint(null)}
+              onStartDrawMode={(trigger) => {
+                  setActionPoint(null);
+                  setDrawSourcePointId(actionPoint.id);
+                  setDrawTriggerType(trigger);
+                  setMeasurePathIds([]); // Reset measurement tool if active
+                  setIsMeasuring(false);
+              }}
+          />
+      )}
     </div>
   );
 };

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GamePoint, TaskList, Coordinate, Game } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle } from 'lucide-react';
+import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -33,6 +33,7 @@ interface EditorDrawerProps {
   userLocation?: Coordinate | null;
   onFitBounds: () => void;
   onHoverPoint?: (point: GamePoint | null) => void;
+  onOpenPlaygroundEditor?: () => void; // New prop
   initialExpanded?: boolean;
 }
 
@@ -203,8 +204,8 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onSaveGame,
   onOpenTaskMaster,
   onFitBounds,
-  onFitBounds: onFitBoundsProp,
   onHoverPoint,
+  onOpenPlaygroundEditor,
   initialExpanded = false
 }) => {
   const [showSourceMenu, setShowSourceMenu] = useState(false);
@@ -212,7 +213,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   const [isExpanded, setIsExpanded] = useState(initialExpanded); 
   const [isSaved, setIsSaved] = useState(false);
 
-  // Sync expanded state if externally requested
   useEffect(() => {
     if (initialExpanded) setIsExpanded(true);
   }, [initialExpanded]);
@@ -264,7 +264,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
         {isExpanded ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
       </button>
 
-      {/* Integrated Game Chooser (Top of Drawer) - Now triggers the full GameChooser modal */}
       <button 
           onClick={onOpenGameChooser}
           className={`p-4 text-white text-left flex-shrink-0 relative z-[100] transition-all active:scale-[0.98] ${activeGame ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-700 hover:bg-slate-800'}`}
@@ -288,7 +287,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
           </div>
       ) : (
           <>
-            {/* Editor Header */}
             <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900 flex-shrink-0 z-[60]">
                 <div>
                     <h2 className="font-bold text-xs text-gray-400 uppercase tracking-wide">Tasks List</h2>
@@ -308,7 +306,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 </div>
             </div>
 
-            {/* FILTER UI */}
             <div className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 relative z-[50]">
                 <button 
                     onClick={() => setShowFilterMenu(!showFilterMenu)}
@@ -374,7 +371,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 )}
             </div>
 
-            {/* Source Selector */}
             <div className="p-4 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 relative z-[40]">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Map Click Behavior</label>
                 <button 
@@ -428,7 +424,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 )}
             </div>
 
-            {/* Points List */}
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900/50 z-0">
                 <div className="flex justify-between items-center mb-3">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
@@ -483,8 +478,12 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 </DndContext>
             </div>
 
-            {/* Footer Actions */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-col gap-2 z-[60]">
+                {onOpenPlaygroundEditor && (
+                    <button onClick={onOpenPlaygroundEditor} className="w-full py-3 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold rounded-xl hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
+                        <LayoutGrid className="w-4 h-4" /> PLAYGROUNDS
+                    </button>
+                )}
                 <button onClick={onOpenTaskMaster} className="w-full py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
                     <Library className="w-4 h-4" /> Manage Task Library
                 </button>

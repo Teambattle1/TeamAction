@@ -43,6 +43,8 @@ interface GameMapProps {
   teams?: { team: Team, location: Coordinate }[]; 
   teamTrails?: Record<string, Coordinate[]>; 
   pointLabels?: Record<string, string>; 
+  measurePath?: Coordinate[];
+  logicLinks?: { from: Coordinate; to: Coordinate; color?: string }[]; 
   accuracy: number | null;
   mode: GameMode;
   mapStyle: MapStyleId;
@@ -64,16 +66,31 @@ const MapClickParams = ({ onClick }: { onClick?: (c: Coordinate) => void }) => {
   return null;
 };
 
-const RecenterMap = ({ center }: { center: Coordinate | null }) => {
+const RecenterMap = ({ center, points, mode }: { center: Coordinate | null, points: GamePoint[], mode: GameMode }) => {
   const map = useMap();
-  const [initialized, setInitialized] = useState(false);
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    if (center && !initialized) {
-      map.setView([center.lat, center.lng], 16);
-      setInitialized(true);
+    if (initializedRef.current) return;
+
+    // In EDIT or INSTRUCTOR mode, prioritize fitting bounds to existing points if they exist.
+    // This helps editors who are indoors/remote see the content immediately rather than their GPS location.
+    if ((mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && points.length > 0) {
+        const latLngs = points.map(p => [p.location.lat, p.location.lng] as [number, number]);
+        const bounds = L.latLngBounds(latLngs);
+        if (bounds.isValid()) {
+            map.fitBounds(bounds, { padding: [50, 50], animate: false });
+            initializedRef.current = true;
+            return;
+        }
     }
-  }, [center, map, initialized]);
+
+    // Default: Center on user location if available
+    if (center) {
+      map.setView([center.lat, center.lng], 16);
+      initializedRef.current = true;
+    }
+  }, [center, points, mode, map]);
 
   return null;
 };
@@ -104,9 +121,6 @@ const MapController = ({ handleRef }: { handleRef: React.RefObject<any> }) => {
     return null;
 };
 
-/**
- * Interface for MapTaskMarker props to satisfy TypeScript and React requirements.
- */
 interface MapTaskMarkerProps {
   point: GamePoint;
   mode: GameMode;
@@ -118,9 +132,6 @@ interface MapTaskMarkerProps {
   onHover?: (p: GamePoint | null) => void;
 }
 
-/**
- * Component for rendering individual task markers with potential interactions like dragging.
- */
 const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({ 
   point, 
   mode, 
@@ -139,6 +150,10 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
   const map = useMap(); 
   const isDraggable = mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
   const showGeofence = mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
+
+  const hasActions = (point.logic?.onOpen?.length || 0) > 0 || 
+                     (point.logic?.onCorrect?.length || 0) > 0 || 
+                     (point.logic?.onIncorrect?.length || 0) > 0;
 
   useEffect(() => {
       if (markerRef.current && !isDraggingRef.current) {
@@ -220,7 +235,7 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
 
   return (
     <>
-      <Marker draggable={isDraggable} eventHandlers={eventHandlers} position={[point.location.lat, point.location.lng]} icon={getLeafletIcon(point.iconId, point.isUnlocked, point.isCompleted, label)} ref={markerRef} />
+      <Marker draggable={isDraggable} eventHandlers={eventHandlers} position={[point.location.lat, point.location.lng]} icon={getLeafletIcon(point.iconId, point.isUnlocked, point.isCompleted, label, hasActions && mode === GameMode.EDIT)} ref={markerRef} />
       <Circle ref={circleRef} center={[point.location.lat, point.location.lng]} radius={point.radiusMeters} pathOptions={{ color: isSelected ? '#4f46e5' : (point.isUnlocked ? (point.isCompleted ? '#22c55e' : '#eab308') : '#ef4444'), fillColor: isSelected ? '#6366f1' : (point.isUnlocked ? (point.isCompleted ? '#22c55e' : '#eab308') : '#ef4444'), fillOpacity: showGeofence ? (isSelected ? 0.4 : 0.2) : 0.1, weight: showGeofence ? (isSelected ? 3 : 2) : 1, dashArray: point.isUnlocked ? undefined : '5, 5' }} />
     </>
   );
@@ -233,10 +248,13 @@ const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string }> = {
   light: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap' }
 };
 
-const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points, teams, teamTrails, pointLabels, accuracy, mode, mapStyle, selectedPointId, onPointClick, onTeamClick, onMapClick, onPointMove, onDeletePoint, onPointHover }, ref) => {
+const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points, teams, teamTrails, pointLabels, measurePath, logicLinks, accuracy, mode, mapStyle, selectedPointId, onPointClick, onTeamClick, onMapClick, onPointMove, onDeletePoint, onPointHover }, ref) => {
   const center = userLocation || { lat: 55.6761, lng: 12.5683 };
   const currentLayer = MAP_LAYERS[mapStyle] || MAP_LAYERS.osm;
-  const mapPoints = points.filter(p => !p.isSectionHeader);
+  
+  // FILTER: Only show points that are NOT in a playground (unless they are section headers)
+  const mapPoints = points.filter(p => !p.isSectionHeader && !p.playgroundId);
+  
   const getLabel = (point: GamePoint) => {
       if (pointLabels && pointLabels[point.id]) return pointLabels[point.id];
       if (mode === GameMode.EDIT) return (points.findIndex(p => p.id === point.id) + 1).toString().padStart(3, '0');
@@ -247,7 +265,7 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
         <MapContainer center={[center.lat, center.lng]} zoom={15} style={{ height: '100%', width: '100%' }} zoomControl={false}>
             <MapController handleRef={ref as any} />
             <TileLayer attribution={currentLayer.attribution} url={currentLayer.url} />
-            <RecenterMap center={userLocation} />
+            <RecenterMap center={userLocation} points={mapPoints} mode={mode} />
             {mode === GameMode.EDIT && <MapClickParams onClick={onMapClick} />}
             {userLocation && (
                 <>
@@ -255,9 +273,26 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
                 {accuracy && <Circle center={[userLocation.lat, userLocation.lng]} radius={accuracy} pathOptions={{ fillColor: '#3b82f6', fillOpacity: 0.1, color: '#3b82f6', weight: 1 }} />}
                 </>
             )}
+            
+            {/* Logic Connections Visualization */}
+            {logicLinks && logicLinks.map((link, idx) => (
+                <Polyline 
+                    key={`link-${idx}`} 
+                    positions={[[link.from.lat, link.from.lng], [link.to.lat, link.to.lng]]} 
+                    pathOptions={{ color: link.color || '#eab308', weight: 3, dashArray: '10, 10', opacity: 0.8 }} 
+                />
+            ))}
+
+            {/* Measure Path Polyline */}
+            {measurePath && measurePath.length > 1 && (
+                <Polyline 
+                    positions={measurePath.map(c => [c.lat, c.lng])} 
+                    pathOptions={{ color: '#ec4899', weight: 4, dashArray: '10, 10', opacity: 0.8 }} 
+                />
+            )}
+
             {teamTrails && teams && Object.entries(teamTrails).map(([teamId, path]) => {
                 const team = teams.find(t => t.team.id === teamId)?.team;
-                // Cast path to Coordinate[] as Object.entries can lose type specificity in some contexts
                 const pathCoords = path as Coordinate[];
                 if (!team || pathCoords.length < 2) return null;
                 return <Polyline key={`trail-${teamId}`} positions={pathCoords.map(c => [c.lat, c.lng])} pathOptions={{ color: getTeamColor(team.name), weight: 3, opacity: 0.6, dashArray: '5, 10' }} />;
