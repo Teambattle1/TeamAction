@@ -5,7 +5,7 @@ import { ICON_COMPONENTS } from '../utils/icons';
 import { getCroppedImg } from '../utils/image';
 import Cropper from 'react-easy-crop';
 import { generateAiImage } from '../services/ai';
-// Added missing imports for Edit2 and MousePointerClick
+import QRCode from 'qrcode';
 import { 
   X, Save, Trash2, Upload, Link, Loader2, CheckCircle, 
   AlignLeft, CheckSquare, ListChecks, ToggleLeft, SlidersHorizontal, 
@@ -13,7 +13,7 @@ import {
   Copy, KeyRound, ChevronDown, ChevronsUpDown, RotateCw, Type, 
   Palette, Bold, Italic, Underline, MonitorPlay, Speaker, MapPin, 
   Settings, Zap, MessageSquare, Clock, Globe, Lock, Check, Wand2, Hash,
-  Edit2, MousePointerClick, EyeOff, Eye
+  Edit2, MousePointerClick, EyeOff, Eye, Maximize, Smartphone, Monitor, QrCode, Download
 } from 'lucide-react';
 
 interface TaskEditorProps {
@@ -93,7 +93,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     tags: point.tags || []
   });
 
-  const [activeTab, setActiveTab] = useState<'CONTENT' | 'MEDIA' | 'ACTIVATION' | 'SETTINGS' | 'LOGIC'>('CONTENT');
+  const [activeTab, setActiveTab] = useState<'GENERAL' | 'IMAGE' | 'ACTIONS' | 'TAGS' | 'LOG'>('GENERAL');
   const [tagInput, setTagInput] = useState('');
   const [selectedTagColor, setSelectedTagColor] = useState(TAG_COLORS[0]);
   const [tagColors, setTagColors] = useState<Record<string, string>>({});
@@ -108,8 +108,12 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [aspect, setAspect] = useState(4 / 3);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // QR Code State
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -121,6 +125,17 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         }
     } catch (e) { console.error(e); }
   }, []);
+
+  // Generate QR Code when relevant fields change or tab opens
+  useEffect(() => {
+      if (activeTab === 'ACTIONS' && (editedPoint.activationTypes.includes('qr') || editedPoint.activationTypes.includes('click') || editedPoint.isHiddenBeforeScan)) {
+          // Payload: Use ID as unique identifier for unlocking
+          const payload = JSON.stringify({ id: editedPoint.id, action: 'unlock' });
+          QRCode.toDataURL(payload, { width: 300, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+              .then(url => setQrCodeDataUrl(url))
+              .catch(err => console.error(err));
+      }
+  }, [activeTab, editedPoint.activationTypes, editedPoint.id, editedPoint.isHiddenBeforeScan]);
 
   const handleAddTag = (specificTag?: string, specificColor?: string) => {
       const tagToAdd = (specificTag || tagInput).trim().toLowerCase();
@@ -167,15 +182,62 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   };
 
   const renderTypeConfig = () => {
-    const { type, options } = editedPoint.task;
+    const { type, options, answer } = editedPoint.task;
+    const correctAnswers = editedPoint.task.correctAnswers || [];
+    
     const addOption = () => setEditedPoint(prev => ({...prev, task: {...prev.task, options: [...(prev.task.options||[]), `Option ${(prev.task.options?.length||0)+1}`]}}));
+    
     const updateOption = (i: number, val: string) => {
-        const newOpts = [...(options||[])]; newOpts[i] = val;
-        setEditedPoint({...editedPoint, task: {...editedPoint.task, options: newOpts}});
+        const newOpts = [...(options||[])]; 
+        const oldVal = newOpts[i];
+        newOpts[i] = val;
+        
+        // If updating a correct answer string match, update that too
+        let newCorrectAnswers = correctAnswers;
+        if (correctAnswers.includes(oldVal)) {
+            newCorrectAnswers = correctAnswers.map(c => c === oldVal ? val : c);
+        }
+        let newAnswer = answer;
+        if (answer === oldVal) {
+            newAnswer = val;
+        }
+
+        setEditedPoint({...editedPoint, task: {...editedPoint.task, options: newOpts, correctAnswers: newCorrectAnswers, answer: newAnswer }});
     };
+
     const removeOption = (i: number) => {
+        const optToRemove = options?.[i];
         const newOpts = [...(options||[])]; newOpts.splice(i, 1);
-        setEditedPoint({...editedPoint, task: {...editedPoint.task, options: newOpts}});
+        
+        let newCorrectAnswers = correctAnswers;
+        if (optToRemove && correctAnswers.includes(optToRemove)) {
+            newCorrectAnswers = correctAnswers.filter(c => c !== optToRemove);
+        }
+        
+        let newAnswer = answer;
+        if (answer === optToRemove) newAnswer = undefined;
+
+        setEditedPoint({...editedPoint, task: {...editedPoint.task, options: newOpts, correctAnswers: newCorrectAnswers, answer: newAnswer }});
+    };
+
+    const toggleCorrectOption = (opt: string) => {
+        const isMulti = type === 'checkbox' || type === 'multi_select_dropdown';
+        if (isMulti) {
+            const current = correctAnswers;
+            const newAnswers = current.includes(opt) 
+                ? current.filter(a => a !== opt)
+                : [...current, opt];
+            setEditedPoint({
+                ...editedPoint, 
+                task: { ...editedPoint.task, correctAnswers: newAnswers }
+            });
+        } else {
+            // Single choice types
+            setEditedPoint({
+                ...editedPoint, 
+                task: { ...editedPoint.task, answer: opt }
+            });
+        }
     };
 
     if (type === 'text') {
@@ -186,17 +248,41 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
             </div>
         );
     }
-    if (type === 'multiple_choice' || type === 'checkbox' || type === 'dropdown') {
+    
+    if (['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(type)) {
+        const isMulti = type === 'checkbox' || type === 'multi_select_dropdown';
         return (
             <div className="space-y-2">
-                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">OPTIONS</label>
-                {options?.map((opt, idx) => (
-                    <div key={idx} className="flex gap-2">
-                        <input type="text" value={opt} onChange={(e) => updateOption(idx, e.target.value)} className="flex-1 p-2 border rounded bg-white dark:bg-gray-700 text-sm"/>
-                        <button type="button" onClick={() => removeOption(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
-                    </div>
-                ))}
-                <button type="button" onClick={addOption} className="text-[10px] font-black text-blue-600 uppercase flex items-center gap-1 hover:underline"><Plus className="w-3 h-3" /> ADD OPTION</button>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">OPTIONS & ANSWERS</label>
+                {options?.map((opt, idx) => {
+                    const isCorrect = isMulti 
+                        ? correctAnswers.includes(opt) 
+                        : answer === opt;
+
+                    return (
+                        <div key={idx} className="flex gap-2 items-center group">
+                            <button 
+                                type="button"
+                                onClick={() => toggleCorrectOption(opt)}
+                                className={`p-2 rounded border transition-colors ${isCorrect ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-400 hover:border-green-400 hover:text-green-400'}`}
+                                title={isCorrect ? "Correct Answer" : "Mark as Correct"}
+                            >
+                                <Check className="w-4 h-4" />
+                            </button>
+                            <input 
+                                type="text" 
+                                value={opt} 
+                                onChange={(e) => updateOption(idx, e.target.value)} 
+                                className={`flex-1 p-2 border rounded bg-white dark:bg-gray-700 text-sm ${isCorrect ? 'border-green-500 ring-1 ring-green-500/20' : ''}`}
+                            />
+                            <button type="button" onClick={() => removeOption(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded opacity-50 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4"/></button>
+                        </div>
+                    );
+                })}
+                <button type="button" onClick={addOption} className="text-[10px] font-black text-blue-600 uppercase flex items-center gap-1 hover:underline mt-2"><Plus className="w-3 h-3" /> ADD OPTION</button>
+                <p className="text-[9px] text-gray-400 italic mt-2">
+                    {isMulti ? "Check multiple boxes for correct answers." : "Check one box for the correct answer."}
+                </p>
             </div>
         );
     }
@@ -226,17 +312,58 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         {isCropping && pendingImage ? (
            <div className="flex flex-col h-full bg-black p-4">
               <div className="relative flex-1 rounded-xl overflow-hidden mb-4 border border-gray-700">
-                  <Cropper image={pendingImage} crop={crop} zoom={zoom} rotation={rotation} aspect={4/3} onCropChange={setCrop} onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} onZoomChange={setZoom} onRotationChange={setRotation} />
+                  <Cropper 
+                    image={pendingImage} 
+                    crop={crop} 
+                    zoom={zoom} 
+                    rotation={rotation} 
+                    aspect={aspect} 
+                    onCropChange={setCrop} 
+                    onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)} 
+                    onZoomChange={setZoom} 
+                    onRotationChange={setRotation} 
+                    onMediaLoaded={(mediaSize) => {
+                        // Auto-set zoom to fit
+                        setZoom(1);
+                    }}
+                  />
               </div>
+              
+              {/* Aspect Ratio Controls */}
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                  {[
+                      { l: '4:3', v: 4/3 }, 
+                      { l: '16:9', v: 16/9 }, 
+                      { l: '1:1', v: 1 }, 
+                      { l: '9:16', v: 9/16 },
+                      { l: 'Free', v: undefined } // Freeform
+                  ].map(opt => (
+                      <button 
+                        key={opt.l}
+                        type="button"
+                        onClick={() => setAspect(opt.v as number)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase whitespace-nowrap border ${aspect === opt.v ? 'bg-orange-600 border-orange-600 text-white' : 'bg-gray-800 border-gray-700 text-gray-400'}`}
+                      >
+                          {opt.l}
+                      </button>
+                  ))}
+                  <button type="button" onClick={() => setRotation((r) => r + 90)} className="px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-white"><RotateCw className="w-4 h-4" /></button>
+              </div>
+
               <div className="flex gap-3">
-                  <button onClick={() => { setIsCropping(false); setPendingImage(null); }} className="flex-1 py-3 bg-gray-800 text-white rounded-xl font-bold uppercase tracking-wide">CANCEL</button>
-                  <button onClick={async () => {
+                  <button type="button" onClick={() => { setIsCropping(false); setPendingImage(null); }} className="flex-1 py-3 bg-gray-800 text-white rounded-xl font-bold uppercase tracking-wide">CANCEL</button>
+                  <button type="button" onClick={async () => {
                       setIsUploading(true);
                       try {
+                          if (!pendingImage) throw new Error("No image to crop");
                           const img = await getCroppedImg(pendingImage, croppedAreaPixels, rotation);
                           setEditedPoint({...editedPoint, task: {...editedPoint.task, imageUrl: img}});
-                          setIsCropping(false); setPendingImage(null);
-                      } catch(e) { console.error(e); }
+                          setIsCropping(false); 
+                          setPendingImage(null);
+                      } catch(e: any) { 
+                          console.error(e);
+                          alert("Failed to crop image. Please try again.");
+                      }
                       setIsUploading(false);
                   }} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-wide">{isUploading ? 'SAVING...' : 'CROP & SAVE'}</button>
               </div>
@@ -247,11 +374,11 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                {/* TABS */}
                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
                    {[
-                       {id: 'CONTENT', label: 'GEN', icon: AlignLeft},
-                       {id: 'MEDIA', label: 'IMG', icon: ImageIcon},
-                       {id: 'ACTIVATION', label: 'ACT', icon: Zap},
-                       {id: 'SETTINGS', label: 'SET', icon: Settings},
-                       {id: 'LOGIC', label: 'LOG', icon: MessageSquare},
+                       {id: 'GENERAL', label: 'General', icon: AlignLeft},
+                       {id: 'IMAGE', label: 'Image', icon: ImageIcon},
+                       {id: 'ACTIONS', label: 'Actions', icon: Zap},
+                       {id: 'TAGS', label: 'Tags', icon: Tag},
+                       {id: 'LOG', label: 'Log', icon: MessageSquare},
                    ].map(tab => (
                        <button
                            key={tab.id}
@@ -268,10 +395,10 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                {/* SCROLLABLE CONTENT */}
                <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-white dark:bg-gray-900">
                    
-                   {activeTab === 'CONTENT' && (
+                   {activeTab === 'GENERAL' && (
                        <div className="space-y-6">
                            <div>
-                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">INTERNAL TITLE</label>
+                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">Title</label>
                                <input type="text" value={editedPoint.title} onChange={(e) => setEditedPoint({ ...editedPoint, title: e.target.value })} className="w-full px-4 py-2 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none transition-all" placeholder="e.g. Statue Quiz"/>
                            </div>
                            <div>
@@ -304,7 +431,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
-                   {activeTab === 'MEDIA' && (
+                   {activeTab === 'IMAGE' && (
                        <div className="space-y-6">
                            <div>
                                <div className="flex justify-between items-center mb-3">
@@ -314,14 +441,17 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                         <button type="button" onClick={handleGenerateImage} disabled={isGeneratingImage} className="text-[10px] font-black px-3 py-1.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all uppercase tracking-wide flex items-center gap-1 shadow-md disabled:opacity-50">{isGeneratingImage ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} AI GEN</button>
                                    </div>
                                </div>
-                               <div className="aspect-video w-full rounded-2xl border-4 border-dashed border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-850 flex items-center justify-center relative overflow-hidden group">
+                               <div className="w-full rounded-2xl border-4 border-dashed border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-850 flex items-center justify-center relative overflow-hidden group min-h-[200px]">
                                    {editedPoint.task.imageUrl ? (
                                        <>
-                                           <img src={editedPoint.task.imageUrl} className="w-full h-full object-cover" alt="Task Cover" />
-                                           <button type="button" onClick={() => setEditedPoint({...editedPoint, task: {...editedPoint.task, imageUrl: undefined}})} className="absolute top-4 right-4 p-2 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><Trash2 className="w-4 h-4"/></button>
+                                           <img src={editedPoint.task.imageUrl} className="max-w-full max-h-[400px] object-contain" alt="Task Cover" />
+                                           <div className="absolute top-4 right-4 flex gap-2">
+                                              <button type="button" onClick={() => { setPendingImage(editedPoint.task.imageUrl || null); setIsCropping(true); }} className="p-2 bg-blue-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><Scissors className="w-4 h-4"/></button>
+                                              <button type="button" onClick={() => setEditedPoint({...editedPoint, task: {...editedPoint.task, imageUrl: undefined}})} className="p-2 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"><Trash2 className="w-4 h-4"/></button>
+                                           </div>
                                        </>
                                    ) : (
-                                       <div className="text-center opacity-30 group-hover:opacity-50 transition-opacity">
+                                       <div className="text-center opacity-30 group-hover:opacity-50 transition-opacity p-8">
                                            <ImageIcon className="w-12 h-12 mx-auto mb-2" />
                                            <p className="text-[10px] font-black uppercase">Click upload or AI Gen to add image</p>
                                        </div>
@@ -343,7 +473,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
-                   {activeTab === 'ACTIVATION' && (
+                   {activeTab === 'ACTIONS' && (
                        <div className="space-y-6">
                            <div className="space-y-3">
                                <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">UNLOCK METHODS</label>
@@ -371,6 +501,23 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    </button>
                                ))}
                            </div>
+
+                           {/* QR Code Display */}
+                           {(editedPoint.activationTypes.includes('qr') || editedPoint.isHiddenBeforeScan) && qrCodeDataUrl && (
+                               <div className="bg-white dark:bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col items-center animate-in fade-in">
+                                   <div className="w-48 h-48 mb-4">
+                                       <img src={qrCodeDataUrl} alt="Task QR Code" className="w-full h-full" />
+                                   </div>
+                                   <p className="text-xs font-bold text-gray-800 uppercase tracking-widest mb-4">SCAN TO UNLOCK THIS TASK</p>
+                                   <a 
+                                       href={qrCodeDataUrl} 
+                                       download={`qrcode-${editedPoint.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`}
+                                       className="px-6 py-2.5 bg-black text-white rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-gray-800 transition-colors"
+                                   >
+                                       <Download className="w-4 h-4" /> DOWNLOAD QR
+                                   </a>
+                               </div>
+                           )}
 
                            <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
                                <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">VISIBILITY SETTINGS</label>
@@ -404,76 +551,84 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
-                   {/* TAG EDITOR INTEGRATION */}
-                   <div className="pt-8 border-t-2 border-gray-100 dark:border-gray-800">
-                       <div className="flex items-center justify-between mb-4">
-                            <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] flex items-center gap-2">
-                                <Tag className="w-3.5 h-3.5" /> TAGS & CATEGORIES
-                            </label>
-                            <span className="text-[10px] font-bold text-gray-400 uppercase">{editedPoint.tags?.length || 0} ACTIVE</span>
-                       </div>
-                       
-                       <div className="bg-gray-50 dark:bg-gray-850 p-5 rounded-3xl border-2 border-gray-100 dark:border-gray-800">
-                           {/* Active Tags Display */}
-                           <div className="flex flex-wrap gap-2 mb-6">
-                               {(editedPoint.tags || []).length === 0 && <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest p-2 italic">NO TAGS ASSIGNED</p>}
-                               {editedPoint.tags?.map(tag => (
-                                   <div key={tag} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black text-white uppercase shadow-sm animate-in zoom-in-95" style={{backgroundColor: tagColors[tag] || TAG_COLORS[0]}}>
-                                       {tag}
-                                       <button type="button" onClick={() => handleRemoveTag(tag)} className="p-0.5 hover:bg-white/20 rounded transition-colors"><X className="w-3 h-3"/></button>
-                                   </div>
-                               ))}
-                           </div>
-
-                           <div className="space-y-4">
-                               <div className="relative">
-                                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"><Plus className="w-4 h-4" /></div>
-                                   <input 
-                                        type="text" 
-                                        value={tagInput} 
-                                        onChange={(e) => { setTagInput(e.target.value); setShowTagSuggestions(e.target.value.length > 0); }}
-                                        placeholder="ADD NEW TAG..." 
-                                        className="w-full pl-10 pr-12 py-3 rounded-2xl border-2 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-black uppercase tracking-wider focus:border-orange-500 outline-none transition-all shadow-inner" 
-                                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
-                                   />
-                                   <button type="button" onClick={() => handleAddTag()} className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-orange-600 text-white rounded-xl flex items-center justify-center hover:bg-orange-700 transition-colors shadow-lg shadow-orange-500/20"><Plus className="w-5 h-5"/></button>
-                                   
-                                   {showTagSuggestions && filteredTags.length > 0 && (
-                                       <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in slide-in-from-top-2">
-                                           {filteredTags.map(tag => (
-                                               <button key={tag} type="button" onClick={() => handleAddTag(tag, tagColors[tag])} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center gap-3 border-b last:border-0 border-gray-100 dark:border-gray-700">
-                                                   <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: tagColors[tag] }} />
-                                                   {tag}
-                                               </button>
-                                           ))}
-                                       </div>
-                                   )}
+                   {activeTab === 'TAGS' && (
+                       <div className="space-y-6">
+                           {/* TAG EDITOR INTEGRATION */}
+                           <div className="pt-2">
+                               <div className="flex items-center justify-between mb-4">
+                                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] flex items-center gap-2">
+                                        <Tag className="w-3.5 h-3.5" /> TAGS & CATEGORIES
+                                    </label>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase">{editedPoint.tags?.length || 0} ACTIVE</span>
                                </div>
-
-                               <div className="pt-2">
-                                   <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Palette className="w-3 h-3" /> ASSIGN COLOR</label>
-                                   <div className="flex gap-2 flex-wrap">
-                                       {TAG_COLORS.map(c => (
-                                           <button key={c} type="button" onClick={() => setSelectedTagColor(c)} className={`w-8 h-8 rounded-xl border-4 transition-all ${selectedTagColor === c ? 'border-orange-500 scale-110 shadow-lg' : 'border-white dark:border-gray-700 hover:scale-105'}`} style={{backgroundColor: c}} />
+                               
+                               <div className="bg-gray-50 dark:bg-gray-850 p-5 rounded-3xl border-2 border-gray-100 dark:border-gray-800">
+                                   {/* Active Tags Display */}
+                                   <div className="flex flex-wrap gap-2 mb-6">
+                                       {(editedPoint.tags || []).length === 0 && <p className="text-[10px] text-gray-500 uppercase font-black tracking-widest p-2 italic">NO TAGS ASSIGNED</p>}
+                                       {editedPoint.tags?.map(tag => (
+                                           <div key={tag} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black text-white uppercase shadow-sm animate-in zoom-in-95" style={{backgroundColor: tagColors[tag] || TAG_COLORS[0]}}>
+                                               {tag}
+                                               <button type="button" onClick={() => handleRemoveTag(tag)} className="p-0.5 hover:bg-white/20 rounded transition-colors"><X className="w-3 h-3"/></button>
+                                           </div>
                                        ))}
                                    </div>
-                               </div>
 
-                               {knownTags.length > 0 && (
-                                   <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-2">
-                                       <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3">GLOBAL TAG LIBRARY</label>
-                                       <div className="flex flex-wrap gap-2">
-                                           {knownTags.filter(t => !editedPoint.tags?.includes(t)).slice(0, 8).map(tag => (
-                                               <button key={tag} type="button" onClick={() => handleAddTag(tag, tagColors[tag])} className="px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-orange-500 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all text-gray-500">
-                                                   + {tag}
-                                               </button>
-                                           ))}
+                                   <div className="space-y-4">
+                                       <div className="relative">
+                                           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"><Plus className="w-4 h-4" /></div>
+                                           <input 
+                                                type="text" 
+                                                value={tagInput} 
+                                                onChange={(e) => { setTagInput(e.target.value); setShowTagSuggestions(true); }}
+                                                onFocus={() => setShowTagSuggestions(true)}
+                                                onBlur={() => setTimeout(() => setShowTagSuggestions(false), 200)}
+                                                placeholder="ADD NEW TAG..." 
+                                                className="w-full pl-10 pr-12 py-3 rounded-2xl border-2 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-black uppercase tracking-wider focus:border-orange-500 outline-none transition-all shadow-inner" 
+                                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                                           />
+                                           <button type="button" onClick={() => handleAddTag()} className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-orange-600 text-white rounded-xl flex items-center justify-center hover:bg-orange-700 transition-colors shadow-lg shadow-orange-500/20"><Plus className="w-5 h-5"/></button>
+                                           
+                                           {showTagSuggestions && (
+                                               <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl z-[100] overflow-hidden animate-in slide-in-from-top-2 max-h-40 overflow-y-auto">
+                                                   {filteredTags.length > 0 ? filteredTags.map(tag => (
+                                                       <button key={tag} type="button" onClick={() => handleAddTag(tag, tagColors[tag])} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-orange-50 dark:hover:bg-orange-900/20 flex items-center gap-3 border-b last:border-0 border-gray-100 dark:border-gray-700">
+                                                           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: tagColors[tag] }} />
+                                                           {tag}
+                                                       </button>
+                                                   )) : (
+                                                       <div className="px-4 py-3 text-[10px] text-gray-400 italic font-medium uppercase text-center">No matching tags found</div>
+                                                   )}
+                                               </div>
+                                           )}
                                        </div>
+
+                                       <div className="pt-2">
+                                           <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Palette className="w-3 h-3" /> ASSIGN COLOR</label>
+                                           <div className="flex gap-2 flex-wrap">
+                                               {TAG_COLORS.map(c => (
+                                                   <button key={c} type="button" onClick={() => setSelectedTagColor(c)} className={`w-8 h-8 rounded-xl border-4 transition-all ${selectedTagColor === c ? 'border-orange-500 scale-110 shadow-lg' : 'border-white dark:border-gray-700 hover:scale-105'}`} style={{backgroundColor: c}} />
+                                               ))}
+                                           </div>
+                                       </div>
+
+                                       {knownTags.length > 0 && (
+                                           <div className="pt-4 border-t border-gray-100 dark:border-gray-800 mt-2">
+                                               <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3">GLOBAL TAG LIBRARY</label>
+                                               <div className="flex flex-wrap gap-2">
+                                                   {knownTags.filter(t => !editedPoint.tags?.includes(t)).slice(0, 8).map(tag => (
+                                                       <button key={tag} type="button" onClick={() => handleAddTag(tag, tagColors[tag])} className="px-2 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-orange-500 hover:text-white rounded-lg text-[9px] font-black uppercase tracking-widest transition-all text-gray-500">
+                                                           + {tag}
+                                                       </button>
+                                                   ))}
+                                               </div>
+                                           </div>
+                                       )}
                                    </div>
-                               )}
+                               </div>
                            </div>
                        </div>
-                   </div>
+                   )}
                </div>
 
                {/* FOOTER */}

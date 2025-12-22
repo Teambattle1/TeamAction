@@ -26,7 +26,7 @@ import TeamDashboard from './components/TeamDashboard.tsx';
 import GameCreator from './components/GameCreator.tsx'; 
 import ClientSubmissionView from './components/ClientSubmissionView.tsx'; 
 import TeamsHubModal from './components/TeamsHubModal.tsx';
-import { GamePoint, Coordinate, GameState, GameMode, Game, MapStyleId, Language, Team, TaskTemplate, GameAction, PlaygroundTemplate, Playground, PointActivationType } from './types.ts';
+import { GamePoint, Coordinate, GameState, GameMode, Game, MapStyleId, Language, Team, TaskTemplate, GameAction, PlaygroundTemplate, Playground, PointActivationType, TaskList } from './types.ts';
 import { haversineMeters, isWithinRadius, formatDistance } from './utils/geo.ts';
 import { X, ChevronDown, AlertTriangle, CheckCircle, RefreshCw, Plus, Wand2, Library, MapPin, Ruler, RotateCcw, Check, PenTool, Move } from 'lucide-react';
 import * as db from './services/db.ts';
@@ -63,8 +63,9 @@ const App: React.FC = () => {
   const [showAiGenerator, setShowAiGenerator] = useState(false);
   const [showGameCreator, setShowGameCreator] = useState(false);
   const [gameToEdit, setGameToEdit] = useState<Game | null>(null); 
-  const [taskMasterTab, setTaskMasterTab] = useState<'LISTS' | 'LIBRARY' | 'CREATE' | 'CLIENT'>('LISTS');
+  const [taskMasterTab, setTaskMasterTab] = useState<'LISTS' | 'LIBRARY' | 'CREATE' | 'CLIENT' | 'QR'>('LISTS');
   const [taskMasterSelectionMode, setTaskMasterSelectionMode] = useState(false);
+  const [taskMasterEditingListId, setTaskMasterEditingListId] = useState<string | null>(null);
 
   const [showTeamsHub, setShowTeamsHub] = useState(false);
   const [showTeamsModal, setShowTeamsModal] = useState(false);
@@ -326,6 +327,14 @@ const App: React.FC = () => {
           case 'REFRESH_DATA':
               refreshData();
               break;
+          case 'CLIENT_PORTAL':
+              setDashboardInitialTab('client');
+              setCurrentView('DASHBOARD');
+              break;
+          case 'QR_CODES':
+              setTaskMasterTab('QR');
+              setShowTaskMaster(true);
+              break;
       }
   };
 
@@ -359,6 +368,51 @@ const App: React.FC = () => {
       setShowAddMenu(false);
       targetLocationRef.current = null;
       targetPlaygroundIdRef.current = null;
+  };
+
+  // Handler for importing a whole list to a specific game
+  const handleImportListToGame = (gameId: string, tasks: TaskTemplate[]) => {
+      const gamesArr = Array.isArray(gameState.games) ? gameState.games : [];
+      const targetGame = gamesArr.find(g => g.id === gameId);
+      if (!targetGame) return;
+
+      let baseLoc = { lat: 55.6761, lng: 12.5683 };
+      if (targetGame.points.length > 0) {
+          baseLoc = targetGame.points[0].location;
+      } else if (gameState.userLocation) {
+          baseLoc = gameState.userLocation;
+      }
+
+      const newPoints = tasks.map((t, i) => ({ 
+          id: `pt-${Date.now()}-${i}`, 
+          title: t.title, 
+          task: t.task, 
+          location: { lat: baseLoc.lat + (Math.random() - 0.5) * 0.002, lng: baseLoc.lng + (Math.random() - 0.5) * 0.002 }, 
+          radiusMeters: 30, 
+          iconId: t.iconId, 
+          points: t.points || 100, 
+          isUnlocked: false, 
+          isCompleted: false, 
+          activationTypes: ['radius'] as PointActivationType[], 
+          order: targetGame.points.length + i, 
+          tags: t.tags, 
+          feedback: t.feedback, 
+          settings: t.settings
+      }));
+
+      const updatedGame = { ...targetGame, points: [...targetGame.points, ...newPoints] };
+      
+      // Optimistic update if active
+      if (gameState.activeGameId === gameId) {
+          setGameState(prev => ({
+              ...prev,
+              games: (Array.isArray(prev.games) ? prev.games : []).map(g => g.id === gameId ? updatedGame : g)
+          }));
+      }
+
+      db.saveGame(updatedGame).then(() => refreshData());
+      setShowTaskMaster(false);
+      alert(`Added ${tasks.length} tasks to ${targetGame.name}`);
   };
 
   const executeActions = useCallback((actions: GameAction[]) => {
@@ -548,7 +602,7 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* Rest of the component (PLAYER_LOBBY, MAP, Modals) remains the same */}
+      {/* Rest of the component (PLAYER_LOBBY, MAP, Modals) */}
       {currentView === 'PLAYER_LOBBY' && (
           <WelcomeScreen 
             games={Array.isArray(gameState.games) ? gameState.games : []} 
@@ -589,7 +643,7 @@ const App: React.FC = () => {
                 mode={mode} 
                 toggleMode={() => setMode(mode === GameMode.PLAY ? GameMode.EDIT : mode === GameMode.EDIT ? GameMode.INSTRUCTOR : GameMode.PLAY)} 
                 onOpenGameManager={() => setShowGameManager(true)} 
-                onOpenTaskMaster={() => { setTaskMasterTab('LISTS'); setShowTaskMaster(true); }} 
+                onOpenTaskMaster={() => { setTaskMasterTab('LISTS'); setTaskMasterEditingListId(null); setShowTaskMaster(true); }} 
                 onOpenTeams={() => setShowTeamsModal(true)} 
                 mapStyle={mapStyle} 
                 onSetMapStyle={setMapStyle} 
@@ -640,7 +694,7 @@ const App: React.FC = () => {
                       updateActiveGame({...activeGame, points: updated});
                   }} 
                   onSaveGame={() => db.saveGame(activeGame!)} 
-                  onOpenTaskMaster={() => { setTaskMasterTab('LISTS'); setShowTaskMaster(true); }} 
+                  onOpenTaskMaster={() => { setTaskMasterTab('LISTS'); setTaskMasterEditingListId(null); setShowTaskMaster(true); }} 
                   onFitBounds={() => {}} 
                   onOpenPlaygroundEditor={() => setShowPlaygroundEditor(true)}
                   initialExpanded={forceExpandDrawer}
@@ -696,7 +750,7 @@ const App: React.FC = () => {
                           activeGameId: newGame.id
                       }));
                       setShowGameCreator(false);
-                      setMode(GameMode.EDIT);
+                      setMode(GameMode.EDIT); 
                       setCurrentView('MAP');
 
                       // 2. Persist & Refresh
@@ -727,8 +781,14 @@ const App: React.FC = () => {
                 }
                 (window as any)._afterChooseView = null;
             }} 
-            onCreateGame={(name) => {
-                const newGame: Game = { id: `game-${Date.now()}`, name, description: '', points: [], createdAt: Date.now() }; 
+            onCreateGame={(name, fromListId) => {
+                const newGame: Game = { id: `game-${Date.now()}`, name, description: '', points: [], createdAt: Date.now() };
+                if (fromListId) {
+                    const list = gameState.taskLists.find(l => l.id === fromListId);
+                    if (list) {
+                        handleImportListToGame(newGame.id, list.tasks);
+                    }
+                }
                 db.saveGame(newGame).then(() => { 
                     setGameState(prev => ({ ...prev, activeGameId: newGame.id })); 
                     setShowGameChooser(false); 
@@ -743,6 +803,27 @@ const App: React.FC = () => {
                     setShowGameCreator(true);
                 }
             }}
+            onSaveAsTemplate={(gameId, name) => {
+                const g = (Array.isArray(gameState.games) ? gameState.games : []).find(x => x.id === gameId);
+                if (g) {
+                    const template: TaskList = {
+                        id: `list-${Date.now()}`,
+                        name,
+                        description: g.description,
+                        tasks: g.points.map(p => ({ ...p, id: `tpl-${Date.now()}-${Math.random()}`, tags: p.tags || [] })), // Convert points to templates
+                        color: '#3b82f6',
+                        createdAt: Date.now()
+                    };
+                    db.saveTaskList(template).then(() => refreshData());
+                }
+            }}
+            onOpenGameCreator={() => setShowGameCreator(true)}
+            onEditTemplate={(id) => {
+                setShowGameChooser(false);
+                setTaskMasterEditingListId(id);
+                setTaskMasterTab('LISTS');
+                setShowTaskMaster(true);
+            }}
           />
       )}
 
@@ -750,7 +831,7 @@ const App: React.FC = () => {
         <TaskMaster 
             library={Array.isArray(gameState.taskLibrary) ? gameState.taskLibrary : []} 
             lists={Array.isArray(gameState.taskLists) ? gameState.taskLists : []} 
-            onClose={() => setShowTaskMaster(false)} 
+            onClose={() => { setShowTaskMaster(false); setTaskMasterEditingListId(null); }} 
             onSaveTemplate={(t) => db.saveTemplate(t).then(() => refreshData())} 
             onDeleteTemplate={(id) => db.deleteTemplate(id).then(() => refreshData())} 
             onSaveList={(l) => db.saveTaskList(l).then(() => refreshData())} 
@@ -759,137 +840,84 @@ const App: React.FC = () => {
             initialTab={taskMasterTab}
             isSelectionMode={taskMasterSelectionMode}
             onSelectTasksForGame={(tasks) => handleAddTasksFromLibrary(tasks)}
+            games={Array.isArray(gameState.games) ? gameState.games : []}
+            activeGameId={gameState.activeGameId}
+            onAddTasksToGame={handleImportListToGame}
+            initialEditingListId={taskMasterEditingListId}
         />
+      )}
+
+      {showAiGenerator && (
+          <AiTaskGenerator 
+              onClose={() => setShowAiGenerator(false)} 
+              onAddTasks={(tasks) => handleAddTasksFromLibrary(tasks)} 
+          />
       )}
 
       {showTeamsHub && (
           <TeamsHubModal 
-              onClose={() => setShowTeamsHub(false)}
+              onClose={() => setShowTeamsHub(false)} 
               onAction={(action) => {
                   setShowTeamsHub(false);
                   if (action === 'JOIN') setCurrentView('PLAYER_LOBBY');
-                  if (action === 'COMMAND') { setMode(GameMode.INSTRUCTOR); setShowTeamsModal(true); setCurrentView('MAP'); }
-              }}
+                  if (action === 'COMMAND') setShowTeamsModal(true);
+              }} 
           />
       )}
 
       {showTeamsModal && (
           <TeamsModal 
-            gameId={gameState.activeGameId} 
-            games={Array.isArray(gameState.games) ? gameState.games : []} 
-            targetTeamId={teamsModalTargetId}
-            onSelectGame={(id) => setGameState(prev => ({ ...prev, activeGameId: id }))} 
-            onClose={() => setShowTeamsModal(false)} 
-          />
-      )}
-
-      {showTeamDashboard && gameState.activeGameId && (
-          <TeamDashboard 
-              teamId={gameState.teamId} 
               gameId={gameState.activeGameId}
-              totalMapPoints={activeGame?.points.filter(p => !p.playgroundId).length || 0}
-              onOpenAgents={() => setShowTeamsModal(true)}
-              onClose={() => setShowTeamDashboard(false)} 
+              games={Array.isArray(gameState.games) ? gameState.games : []}
+              onSelectGame={(id) => setGameState(prev => ({ ...prev, activeGameId: id }))}
+              onClose={() => setShowTeamsModal(false)}
+              targetTeamId={teamsModalTargetId}
           />
       )}
 
-      {editingPoint && (
-          <TaskEditor 
-              point={editingPoint} 
-              onSave={(updatedPoint) => {
-                  const updatedPoints = activeGame!.points.map(p => p.id === updatedPoint.id ? updatedPoint : p);
-                  updateActiveGame({ ...activeGame!, points: updatedPoints });
-                  setEditingPoint(null);
+      {showGameManager && (
+          <GameManager 
+              games={Array.isArray(gameState.games) ? gameState.games : []}
+              taskLists={Array.isArray(gameState.taskLists) ? gameState.taskLists : []}
+              activeGameId={gameState.activeGameId}
+              activeGamePoints={activeGame?.points || []}
+              onCreateGame={(name) => {
+                  const newGame: Game = { id: `game-${Date.now()}`, name, description: '', points: [], createdAt: Date.now() }; 
+                  db.saveGame(newGame).then(() => { 
+                      setGameState(prev => ({ ...prev, activeGameId: newGame.id })); 
+                      setShowGameManager(false); 
+                      setMode(GameMode.EDIT); 
+                      setCurrentView('MAP');
+                  }); 
               }}
-              onDelete={(id) => {
-                  updateActiveGame({ ...activeGame!, points: activeGame!.points.filter(p => p.id !== id) });
-                  setEditingPoint(null);
-              }}
-              onClose={() => setEditingPoint(null)}
-          />
-      )}
-
-      {selectedPoint && (
-        <TaskModal 
-            point={selectedPoint} 
-            onClose={() => setSelectedPoint(null)} 
-            onComplete={handleCompleteTask} 
-            onUnlock={handleUnlockPoint}
-            onPenalty={handlePenalty}
-            onTaskOpen={() => selectedPoint.logic?.onOpen && executeActions(selectedPoint.logic.onOpen)}
-            onTaskIncorrect={() => selectedPoint.logic?.onIncorrect && executeActions(selectedPoint.logic.onIncorrect)}
-            onOpenActions={() => mode === GameMode.EDIT && setActionPoint(selectedPoint)}
-            distance={gameState.userLocation ? haversineMeters(gameState.userLocation, selectedPoint.location) : 0} 
-            mode={mode}
-        />
-      )}
-
-      {/* Logic Editor Modal */}
-      {actionPoint && (
-          <TaskActionModal 
-              point={actionPoint} 
-              allPoints={activeGame?.points || []} 
-              playgrounds={activeGame?.playgrounds}
-              onSave={(updated) => {
-                  const updatedPoints = activeGame!.points.map(p => p.id === updated.id ? updated : p);
-                  updateActiveGame({ ...activeGame!, points: updatedPoints });
-                  setActionPoint(null);
-              }}
-              onClose={() => setActionPoint(null)}
-              onStartDrawMode={() => {}} 
-          />
-      )}
-
-      {/* Playground Viewer Modal */}
-      {activePlaygroundId && activePlayground && (
-          <PlaygroundModal 
-              playground={activePlayground}
-              points={displayPoints}
-              onClose={() => setActivePlaygroundId(null)}
-              onPointClick={handlePointClick}
-              mode={mode}
-              onUpdatePlayground={(updated) => {
-                  const updatedPGs = activeGame!.playgrounds!.map(pg => pg.id === updated.id ? updated : pg);
-                  updateActiveGame({ ...activeGame, playgrounds: updatedPGs });
-              }}
-              onEditPlayground={() => setShowPlaygroundEditor(true)}
-          />
-      )}
-      
-      {/* Playground Design Editor */}
-      {showPlaygroundEditor && activeGame && (
-          <PlaygroundEditor 
-              game={activeGame}
-              onUpdateGame={updateActiveGame}
-              onClose={() => setShowPlaygroundEditor(false)}
-              onEditPoint={setEditingPoint}
-              onAddTask={handleAddTask}
-              onOpenLibrary={() => setShowPlaygroundLibrary(true)}
-          />
-      )}
-
-      {/* Playground Template Library */}
-      {showPlaygroundLibrary && (
-          <PlaygroundLibraryModal 
-              onClose={() => setShowPlaygroundLibrary(false)}
-              onImport={(tpl) => {
-                  const newPlayground = { ...tpl.playgroundData, id: `pg-${Date.now()}` };
-                  const newTasks = tpl.tasks.map((t, i) => ({ ...t, id: `pt-${Date.now()}-${i}`, playgroundId: newPlayground.id }));
-                  updateActiveGame({ 
-                      ...activeGame!, 
-                      playgrounds: [...(activeGame!.playgrounds || []), newPlayground],
-                      points: [...activeGame!.points, ...newTasks]
+              onSelectGame={(id) => setGameState(prev => ({ ...prev, activeGameId: id }))}
+              onDeleteGame={(id) => {
+                  db.deleteGame(id).then(() => {
+                      if (gameState.activeGameId === id) setGameState(prev => ({ ...prev, activeGameId: null }));
+                      refreshData();
                   });
-                  setShowPlaygroundLibrary(false);
               }}
+              onEditPoint={() => {}} 
+              onReorderPoints={() => {}} 
+              onCreateTestGame={() => {}}
+              onOpenTaskMaster={() => { setShowGameManager(false); setShowTaskMaster(true); }}
+              onClose={() => setShowGameManager(false)}
+              onClearMap={() => {}}
+              mode={mode}
+              onSetMode={setMode}
           />
       )}
 
-      {/* AI Task Generator */}
-      {showAiGenerator && (
-          <AiTaskGenerator 
-              onClose={() => setShowAiGenerator(false)} 
-              onAddTasks={(tasks) => handleAddTasksFromLibrary(tasks, targetPlaygroundIdRef.current || undefined)} 
+      {showAdminModal && (
+          <AdminModal 
+              games={Array.isArray(gameState.games) ? gameState.games : []}
+              onClose={() => setShowAdminModal(false)}
+              onDeleteGame={(id) => {
+                  db.deleteGame(id).then(() => {
+                      if (gameState.activeGameId === id) setGameState(prev => ({ ...prev, activeGameId: null }));
+                      refreshData();
+                  });
+              }}
           />
       )}
 
@@ -900,22 +928,122 @@ const App: React.FC = () => {
           />
       )}
 
-      {showAdminModal && (
-          <AdminModal 
-              games={Array.isArray(gameState.games) ? gameState.games : []}
-              onClose={() => setShowAdminModal(false)}
-              onDeleteGame={async (id) => {
-                  if (confirm('Are you sure you want to permanently delete this game and all its data?')) {
-                      await db.deleteGame(id);
-                      await refreshData();
-                      if (gameState.activeGameId === id) {
-                          setGameState(prev => ({ ...prev, activeGameId: null }));
-                          localStorage.removeItem(STORAGE_KEY_GAME_ID);
-                      }
+      {showTeamDashboard && activeGame && (
+          <TeamDashboard 
+              gameId={activeGame.id}
+              teamId={gameState.teamId}
+              totalMapPoints={activeGame.points.filter(p => !p.isSectionHeader && !p.playgroundId).length}
+              onOpenAgents={() => {}}
+              onClose={() => setShowTeamDashboard(false)}
+          />
+      )}
+
+      {showPlaygroundEditor && activeGame && (
+          <PlaygroundEditor 
+              game={activeGame}
+              onUpdateGame={updateActiveGame}
+              onClose={() => setShowPlaygroundEditor(false)}
+              onEditPoint={(p) => { setEditingPoint(p); }}
+              onAddTask={(type, pgId) => handleAddTask(type, pgId)}
+              onOpenLibrary={() => setShowPlaygroundLibrary(true)}
+          />
+      )}
+
+      {showPlaygroundLibrary && (
+          <PlaygroundLibraryModal 
+              onClose={() => setShowPlaygroundLibrary(false)}
+              onImport={(tpl) => {
+                  if (activeGame) {
+                      const newPgId = `pg-${Date.now()}`;
+                      const newPg = { ...tpl.playgroundData, id: newPgId, title: tpl.title };
+                      const newPoints = tpl.tasks.map((t, i) => ({ 
+                          ...t, 
+                          id: `pt-${Date.now()}-${i}`, 
+                          playgroundId: newPgId 
+                      }));
+                      updateActiveGame({
+                          ...activeGame,
+                          playgrounds: [...(activeGame.playgrounds || []), newPg],
+                          points: [...activeGame.points, ...newPoints]
+                      });
+                      setShowPlaygroundLibrary(false);
                   }
               }}
           />
       )}
+
+      {editingPoint && (
+          <TaskEditor 
+              point={editingPoint} 
+              onSave={(p) => { 
+                  if (!activeGame) return;
+                  const updated = activeGame.points.some(pt => pt.id === p.id) 
+                      ? activeGame.points.map(pt => pt.id === p.id ? p : pt)
+                      : [...activeGame.points, p];
+                  updateActiveGame({ ...activeGame, points: updated });
+                  setEditingPoint(null); 
+              }} 
+              onDelete={(id) => {
+                  if (!activeGame) return;
+                  updateActiveGame({ ...activeGame, points: activeGame.points.filter(p => p.id !== id) });
+                  setEditingPoint(null);
+              }}
+              onClose={() => setEditingPoint(null)} 
+              onClone={(p) => {
+                  if (!activeGame) return;
+                  const newPoint = { ...p, id: `pt-${Date.now()}`, title: `${p.title} (Copy)`, location: { lat: p.location.lat + 0.0001, lng: p.location.lng + 0.0001 } };
+                  updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
+                  setEditingPoint(newPoint);
+              }}
+          />
+      )}
+
+      {selectedPoint && mode !== GameMode.EDIT && (
+          <TaskModal 
+              point={selectedPoint} 
+              onClose={() => setSelectedPoint(null)} 
+              onComplete={handleCompleteTask} 
+              onPenalty={handlePenalty}
+              onUnlock={handleUnlockPoint}
+              distance={nearestPointDistance || 0}
+              isInstructorMode={mode === GameMode.INSTRUCTOR}
+              mode={mode}
+              onTaskOpen={() => {
+                  if (selectedPoint.logic?.onOpen) executeActions(selectedPoint.logic.onOpen);
+              }}
+              onTaskIncorrect={() => {
+                  if (selectedPoint.logic?.onIncorrect) executeActions(selectedPoint.logic.onIncorrect);
+              }}
+          />
+      )}
+
+      {actionPoint && activeGame && (
+          <TaskActionModal 
+              point={actionPoint}
+              allPoints={activeGame.points}
+              playgrounds={activeGame.playgrounds}
+              onSave={(p) => {
+                  const updatedPoints = activeGame.points.map(pt => pt.id === p.id ? p : pt);
+                  updateActiveGame({ ...activeGame, points: updatedPoints });
+                  setActionPoint(null);
+              }}
+              onClose={() => setActionPoint(null)}
+              onStartDrawMode={() => {
+                  setActionPoint(null);
+              }}
+          />
+      )}
+
+      {activePlaygroundId && activePlayground && mode !== GameMode.EDIT && (
+          <PlaygroundModal 
+              playground={activePlayground}
+              points={displayPoints}
+              onClose={() => setActivePlaygroundId(null)}
+              onPointClick={handlePointClick}
+              mode={mode}
+          />
+      )}
+
     </div>
   );
 };

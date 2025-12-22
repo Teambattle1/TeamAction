@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Game, TaskList } from '../types';
-import { X, Calendar, CheckCircle, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home, Plus, Zap, Clock, AlertTriangle, Search, Filter, MoreHorizontal, Settings } from 'lucide-react';
+import { X, Calendar, CheckCircle, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home, Plus, Zap, Clock, AlertTriangle, Search, Filter, MoreHorizontal, Settings, Edit2 } from 'lucide-react';
 
 interface GameChooserProps {
   games: Game[];
@@ -12,7 +12,8 @@ interface GameChooserProps {
   onSaveAsTemplate?: (gameId: string, name: string) => void;
   onRefresh?: () => void;
   onOpenGameCreator?: () => void;
-  onEditGame?: (id: string) => void; // New prop for editing details
+  onEditGame?: (id: string) => void; 
+  onEditTemplate?: (id: string) => void; // New Prop
 }
 
 type MainView = 'GAMES' | 'TEMPLATES';
@@ -27,7 +28,8 @@ const GameChooser: React.FC<GameChooserProps> = ({
   onSaveAsTemplate,
   onRefresh,
   onOpenGameCreator,
-  onEditGame
+  onEditGame,
+  onEditTemplate
 }) => {
   const [mainView, setMainView] = useState<MainView>('GAMES');
   const [sessionTab, setSessionTab] = useState<SessionTab>('TODAY');
@@ -334,14 +336,24 @@ const GameChooser: React.FC<GameChooserProps> = ({
                       ) : taskLists.map(list => (
                           <div 
                               key={list.id}
-                              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 hover:border-blue-500/50 transition-all group relative overflow-hidden"
+                              className="bg-slate-900 border border-slate-800 rounded-3xl p-6 hover:border-blue-500/50 transition-all group relative overflow-hidden flex flex-col"
                           >
                               <div className="flex items-start justify-between mb-6">
                                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg text-white" style={{ backgroundColor: list.color }}>
                                       <LayoutTemplate className="w-7 h-7" />
                                   </div>
-                                  <div className="bg-slate-800 px-3 py-1 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                      {list.tasks.length} TASKS
+                                  <div className="flex flex-col items-end gap-2">
+                                      <div className="bg-slate-800 px-3 py-1 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                          {list.tasks.length} TASKS
+                                      </div>
+                                      {onEditTemplate && (
+                                          <button 
+                                              onClick={() => onEditTemplate(list.id)}
+                                              className="bg-slate-800 hover:bg-white hover:text-black px-3 py-1 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest transition-colors flex items-center gap-1"
+                                          >
+                                              <Edit2 className="w-3 h-3" /> EDIT TEMPLATE
+                                          </button>
+                                      )}
                                   </div>
                               </div>
                               
@@ -350,7 +362,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
                               
                               <button 
                                   onClick={() => handleCreateFromTemplate(list)}
-                                  className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+                                  className="mt-auto w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
                               >
                                   <Plus className="w-4 h-4" /> CREATE GAME
                               </button>

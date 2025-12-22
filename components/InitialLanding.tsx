@@ -5,12 +5,12 @@ import {
   UserCircle, Settings, MapPin, ChevronRight, Play,
   LayoutDashboard, LayoutTemplate, LayoutGrid, UserPlus,
   Monitor, Tag, Radar, Plus, Database, ArrowLeft,
-  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown
+  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode
 } from 'lucide-react';
 import { Game } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
@@ -187,18 +187,25 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           onClick={() => onAction('TASKLIST')}
                       />
                       <NavCard 
-                          title="TEMPLATES" 
-                          subtitle="PRE-MADE CONTENT" 
-                          icon={LayoutTemplate} 
-                          color="bg-teal-500"
-                          onClick={() => onAction('TEMPLATES')}
-                      />
-                      <NavCard 
                           title="TAGS" 
                           subtitle="CATEGORIES" 
                           icon={Tag} 
                           color="bg-lime-500"
                           onClick={() => onAction('TAGS')}
+                      />
+                      <NavCard 
+                          title="CLIENT PORTAL" 
+                          subtitle="EXTERNAL LINKS" 
+                          icon={Link} 
+                          color="bg-pink-500"
+                          onClick={() => onAction('CLIENT_PORTAL')}
+                      />
+                      <NavCard 
+                          title="QR CODES" 
+                          subtitle="PRINT & DOWNLOAD" 
+                          icon={QrCode} 
+                          color="bg-purple-500"
+                          onClick={() => onAction('QR_CODES')}
                       />
                   </div>
               );

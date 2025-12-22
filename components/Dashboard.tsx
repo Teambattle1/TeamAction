@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Gamepad2, LayoutTemplate, ListChecks, 
   ExternalLink, Plus, ChevronRight, Settings, Clock, Star,
   Search, Filter, ChevronDown, User, Lock, Eye, MoreHorizontal,
-  CheckCircle2, Globe, Tag, Info, UserCircle, X, Users, Link, Copy, ClipboardList, Send
+  CheckCircle2, Globe, Tag, Info, UserCircle, X, Users, Link, Copy, ClipboardList, Send, ArrowLeft
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -48,16 +48,6 @@ const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [
 
   // For the Templates tab, split between My and Free
   const myTemplates = listsArr.filter(l => !l.isClientList).slice(0, 4);
-
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'games', label: 'Games' },
-    { id: 'client', label: 'Client' },
-    { id: 'templates', label: 'Tasklists' },
-    { id: 'tasks', label: 'Tasks' },
-    { id: 'users', label: 'Users' },
-    { id: 'tags', label: 'Tags' },
-  ];
 
   const formatDate = (ts: number) => {
     return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -389,25 +379,12 @@ const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [
       
       {/* Top Navigation Bar */}
       <nav className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-[#141414] shrink-0">
-        <div className="flex gap-2 bg-[#2d2d2d] p-1 rounded-lg">
-          {navItems.map(item => (
-            <button 
-              key={item.id}
-              onClick={() => setActiveTab(item.id as any)}
-              className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${activeTab === item.id ? 'bg-[#404040] text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="bg-[#1a1a1a] border border-white/10 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-[#252525] transition-colors">
-            Learn how to create games <ExternalLink className="w-3 h-3" />
-          </button>
-          <button onClick={onBack} className="p-2 hover:bg-white/5 rounded-full text-gray-500">
-            <Settings className="w-5 h-5" />
-          </button>
-        </div>
+        <button 
+            onClick={onBack}
+            className="flex items-center gap-2 px-4 py-2 bg-[#2d2d2d] hover:bg-[#3d3d3d] rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all border border-white/5 hover:border-white/10"
+        >
+            <ArrowLeft className="w-4 h-4" /> BACK
+        </button>
       </nav>
 
       {/* Main Scrollable Content */}

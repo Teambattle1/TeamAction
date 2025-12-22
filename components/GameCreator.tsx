@@ -16,7 +16,15 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame }
   
   // Client Info
   const [clientName, setClientName] = useState(baseGame?.client?.name || '');
-  const [playingDate, setPlayingDate] = useState(baseGame?.client?.playingDate || new Date().toISOString().split('T')[0]);
+  
+  // Date Logic: Prefer existing client date, then existing creation date, then today
+  const getInitialDate = () => {
+      if (baseGame?.client?.playingDate) return baseGame.client.playingDate;
+      if (baseGame?.createdAt) return new Date(baseGame.createdAt).toISOString().split('T')[0];
+      return new Date().toISOString().split('T')[0];
+  };
+
+  const [playingDate, setPlayingDate] = useState(getInitialDate());
   const [clientLogo, setClientLogo] = useState(baseGame?.client?.logoUrl || '');
   const [isSearchingLogo, setIsSearchingLogo] = useState(false);
 
@@ -158,7 +166,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame }
                                         type="date" 
                                         value={playingDate}
                                         onChange={(e) => setPlayingDate(e.target.value)}
-                                        className="w-full pl-10 p-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none transition-colors"
+                                        className="w-full pl-10 p-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none transition-colors uppercase"
                                     />
                                 </div>
                             </div>
