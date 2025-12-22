@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameMode, MapStyleId, Language, Playground, TimerConfig } from '../types';
 import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin } from 'lucide-react';
+import { formatDistance } from '../utils/geo';
 
 interface GameHUDProps {
   accuracy: number | null;
@@ -18,6 +19,7 @@ interface GameHUDProps {
   onOpenInstructorDashboard?: () => void;
   isMeasuring?: boolean;
   onToggleMeasure?: () => void;
+  measuredDistance?: number;
   playgrounds?: Playground[];
   onOpenPlayground?: (id: string) => void;
   onOpenTeamDashboard?: () => void;
@@ -108,6 +110,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
   onOpenInstructorDashboard,
   isMeasuring,
   onToggleMeasure,
+  measuredDistance,
   playgrounds,
   onOpenPlayground,
   onOpenTeamDashboard,
@@ -164,6 +167,15 @@ const GameHUD: React.FC<GameHUDProps> = ({
               <div className="bg-white/20 p-1.5 rounded-full animate-pulse"><Move className="w-4 h-4 text-white" /></div>
               <span className="text-xs font-black uppercase tracking-widest">
                   RELOCATING &bull; DRAG MAP TO NEW CENTER
+              </span>
+          </div>
+      )}
+
+      {isMeasuring && (
+          <div className="fixed bottom-32 left-1/2 -translate-x-1/2 bg-pink-600/95 text-white px-6 py-3 rounded-full backdrop-blur-md z-[2000] animate-in fade-in slide-in-from-bottom-4 pointer-events-none shadow-xl border border-white/20 flex items-center gap-3 transition-opacity duration-500">
+              <div className="bg-white/20 p-1.5 rounded-full animate-pulse"><Ruler className="w-4 h-4 text-white" /></div>
+              <span className="text-xs font-black uppercase tracking-widest">
+                  MEASURING: {formatDistance(measuredDistance || 0)}
               </span>
           </div>
       )}

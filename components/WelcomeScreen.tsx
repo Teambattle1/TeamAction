@@ -27,7 +27,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onSetMapStyle, 
   language, 
   onSetLanguage, 
-  onBack,
+  onBack, 
   onInstructorLogin
 }) => {
   const [mode, setMode] = useState<ScreenMode>('MENU');
@@ -94,6 +94,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   // QR Scanning Logic
   React.useEffect(() => {
       let animationFrameId: number;
+      let activeStream: MediaStream | null = null;
       
       const scan = () => {
           if (videoRef.current && canvasRef.current && isScanning) {
@@ -124,22 +125,30 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       if (isScanning) {
           navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
               .then(stream => {
+                  activeStream = stream;
                   if (videoRef.current) {
                       videoRef.current.srcObject = stream;
                       videoRef.current.setAttribute("playsinline", "true");
                       videoRef.current.play();
                       requestAnimationFrame(scan);
+                  } else {
+                      // Component unmounted before promise resolved
+                      stream.getTracks().forEach(t => t.stop());
                   }
               })
               .catch(err => console.error("Error accessing camera", err));
-      } else {
-          if (videoRef.current?.srcObject) {
+      }
+
+      return () => {
+          cancelAnimationFrame(animationFrameId);
+          if (activeStream) {
+              activeStream.getTracks().forEach(track => track.stop());
+          }
+          if (videoRef.current && videoRef.current.srcObject) {
               const stream = videoRef.current.srcObject as MediaStream;
               stream.getTracks().forEach(track => track.stop());
           }
-      }
-
-      return () => cancelAnimationFrame(animationFrameId);
+      };
   }, [isScanning]);
 
   return (

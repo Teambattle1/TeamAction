@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Game, Team, TeamMember, Coordinate, GamePoint } from '../types';
+import { Game, Team, TeamMember, Coordinate, GamePoint, GameMode } from '../types';
 import { X, Users, MessageSquare, Send, RefreshCw, Radio, MapPin, CheckCircle, Trophy, ListChecks, Plus, Minus, Gamepad2, ArrowRight } from 'lucide-react';
 import * as db from '../services/db';
 import { teamSync } from '../services/teamSync';
@@ -256,7 +256,7 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                             pointLabels={pointStats}
                             logicLinks={logicLinks}
                             accuracy={null}
-                            mode={2 as any} // INSTRUCTOR Mode
+                            mode={GameMode.INSTRUCTOR} 
                             mapStyle="osm"
                             onPointClick={handlePointClick} 
                             onTeamClick={handleTeamClickOnMap}
@@ -482,7 +482,7 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                 points={game.points}
                 onClose={() => setActivePlaygroundId(null)}
                 onPointClick={() => {}} 
-                mode={2 as any} // INSTRUCTOR
+                mode={GameMode.INSTRUCTOR}
             />
         )}
     </div>

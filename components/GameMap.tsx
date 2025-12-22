@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
@@ -228,7 +229,10 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
                   onDelete(point.id); return; 
               }
           }
-          if (onMove) onMove(point.id, marker.getLatLng());
+          if (onMove) {
+              const ll = marker.getLatLng();
+              onMove(point.id, { lat: ll.lat, lng: ll.lng });
+          }
         }
       },
     }),
@@ -345,13 +349,18 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
             )}
             
             {/* Logic Connections Visualization */}
-            {logicLinks && logicLinks.map((link, idx) => (
-                <Polyline 
-                    key={`link-${idx}`} 
-                    positions={[[link.from.lat, link.from.lng], [link.to.lat, link.to.lng]]} 
-                    pathOptions={{ color: link.color || '#eab308', weight: 3, dashArray: '10, 10', opacity: 0.8 }} 
-                />
-            ))}
+            {logicLinks && logicLinks.map((link, idx) => {
+                if (!link.from || !link.to || typeof link.from.lat !== 'number' || typeof link.to.lat !== 'number') return null;
+                // Use a stable key based on coordinates to avoid react-leaflet update issues during drag
+                const key = `link-${link.from.lat.toFixed(5)}-${link.from.lng.toFixed(5)}-${link.to.lat.toFixed(5)}-${link.to.lng.toFixed(5)}-${link.color}`;
+                return (
+                    <Polyline 
+                        key={key}
+                        positions={[[link.from.lat, link.from.lng], [link.to.lat, link.to.lng]]} 
+                        pathOptions={{ color: link.color || '#eab308', weight: 3, dashArray: '10, 10', opacity: 0.8 }} 
+                    />
+                );
+            })}
 
             {/* Measure Path Polyline */}
             {measurePath && measurePath.length > 1 && (

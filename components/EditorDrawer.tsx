@@ -6,6 +6,7 @@ import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, Chevron
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import LocationSearch from './LocationSearch';
 
 interface EditorDrawerProps {
   onClose: () => void;
@@ -280,6 +281,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onSaveGame,
   onOpenTaskMaster,
   onFitBounds,
+  onSearchLocation,
   onHoverPoint,
   onOpenPlaygroundEditor,
   initialExpanded = false,
@@ -443,6 +445,13 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                         <LayoutGrid className="w-4 h-4" /> PLAYGROUNDS
                     </button>
                 </div>
+            )}
+
+            {/* Location Search Added Here */}
+            {onSearchLocation && (
+              <div className="px-4 pt-4 pb-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+                  <LocationSearch onSelectLocation={onSearchLocation} className="h-10" />
+              </div>
             )}
 
             <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900 flex-shrink-0 z-[60]">
