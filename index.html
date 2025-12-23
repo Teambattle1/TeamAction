@@ -78,6 +78,17 @@
             display: block !important;
         }
       }
+      
+      /* Custom Leaflet Tooltip Overrides for Dark Mode Support */
+      .leaflet-tooltip.custom-leaflet-tooltip {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .leaflet-tooltip.custom-leaflet-tooltip::before {
+        display: none !important; /* Remove default arrow */
+      }
     </style>
   <script type="importmap">
 {

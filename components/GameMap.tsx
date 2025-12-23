@@ -4,8 +4,7 @@ import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline
 import L from 'leaflet';
 import { GamePoint, Coordinate, GameMode, MapStyleId, Team } from '../types';
 import { getLeafletIcon } from '../utils/icons';
-// Added missing EyeOff import to fix "Cannot find name 'EyeOff'" error on line 268
-import { Trash2, Crosshair, EyeOff } from 'lucide-react';
+import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap } from 'lucide-react';
 
 const UserIcon = L.divIcon({
   className: 'custom-user-icon',
@@ -45,7 +44,9 @@ interface GameMapProps {
   teamTrails?: Record<string, Coordinate[]>; 
   pointLabels?: Record<string, string>; 
   measurePath?: Coordinate[];
-  logicLinks?: { from: Coordinate; to: Coordinate; color?: string }[]; 
+  logicLinks?: { from: Coordinate; to: Coordinate; color?: string; type?: 'onOpen' | 'onCorrect' | 'onIncorrect' | 'open_playground' }[]; 
+  playgroundMarkers?: { id: string; location: Coordinate; title: string; iconId: string }[]; // New prop
+  dependentPointIds?: string[]; // IDs of points that are locked/hidden by default (targets of actions)
   accuracy: number | null;
   mode: GameMode;
   mapStyle: MapStyleId;
@@ -57,6 +58,7 @@ interface GameMapProps {
   onPointMove?: (pointId: string, newLoc: Coordinate) => void;
   onDeletePoint?: (pointId: string) => void;
   onPointHover?: (point: GamePoint | null) => void;
+  showScores?: boolean;
 }
 
 const MapClickParams = ({ onClick }: { onClick?: (c: Coordinate) => void }) => {
@@ -76,14 +78,18 @@ const RecenterMap = ({ center, points, mode }: { center: Coordinate | null, poin
     if (initializedRef.current) return;
 
     // In EDIT or INSTRUCTOR mode, prioritize fitting bounds to existing points if they exist.
-    // This helps editors who are indoors/remote see the content immediately rather than their GPS location.
     if ((mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && points.length > 0) {
-        const latLngs = points.map(p => [p.location.lat, p.location.lng] as [number, number]);
-        const bounds = L.latLngBounds(latLngs);
-        if (bounds.isValid()) {
-            map.fitBounds(bounds, { padding: [50, 50], animate: false });
-            initializedRef.current = true;
-            return;
+        // Filter out (0,0) coordinates which are default for new tasks
+        const validPoints = points.filter(p => p.location.lat !== 0 || p.location.lng !== 0);
+        
+        if (validPoints.length > 0) {
+            const latLngs = validPoints.map(p => [p.location.lat, p.location.lng] as [number, number]);
+            const bounds = L.latLngBounds(latLngs);
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50], animate: false, maxZoom: 16 });
+                initializedRef.current = true;
+                return;
+            }
         }
     }
 
@@ -101,9 +107,15 @@ const MapController = ({ handleRef }: { handleRef: React.RefObject<any> }) => {
     const map = useMap();
     useImperativeHandle(handleRef, () => ({
         fitBounds: (pts: GamePoint[]) => {
-            if (pts.length === 0) return;
-            const bounds = L.latLngBounds(pts.map(p => [p.location.lat, p.location.lng]));
-            map.fitBounds(bounds, { padding: [50, 50] });
+            // Filter out default 0,0 coordinates to prevent zooming out to world view
+            const validPts = pts.filter(p => p.location.lat !== 0 || p.location.lng !== 0);
+            
+            if (validPts.length === 0) return;
+            
+            const bounds = L.latLngBounds(validPts.map(p => [p.location.lat, p.location.lng]));
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+            }
         },
         getBounds: () => {
             const b = map.getBounds();
@@ -127,24 +139,28 @@ interface MapTaskMarkerProps {
   point: GamePoint;
   mode: GameMode;
   isSelected: boolean;
+  isDependent: boolean;
   isRelocating?: boolean;
   label?: string;
   onClick: (p: GamePoint) => void;
   onMove?: (id: string, loc: Coordinate) => void;
   onDelete?: (id: string) => void;
   onHover?: (p: GamePoint | null) => void;
+  showScore?: boolean;
 }
 
 const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({ 
   point, 
   mode, 
   isSelected,
+  isDependent,
   isRelocating,
   label,
   onClick, 
   onMove, 
   onDelete,
-  onHover
+  onHover,
+  showScore
 }) => {
   
   const markerRef = useRef<L.Marker>(null);
@@ -242,19 +258,33 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
   useEffect(() => {
       const marker = markerRef.current;
       if (marker) {
-          // Reduce opacity significantly if relocating to simulate "Cut" effect
-          const targetOpacity = isRelocating ? 0.4 : (isSelected ? 1 : (isDraggable ? 0.9 : 1));
+          let targetOpacity = 1;
+          if (isRelocating) targetOpacity = 0.4;
+          else if (isDependent && mode === GameMode.EDIT) targetOpacity = 0.6;
+          else if (isDraggable) targetOpacity = 0.9;
+
           marker.setOpacity(targetOpacity);
           marker.setZIndexOffset(isSelected ? 1000 : (isDraggable ? 500 : 0));
+          
+          if (marker.getElement()) {
+              if (isDependent && mode === GameMode.EDIT) {
+                  marker.getElement()!.style.filter = 'grayscale(100%)';
+              } else {
+                  marker.getElement()!.style.filter = 'none';
+              }
+          }
+
           if (marker.dragging) isDraggable ? marker.dragging.enable() : marker.dragging.disable();
       }
-  }, [isSelected, isDraggable, isRelocating]);
+  }, [isSelected, isDraggable, isRelocating, isDependent, mode]);
 
-  // Determine circle color
-  const circleColor = isSelected ? '#4f46e5' : (forcedColor || (visualIsUnlocked ? (visualIsCompleted ? '#22c55e' : '#eab308') : '#ef4444'));
+  const defaultStatusColor = visualIsCompleted ? '#22c55e' : (visualIsUnlocked ? '#eab308' : '#ef4444');
+  const strokeColor = isSelected ? '#4f46e5' : (forcedColor || defaultStatusColor);
+  const fillColor = point.areaColor || strokeColor;
 
-  // Prepare tooltip content safely
-  const questionText = typeof point.task.question === 'string' ? point.task.question.replace(/<[^>]*>?/gm, '') : '';
+  const stripHtml = (html: any) => typeof html === 'string' ? html.replace(/<[^>]*>?/gm, '') : '';
+  const questionText = stripHtml(point.task.question);
+  const isOptionsType = ['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(point.task.type);
 
   return (
     <>
@@ -262,18 +292,83 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
         draggable={isDraggable} 
         eventHandlers={eventHandlers} 
         position={[point.location.lat, point.location.lng]} 
-        icon={getLeafletIcon(point.iconId, visualIsUnlocked, visualIsCompleted, label, (hasActions || point.isHiddenBeforeScan) && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR), forcedColor, point.isHiddenBeforeScan)} 
+        icon={getLeafletIcon(
+            point.iconId, 
+            visualIsUnlocked, 
+            visualIsCompleted, 
+            label, 
+            (hasActions || point.isHiddenBeforeScan) && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR), 
+            forcedColor, 
+            point.isHiddenBeforeScan,
+            mode === GameMode.EDIT && showScore ? point.points : undefined, 
+            point.iconUrl
+        )} 
         ref={markerRef} 
       >
-        {mode === GameMode.EDIT && (
-            <Tooltip direction="top" offset={[0, -40]} opacity={0.9}>
-                <div className="flex flex-col items-center text-center max-w-[200px]">
-                    <span className="font-bold text-xs uppercase mb-1">{point.title}</span>
-                    {point.isHiddenBeforeScan && <span className="text-[9px] font-black text-purple-500 uppercase mb-1 flex items-center gap-1"><EyeOff className="w-2.5 h-2.5" /> HIDDEN UNTIL SCAN</span>}
-                    {questionText && (
-                        <span className="text-[10px] leading-tight text-gray-600 dark:text-gray-300 line-clamp-3">
-                            {questionText}
+        {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
+            <Tooltip direction="top" offset={[0, -45]} opacity={1} className="custom-leaflet-tooltip">
+                <div className="relative bg-white dark:bg-gray-900 p-3 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col gap-2 min-w-[200px] max-w-[260px]">
+                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-gray-900 rotate-45 border-b border-r border-gray-200 dark:border-gray-700"></div>
+                    <div className="flex items-center justify-between border-b pb-2 border-gray-100 dark:border-gray-800 relative z-10">
+                        <span className="font-black text-xs uppercase text-gray-900 dark:text-white truncate max-w-[140px]">{point.title}</span>
+                        {mode === GameMode.EDIT && (
+                            <span className="text-[9px] px-1.5 py-0.5 bg-gray-800 dark:bg-gray-700 text-white rounded font-black uppercase tracking-wider">{point.task.type}</span>
+                        )}
+                    </div>
+                    {point.task.imageUrl && (
+                        <div className="w-full h-24 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative border border-gray-100 dark:border-gray-700">
+                            <img src={point.task.imageUrl} className="w-full h-full object-cover" alt="Task" />
+                        </div>
+                    )}
+                    <div className="flex gap-2 items-start">
+                        <HelpCircle className="w-3 h-3 text-orange-500 mt-0.5 shrink-0" />
+                        <span className="text-[10px] leading-tight text-gray-600 dark:text-gray-300 font-medium whitespace-pre-wrap">
+                            {questionText || "No question text"}
                         </span>
+                    </div>
+                    {isOptionsType && point.task.options && point.task.options.length > 0 ? (
+                        <div className="flex flex-col gap-1 mt-1 border-t border-gray-100 dark:border-gray-800 pt-2">
+                            {point.task.options.map((opt, i) => {
+                                const isCorrect = (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') 
+                                    ? point.task.correctAnswers?.includes(opt)
+                                    : point.task.answer === opt;
+                                return (
+                                    <div key={i} className={`flex items-start gap-1.5 text-[9px] px-1.5 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-bold border border-green-200 dark:border-green-800/30' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        {isCorrect ? <CheckCircle className="w-3 h-3 shrink-0 mt-[1px]" /> : <div className="w-3 h-3 shrink-0" />}
+                                        <span className="leading-tight">{opt}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="flex gap-2 items-start bg-green-50 dark:bg-green-900/20 p-2 rounded-lg border border-green-100 dark:border-green-800/30">
+                            <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                            <span className="text-[10px] font-bold text-green-700 dark:text-green-300 leading-tight">
+                                {point.task.type === 'slider' 
+                                    ? `Target: ${point.task.range?.correctValue} (Range: ${point.task.range?.min}-${point.task.range?.max})`
+                                    : (point.task.answer || "No answer set")
+                                }
+                            </span>
+                        </div>
+                    )}
+                    {mode === GameMode.EDIT && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {point.isHiddenBeforeScan && (
+                                <span className="text-[9px] font-black text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-purple-100 dark:border-purple-800">
+                                    <EyeOff className="w-2.5 h-2.5" /> HIDDEN
+                                </span>
+                            )}
+                            {hasActions && (
+                                <span className="text-[9px] font-black text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-red-100 dark:border-red-800">
+                                    <Zap className="w-2.5 h-2.5" /> LOGIC
+                                </span>
+                            )}
+                            {isDependent && (
+                                <span className="text-[9px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700">
+                                    LOCKED
+                                </span>
+                            )}
+                        </div>
                     )}
                 </div>
             </Tooltip>
@@ -284,8 +379,8 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
         center={[point.location.lat, point.location.lng]} 
         radius={point.radiusMeters} 
         pathOptions={{ 
-            color: circleColor, 
-            fillColor: circleColor, 
+            color: strokeColor, 
+            fillColor: fillColor, 
             fillOpacity: showGeofence ? (isSelected ? 0.4 : 0.2) : 0.1, 
             weight: showGeofence ? (isSelected ? 3 : 2) : 1, 
             dashArray: visualIsUnlocked ? undefined : '5, 5' 
@@ -302,20 +397,15 @@ const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string }> = {
   light: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap' }
 };
 
-const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points, teams, teamTrails, pointLabels, measurePath, logicLinks, accuracy, mode, mapStyle, selectedPointId, isRelocating, onPointClick, onTeamClick, onMapClick, onPointMove, onDeletePoint, onPointHover }, ref) => {
+const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points, teams, teamTrails, pointLabels, measurePath, logicLinks, playgroundMarkers = [], dependentPointIds, accuracy, mode, mapStyle, selectedPointId, isRelocating, onPointClick, onTeamClick, onMapClick, onPointMove, onDeletePoint, onPointHover, showScores }, ref) => {
   const center = userLocation || { lat: 55.6761, lng: 12.5683 };
   const currentLayer = MAP_LAYERS[mapStyle] || MAP_LAYERS.osm;
   
-  // FILTER: Only show points that are NOT in a playground (unless they are section headers)
-  // Logic update: Also hide "isHiddenBeforeScan" tasks for players if not unlocked
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
-      
-      // If in Play Mode, hide tasks that are marked "Hidden Before Scan" and are NOT yet unlocked
       if (mode === GameMode.PLAY && p.isHiddenBeforeScan && !p.isUnlocked) {
           return false;
       }
-
       return true;
   });
   
@@ -324,9 +414,11 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
       if (mode === GameMode.EDIT) return (points.findIndex(p => p.id === point.id) + 1).toString().padStart(3, '0');
       return undefined;
   };
+
+  const measurePathKey = measurePath ? measurePath.map(p => `${p.lat},${p.lng}`).join('|') : 'empty';
+
   return (
     <div className="relative w-full h-full">
-        {/* CROSSHAIR FOR RELOCATION */}
         {isRelocating && (
             <div className="absolute inset-0 pointer-events-none z-[5000] flex items-center justify-center">
                 <div className="relative">
@@ -340,7 +432,9 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
             <MapController handleRef={ref as any} />
             <TileLayer attribution={currentLayer.attribution} url={currentLayer.url} />
             <RecenterMap center={userLocation} points={mapPoints} mode={mode} />
-            {mode === GameMode.EDIT && <MapClickParams onClick={onMapClick} />}
+            
+            {(mode === GameMode.EDIT) && <MapClickParams onClick={onMapClick} />}
+            
             {userLocation && (
                 <>
                 <Marker position={[userLocation.lat, userLocation.lng]} icon={UserIcon} zIndexOffset={500} />
@@ -348,28 +442,69 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
                 </>
             )}
             
-            {/* Logic Connections Visualization */}
             {logicLinks && logicLinks.map((link, idx) => {
                 if (!link.from || !link.to || typeof link.from.lat !== 'number' || typeof link.to.lat !== 'number') return null;
-                // Use a stable key based on coordinates to avoid react-leaflet update issues during drag
-                const key = `link-${link.from.lat.toFixed(5)}-${link.from.lng.toFixed(5)}-${link.to.lat.toFixed(5)}-${link.to.lng.toFixed(5)}-${link.color}`;
+                const key = `link-${link.from.lat.toFixed(5)}-${link.from.lng.toFixed(5)}-${link.to.lat.toFixed(5)}-${link.to.lng.toFixed(5)}-${link.color}-${link.type}`;
+                
+                const color = link.color || '#eab308';
+                const dashArray = link.type === 'open_playground' ? '5, 15' : '10, 10'; 
+
                 return (
                     <Polyline 
                         key={key}
                         positions={[[link.from.lat, link.from.lng], [link.to.lat, link.to.lng]]} 
-                        pathOptions={{ color: link.color || '#eab308', weight: 3, dashArray: '10, 10', opacity: 0.8 }} 
+                        pathOptions={{ 
+                            color: color, 
+                            weight: link.type === 'open_playground' ? 4 : 3, 
+                            dashArray: dashArray, 
+                            opacity: 0.8 
+                        }} 
                     />
                 );
             })}
 
-            {/* Measure Path Polyline */}
+            {playgroundMarkers.map((pg) => (
+                <Marker 
+                    key={`pg-marker-${pg.id}`}
+                    position={[pg.location.lat, pg.location.lng]}
+                    icon={getLeafletIcon(
+                        pg.iconId as any || 'default', 
+                        true, 
+                        false, 
+                        undefined, // No ID label
+                        false, 
+                        '#3b82f6', 
+                        false
+                    )}
+                    zIndexOffset={800}
+                    draggable={mode === GameMode.EDIT}
+                    eventHandlers={{
+                        dragend: (e) => {
+                            const marker = e.target as L.Marker;
+                            if (onPointMove) {
+                                const ll = marker.getLatLng();
+                                onPointMove(pg.id, { lat: ll.lat, lng: ll.lng });
+                            }
+                        }
+                    }}
+                >
+                    {/* Permanent Tooltip Label */}
+                    <Tooltip direction="bottom" offset={[0, 20]} opacity={1} permanent className="custom-leaflet-tooltip">
+                        <div className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest shadow-lg border-2 border-white">
+                            {pg.title}
+                        </div>
+                    </Tooltip>
+                </Marker>
+            ))}
+
             {measurePath && measurePath.length > 1 && (
                 <Polyline 
+                    key={measurePathKey}
                     positions={measurePath.map(c => [c.lat, c.lng])} 
                     pathOptions={{ color: '#ec4899', weight: 4, dashArray: '10, 10', opacity: 0.8 }} 
                 />
             )}
-
+            
             {teamTrails && teams && Object.entries(teamTrails).map(([teamId, path]) => {
                 const team = teams.find(t => t.team.id === teamId)?.team;
                 const pathCoords = path as Coordinate[];
@@ -377,7 +512,23 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
                 return <Polyline key={`trail-${teamId}`} positions={pathCoords.map(c => [c.lat, c.lng])} pathOptions={{ color: getTeamColor(team.name), weight: 3, opacity: 0.6, dashArray: '5, 10' }} />;
             })}
             {teams && teams.map((item, idx) => <Marker key={`team-${item.team.id}-${idx}`} position={[item.location.lat, item.location.lng]} icon={createTeamIcon(item.team.name)} eventHandlers={{ click: () => onTeamClick && onTeamClick(item.team.id) }} zIndexOffset={1000} />)}
-            {mapPoints.map(point => <MapTaskMarker key={point.id} point={point} mode={mode} isRelocating={isRelocating} isSelected={selectedPointId === point.id} label={getLabel(point)} onClick={onPointClick} onMove={onPointMove} onDelete={onDeletePoint} onPointHover={onPointHover} />)}
+            
+            {mapPoints.map(point => (
+                <MapTaskMarker 
+                    key={point.id} 
+                    point={point} 
+                    mode={mode} 
+                    isRelocating={isRelocating} 
+                    isSelected={selectedPointId === point.id} 
+                    isDependent={!!(dependentPointIds && dependentPointIds.includes(point.id))}
+                    label={getLabel(point)} 
+                    onClick={onPointClick} 
+                    onMove={onPointMove} 
+                    onDelete={onDeletePoint} 
+                    onPointHover={onPointHover} 
+                    showScore={showScores}
+                />
+            ))}
         </MapContainer>
         {mode === GameMode.EDIT && !isRelocating && (
             <div id="map-trash-bin" className="absolute bottom-6 right-4 z-[2000] shadow-xl rounded-full p-3 transition-all border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-400 dark:text-gray-200 pointer-events-auto flex items-center justify-center w-14 h-14" title="Drag task here to delete"><Trash2 className="w-6 h-6 pointer-events-none" /></div>

@@ -5,12 +5,12 @@ import {
   UserCircle, Settings, MapPin, ChevronRight, Play,
   LayoutDashboard, LayoutTemplate, LayoutGrid, UserPlus,
   Monitor, Tag, Radar, Plus, Database, ArrowLeft,
-  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode
+  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode, MessageSquare, Anchor
 } from 'lucide-react';
 import { Game } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
@@ -152,7 +152,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
               );
           case 'TEAMS':
               return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <NavCard 
                           title="TEAMS" 
                           subtitle="OPERATIONS HUB" 
@@ -166,6 +166,20 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           icon={Shield} 
                           color="bg-cyan-500"
                           onClick={() => onAction('TEAMZONE')}
+                      />
+                      <NavCard 
+                          title="MISSION CHAT" 
+                          subtitle="COMMS CHANNEL" 
+                          icon={MessageSquare} 
+                          color="bg-indigo-500"
+                          onClick={() => onAction('CHAT')}
+                      />
+                      <NavCard 
+                          title="TEAM LOBBY" 
+                          subtitle="ADMIN ACCESS" 
+                          icon={Anchor} 
+                          color="bg-rose-500"
+                          onClick={() => onAction('TEAM_LOBBY')}
                       />
                   </div>
               );
@@ -267,7 +281,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                 <div className="relative">
                     <button 
                         onClick={() => setShowGameMenu(!showGameMenu)}
-                        className="flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl shadow-lg shadow-orange-900/20 transition-all font-black uppercase text-xs tracking-widest border border-orange-500"
+                        className={`flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl shadow-lg shadow-orange-900/20 transition-all font-black uppercase text-xs tracking-widest border ${activeGame ? 'border-orange-500' : 'border-red-500 animate-pulse'}`}
                     >
                         <span className="max-w-[200px] truncate">{activeGame ? activeGame.name : "SELECT SESSION"}</span>
                         <ChevronDown className={`w-4 h-4 transition-transform ${showGameMenu ? 'rotate-180' : ''}`} />

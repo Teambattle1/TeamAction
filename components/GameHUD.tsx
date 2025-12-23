@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { GameMode, MapStyleId, Language, Playground, TimerConfig } from '../types';
-import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin } from 'lucide-react';
+import { GameMode, MapStyleId, Language, Playground, TimerConfig, Coordinate } from '../types';
+import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin, Maximize, Target, Hash, MessageSquare } from 'lucide-react';
 import { formatDistance } from '../utils/geo';
+import LocationSearch from './LocationSearch';
+import { ICON_COMPONENTS } from '../utils/icons';
 
 interface GameHUDProps {
   accuracy: number | null;
@@ -25,8 +27,17 @@ interface GameHUDProps {
   onOpenTeamDashboard?: () => void;
   onRelocateGame?: () => void;
   isRelocating?: boolean;
-  timerConfig?: TimerConfig; // NEW
-  gameStartedAt?: number; // NEW - passed from App if available (team start time)
+  timerConfig?: TimerConfig; 
+  gameStartedAt?: number;
+  onFitBounds?: () => void; 
+  onLocateMe?: () => void; 
+  onSearchLocation?: (coord: Coordinate) => void; // New Prop
+  isDrawerExpanded?: boolean; // New prop to handle drawer shift
+  showScores?: boolean;
+  onToggleScores?: () => void;
+  hiddenPlaygroundIds?: string[]; // New: List of hidden playgrounds
+  onToggleChat?: () => void; // New: Chat Toggle
+  unreadMessagesCount?: number; // New: Unread count
 }
 
 // Timer Sub-component
@@ -117,7 +128,16 @@ const GameHUD: React.FC<GameHUDProps> = ({
   onRelocateGame,
   isRelocating,
   timerConfig,
-  gameStartedAt
+  gameStartedAt,
+  onFitBounds,
+  onLocateMe,
+  onSearchLocation,
+  isDrawerExpanded = false,
+  showScores,
+  onToggleScores,
+  hiddenPlaygroundIds = [],
+  onToggleChat,
+  unreadMessagesCount = 0
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEditBanner, setShowEditBanner] = useState(false);
@@ -143,13 +163,24 @@ const GameHUD: React.FC<GameHUDProps> = ({
       { id: 'light', label: 'Light Mode', icon: Sun },
   ];
 
-  // Find active visible playgrounds
-  const visiblePlaygrounds = playgrounds?.filter(p => p.buttonVisible) || [];
+  // Find active visible playgrounds, filtering out those that should be hidden
+  const visiblePlaygrounds = playgrounds?.filter(p => {
+      // In Editor, always show (unless hiddenPlaygroundIds logic is strictly runtime). 
+      // User requested "hide playground in teamview until activated". 
+      // If mode is PLAY, and it's in hidden list, hide it.
+      if (mode === GameMode.PLAY && hiddenPlaygroundIds.includes(p.id)) return false;
+      return p.buttonVisible;
+  }) || [];
+
+  // Determine shifted positions for drawer interaction
+  const leftMenuPositionClass = (mode === GameMode.EDIT && isDrawerExpanded) ? 'sm:left-[340px]' : 'left-4';
+  // Shift search bar center if drawer is open on desktop
+  const searchBarPositionClass = (mode === GameMode.EDIT && isDrawerExpanded) ? 'sm:left-[calc(50%+160px)]' : 'sm:left-1/2 sm:-translate-x-1/2';
 
   return (
     <>
-      {/* TIMER DISPLAY - Shows in all modes if configured */}
-      {timerConfig && (
+      {/* TIMER DISPLAY - Shows in all modes except Edit */}
+      {timerConfig && mode !== GameMode.EDIT && (
           <TimerDisplay config={timerConfig} startTime={gameStartedAt} />
       )}
 
@@ -180,34 +211,53 @@ const GameHUD: React.FC<GameHUDProps> = ({
           </div>
       )}
 
-      {/* PLAYGROUND BUTTONS (Bottom Center - Active in Play, Edit & Instructor) */}
+      {/* PLAYGROUND BUTTONS */}
       {visiblePlaygrounds.length > 0 && (mode === GameMode.PLAY || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex gap-4 pointer-events-auto items-end">
-              {visiblePlaygrounds.map(pg => (
-                  <button
-                      key={pg.id}
-                      onClick={() => onOpenPlayground?.(pg.id)}
-                      className={`h-20 w-20 rounded-3xl flex items-center justify-center transition-all border-4 group relative overflow-hidden ${
-                          pg.iconUrl ? 'bg-white border-white' : 'bg-gradient-to-br from-orange-500 to-red-600 border-white/30'
-                      } ${mode === GameMode.PLAY ? 'shadow-[0_0_30px_rgba(234,88,12,0.6)] animate-pulse hover:animate-none hover:scale-110' : 'shadow-2xl hover:scale-105'}`}
-                  >
-                      {pg.iconUrl ? (
-                          <img src={pg.iconUrl} className="w-full h-full object-cover" alt={pg.title} />
-                      ) : (
-                          <Gamepad2 className="w-10 h-10 text-white" />
-                      )}
-                      
-                      {/* Label on Hover / Always in Edit Mode */}
-                      <div className={`absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm border border-white/10 ${mode === GameMode.EDIT ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                          {pg.title}
-                      </div>
-                  </button>
-              ))}
+              {visiblePlaygrounds.map(pg => {
+                  const iconId = pg.iconId || 'default';
+                  const Icon = ICON_COMPONENTS[iconId];
+                  const size = pg.buttonSize || 80;
+
+                  return (
+                      <button
+                          key={pg.id}
+                          onClick={() => onOpenPlayground?.(pg.id)}
+                          style={{ width: size, height: size }}
+                          className={`rounded-3xl flex items-center justify-center transition-all border-4 group relative overflow-hidden ${
+                              pg.iconUrl ? 'bg-white border-white' : 'bg-gradient-to-br from-orange-500 to-red-600 border-white/30'
+                          } ${mode === GameMode.PLAY ? 'shadow-[0_0_30px_rgba(234,88,12,0.6)] animate-pulse hover:animate-none hover:scale-110' : 'shadow-2xl hover:scale-105'}`}
+                      >
+                          {pg.iconUrl ? (
+                              <img src={pg.iconUrl} className="w-full h-full object-cover" alt={pg.title} />
+                          ) : (
+                              <Icon className="w-1/2 h-1/2 text-white" />
+                          )}
+                          
+                          <div className={`absolute bottom-full mb-3 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm border border-white/10 ${mode === GameMode.EDIT ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                              {pg.title}
+                          </div>
+                      </button>
+                  );
+              })}
           </div>
       )}
 
-      {/* TOP LEFT CORNER */}
-      <div className="absolute top-4 left-4 z-[1000] pointer-events-auto h-12 flex items-center gap-2">
+      {/* TOP CENTER SEARCH BAR */}
+      {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && onSearchLocation && (
+          <div className={`absolute top-4 ${searchBarPositionClass} left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto transition-all duration-300 ease-in-out`}>
+              <div className="hidden sm:block shadow-2xl">
+                  <LocationSearch 
+                      onSelectLocation={onSearchLocation} 
+                      className="h-12" 
+                      hideSearch={false}
+                  />
+              </div>
+          </div>
+      )}
+
+      {/* TOP LEFT CORNER (Buttons) */}
+      <div className={`absolute top-4 ${leftMenuPositionClass} z-[1000] pointer-events-auto h-12 flex items-center gap-2 transition-all duration-300 ease-in-out`}>
             {mode === GameMode.PLAY && onOpenTeamDashboard ? (
                 // TEAM ZONE BUTTON (Play Mode)
                 <button
@@ -246,7 +296,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 </button>
             )}
             
-            {/* Menu Dropdown (Only renders if not in Play Mode or if explicitly open) */}
+            {/* Menu Dropdown */}
             {isMenuOpen && mode !== GameMode.PLAY && (
                 <div className="absolute top-full left-0 mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-2 min-w-[240px] animate-in slide-in-from-top-2 fade-in duration-200 origin-top-left z-[3000]">
                     <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 mb-1">
@@ -263,11 +313,13 @@ const GameHUD: React.FC<GameHUDProps> = ({
                         <button onClick={() => { onOpenGameManager(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide" title="Manage Games">
                             <LayoutDashboard className="w-4 h-4" /> GAMES
                         </button>
+                        <button onClick={() => { if(onOpenTeamDashboard) onOpenTeamDashboard(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide" title="Chat & Status">
+                            <MessageSquare className="w-4 h-4" /> CHAT / STATUS
+                        </button>
                         <button onClick={() => { onOpenTaskMaster(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-amber-500/10 text-slate-300 hover:text-amber-400 transition-colors text-left font-bold text-xs uppercase tracking-wide border-b border-white/5 mb-1" title="Task Library">
                             <Library className="w-4 h-4" /> TASKS
                         </button>
                         
-                        {/* Map Style Selector in Menu (Only if NOT in Edit mode, as Edit mode has it in top right) */}
                         {mode !== GameMode.EDIT && (
                             <div className="p-2 bg-slate-900/50 rounded-xl mt-1">
                                 <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest block mb-2 px-1">Map Style</span>
@@ -292,50 +344,108 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
       <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2 h-12 pointer-events-auto">
         
-        {/* MAP STYLE SELECTORS (Edit Mode Only) */}
+        {/* EDIT MODE CONTROLS */}
         {mode === GameMode.EDIT && (
-            <div className="flex bg-slate-900/95 dark:bg-gray-800 rounded-2xl border border-white/10 p-1 mr-2 shadow-2xl h-12 items-center">
-                {mapStyles.map((style) => (
+            <>
+                {/* View Controls Group */}
+                <div className="flex bg-slate-900/95 dark:bg-gray-800 rounded-2xl border border-white/10 p-1 mr-2 shadow-2xl h-12 items-center">
+                    {onFitBounds && (
+                        <button 
+                            onClick={onFitBounds}
+                            title="Fit Tasks to Screen"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <Maximize className="w-5 h-5" />
+                        </button>
+                    )}
+                    {onLocateMe && (
+                        <button 
+                            onClick={onLocateMe}
+                            title="My Position"
+                            className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                        >
+                            <Target className="w-5 h-5" />
+                        </button>
+                    )}
+                    {onToggleScores && (
+                        <button 
+                            onClick={onToggleScores}
+                            title="Toggle Score Badges"
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${showScores ? 'text-blue-400 bg-blue-900/30' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <Hash className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+
+                {/* Map Styles */}
+                <div className="flex bg-slate-900/95 dark:bg-gray-800 rounded-2xl border border-white/10 p-1 mr-2 shadow-2xl h-12 items-center">
+                    {mapStyles.map((style) => (
+                        <button
+                            key={style.id}
+                            onClick={() => onSetMapStyle(style.id)}
+                            title={style.label}
+                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${mapStyle === style.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+                        >
+                            <style.icon className="w-5 h-5" />
+                        </button>
+                    ))}
+                </div>
+
+                {/* Relocate Button */}
+                {onRelocateGame && (
                     <button
-                        key={style.id}
-                        onClick={() => onSetMapStyle(style.id)}
-                        title={style.label}
-                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${mapStyle === style.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
+                        onClick={onRelocateGame}
+                        title={isRelocating ? "Place Pins Here" : "Relocate All Tasks"}
+                        className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${
+                            isRelocating 
+                            ? 'bg-green-600 text-white border-green-500 animate-pulse hover:bg-green-700' 
+                            : 'bg-slate-900/95 dark:bg-gray-800 text-blue-500 border-blue-500/50 hover:bg-blue-600 hover:text-white'
+                        }`}
                     >
-                        <style.icon className="w-5 h-5" />
+                        {isRelocating ? <MapPin className="w-6 h-6" /> : <Move className="w-6 h-6" />}
+                        <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">
+                            {isRelocating ? "PASTE PINS" : "RELOCATE ALL"}
+                        </div>
                     </button>
-                ))}
-            </div>
+                )}
+
+                {/* Measure Button */}
+                {onToggleMeasure && !isRelocating && (
+                    <button
+                        onClick={onToggleMeasure}
+                        title={isMeasuring ? "Stop Measuring" : "Measure Distance"}
+                        className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${isMeasuring ? 'bg-pink-600 text-white border-pink-500' : 'bg-slate-900/95 dark:bg-gray-800 text-pink-500 border-pink-500/50 hover:bg-pink-600 hover:text-white'}`}
+                    >
+                        <Ruler className="w-6 h-6" />
+                        <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">Measure</div>
+                    </button>
+                )}
+            </>
         )}
 
-        {mode === GameMode.EDIT && onRelocateGame && (
+        {/* Global Chat Button (Available in all modes) */}
+        {onToggleChat && (
             <button
-                onClick={onRelocateGame}
-                title={isRelocating ? "Place Pins Here" : "Relocate All Tasks"}
-                className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${
-                    isRelocating 
-                    ? 'bg-green-600 text-white border-green-500 animate-pulse hover:bg-green-700' 
-                    : 'bg-slate-900/95 dark:bg-gray-800 text-blue-500 border-blue-500/50 hover:bg-blue-600 hover:text-white'
+                onClick={onToggleChat}
+                title="Open Chat"
+                className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative mr-2 ${
+                    unreadMessagesCount > 0 
+                    ? 'bg-orange-600 border-orange-500 animate-pulse text-white shadow-[0_0_20px_rgba(234,88,12,0.6)]' 
+                    : 'bg-slate-900/95 dark:bg-gray-800 border-white/10 text-white hover:border-white/30'
                 }`}
             >
-                {isRelocating ? <MapPin className="w-6 h-6" /> : <Move className="w-6 h-6" />}
-                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">
-                    {isRelocating ? "PASTE PINS" : "RELOCATE ALL"}
-                </div>
+                <MessageSquare className="w-6 h-6" />
+                {unreadMessagesCount > 0 && (
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-slate-900">
+                        {unreadMessagesCount}
+                    </div>
+                )}
+                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">CHAT</div>
             </button>
         )}
 
-        {mode === GameMode.EDIT && onToggleMeasure && !isRelocating && (
-            <button
-                onClick={onToggleMeasure}
-                title={isMeasuring ? "Stop Measuring" : "Measure Distance"}
-                className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${isMeasuring ? 'bg-pink-600 text-white border-pink-500' : 'bg-slate-900/95 dark:bg-gray-800 text-pink-500 border-pink-500/50 hover:bg-pink-600 hover:text-white'}`}
-            >
-                <Ruler className="w-6 h-6" />
-                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">Measure</div>
-            </button>
-        )}
-
+        {/* Instructor Dashboard Button */}
         {mode === GameMode.INSTRUCTOR && onOpenInstructorDashboard && (
             <button 
               onClick={onOpenInstructorDashboard} 
@@ -347,7 +457,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
             </button>
         )}
         
-        {/* Mode Toggle Button - Hidden on mobile when in PLAY mode */}
+        {/* Mode Toggle Button */}
         <button 
           onClick={toggleMode} 
           title={mode === GameMode.PLAY ? "Enter Edit Mode" : mode === GameMode.EDIT ? "Enter Instructor Mode" : "Return to Play Mode"}

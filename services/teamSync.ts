@@ -119,7 +119,7 @@ class TeamSyncService {
     });
   }
 
-  public sendChatMessage(gameId: string, message: string, targetTeamId: string | null = null) {
+  public sendChatMessage(gameId: string, message: string, targetTeamId: string | null = null, isUrgent: boolean = false) {
       if (!this.globalChannel) {
           this.connectGlobal(gameId);
       }
@@ -131,7 +131,8 @@ class TeamSyncService {
               targetTeamId,
               message,
               sender: 'Instructor',
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              isUrgent // Pass urgent flag
           };
 
           this.globalChannel.send({

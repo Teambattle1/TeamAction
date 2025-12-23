@@ -1,5 +1,5 @@
 
-import { supabase } from '../lib/supabase.ts';
+import { supabase } from '../lib/supabase';
 import { Game, TaskTemplate, TaskList, Team, TeamMemberData, PlaygroundTemplate } from '../types.ts';
 
 /**
@@ -277,6 +277,16 @@ export const updateTeamName = async (teamId: string, newName: string) => {
         }).eq('id', teamId);
         if (error) logError('updateTeamName', error);
     } catch (e) { logError('updateTeamName', e); }
+};
+
+export const updateTeamCaptain = async (teamId: string, captainDeviceId: string) => {
+    try {
+        const { error } = await supabase.from('teams').update({ 
+            captain_device_id: captainDeviceId,
+            updated_at: new Date().toISOString()
+        }).eq('id', teamId);
+        if (error) logError('updateTeamCaptain', error);
+    } catch (e) { logError('updateTeamCaptain', e); }
 };
 
 export const fetchLibrary = async (): Promise<TaskTemplate[]> => {

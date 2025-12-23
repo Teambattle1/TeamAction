@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Playground, GamePoint, Game, PlaygroundTemplate } from '../types';
-import { X, Plus, Upload, Trash2, Image as ImageIcon, Globe, LayoutTemplate, Grid, Magnet, ZoomIn, ZoomOut, Maximize, Move, Scaling, Save, Check, Maximize2 } from 'lucide-react';
+import { Playground, GamePoint, Game, PlaygroundTemplate, IconId } from '../types';
+import { X, Plus, Upload, Trash2, Image as ImageIcon, Globe, LayoutTemplate, Grid, Magnet, ZoomIn, ZoomOut, Maximize, Move, Scaling, Save, Check, Maximize2, MousePointer2, HelpCircle, CheckCircle, EyeOff, Smartphone, Tablet, Lock, Edit2, RotateCw, Hash, Home } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import * as db from '../services/db';
 
@@ -9,17 +10,22 @@ interface PlaygroundEditorProps {
   onUpdateGame: (game: Game) => void;
   onClose: () => void;
   onEditPoint: (point: GamePoint) => void;
+  onPointClick?: (point: GamePoint) => void;
   onAddTask: (type: 'MANUAL' | 'AI' | 'LIBRARY', playgroundId: string) => void;
   onOpenLibrary: () => void;
+  showScores?: boolean;
+  onToggleScores?: () => void;
+  onHome?: () => void;
 }
 
-const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame, onClose, onEditPoint, onAddTask, onOpenLibrary }) => {
+const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame, onClose, onEditPoint, onPointClick, onAddTask, onOpenLibrary, showScores, onToggleScores, onHome }) => {
   const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(game.playgrounds?.[0]?.id || null);
   const [isUploading, setIsUploading] = useState(false);
   const [showAddTaskMenu, setShowAddTaskMenu] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [activePointId, setActivePointId] = useState<string | null>(null);
+  const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
 
   // Template Save Modal State
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -35,6 +41,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const iconFileInputRef = useRef<HTMLInputElement>(null);
+  const hasDraggedRef = useRef(false);
   
   // State refs to access latest values in event handlers
   const dragState = useRef<{
@@ -79,6 +87,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   const handlePointerDown = (e: React.PointerEvent, type: 'PAN' | 'POINT', pointId?: string, currentX?: number, currentY?: number) => {
       e.preventDefault();
       e.stopPropagation();
+      
+      // Reset drag tracker
+      hasDraggedRef.current = false;
 
       if (type === 'POINT' && pointId) {
           setActivePointId(pointId);
@@ -114,6 +125,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
       const { type, startX, startY } = dragState.current;
       const deltaX = e.clientX - startX;
       const deltaY = e.clientY - startY;
+      
+      // Check if we moved enough to consider it a drag
+      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+          hasDraggedRef.current = true;
+      }
 
       if (type === 'PAN') {
           setView(prev => ({
@@ -174,7 +190,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
           id: `pg-${Date.now()}`,
           title: 'New Zone',
           buttonVisible: true,
-          backgroundStyle: 'contain'
+          backgroundStyle: 'contain',
+          iconId: 'default',
+          buttonSize: 80
       };
       const updatedPlaygrounds = [...(game.playgrounds || []), newPlayground];
       onUpdateGame({ ...game, playgrounds: updatedPlaygrounds });
@@ -204,6 +222,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
           reader.onloadend = () => {
               handleUpdatePlayground({ imageUrl: reader.result as string });
               setIsUploading(false);
+          };
+          reader.readAsDataURL(file);
+      }
+  };
+
+  const handleIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && activePlayground) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              handleUpdatePlayground({ iconUrl: reader.result as string });
           };
           reader.readAsDataURL(file);
       }
@@ -240,6 +269,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
       onUpdateGame({ ...game, points: updatedPoints });
   };
 
+  const stripHtml = (html: any) => typeof html === 'string' ? html.replace(/<[^>]*>?/gm, '') : '';
+
   const containerStyle = {
       transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
       width: '800px', // Base reference width
@@ -272,7 +303,27 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
                 </div>
             </div>
             
-            <button onClick={onClose} className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 hover:bg-red-100 hover:text-red-500 transition-colors shrink-0 ml-4"><X className="w-5 h-5" /></button>
+            <div className="flex items-center gap-2 shrink-0 ml-4">
+                {onToggleScores && (
+                    <button 
+                        onClick={onToggleScores}
+                        title="Toggle Score Badges"
+                        className={`p-2 rounded-lg transition-colors border border-transparent hover:border-gray-600 ${showScores ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}
+                    >
+                        <Hash className="w-5 h-5" />
+                    </button>
+                )}
+                {onHome && (
+                    <button 
+                        onClick={onHome}
+                        title="Go to Home"
+                        className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 hover:bg-blue-600 hover:text-white transition-colors"
+                    >
+                        <Home className="w-5 h-5" />
+                    </button>
+                )}
+                <button onClick={onClose} className="p-2 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 hover:bg-red-100 hover:text-red-500 transition-colors"><X className="w-5 h-5" /></button>
+            </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
@@ -289,6 +340,74 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
                                     <input type="text" value={activePlayground.title} onChange={(e) => handleUpdatePlayground({ title: e.target.value })} className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-sm font-bold dark:text-white" />
                                 </div>
                                 
+                                <div className="p-3 bg-gray-100 dark:bg-gray-750 rounded-xl border border-gray-200 dark:border-gray-600">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 block flex items-center gap-1">
+                                        <MousePointer2 className="w-3 h-3" /> HUD BUTTON APPEARANCE
+                                    </label>
+                                    <div className="grid grid-cols-4 gap-2 mb-3">
+                                        {Object.keys(ICON_COMPONENTS).map((iconKey) => {
+                                            const Icon = ICON_COMPONENTS[iconKey as IconId];
+                                            const isActive = (activePlayground.iconId || 'default') === iconKey && !activePlayground.iconUrl;
+                                            return (
+                                                <button
+                                                    key={iconKey}
+                                                    onClick={() => handleUpdatePlayground({ iconId: iconKey as IconId, iconUrl: undefined })}
+                                                    className={`aspect-square rounded-lg flex items-center justify-center transition-all ${isActive ? 'bg-orange-600 text-white ring-2 ring-orange-400' : 'bg-white dark:bg-gray-600 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-500'}`}
+                                                >
+                                                    <Icon className="w-4 h-4" />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Custom Icon Upload */}
+                                    <div className="mb-3">
+                                        <div 
+                                            onClick={() => iconFileInputRef.current?.click()}
+                                            className={`w-full py-2 px-3 rounded-lg border-2 border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all ${activePlayground.iconUrl ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'}`}
+                                        >
+                                            <input 
+                                                ref={iconFileInputRef} 
+                                                type="file" 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                                onChange={handleIconUpload} 
+                                            />
+                                            {activePlayground.iconUrl ? (
+                                                <>
+                                                    <img src={activePlayground.iconUrl} className="w-6 h-6 object-cover rounded bg-black/20" alt="Custom Icon" />
+                                                    <span className="text-[9px] font-black text-orange-600 uppercase flex-1">Custom Icon</span>
+                                                    <button 
+                                                        onClick={(e) => { e.stopPropagation(); handleUpdatePlayground({ iconUrl: undefined }); }}
+                                                        className="p-1 bg-red-100 dark:bg-red-900/30 text-red-500 rounded hover:bg-red-200 dark:hover:bg-red-900/50"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload className="w-3 h-3 text-gray-400" />
+                                                    <span className="text-[9px] font-black text-gray-400 uppercase">UPLOAD CUSTOM ICON</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-[9px] font-bold text-gray-500 uppercase">SIZE</label>
+                                        <input 
+                                            type="range" 
+                                            min="60" 
+                                            max="120" 
+                                            step="10" 
+                                            value={activePlayground.buttonSize || 80} 
+                                            onChange={(e) => handleUpdatePlayground({ buttonSize: parseInt(e.target.value) })}
+                                            className="flex-1 h-2 bg-gray-300 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                                        />
+                                        <span className="text-[9px] font-bold text-gray-500 w-6 text-right">{activePlayground.buttonSize || 80}</span>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 block">BACKGROUND IMAGE</label>
                                     <div 
@@ -478,32 +597,127 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
                                 const Icon = ICON_COMPONENTS[point.iconId];
                                 const isSelected = activePointId === point.id;
                                 const isDragging = dragItem?.id === point.id;
+                                const isHovered = hoveredPointId === point.id;
                                 
                                 // Use drag state if dragging, else use point state
                                 const x = isDragging ? dragItem!.x : (point.playgroundPosition?.x || 50);
                                 const y = isDragging ? dragItem!.y : (point.playgroundPosition?.y || 50);
                                 const scale = point.playgroundScale || 1;
 
+                                const questionText = stripHtml(point.task.question);
+                                const hasActions = (point.logic?.onOpen?.length || 0) > 0 || (point.logic?.onCorrect?.length || 0) > 0 || (point.logic?.onIncorrect?.length || 0) > 0;
+                                const isOptionsType = ['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(point.task.type);
+
                                 return (
                                     <div
                                         key={point.id}
                                         onPointerDown={(e) => handlePointerDown(e, 'POINT', point.id, x, y)}
-                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing group touch-none ${isSelected ? 'z-50' : 'z-10'}`}
+                                        onMouseEnter={() => setHoveredPointId(point.id)}
+                                        onMouseLeave={() => setHoveredPointId(null)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            // Only trigger edit if we didn't just drag
+                                            if (hasDraggedRef.current) return;
+                                            
+                                            setActivePointId(point.id);
+                                            // If parent provided onPointClick (context menu), use it. Otherwise direct edit.
+                                            if (onPointClick) {
+                                                onPointClick(point);
+                                            } else {
+                                                onEditPoint(point);
+                                            }
+                                        }}
+                                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing group touch-none ${isSelected || isHovered ? 'z-50' : 'z-10'}`}
                                         style={{ 
                                             left: `${x}%`, 
                                             top: `${y}%`, 
                                             transform: `translate(-50%, -50%) scale(${scale})`,
                                         }}
                                     >
-                                        <div className={`w-12 h-12 rounded-full shadow-xl border-4 flex items-center justify-center transition-all bg-white ${isSelected ? 'border-blue-500 text-blue-600 scale-110 shadow-blue-500/50' : 'border-orange-500 text-orange-600'}`}>
+                                        <div className={`w-12 h-12 rounded-full shadow-xl border-4 flex items-center justify-center transition-all bg-white relative ${isSelected ? 'border-blue-500 text-blue-600 scale-110 shadow-blue-500/50' : 'border-orange-500 text-orange-600'}`}>
                                             <Icon className="w-6 h-6 pointer-events-none" />
+                                            
+                                            {/* Score Badge */}
+                                            {showScores && point.points > 0 && (
+                                                <div className="absolute -top-3 -right-3 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded border border-white shadow-sm z-20">
+                                                    {point.points}
+                                                </div>
+                                            )}
+
+                                            {/* Hidden Badge */}
+                                            {point.isHiddenBeforeScan && (
+                                                <div className="absolute -top-1 -left-1 w-4 h-4 bg-purple-600 rounded-full border-2 border-white flex items-center justify-center shadow-lg z-20" title="Hidden until Scan">
+                                                    <EyeOff className="w-2.5 h-2.5 text-white" />
+                                                </div>
+                                            )}
+
+                                            {/* Logic Badge */}
+                                            {hasActions && (
+                                                <div className="absolute bottom-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse z-20" title="Has Logic Actions" />
+                                            )}
                                         </div>
-                                        {isSelected && <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full animate-ping" />}
                                         
                                         {/* TASK TITLE - ALWAYS VISIBLE IN EDITOR */}
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/80 backdrop-blur-sm text-white text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap opacity-100 transition-opacity pointer-events-none border border-white/20 shadow-xl">
                                             {point.title}
                                         </div>
+
+                                        {/* RICH TOOLTIP ON HOVER */}
+                                        {isHovered && (
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-[100] w-64 pointer-events-none">
+                                                <div className="bg-white dark:bg-gray-900 p-3 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+                                                    {/* Header */}
+                                                    <div className="flex items-center justify-between border-b pb-2 border-gray-100 dark:border-gray-800 relative z-10">
+                                                        <span className="font-black text-xs uppercase text-gray-900 dark:text-white truncate max-w-[140px]">{point.title}</span>
+                                                        <span className="text-[9px] px-1.5 py-0.5 bg-gray-800 dark:bg-gray-700 text-white rounded font-black uppercase tracking-wider">{point.task.type}</span>
+                                                    </div>
+
+                                                    {/* Image Preview */}
+                                                    {point.task.imageUrl && (
+                                                        <div className="w-full h-24 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden relative border border-gray-100 dark:border-gray-700">
+                                                            <img src={point.task.imageUrl} className="w-full h-full object-cover" alt="Task" />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Question Snippet */}
+                                                    <div className="flex gap-2 items-start">
+                                                        <HelpCircle className="w-3 h-3 text-orange-500 mt-0.5 shrink-0" />
+                                                        <span className="text-[10px] leading-tight text-gray-600 dark:text-gray-300 font-medium whitespace-pre-wrap line-clamp-3">
+                                                            {questionText || "No question text"}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Answer / Logic Indicators */}
+                                                    {isOptionsType && point.task.options && point.task.options.length > 0 ? (
+                                                        <div className="flex flex-col gap-1 mt-1 border-t border-gray-100 dark:border-gray-800 pt-2">
+                                                            {point.task.options.map((opt, i) => {
+                                                                const isCorrect = (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') 
+                                                                    ? point.task.correctAnswers?.includes(opt)
+                                                                    : point.task.answer === opt;
+                                                                return (
+                                                                    <div key={i} className={`flex items-start gap-1.5 text-[9px] px-1.5 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-bold border border-green-200 dark:border-green-800/30' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                                        {isCorrect ? <CheckCircle className="w-3 h-3 shrink-0 mt-[1px]" /> : <div className="w-3 h-3 shrink-0" />}
+                                                                        <span className="leading-tight">{opt}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex gap-2 items-start bg-green-50 dark:bg-green-900/20 p-2 rounded-lg border border-green-100 dark:border-green-800/30">
+                                                            <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                                                            <span className="text-[10px] font-bold text-green-700 dark:text-green-300 leading-tight">
+                                                                {point.task.type === 'slider' 
+                                                                    ? `Target: ${point.task.range?.correctValue} (Range: ${point.task.range?.min}-${point.task.range?.max})`
+                                                                    : (point.task.answer || "No answer set")
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {/* Arrow */}
+                                                <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-900 rotate-45 border-b border-r border-gray-200 dark:border-gray-700"></div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

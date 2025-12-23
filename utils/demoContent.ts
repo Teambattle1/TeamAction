@@ -1,5 +1,5 @@
 
-import { TaskTemplate, TaskList, IconId, Team, TeamMemberData } from '../types';
+import { TaskTemplate, TaskList, IconId, Team, TeamMemberData, Game } from '../types';
 import * as db from '../services/db';
 
 const createDemoTask = (
@@ -38,64 +38,14 @@ const createDemoTask = (
 });
 
 export const DEMO_TASKS: TaskTemplate[] = [
-  // 1. Text
-  createDemoTask('1', 'Welcome Check-in', 'text', 'What is the name of this app?', 'flag', {
-    answer: 'GeoHunt',
-    placeholder: 'Enter the app name...'
-  }),
-
-  // 2. Multiple Choice
-  createDemoTask('2', 'History Trivia', 'multiple_choice', 'Which year did the first human land on the moon?', 'question', {
-    options: ['1965', '1969', '1972', '1980'],
-    answer: '1969'
-  }),
-
-  // 3. Checkbox
-  createDemoTask('3', 'Park Features', 'checkbox', 'Select all items you can typically find in a park:', 'treasure', {
-    options: ['Benches', 'Traffic Lights', 'Trees', 'Submarines'],
-    correctAnswers: ['Benches', 'Trees']
-  }),
-
-  // 4. Boolean
-  createDemoTask('4', 'True or False', 'boolean', 'The sun rises in the West.', 'star', {
-    answer: 'False'
-  }),
-
-  // 5. Slider
-  createDemoTask('5', 'Distance Guess', 'slider', 'Estimate the height of a standard basketball hoop in feet.', 'trophy', {
-    range: { min: 0, max: 20, step: 1, correctValue: 10, tolerance: 1 }
-  }),
-
-  // 6. Dropdown
-  createDemoTask('6', 'Coffee Preference', 'dropdown', 'Which of these is made with espresso and steamed milk foam?', 'default', {
-    options: ['Americano', 'Cappuccino', 'Cold Brew', 'Tea'],
-    answer: 'Cappuccino'
-  }),
-
-  // 7. Multi-select Dropdown
-  createDemoTask('7', 'Pizza Toppings', 'multi_select_dropdown', 'Select typical vegetarian toppings:', 'skull', {
-    options: ['Pepperoni', 'Mushrooms', 'Peppers', 'Sausage', 'Onions'],
-    correctAnswers: ['Mushrooms', 'Peppers', 'Onions']
-  }),
-
-  // 8. Image Task (Placeholder)
-  createDemoTask('8', 'Visual Puzzle', 'text', 'Look at the image. How many legs does this creature have?', 'camera', {
-    imageUrl: 'https://images.unsplash.com/photo-1559438036-749c95d436a5?auto=format&fit=crop&w=400&q=80', // Spider placeholder
-    answer: '8'
-  }),
-
-  // 9. Video Task (Link)
-  createDemoTask('9', 'Video Challenge', 'multiple_choice', 'Watch the video. What represents the "idea"?', 'camera', {
-    videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Rick Roll purely for demo purposes :)
-    question: 'Watch the video linked above. Is he going to give you up?',
-    options: ['Yes', 'No', 'Never'],
-    answer: 'Never'
-  }),
-
-  // 10. Math/Numeric (Text)
-  createDemoTask('10', 'Math Wizard', 'text', 'What is 15 + 27?', 'question', {
-    answer: '42'
-  })
+  createDemoTask('1', 'Welcome Check-in', 'text', 'What is the name of this app?', 'flag', { answer: 'GeoHunt', placeholder: 'Enter the app name...' }),
+  createDemoTask('2', 'History Trivia', 'multiple_choice', 'Which year did the first human land on the moon?', 'question', { options: ['1965', '1969', '1972', '1980'], answer: '1969' }),
+  createDemoTask('3', 'Park Features', 'checkbox', 'Select all items you can typically find in a park:', 'treasure', { options: ['Benches', 'Traffic Lights', 'Trees', 'Submarines'], correctAnswers: ['Benches', 'Trees'] }),
+  createDemoTask('4', 'True or False', 'boolean', 'The sun rises in the West.', 'star', { answer: 'False' }),
+  createDemoTask('5', 'Distance Guess', 'slider', 'Estimate the height of a standard basketball hoop in feet.', 'trophy', { range: { min: 0, max: 20, step: 1, correctValue: 10, tolerance: 1 } }),
+  createDemoTask('6', 'Coffee Preference', 'dropdown', 'Which of these is made with espresso and steamed milk foam?', 'default', { options: ['Americano', 'Cappuccino', 'Cold Brew', 'Tea'], answer: 'Cappuccino' }),
+  createDemoTask('7', 'Pizza Toppings', 'multi_select_dropdown', 'Select typical vegetarian toppings:', 'skull', { options: ['Pepperoni', 'Mushrooms', 'Peppers', 'Sausage', 'Onions'], correctAnswers: ['Mushrooms', 'Peppers', 'Onions'] }),
+  createDemoTask('8', 'Visual Puzzle', 'text', 'Look at the image. How many legs does this creature have?', 'camera', { imageUrl: 'https://images.unsplash.com/photo-1559438036-749c95d436a5?auto=format&fit=crop&w=400&q=80', answer: '8' }),
 ];
 
 export const DEMO_LISTS: TaskList[] = [
@@ -105,69 +55,66 @@ export const DEMO_LISTS: TaskList[] = [
     description: 'A mix of history, logic, and observation tasks.',
     color: '#3b82f6',
     createdAt: Date.now(),
-    tasks: [DEMO_TASKS[0], DEMO_TASKS[1], DEMO_TASKS[3], DEMO_TASKS[5], DEMO_TASKS[9]]
-  },
-  {
-    id: 'demo-list-2',
-    name: 'Demo: Scavenger Hunt',
-    description: 'Tasks involving observation and multiple inputs.',
-    color: '#10b981',
-    createdAt: Date.now(),
-    tasks: [DEMO_TASKS[2], DEMO_TASKS[4], DEMO_TASKS[6], DEMO_TASKS[7], DEMO_TASKS[8]]
+    tasks: [DEMO_TASKS[0], DEMO_TASKS[1], DEMO_TASKS[3], DEMO_TASKS[5]]
   }
-];
-
-// Correcting the DEMO_TEAMS members to match the TeamMemberData interface
-export const DEMO_TEAMS: Partial<Team>[] = [
-    { 
-        name: 'Red Rockets', 
-        score: 1250, 
-        members: [
-            { name: 'Alice', deviceId: 'demo-alice' },
-            { name: 'Bob', deviceId: 'demo-bob' },
-            { name: 'Charlie', deviceId: 'demo-charlie' }
-        ] 
-    },
-    { 
-        name: 'Blue Bandits', 
-        score: 980, 
-        members: [
-            { name: 'Dave', deviceId: 'demo-dave' },
-            { name: 'Eve', deviceId: 'demo-eve' }
-        ] 
-    },
-    { 
-        name: 'Green Giants', 
-        score: 1500, 
-        members: [
-            { name: 'Frank', deviceId: 'demo-frank' },
-            { name: 'Grace', deviceId: 'demo-grace' },
-            { name: 'Heidi', deviceId: 'demo-heidi' },
-            { name: 'Ivan', deviceId: 'demo-ivan' }
-        ] 
-    },
-    { 
-        name: 'Yellow Yaks', 
-        score: 450, 
-        members: [
-            { name: 'Judy', deviceId: 'demo-judy' }
-        ] 
-    }
 ];
 
 export const seedDatabase = async () => {
   let count = 0;
   try {
-    // Save Tasks
-    for (const task of DEMO_TASKS) {
-      await db.saveTemplate(task);
-      count++;
+    // 1. Save Tasks & Lists
+    for (const task of DEMO_TASKS) { await db.saveTemplate(task); count++; }
+    for (const list of DEMO_LISTS) { await db.saveTaskList(list); }
+
+    // 2. Create "Simon's Game"
+    const simonGameId = `game-simon-${Date.now()}`;
+    const simonGame: Game = {
+        id: simonGameId,
+        name: "Simon's Game",
+        description: "A demo game with pre-loaded teams and scores.",
+        createdAt: Date.now(),
+        points: DEMO_TASKS.map((t, i) => ({
+            ...t,
+            id: `p-${Date.now()}-${i}`,
+            location: { lat: 55.6761 + (Math.random() * 0.01 - 0.005), lng: 12.5683 + (Math.random() * 0.01 - 0.005) }, // Random scatter around Copenhagen
+            radiusMeters: 30,
+            activationTypes: ['radius'],
+            isUnlocked: true,
+            isCompleted: false,
+            order: i,
+            points: 100
+        })),
+        client: { name: "Demo Corp", playingDate: new Date().toISOString() }
+    };
+    await db.saveGame(simonGame);
+
+    // 3. Create Teams for Simon's Game
+    const teamsData = [
+        { name: 'Team Alpha', score: 1500, color: 'red' },
+        { name: 'Team Bravo', score: 1200, color: 'blue' },
+        { name: 'Team Charlie', score: 800, color: 'green' },
+        { name: 'Team Delta', score: 2300, color: 'yellow' } // The Leader
+    ];
+
+    for (const t of teamsData) {
+        const teamId = `team-${t.name.replace(/\s+/g, '-').toLowerCase()}-${simonGameId}`;
+        const team: Team = {
+            id: teamId,
+            gameId: simonGameId,
+            name: t.name,
+            joinCode: Math.floor(1000 + Math.random() * 9000).toString(),
+            score: t.score,
+            members: [
+                { name: `Agent ${t.name.split(' ')[1]} 1`, deviceId: `dev-${t.name}-1` },
+                { name: `Agent ${t.name.split(' ')[1]} 2`, deviceId: `dev-${t.name}-2` }
+            ],
+            updatedAt: new Date().toISOString(),
+            isStarted: true
+        };
+        await db.registerTeam(team);
     }
-    // Save Lists
-    for (const list of DEMO_LISTS) {
-      await db.saveTaskList(list);
-    }
-    return { success: true, message: `Successfully seeded ${count} tasks and ${DEMO_LISTS.length} lists to Supabase.` };
+
+    return { success: true, message: `Created "Simon's Game" with 4 teams.` };
   } catch (e: any) {
     console.error(e);
     return { success: false, message: `Error seeding data: ${e.message}` };
@@ -175,26 +122,6 @@ export const seedDatabase = async () => {
 };
 
 export const seedTeams = async (gameId: string) => {
-    try {
-        for (const t of DEMO_TEAMS) {
-            const teamId = `team-${t.name?.replace(/\s+/g, '-').toLowerCase()}-${gameId}`;
-            // Simple deterministic fake join code
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            
-            const team: Team = {
-                id: teamId,
-                gameId: gameId,
-                name: t.name!,
-                joinCode: code,
-                score: t.score!,
-                members: t.members!,
-                updatedAt: new Date().toISOString()
-            };
-            await db.registerTeam(team);
-        }
-        return true;
-    } catch(e) {
-        console.error("Error seeding teams", e);
-        return false;
-    }
+    // Legacy support if needed
+    return true; 
 };

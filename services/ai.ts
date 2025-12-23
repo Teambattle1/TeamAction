@@ -2,6 +2,9 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { TaskTemplate, IconId, TaskType } from "../types";
 
+// Safe access to API Key in browser environment
+const getApiKey = () => (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) || '';
+
 // Schema to ensure Gemini returns data compatible with our App
 const responseSchema = {
   type: Type.ARRAY,
@@ -130,7 +133,7 @@ const handleAiError = (error: any) => {
 };
 
 export const generateAiTasks = async (topic: string, count: number = 5, language: string = 'English', additionalTag?: string): Promise<TaskTemplate[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   
   const timeoutPromise = new Promise<never>((_, reject) => {
     const id = setTimeout(() => {
@@ -214,7 +217,7 @@ export const generateAiTasks = async (topic: string, count: number = 5, language
 };
 
 export const generateTaskFromImage = async (base64Image: string): Promise<TaskTemplate | null> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: getApiKey() });
   try {
     const matches = base64Image.match(/^data:(.+);base64,(.+)$/);
     if (!matches) return null;
@@ -291,7 +294,7 @@ export const generateTaskFromImage = async (base64Image: string): Promise<TaskTe
 };
 
 export const generateAiImage = async (prompt: string, style: string = 'cartoon'): Promise<string | null> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     try {
         const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-2.5-flash-image', 
@@ -313,7 +316,7 @@ export const generateAiImage = async (prompt: string, style: string = 'cartoon')
 };
 
 export const findCompanyDomain = async (query: string): Promise<string | null> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
     try {
         const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-3-flash-preview',

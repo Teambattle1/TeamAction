@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Game, GameState, GameMode, GamePoint, Coordinate, 
-  MapStyleId, Language, Team, TaskTemplate, TaskList, TaskType 
+  MapStyleId, Language, Team, TaskTemplate, TaskList, TaskType, ChatMessage 
 } from './types';
 import * as db from './services/db';
 import { teamSync } from './services/teamSync';
@@ -20,6 +21,7 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ResultsView from './components/ResultsView';
 import TaskPreview from './components/TaskPreview';
 import PlaygroundEditor from './components/PlaygroundEditor';
+import PlaygroundModal from './components/PlaygroundModal';
 import PlaygroundLibraryModal from './components/PlaygroundLibraryModal';
 import TeamDashboard from './components/TeamDashboard';
 import TeamsModal from './components/TeamsModal';
@@ -37,13 +39,18 @@ import MessagePopup from './components/MessagePopup';
 import InstructorDashboard from './components/InstructorDashboard';
 import GameStats from './components/GameStats';
 import Dashboard from './components/Dashboard';
-import TaskEditor from './components/TaskEditor'; // Added import for TaskEditor
+import TaskEditor from './components/TaskEditor';
+import ChatDrawer from './components/ChatDrawer'; 
 
 // Constants
 const STORAGE_KEY_GAME_ID = 'geohunt_active_game_id';
 const STORAGE_KEY_TEAM_NAME = 'geohunt_team_name';
 const STORAGE_KEY_USER_NAME = 'geohunt_user_name';
 const STORAGE_KEY_MODE = 'geohunt_mode';
+const STORAGE_KEY_LAST_ACTIVE = 'geohunt_last_active';
+const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 Hours
+
+type MeasureNode = { type: 'point', id: string } | { type: 'coord', loc: Coordinate };
 
 const App: React.FC = () => {
   // --- STATE ---
@@ -59,16 +66,22 @@ const App: React.FC = () => {
     deviceId: teamSync.getDeviceId(),
   });
 
+  // Instructor specific state
+  const [instructorTeams, setInstructorTeams] = useState<Team[]>([]);
+
   const [mapStyle, setMapStyle] = useState<MapStyleId>('osm');
   const [language, setLanguage] = useState<Language>('English');
   const [loading, setLoading] = useState(true);
+  const [showScores, setShowScores] = useState(localStorage.getItem('geohunt_show_scores') !== 'false');
 
   // UI Toggles & Modals
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [showLanding, setShowLanding] = useState(true); 
+  const [showWelcome, setShowWelcome] = useState(false); 
   const [showGameManager, setShowGameManager] = useState(false);
   const [showGameChooser, setShowGameChooser] = useState(false);
   const [showTaskMaster, setShowTaskMaster] = useState(false);
   const [showPlaygroundEditor, setShowPlaygroundEditor] = useState(false);
+  const [viewingPlaygroundId, setViewingPlaygroundId] = useState<string | null>(null); 
   const [showTeamDashboard, setShowTeamDashboard] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [showTeamsModal, setShowTeamsModal] = useState(false);
@@ -79,14 +92,22 @@ const App: React.FC = () => {
   const [showPlaygroundLibrary, setShowPlaygroundLibrary] = useState(false);
   const [showTeamsHub, setShowTeamsHub] = useState(false);
   const [showTaskPlaylist, setShowTaskPlaylist] = useState(false);
+  const [showChatDrawer, setShowChatDrawer] = useState(false);
   
+  // Teams Modal Admin State
+  const [teamsModalAdmin, setTeamsModalAdmin] = useState(false);
+  
+  const [pendingView, setPendingView] = useState<'PLAYGROUNDS' | null>(null);
+
   // Editor Specific State
   const [selectedPoint, setSelectedPoint] = useState<GamePoint | null>(null);
   const [editingPoint, setEditingPoint] = useState<GamePoint | null>(null);
   const [sourceListId, setSourceListId] = useState<string>('');
   const [isMeasuring, setIsMeasuring] = useState(false);
-  const [measurePathIds, setMeasurePathIds] = useState<string[]>([]);
+  const [isRelocating, setIsRelocating] = useState(false); 
+  const [measureNodes, setMeasureNodes] = useState<MeasureNode[]>([]);
   const [forceExpandDrawer, setForceExpandDrawer] = useState(false);
+  const [isDrawerExpanded, setIsDrawerExpanded] = useState(false); 
   const [taskMasterTab, setTaskMasterTab] = useState<'LISTS' | 'LIBRARY' | 'CREATE' | 'CLIENT' | 'QR'>('LIBRARY');
   const [taskMasterEditingListId, setTaskMasterEditingListId] = useState<string | null>(null);
   const [dashboardTab, setDashboardTab] = useState<'dashboard' | 'games' | 'templates' | 'tasks' | 'users' | 'tags' | 'client'>('dashboard');
@@ -96,10 +117,13 @@ const App: React.FC = () => {
 
   // Client / External
   const [clientSubmissionToken, setClientSubmissionToken] = useState<string | null>(null);
-  const [messagePopup, setMessagePopup] = useState<{ message: string, sender: string } | null>(null);
+  const [messagePopup, setMessagePopup] = useState<ChatMessage | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]); 
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0); 
   const [showInstructorDashboard, setShowInstructorDashboard] = useState(false);
 
   const mapRef = useRef<GameMapHandle>(null);
+  const saveTimeoutRef = useRef<any>(null); 
 
   // --- DERIVED STATE ---
   const activeGame = useMemo(() => 
@@ -111,11 +135,16 @@ const App: React.FC = () => {
   }, [activeGame]);
 
   const measurePath = useMemo(() => {
-      if (!activeGame) return [];
-      return measurePathIds
-          .map(id => activeGame.points.find(p => p.id === id)?.location)
+      return measureNodes
+          .map(node => {
+              if (node.type === 'point') {
+                  const p = activeGame?.points.find(ap => ap.id === node.id);
+                  return p ? p.location : null;
+              }
+              return node.loc;
+          })
           .filter((l): l is Coordinate => !!l);
-  }, [activeGame, measurePathIds]);
+  }, [activeGame, measureNodes]);
 
   const measuredDistance = useMemo(() => {
       let dist = 0;
@@ -125,9 +154,112 @@ const App: React.FC = () => {
       return dist;
   }, [measurePath]);
 
+  // Identify locked/dependent tasks
+  const dependentPointIds = useMemo(() => {
+      if (!activeGame) return [];
+      const targets = new Set<string>();
+      activeGame.points.forEach(p => {
+          ['onOpen', 'onCorrect', 'onIncorrect'].forEach((trigger) => {
+              const actions = p.logic?.[trigger as keyof typeof p.logic];
+              actions?.forEach(action => {
+                  if ((action.type === 'unlock' || action.type === 'reveal') && action.targetId) {
+                      targets.add(action.targetId);
+                  }
+              });
+          });
+      });
+      return Array.from(targets);
+  }, [activeGame]);
+
+  const hiddenPlaygroundIds = useMemo(() => {
+      if (!activeGame) return [];
+      const hidden = new Set<string>();
+      activeGame.points.forEach(p => {
+          ['onOpen', 'onCorrect', 'onIncorrect'].forEach((trigger) => {
+              const actions = p.logic?.[trigger as keyof typeof p.logic];
+              actions?.forEach(action => {
+                  if (action.type === 'open_playground' && action.targetId) {
+                      hidden.add(action.targetId);
+                  }
+              });
+          });
+      });
+      return Array.from(hidden);
+  }, [activeGame]);
+
+  const logicInfo = useMemo(() => {
+      if (!activeGame) return { links: [], playgroundMarkers: [] };
+      const links: { from: Coordinate; to: Coordinate; color?: string; type?: 'onOpen' | 'onCorrect' | 'onIncorrect' | 'open_playground' }[] = [];
+      
+      // Calculate Playground Markers first (used for links)
+      const playgroundMarkers: { id: string; location: Coordinate; title: string; iconId: string }[] = [];
+      
+      activeGame.playgrounds?.forEach(pg => {
+          // Use stored location, or fallback to centroid of tasks, or fallback to (0,0)
+          let loc = pg.location;
+          if (!loc || (loc.lat === 0 && loc.lng === 0)) {
+              const pgPoints = activeGame.points.filter(p => p.playgroundId === pg.id);
+              if (pgPoints.length > 0) {
+                  const avgLat = pgPoints.reduce((sum, p) => sum + p.location.lat, 0) / pgPoints.length;
+                  const avgLng = pgPoints.reduce((sum, p) => sum + p.location.lng, 0) / pgPoints.length;
+                  loc = { lat: avgLat, lng: avgLng };
+              } else {
+                  // Fallback for new playground without tasks - place near user or center map
+                  loc = gameState.userLocation || { lat: 55.6761, lng: 12.5683 };
+              }
+          }
+          playgroundMarkers.push({
+              id: pg.id,
+              location: loc,
+              title: pg.title,
+              iconId: pg.iconId || 'default'
+          });
+      });
+
+      // Generate Links
+      activeGame.points.forEach(p => {
+          if (!p.location) return;
+          
+          // Logic Links
+          ['onOpen', 'onCorrect', 'onIncorrect'].forEach((trigger) => {
+              const actions = p.logic?.[trigger as any];
+              actions?.forEach(action => {
+                  // Standard Unlock/Reveal Links to other points
+                  if ((action.type === 'unlock' || action.type === 'reveal') && action.targetId) {
+                      const target = activeGame.points.find(tp => tp.id === action.targetId);
+                      if (target && target.location && (target.location.lat !== 0 || target.location.lng !== 0)) {
+                          const color = trigger === 'onOpen' ? '#eab308' : (trigger === 'onCorrect' ? '#22c55e' : '#ef4444');
+                          links.push({ from: p.location, to: target.location, color, type: trigger as any });
+                      }
+                  }
+                  
+                  // Open Playground Links
+                  if (action.type === 'open_playground' && action.targetId) {
+                      const targetPg = playgroundMarkers.find(pg => pg.id === action.targetId);
+                      if (targetPg) {
+                          links.push({ 
+                              from: p.location, 
+                              to: targetPg.location, 
+                              color: '#3b82f6', 
+                              type: 'open_playground' 
+                          });
+                      }
+                  }
+              });
+          });
+          
+          // Implicit Connection: Task belonging to playground -> connect to playground marker
+          // ONLY if tasks have GPS (0,0 tasks in playground don't need lines) - usually playground tasks are virtual (0,0)
+          // BUT: If the task is a physical trigger for a playground, it's covered by 'open_playground' action above.
+          // This block is for visualization of task->playground relationship if desired, but standard is via logic.
+      });
+
+      return { links, playgroundMarkers };
+  }, [activeGame, gameState.userLocation]);
+
+
   // --- INITIALIZATION ---
   useEffect(() => {
-    // Check for query params
     const params = new URLSearchParams(window.location.search);
     const submitTo = params.get('submitTo');
     if (submitTo) {
@@ -137,13 +269,20 @@ const App: React.FC = () => {
     }
 
     const init = async () => {
+      const lastActive = localStorage.getItem(STORAGE_KEY_LAST_ACTIVE);
+      if (lastActive && Date.now() - parseInt(lastActive) > SESSION_TIMEOUT_MS) {
+          localStorage.removeItem(STORAGE_KEY_GAME_ID);
+          localStorage.removeItem(STORAGE_KEY_TEAM_NAME);
+          localStorage.removeItem(STORAGE_KEY_USER_NAME);
+      }
+      localStorage.setItem(STORAGE_KEY_LAST_ACTIVE, Date.now().toString());
+
       const [fetchedGames, fetchedLibrary, fetchedLists] = await Promise.all([
         db.fetchGames(),
         db.fetchLibrary(),
         db.fetchTaskLists()
       ]);
 
-      // Seed if empty
       if (fetchedGames.length === 0 && fetchedLibrary.length === 0) {
           await seedDatabase();
           const seededGames = await db.fetchGames();
@@ -154,7 +293,6 @@ const App: React.FC = () => {
           setGameState(prev => ({ ...prev, games: fetchedGames, taskLibrary: fetchedLibrary, taskLists: fetchedLists }));
       }
 
-      // Restore session
       const storedGameId = localStorage.getItem(STORAGE_KEY_GAME_ID);
       const storedTeamName = localStorage.getItem(STORAGE_KEY_TEAM_NAME);
       const storedUserName = localStorage.getItem(STORAGE_KEY_USER_NAME);
@@ -164,12 +302,16 @@ const App: React.FC = () => {
           setGameState(prev => ({ ...prev, activeGameId: storedGameId, teamName: storedTeamName || undefined, userName: storedUserName || undefined }));
           if (storedTeamName && storedUserName) {
               teamSync.connect(storedGameId, storedTeamName, storedUserName);
+              setShowLanding(false); 
               setShowWelcome(false);
           }
       }
 
       if (storedMode && Object.values(GameMode).includes(storedMode)) {
           setMode(storedMode);
+          if ((storedMode === GameMode.EDIT || storedMode === GameMode.INSTRUCTOR) && !storedGameId) {
+              setShowGameChooser(true);
+          }
       }
 
       setLoading(false);
@@ -177,7 +319,6 @@ const App: React.FC = () => {
 
     init();
 
-    // Geolocation
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const coord = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -188,24 +329,74 @@ const App: React.FC = () => {
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
     );
 
-    // Chat Listener
     const unsubscribeChat = teamSync.subscribeToChat((msg) => {
         if (msg.targetTeamId && msg.targetTeamId !== `team-${gameState.teamName?.replace(/\s+/g, '-').toLowerCase()}-${activeGame?.id}`) return;
-        setMessagePopup({ message: msg.message, sender: msg.sender });
+        setMessagePopup(msg);
+        setChatHistory(prev => [...prev, msg]);
+        if (!showChatDrawer) {
+            setUnreadMessagesCount(prev => prev + 1);
+        }
     });
+
+    const updateActivity = () => localStorage.setItem(STORAGE_KEY_LAST_ACTIVE, Date.now().toString());
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('keypress', updateActivity);
 
     return () => {
         navigator.geolocation.clearWatch(watchId);
         unsubscribeChat();
+        window.removeEventListener('click', updateActivity);
+        window.removeEventListener('keypress', updateActivity);
     };
-  }, []);
+  }, [showChatDrawer]);
+
+  useEffect(() => {
+      if (showChatDrawer) {
+          setUnreadMessagesCount(0);
+      }
+  }, [showChatDrawer]);
+
+  // Instructor Mode: Periodically fetch teams list for Chat Drawer targeting
+  useEffect(() => {
+      if ((mode === GameMode.INSTRUCTOR || showLanding) && activeGame) {
+          const fetchTeams = async () => {
+              const teams = await db.fetchTeams(activeGame.id);
+              setInstructorTeams(teams);
+          };
+          fetchTeams();
+          const interval = setInterval(fetchTeams, 15000);
+          return () => clearInterval(interval);
+      }
+  }, [mode, activeGame, showLanding]);
 
   const updateActiveGame = (updatedGame: Game) => {
       setGameState(prev => ({
           ...prev,
           games: prev.games.map(g => g.id === updatedGame.id ? updatedGame : g)
       }));
-      db.saveGame(updatedGame);
+
+      if (saveTimeoutRef.current) {
+          clearTimeout(saveTimeoutRef.current);
+      }
+      saveTimeoutRef.current = setTimeout(() => {
+          db.saveGame(updatedGame);
+      }, 1000); 
+  };
+
+  const handleToggleMode = () => {
+      const nextMode = mode === GameMode.PLAY ? GameMode.EDIT : (mode === GameMode.EDIT ? GameMode.INSTRUCTOR : GameMode.PLAY);
+      setMode(nextMode);
+      localStorage.setItem(STORAGE_KEY_MODE, nextMode);
+
+      if ((nextMode === GameMode.EDIT || nextMode === GameMode.INSTRUCTOR) && !gameState.activeGameId) {
+          setShowGameChooser(true);
+      }
+  };
+
+  const handleToggleScores = () => {
+      const newVal = !showScores;
+      setShowScores(newVal);
+      localStorage.setItem('geohunt_show_scores', String(newVal));
   };
 
   const handleCreateGame = async (gameData: Partial<Game>, fromListId?: string) => {
@@ -222,11 +413,10 @@ const App: React.FC = () => {
       if (fromListId) {
           const list = gameState.taskLists.find(l => l.id === fromListId);
           if (list) {
-              // Convert templates to points
               newGame.points = list.tasks.map((t, i) => ({
                   ...t,
                   id: `p-${Date.now()}-${i}`,
-                  location: { lat: 0, lng: 0 }, // Needs placement
+                  location: { lat: 0, lng: 0 }, 
                   radiusMeters: 30,
                   activationTypes: ['radius'],
                   isUnlocked: true,
@@ -243,6 +433,7 @@ const App: React.FC = () => {
       setShowGameCreator(false);
       setShowGameChooser(false);
       setMode(GameMode.EDIT);
+      setShowLanding(false);
   };
 
   const handleStartGame = (gameId: string, teamName: string, userName: string) => {
@@ -255,7 +446,6 @@ const App: React.FC = () => {
       const teamId = `team-${teamName.replace(/\s+/g, '-').toLowerCase()}-${gameId}`;
       const joinCode = Math.floor(100000 + Math.random() * 900000).toString();
       
-      // Register team
       const newTeam: Team = {
           id: teamId,
           gameId,
@@ -272,11 +462,11 @@ const App: React.FC = () => {
       db.registerTeam(newTeam);
       teamSync.connect(gameId, teamName, userName);
       setShowWelcome(false);
+      setShowLanding(false);
   };
 
   const handleAddTask = (type: 'MANUAL' | 'AI' | 'LIBRARY', playgroundId?: string) => {
       if (!activeGame) return;
-      
       const center = mapRef.current?.getCenter() || gameState.userLocation || { lat: 0, lng: 0 };
       
       if (type === 'AI') {
@@ -285,7 +475,6 @@ const App: React.FC = () => {
           setTaskMasterTab('LIBRARY');
           setShowTaskMaster(true);
       } else {
-          // Manual
           const newPoint: GamePoint = {
               id: `p-${Date.now()}`,
               title: 'New Task',
@@ -301,26 +490,65 @@ const App: React.FC = () => {
               playgroundId,
               playgroundPosition: playgroundId ? { x: 50, y: 50 } : undefined
           };
-          
           updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
           setEditingPoint(newPoint);
       }
   };
 
-  // Logic Drawing Handler
+  const handleRelocateGame = () => {
+      if (isRelocating) {
+          if (!activeGame || activeGame.points.length === 0) {
+              setIsRelocating(false);
+              return;
+          }
+          const mapCenter = mapRef.current?.getCenter();
+          if (!mapCenter) return;
+
+          const mapPoints = activeGame.points.filter(p => !p.playgroundId && !p.isSectionHeader);
+          
+          if (mapPoints.length === 0) {
+              setIsRelocating(false);
+              return;
+          }
+
+          const lats = mapPoints.map(p => p.location.lat);
+          const lngs = mapPoints.map(p => p.location.lng);
+          const avgLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+          const avgLng = lngs.reduce((a, b) => a + b, 0) / lngs.length;
+
+          const deltaLat = mapCenter.lat - avgLat;
+          const deltaLng = mapCenter.lng - avgLng;
+
+          const updatedPoints = activeGame.points.map(p => {
+              if (p.playgroundId || p.isSectionHeader) return p;
+              return {
+                  ...p,
+                  location: {
+                      lat: p.location.lat + deltaLat,
+                      lng: p.location.lng + deltaLng
+                  }
+              };
+          });
+
+          updateActiveGame({ ...activeGame, points: updatedPoints });
+          setIsRelocating(false);
+      } else {
+          setIsRelocating(true);
+      }
+  };
+
   const handlePointClick = (point: GamePoint) => {
       if (isMeasuring) {
-          setMeasurePathIds(prev => [...prev, point.id]);
+          setMeasureNodes(prev => [...prev, { type: 'point', id: point.id }]);
           return;
       }
 
       if (isDrawingLogic && activeGame) {
-          // Complete Logic Connection
           const source = activeGame.points.find(p => p.id === isDrawingLogic.sourcePointId);
           if (source && source.id !== point.id) {
               const newAction = {
                   id: `act-${Date.now()}`,
-                  type: 'unlock' as const, // Default to unlock
+                  type: 'unlock' as const, 
                   targetId: point.id
               };
               
@@ -337,12 +565,139 @@ const App: React.FC = () => {
           return;
       }
 
-      if (mode === GameMode.PLAY) {
+      if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
           setSelectedPoint(point);
-      } else {
-          // Edit Mode
-          setEditingPoint(point);
+      } else if (mode === GameMode.EDIT) {
+          setShowContextMenu({ point });
       }
+  };
+
+  const handleLandingAction = (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY') => {
+      // Don't close landing immediately for some actions if validation fails
+      // But usually fine.
+
+      switch(action) {
+          case 'PLAY':
+              setShowLanding(false);
+              setShowWelcome(true);
+              setMode(GameMode.PLAY);
+              break;
+          case 'EDIT_GAME':
+              setShowLanding(false);
+              setMode(GameMode.EDIT);
+              if (!gameState.activeGameId) setShowGameChooser(true);
+              break;
+          case 'GAMES':
+              setShowLanding(false);
+              setShowGameChooser(true);
+              break;
+          case 'TEAMS':
+              setShowLanding(false);
+              setShowTeamsHub(true);
+              break;
+          case 'TEAMZONE':
+              setShowLanding(false);
+              setShowTeamDashboard(true);
+              break;
+          case 'DASHBOARD':
+              setShowLanding(false);
+              setShowDashboard(true);
+              setDashboardTab('dashboard');
+              break;
+          case 'USERS':
+              setShowLanding(false);
+              setShowDashboard(true);
+              setDashboardTab('users');
+              break;
+          case 'TAGS':
+              setShowLanding(false);
+              setShowDashboard(true);
+              setDashboardTab('tags');
+              break;
+          case 'TASKS':
+              setShowLanding(false);
+              setShowTaskMaster(true);
+              setTaskMasterTab('LIBRARY');
+              break;
+          case 'TASKLIST':
+              setShowLanding(false);
+              setShowTaskMaster(true);
+              setTaskMasterTab('LISTS');
+              break;
+          case 'QR_CODES':
+              setShowLanding(false);
+              setShowTaskMaster(true);
+              setTaskMasterTab('QR');
+              break;
+          case 'TEMPLATES':
+              setShowLanding(false);
+              setShowDashboard(true);
+              setDashboardTab('templates');
+              break;
+          case 'PLAYGROUNDS':
+              setShowLanding(false);
+              if (activeGame) {
+                  setShowPlaygroundEditor(true);
+              } else {
+                  setPendingView('PLAYGROUNDS');
+                  setShowGameChooser(true);
+              }
+              break;
+          case 'CLIENT_PORTAL':
+              setShowLanding(false);
+              setShowDashboard(true);
+              setDashboardTab('client');
+              break;
+          case 'ADMIN':
+              setShowLanding(false);
+              setShowDashboard(true);
+              break;
+          case 'CHAT':
+              if (!activeGame) {
+                  alert("Please select a session first.");
+                  return;
+              }
+              // Keep landing open or close? Usually chat is an overlay. 
+              // We'll close landing so chat is visible over map, or keep landing if it's dashboard style.
+              // Let's keep landing visible if we want, but ChatDrawer is z-5000 now.
+              // But user said "link to new chatmodule", implies navigation.
+              setShowChatDrawer(true);
+              break;
+          case 'TEAM_LOBBY':
+              if (!activeGame) {
+                  alert("Please select a session first.");
+                  return;
+              }
+              // Admin mode for teams modal
+              setTeamsModalAdmin(true);
+              setShowTeamsModal(true);
+              break;
+      }
+  };
+
+  const handleFitBounds = () => {
+      if (activeGame?.points.length) mapRef.current?.fitBounds(activeGame.points);
+  };
+
+  const handleLocateMe = () => {
+      if (gameState.userLocation) mapRef.current?.jumpTo(gameState.userLocation);
+  };
+
+  const handlePointMove = (id: string, loc: Coordinate) => {
+      if (!activeGame) return;
+      
+      // Check if it's a playground drag (playground ids usually start with 'pg-')
+      const pgIndex = activeGame.playgrounds?.findIndex(p => p.id === id);
+      if (pgIndex !== undefined && pgIndex !== -1 && activeGame.playgrounds) {
+          const updatedPlaygrounds = [...activeGame.playgrounds];
+          updatedPlaygrounds[pgIndex] = { ...updatedPlaygrounds[pgIndex], location: loc };
+          updateActiveGame({ ...activeGame, playgrounds: updatedPlaygrounds });
+          return;
+      }
+
+      // Normal point drag
+      const updatedPoints = activeGame.points.map(p => p.id === id ? { ...p, location: loc } : p);
+      updateActiveGame({ ...activeGame, points: updatedPoints });
   };
 
   if (clientSubmissionToken) {
@@ -361,19 +716,19 @@ const App: React.FC = () => {
                   mode={mode}
                   mapStyle={mapStyle}
                   selectedPointId={selectedPoint?.id}
-                  isRelocating={false}
+                  isRelocating={isRelocating}
                   measurePath={measurePath}
+                  logicLinks={logicInfo.links}
+                  playgroundMarkers={logicInfo.playgroundMarkers} // Pass markers
+                  dependentPointIds={dependentPointIds}
                   onPointClick={handlePointClick}
+                  showScores={showScores}
                   onMapClick={(coord) => {
-                      if (mode === GameMode.EDIT && !isDrawingLogic && !isMeasuring) {
-                          // Optional: Click to add task?
+                      if (mode === GameMode.EDIT && isMeasuring) {
+                          setMeasureNodes(prev => [...prev, { type: 'coord', loc: coord }]);
                       }
                   }}
-                  onPointMove={(id, loc) => {
-                      if (!activeGame) return;
-                      const updated = activeGame.points.map(p => p.id === id ? { ...p, location: loc } : p);
-                      updateActiveGame({ ...activeGame, points: updated });
-                  }}
+                  onPointMove={handlePointMove}
                   onDeletePoint={(id) => {
                       if (!activeGame) return;
                       updateActiveGame({ ...activeGame, points: activeGame.points.filter(p => p.id !== id) });
@@ -384,56 +739,64 @@ const App: React.FC = () => {
       </div>
 
       {/* HUD LAYER */}
-      <GameHUD 
-          accuracy={gameState.gpsAccuracy}
-          mode={mode}
-          toggleMode={() => {
-              const nextMode = mode === GameMode.PLAY ? GameMode.EDIT : (mode === GameMode.EDIT ? GameMode.INSTRUCTOR : GameMode.PLAY);
-              setMode(nextMode);
-              localStorage.setItem(STORAGE_KEY_MODE, nextMode);
-          }}
-          onOpenGameManager={() => setShowGameManager(true)}
-          onOpenTaskMaster={() => { setTaskMasterTab('LIBRARY'); setShowTaskMaster(true); }}
-          onOpenTeams={() => setShowTeamsHub(true)}
-          mapStyle={mapStyle}
-          onSetMapStyle={setMapStyle}
-          language={language}
-          onBackToHub={() => {
-              if (mode === GameMode.EDIT) {
-                  setShowDashboard(true);
-              } else {
-                  setShowWelcome(true);
-              }
-          }}
-          activeGameName={activeGame?.name}
-          onOpenInstructorDashboard={() => setShowInstructorDashboard(true)}
-          isMeasuring={isMeasuring}
-          onToggleMeasure={() => { setIsMeasuring(!isMeasuring); setMeasurePathIds([]); }}
-          measuredDistance={measuredDistance}
-          playgrounds={activeGame?.playgrounds}
-          onOpenPlayground={(id) => setShowPlaygroundEditor(true)} // Or dedicated playground viewer
-          onOpenTeamDashboard={() => setShowTeamDashboard(true)}
-          onRelocateGame={() => {
-              // Implementation for bulk relocation
-              const center = mapRef.current?.getCenter();
-              if (activeGame && center) {
-                  const currentCenter = activeGame.points[0]?.location || center;
-                  const latDiff = center.lat - currentCenter.lat;
-                  const lngDiff = center.lng - currentCenter.lng;
-                  const updatedPoints = activeGame.points.map(p => ({
-                      ...p,
-                      location: { lat: p.location.lat + latDiff, lng: p.location.lng + lngDiff }
-                  }));
-                  updateActiveGame({ ...activeGame, points: updatedPoints });
-              }
-          }}
-          isRelocating={false}
-          timerConfig={activeGame?.timerConfig}
-      />
+      {!showLanding && !showWelcome && (
+          <GameHUD 
+              accuracy={gameState.gpsAccuracy}
+              mode={mode}
+              toggleMode={handleToggleMode}
+              onOpenGameManager={() => setShowGameManager(true)}
+              onOpenTaskMaster={() => { setTaskMasterTab('LIBRARY'); setShowTaskMaster(true); }}
+              onOpenTeams={() => setShowTeamsHub(true)}
+              mapStyle={mapStyle}
+              onSetMapStyle={setMapStyle}
+              language={language}
+              onBackToHub={() => {
+                  setShowLanding(true);
+              }}
+              activeGameName={activeGame?.name}
+              onOpenInstructorDashboard={() => setShowInstructorDashboard(true)}
+              isMeasuring={isMeasuring}
+              onToggleMeasure={() => { setIsMeasuring(!isMeasuring); setMeasureNodes([]); }}
+              measuredDistance={measuredDistance}
+              playgrounds={activeGame?.playgrounds}
+              onOpenPlayground={(id) => {
+                  if (mode === GameMode.EDIT) {
+                      setShowPlaygroundEditor(true);
+                  } else {
+                      setViewingPlaygroundId(id);
+                  }
+              }} 
+              onOpenTeamDashboard={() => setShowTeamDashboard(true)}
+              onRelocateGame={handleRelocateGame}
+              isRelocating={isRelocating}
+              timerConfig={activeGame?.timerConfig}
+              onFitBounds={handleFitBounds}
+              onLocateMe={handleLocateMe}
+              onSearchLocation={(coord) => mapRef.current?.jumpTo(coord)}
+              isDrawerExpanded={isDrawerExpanded}
+              showScores={showScores}
+              onToggleScores={handleToggleScores}
+              hiddenPlaygroundIds={mode === GameMode.PLAY ? hiddenPlaygroundIds : []}
+              onToggleChat={() => setShowChatDrawer(prev => !prev)}
+              unreadMessagesCount={unreadMessagesCount}
+          />
+      )}
 
       {/* OVERLAYS & MODALS */}
       
-      {/* 1. Welcome Screen */}
+      {showLanding && (
+          <InitialLanding 
+              onAction={handleLandingAction}
+              version="2.0.0"
+              games={gameState.games}
+              activeGameId={gameState.activeGameId}
+              onSelectGame={(id) => {
+                  setGameState(prev => ({ ...prev, activeGameId: id }));
+                  localStorage.setItem(STORAGE_KEY_GAME_ID, id);
+              }}
+          />
+      )}
+
       {showWelcome && (
           <WelcomeScreen 
               games={gameState.games}
@@ -442,16 +805,19 @@ const App: React.FC = () => {
               onSetMapStyle={setMapStyle}
               language={language}
               onSetLanguage={setLanguage}
-              onBack={() => setShowWelcome(false)}
+              onBack={() => {
+                  setShowWelcome(false);
+                  setShowLanding(true);
+              }}
               onInstructorLogin={() => {
                   setMode(GameMode.INSTRUCTOR);
                   setShowWelcome(false);
+                  setShowLanding(false);
               }}
           />
       )}
 
-      {/* 2. Editor Drawer (Side Panel in Edit Mode) */}
-      {mode === GameMode.EDIT && (
+      {mode === GameMode.EDIT && !showLanding && (
         <EditorDrawer 
           onClose={() => setMode(GameMode.PLAY)} 
           activeGame={activeGame}
@@ -470,7 +836,7 @@ const App: React.FC = () => {
           onEditPoint={(p) => setEditingPoint(p)} 
           onSelectPoint={(p) => { 
               if (isMeasuring) {
-                  setMeasurePathIds(prev => [...prev, p.id]);
+                  setMeasureNodes(prev => [...prev, { type: 'point', id: p.id }]);
               } else {
                   setSelectedPoint(p); 
                   mapRef.current?.jumpTo(p.location); 
@@ -499,11 +865,11 @@ const App: React.FC = () => {
           onAddTask={handleAddTask} 
           userLocation={gameState.userLocation}
           onSearchLocation={(coord) => mapRef.current?.jumpTo(coord)}
+          onExpandChange={setIsDrawerExpanded}
         />
       )}
 
-      {/* 3. Task Play Modal (Player View) */}
-      {selectedPoint && mode === GameMode.PLAY && (
+      {selectedPoint && (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) && (
           <TaskModal 
               point={selectedPoint}
               onClose={() => setSelectedPoint(null)}
@@ -513,7 +879,6 @@ const App: React.FC = () => {
                       updateActiveGame({ ...activeGame, points: updatedPoints });
                       setGameState(prev => ({ ...prev, score: prev.score + (score || 0) }));
                       if (gameState.teamName && activeGame) {
-                          // Update remote score
                           const teamId = `team-${gameState.teamName.replace(/\s+/g, '-').toLowerCase()}-${activeGame.id}`;
                           db.updateTeamProgress(teamId, id, gameState.score + (score || 0));
                       }
@@ -528,10 +893,10 @@ const App: React.FC = () => {
                   }
               }}
               mode={mode}
+              isInstructorMode={mode === GameMode.INSTRUCTOR}
           />
       )}
 
-      {/* 4. Task Editor (Edit Mode) */}
       {editingPoint && mode === GameMode.EDIT && (
           <TaskEditor 
               point={editingPoint}
@@ -558,28 +923,94 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 5. Playground Editor */}
+      {showContextMenu && (
+          <PointContextMenu 
+              point={showContextMenu.point}
+              onClose={() => setShowContextMenu(null)}
+              onEdit={() => {
+                  setEditingPoint(showContextMenu.point);
+                  setShowContextMenu(null);
+              }}
+              onSwap={() => {
+                  setEditingPoint(showContextMenu.point);
+                  setShowContextMenu(null);
+              }}
+              onAction={() => {
+                  setShowActionModal(true);
+                  setEditingPoint(showContextMenu.point);
+                  setShowContextMenu(null);
+              }}
+          />
+      )}
+
+      {showActionModal && editingPoint && activeGame && (
+          <TaskActionModal 
+              point={editingPoint}
+              allPoints={activeGame.points}
+              playgrounds={activeGame.playgrounds}
+              onClose={() => {
+                  setShowActionModal(false);
+                  setEditingPoint(null); 
+              }}
+              onSave={(updatedPoint) => {
+                  const updatedPoints = activeGame.points.map(p => p.id === updatedPoint.id ? updatedPoint : p);
+                  updateActiveGame({ ...activeGame, points: updatedPoints });
+              }}
+              onStartDrawMode={(trigger) => {
+                  setIsDrawingLogic({ trigger, sourcePointId: editingPoint.id });
+                  setShowActionModal(false);
+                  setEditingPoint(null);
+                  alert(`Drawing Mode: Click target task to link ${trigger}`);
+              }}
+          />
+      )}
+
       {showPlaygroundEditor && activeGame && (
           <PlaygroundEditor 
               game={activeGame}
               onUpdateGame={updateActiveGame}
               onClose={() => setShowPlaygroundEditor(false)}
               onEditPoint={setEditingPoint}
+              onPointClick={handlePointClick} 
               onAddTask={handleAddTask}
               onOpenLibrary={() => setShowPlaygroundLibrary(true)}
+              showScores={showScores}
+              onToggleScores={handleToggleScores}
+              onHome={() => {
+                  setShowPlaygroundEditor(false);
+                  setShowLanding(true);
+              }}
           />
       )}
 
-      {/* 6. Dashboard / Landing */}
+      {viewingPlaygroundId && activeGame && (
+          <PlaygroundModal 
+              playground={activeGame.playgrounds?.find(p => p.id === viewingPlaygroundId)!}
+              points={activeGame.points}
+              onClose={() => setViewingPlaygroundId(null)}
+              onPointClick={(p) => {
+                  if (mode === GameMode.INSTRUCTOR) {
+                      setSelectedPoint(p);
+                  } else {
+                      setSelectedPoint(p);
+                  }
+              }}
+              mode={mode}
+          />
+      )}
+
       {showDashboard && (
           <Dashboard 
               games={gameState.games}
               taskLists={gameState.taskLists}
               taskLibrary={gameState.taskLibrary}
-              onBack={() => setShowDashboard(false)}
+              onBack={() => {
+                  setShowDashboard(false);
+                  setShowLanding(true);
+              }}
               onAction={(action) => {
                   if (action === 'CREATE') { setShowGameCreator(true); }
-                  if (action === 'EDIT_GAME') { setShowDashboard(false); setMode(GameMode.EDIT); }
+                  if (action === 'EDIT_GAME') { setShowDashboard(false); setMode(GameMode.EDIT); if(!gameState.activeGameId) setShowGameChooser(true); }
                   if (action === 'VIEW_TEMPLATES') { setTaskMasterTab('LISTS'); setShowTaskMaster(true); }
                   if (action === 'VIEW_TASKS') { setTaskMasterTab('LIBRARY'); setShowTaskMaster(true); }
               }}
@@ -590,13 +1021,15 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 7. Task Master (Library) */}
       {showTaskMaster && (
           <TaskMaster 
               library={gameState.taskLibrary}
               lists={gameState.taskLists}
               initialTab={taskMasterTab}
-              onClose={() => setShowTaskMaster(false)}
+              onClose={() => {
+                  setShowTaskMaster(false);
+                  if (!activeGame && !showDashboard) setShowLanding(true);
+              }}
               onSaveTemplate={async (t) => {
                   await db.saveTemplate(t);
                   const lib = await db.fetchLibrary();
@@ -643,7 +1076,6 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 8. Game Chooser */}
       {showGameChooser && (
           <GameChooser 
               games={gameState.games}
@@ -652,9 +1084,17 @@ const App: React.FC = () => {
                   setGameState(prev => ({ ...prev, activeGameId: id }));
                   localStorage.setItem(STORAGE_KEY_GAME_ID, id);
                   setShowGameChooser(false);
+                  if (pendingView === 'PLAYGROUNDS') {
+                      setShowPlaygroundEditor(true);
+                      setPendingView(null);
+                  }
               }}
               onCreateGame={(name, fromId) => handleCreateGame({ name }, fromId)}
-              onClose={() => setShowGameChooser(false)}
+              onClose={() => {
+                  setShowGameChooser(false);
+                  setPendingView(null);
+                  if (!activeGame) setShowLanding(true);
+              }}
               onSaveAsTemplate={async (gid, name) => {
                   const g = gameState.games.find(x => x.id === gid);
                   if (g) {
@@ -679,7 +1119,6 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 9. Game Creator Modal */}
       {showGameCreator && (
           <GameCreator 
               onClose={() => setShowGameCreator(false)}
@@ -687,7 +1126,6 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 10. AI Generator */}
       {showAiGenerator && activeGame && (
           <AiTaskGenerator 
               onClose={() => setShowAiGenerator(false)}
@@ -708,7 +1146,6 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 11. Instructor Dashboard */}
       {showInstructorDashboard && activeGame && (
           <InstructorDashboard 
               game={activeGame}
@@ -716,7 +1153,6 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 12. Team Dashboard */}
       {showTeamDashboard && activeGame && (
           <TeamDashboard 
               gameId={activeGame.id}
@@ -724,13 +1160,16 @@ const App: React.FC = () => {
               totalMapPoints={activeGame.points.length}
               onOpenAgents={() => setShowTeamsModal(true)}
               onClose={() => setShowTeamDashboard(false)}
+              chatHistory={chatHistory} 
           />
       )}
 
-      {/* 13. Teams Hub */}
       {showTeamsHub && (
           <TeamsHubModal 
-              onClose={() => setShowTeamsHub(false)}
+              onClose={() => {
+                  setShowTeamsHub(false);
+                  if(!activeGame) setShowLanding(true);
+              }}
               onAction={(action) => {
                   setShowTeamsHub(false);
                   if (action === 'JOIN') setShowWelcome(true);
@@ -739,20 +1178,19 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* 14. Teams Management Modal */}
       {showTeamsModal && (
           <TeamsModal 
               gameId={activeGame?.id || null}
               games={gameState.games}
-              onClose={() => setShowTeamsModal(false)}
+              onClose={() => { setShowTeamsModal(false); setTeamsModalAdmin(false); }}
               onSelectGame={(id) => {
                   setGameState(prev => ({ ...prev, activeGameId: id }));
                   localStorage.setItem(STORAGE_KEY_GAME_ID, id);
               }}
+              isAdmin={teamsModalAdmin}
           />
       )}
 
-      {/* 15. Playground Library Import */}
       {showPlaygroundLibrary && activeGame && (
           <PlaygroundLibraryModal 
               onClose={() => setShowPlaygroundLibrary(false)}
@@ -773,24 +1211,35 @@ const App: React.FC = () => {
           />
       )}
 
-      {/* Message Popup */}
       {messagePopup && (
           <MessagePopup 
               message={messagePopup.message} 
               sender={messagePopup.sender} 
+              isUrgent={messagePopup.isUrgent}
               onClose={() => setMessagePopup(null)} 
           />
       )}
 
-      {/* Stats Overlay */}
-      {activeGame && mode === GameMode.PLAY && (
+      {/* Global Chat Drawer */}
+      <ChatDrawer 
+          isOpen={showChatDrawer} 
+          onClose={() => setShowChatDrawer(false)}
+          messages={chatHistory}
+          gameId={activeGame?.id || ''}
+          mode={mode}
+          userName={gameState.userName || 'Anonymous'}
+          teamId={gameState.teamId}
+          teams={instructorTeams} // Pass fetched teams to Chat Drawer
+      />
+
+      {activeGame && mode === GameMode.PLAY && !showLanding && !showWelcome && (
           <GameStats 
               score={gameState.score} 
               pointsCount={{ 
                   total: activeGame.points.filter(p => !p.isSectionHeader).length, 
                   completed: activeGame.points.filter(p => p.isCompleted).length 
               }}
-              nearestPointDistance={0} // calculated in HUD/Map if needed
+              nearestPointDistance={0} 
               language={language}
           />
       )}

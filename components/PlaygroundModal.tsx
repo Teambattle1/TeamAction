@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GamePoint, Playground, GameMode } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { X, CheckCircle, Lock, Smartphone, Tablet, Monitor, RotateCw, Edit2, Maximize, ZoomIn, ZoomOut, EyeOff } from 'lucide-react';
+import { X, CheckCircle, Lock, Smartphone, Tablet, Monitor, RotateCw, Edit2, Maximize, ZoomIn, ZoomOut, EyeOff, HelpCircle, MousePointerClick } from 'lucide-react';
 
 interface PlaygroundModalProps {
   playground: Playground;
@@ -42,8 +42,15 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
   // PAN & ZOOM STATE
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragStartRef = useRef<{ x: number, y: number } | null>(null);
   const isDraggingRef = useRef(false);
+  
+  // Touch Handling State for Pinch-to-Zoom
+  const pointersRef = useRef<Map<number, {x: number, y: number}>>(new Map());
+  const prevPinchDistRef = useRef<number | null>(null);
+  const dragStartRef = useRef<{ x: number, y: number } | null>(null);
+
+  // Instructor Hover State
+  const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
 
   useEffect(() => {
       if (mode === GameMode.EDIT) {
@@ -89,27 +96,77 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
       return () => container.removeEventListener('wheel', onWheel);
   }, []);
 
-  // Handle Drag (Pan)
+  // Distance helper for pinch
+  const getDistance = (p1: {x: number, y: number}, p2: {x: number, y: number}) => {
+      return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+  };
+
+  // Handle Pointer Events (Mouse + Touch)
   const handlePointerDown = (e: React.PointerEvent) => {
-      isDraggingRef.current = true;
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      // Add pointer to map
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       (e.target as Element).setPointerCapture(e.pointerId);
+
+      if (pointersRef.current.size === 1) {
+          // Single touch/mouse: Drag Start
+          isDraggingRef.current = true;
+          dragStartRef.current = { x: e.clientX, y: e.clientY };
+      } else if (pointersRef.current.size === 2) {
+          // Two touches: Pinch Start
+          isDraggingRef.current = false; // Stop dragging logic
+          const points = Array.from(pointersRef.current.values()) as {x: number, y: number}[];
+          if (points[0] && points[1]) {
+              prevPinchDistRef.current = getDistance(points[0], points[1]);
+          }
+      }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-      if (!isDraggingRef.current || !dragStartRef.current) return;
-      
-      const dx = e.clientX - dragStartRef.current.x;
-      const dy = e.clientY - dragStartRef.current.y;
-      
-      setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      // Update pointer position
+      if (pointersRef.current.has(e.pointerId)) {
+          pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      if (pointersRef.current.size === 2) {
+          // Pinch Zoom Logic
+          const points = Array.from(pointersRef.current.values()) as {x: number, y: number}[];
+          if (points[0] && points[1]) {
+              const dist = getDistance(points[0], points[1]);
+              
+              if (prevPinchDistRef.current) {
+                  const delta = dist - prevPinchDistRef.current;
+                  // Sensitivity factor
+                  const scaleAmount = delta * 0.005;
+                  
+                  setTransform(prev => ({ 
+                      ...prev, 
+                      scale: Math.max(0.2, Math.min(5, prev.scale * (1 + scaleAmount))) 
+                  }));
+              }
+              prevPinchDistRef.current = dist;
+          }
+
+      } else if (pointersRef.current.size === 1 && isDraggingRef.current && dragStartRef.current) {
+          // Pan Logic
+          const dx = e.clientX - dragStartRef.current.x;
+          const dy = e.clientY - dragStartRef.current.y;
+          
+          setTransform(prev => ({ ...prev, x: prev.x + dx, y: prev.y + dy }));
+          dragStartRef.current = { x: e.clientX, y: e.clientY };
+      }
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-      isDraggingRef.current = false;
-      dragStartRef.current = null;
+      pointersRef.current.delete(e.pointerId);
       (e.target as Element).releasePointerCapture(e.pointerId);
+
+      if (pointersRef.current.size < 2) {
+          prevPinchDistRef.current = null;
+      }
+      if (pointersRef.current.size === 0) {
+          isDraggingRef.current = false;
+          dragStartRef.current = null;
+      }
   };
 
   const handleZoomIn = () => setTransform(t => ({...t, scale: Math.min(5, t.scale + 0.2)}));
@@ -125,7 +182,8 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
               height: '100%',
               transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
               transformOrigin: 'center center',
-              cursor: isDraggingRef.current ? 'grabbing' : 'grab'
+              cursor: pointersRef.current.size > 1 ? 'zoom-in' : (isDraggingRef.current ? 'grabbing' : 'grab'),
+              touchAction: 'none' // Prevent browser default zoom/scroll
           };
       }
 
@@ -139,7 +197,8 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
           transition: 'all 0.3s ease',
           // Apply pan zoom to the preview container in Edit Mode
           transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-          cursor: isDraggingRef.current ? 'grabbing' : 'grab'
+          cursor: isDraggingRef.current ? 'grabbing' : 'grab',
+          touchAction: 'none'
       };
 
       if (viewDevice === 'mobile') {
@@ -167,6 +226,8 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
           }
       }
   };
+
+  const stripHtml = (html: any) => typeof html === 'string' ? html.replace(/<[^>]*>?/gm, '') : '';
 
   return (
     <div className="fixed inset-0 z-[1500] bg-black/90 text-white flex flex-col animate-in fade-in duration-300">
@@ -230,10 +291,18 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
       {/* Standard Header (Play Mode) */}
       {mode !== GameMode.EDIT && (
           <div className="p-4 bg-black/60 backdrop-blur-md absolute top-0 left-0 right-0 z-20 flex justify-between items-center border-b border-white/10 pointer-events-none">
-              <div className="pointer-events-auto">
+              <div className="pointer-events-auto flex flex-col items-start min-w-[150px]">
                   <h2 className="text-xl font-black uppercase tracking-widest text-white shadow-sm">{playground.title}</h2>
-                  <p className="text-[10px] text-orange-400 font-bold uppercase tracking-wide">VIRTUAL PLAYGROUND</p>
               </div>
+              
+              {/* Centered Click To Play CTA */}
+              {mode === GameMode.PLAY && (
+                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 pointer-events-none animate-pulse z-30">
+                      <MousePointerClick className="w-8 h-8 text-orange-400 drop-shadow-lg" />
+                      <p className="text-4xl font-black text-orange-400 uppercase tracking-[0.2em] drop-shadow-xl shadow-black leading-none">CLICK TO PLAY</p>
+                  </div>
+              )}
+
               <div className="flex gap-2 pointer-events-auto">
                   <button onClick={handleZoomIn} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><ZoomIn className="w-5 h-5 text-white" /></button>
                   <button onClick={handleZoomOut} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><ZoomOut className="w-5 h-5 text-white" /></button>
@@ -251,6 +320,7 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerUp}
       >
           <div style={getContainerStyle()}>
               {/* Background Image */}
@@ -276,18 +346,29 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                   const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
                   const isUnlocked = point.isUnlocked || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
                   const isCompleted = point.isCompleted;
+                  const isHovered = hoveredPointId === point.id;
                   
                   const x = point.playgroundPosition?.x || 50;
                   const y = point.playgroundPosition?.y || 50;
                   const scale = point.playgroundScale || 1;
+
+                  const questionText = stripHtml(point.task.question);
+                  const isOptionsType = ['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(point.task.type);
 
                   return (
                       <button
                           key={point.id}
                           onClick={(e) => { e.stopPropagation(); onPointClick(point); }}
                           onPointerDown={(e) => e.stopPropagation()} // Stop propagation to container PAN logic
+                          onMouseEnter={() => mode === GameMode.INSTRUCTOR && setHoveredPointId(point.id)}
+                          onMouseLeave={() => mode === GameMode.INSTRUCTOR && setHoveredPointId(null)}
                           className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 group flex flex-col items-center ${isUnlocked ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-not-allowed opacity-50 grayscale'}`}
-                          style={{ left: `${x}%`, top: `${y}%`, transform: `translate(-50%, -50%) scale(${scale})` }}
+                          style={{ 
+                              left: `${x}%`, 
+                              top: `${y}%`, 
+                              transform: `translate(-50%, -50%) scale(${scale})`,
+                              zIndex: isHovered ? 100 : 10
+                          }}
                       >
                           {/* Icon Bubble */}
                           <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl border-4 relative ${
@@ -321,6 +402,52 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                           }`}>
                               {point.title}
                           </div>
+
+                          {/* INSTRUCTOR HOVER TOOLTIP */}
+                          {isHovered && mode === GameMode.INSTRUCTOR && (
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-[100] min-w-[220px] max-w-[280px] pointer-events-none">
+                                  <div className="bg-white dark:bg-gray-900 p-3 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col gap-2">
+                                      <div className="flex items-center justify-between border-b pb-2 border-gray-100 dark:border-gray-800 relative z-10">
+                                          <span className="font-black text-xs uppercase text-gray-900 dark:text-white truncate max-w-[140px]">{point.title}</span>
+                                      </div>
+
+                                      <div className="flex gap-2 items-start">
+                                          <HelpCircle className="w-3 h-3 text-orange-500 mt-0.5 shrink-0" />
+                                          <span className="text-[10px] leading-tight text-gray-600 dark:text-gray-300 font-medium whitespace-pre-wrap line-clamp-3">
+                                              {questionText || "No question text"}
+                                          </span>
+                                      </div>
+
+                                      {/* Answer / Logic Indicators */}
+                                      {isOptionsType && point.task.options && point.task.options.length > 0 ? (
+                                          <div className="flex flex-col gap-1 mt-1 border-t border-gray-100 dark:border-gray-800 pt-2">
+                                              {point.task.options.map((opt, i) => {
+                                                  const isCorrect = (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') 
+                                                      ? point.task.correctAnswers?.includes(opt)
+                                                      : point.task.answer === opt;
+                                                  return (
+                                                      <div key={i} className={`flex items-start gap-1.5 text-[9px] px-1.5 py-1 rounded ${isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 font-bold border border-green-200 dark:border-green-800/30' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                          {isCorrect ? <CheckCircle className="w-3 h-3 shrink-0 mt-[1px]" /> : <div className="w-3 h-3 shrink-0" />}
+                                                          <span className="leading-tight">{opt}</span>
+                                                      </div>
+                                                  );
+                                              })}
+                                          </div>
+                                      ) : (
+                                          <div className="flex gap-2 items-start bg-green-50 dark:bg-green-900/20 p-2 rounded-lg border border-green-100 dark:border-green-800/30">
+                                              <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                                              <span className="text-[10px] font-bold text-green-700 dark:text-green-300 leading-tight">
+                                                  {point.task.type === 'slider' 
+                                                      ? `Target: ${point.task.range?.correctValue} (Range: ${point.task.range?.min}-${point.task.range?.max})`
+                                                      : (point.task.answer || "No answer set")
+                                                  }
+                                              </span>
+                                          </div>
+                                      )}
+                                  </div>
+                                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-900 rotate-45 border-b border-r border-gray-200 dark:border-gray-700"></div>
+                              </div>
+                          )}
                       </button>
                   );
               })}

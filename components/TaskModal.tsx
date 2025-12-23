@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { GamePoint, TaskVote, GameMode } from '../types';
 import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull } from 'lucide-react';
@@ -49,6 +48,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   const isEditMode = mode === GameMode.EDIT;
   const isInstructor = isInstructorMode || mode === GameMode.INSTRUCTOR;
+  const isPlayground = !!point?.playgroundId;
 
   const hasActions = useMemo(() => {
       if (!point?.logic) return false;
@@ -64,15 +64,15 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   // Logic Trigger: ON OPEN
   useEffect(() => {
-      if (point && !isEditMode && onTaskOpen) {
+      if (point && !isEditMode && !isInstructor && onTaskOpen) {
           // Trigger the open logic (e.g. locks, messages, etc.)
           onTaskOpen();
       }
-  }, [point?.id, isEditMode]);
+  }, [point?.id, isEditMode, isInstructor]);
 
   // Subscribe to Realtime Updates
   useEffect(() => {
-      if (!point || isEditMode) return; // Don't sync votes in edit mode
+      if (!point || isEditMode || isInstructor) return; // Don't sync votes in edit/instructor mode
       
       const unsubscribeVotes = teamSync.subscribeToVotes((votes) => {
           setTeamVotes(votes);
@@ -97,11 +97,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
           unsubscribeVotes();
           unsubscribeMembers();
       };
-  }, [point, isEditMode]);
+  }, [point, isEditMode, isInstructor]);
 
   if (!point) return null;
 
-  const isLocked = !point.isUnlocked && !isInstructor && !isEditMode;
+  // Playground tasks are always unlocked when clicked
+  // Instructor mode treats all tasks as unlocked for viewing
+  const isLocked = !point.isUnlocked && !isInstructor && !isEditMode && !isPlayground;
 
   // --- Logic for Agreement ---
   const checkConsensus = () => {
@@ -154,7 +156,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
           isCorrect = val.toLowerCase().trim() === correct.toLowerCase().trim();
       }
 
-      if (isCorrect || isInstructor) {
+      if (isCorrect) {
           const finalScore = isDoubleTrouble ? point.points * 2 : point.points;
           onComplete(point.id, finalScore);
           onClose();
@@ -193,7 +195,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const renderInput = () => {
       const { type, options, range, placeholder } = point.task;
 
-      // In Edit mode, show options as read-only or simplified
+      // In Edit or Instructor mode, show simpler view
+      // For Instructor, we want to see the options clearly, but maybe disabled or highlighted
       if (isEditMode) {
           if (type === 'multiple_choice' || type === 'checkbox' || type === 'dropdown' || type === 'multi_select_dropdown') {
               return (
@@ -206,6 +209,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   </div>
               );
           }
+          // ... (rest of isEditMode logic same as before)
           if (type === 'boolean') {
               return <div className="flex gap-2 opacity-80 pointer-events-none"><div className="flex-1 p-3 border rounded-xl text-center">True</div><div className="flex-1 p-3 border rounded-xl text-center">False</div></div>;
           }
@@ -215,7 +219,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
           return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm italic text-gray-500">Text Input Field</div>;
       }
 
-      // Normal Gameplay Rendering
+      // Normal Gameplay Rendering (and Instructor View)
+      const isDisabled = isInstructor;
+
       switch(type) {
           case 'multiple_choice':
               return (
@@ -224,12 +230,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                           <button
                             key={idx}
                             type="button"
+                            disabled={isDisabled}
                             onClick={() => { setAnswer(opt); setErrorMsg(null); }}
                             className={`w-full p-4 rounded-xl border-2 text-left transition-all flex items-center justify-between ${
                                 answer === opt 
                                 ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/50 text-orange-900 dark:text-orange-200 font-bold' 
                                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                            }`}
+                            } ${isDisabled ? 'cursor-default opacity-100' : ''}`}
                           >
                              <span>{opt}</span>
                              {answer === opt && <div className="w-4 h-4 bg-orange-600 rounded-full" />}
@@ -248,12 +255,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                             <button
                                 key={idx}
                                 type="button"
+                                disabled={isDisabled}
                                 onClick={() => handleCheckboxChange(opt)}
                                 className={`w-full p-4 rounded-xl border-2 text-left transition-all flex items-center justify-between ${
                                     isSelected
                                     ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/50 text-orange-900 dark:text-orange-200 font-bold' 
                                     : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                                }`}
+                                } ${isDisabled ? 'cursor-default opacity-100' : ''}`}
                             >
                                 <span>{opt}</span>
                                 <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${isSelected ? 'bg-orange-600 border-orange-600' : 'border-gray-300 dark:border-gray-600'}`}>
@@ -270,8 +278,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   <div className="relative">
                       <select
                           value={answer}
+                          disabled={isDisabled}
                           onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
-                          className="w-full p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-orange-600 outline-none appearance-none cursor-pointer"
+                          className="w-full p-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:border-orange-600 outline-none appearance-none cursor-pointer disabled:bg-gray-100 disabled:cursor-default"
                       >
                           <option value="" disabled>{placeholder || "Select an answer..."}</option>
                           {options?.map((opt, idx) => (
@@ -289,6 +298,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   <div className="relative">
                       <button
                           type="button"
+                          disabled={isDisabled}
                           onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                           className={`w-full p-4 rounded-xl border-2 text-left flex items-center justify-between bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 ${isDropdownOpen ? 'border-orange-600 ring-1 ring-orange-600' : 'border-gray-200 dark:border-gray-700'}`}
                       >
@@ -327,12 +337,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                           <button
                             key={val}
                             type="button"
+                            disabled={isDisabled}
                             onClick={() => { setAnswer(val); setErrorMsg(null); }}
                             className={`flex-1 p-6 rounded-2xl border-2 text-xl font-bold transition-all ${
                                 answer === val 
                                 ? 'border-orange-600 bg-orange-600 text-white shadow-lg' 
                                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                            }`}
+                            } ${isDisabled ? 'cursor-default opacity-100' : ''}`}
                           >
                               {val}
                           </button>
@@ -348,12 +359,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                       </div>
                       <input 
                           type="range"
+                          disabled={isDisabled}
                           min={range?.min || 0}
                           max={range?.max || 100}
                           step={range?.step || 1}
                           value={sliderValue}
                           onChange={(e) => { setSliderValue(parseInt(e.target.value)); setErrorMsg(null); }}
-                          className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                          className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-600 disabled:cursor-default"
                       />
                       <div className="flex justify-between text-gray-500 text-sm mt-2 font-medium">
                           <span>{range?.min}</span>
@@ -366,10 +378,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
               return (
                 <input 
                     type="text" 
+                    disabled={isDisabled}
                     value={answer}
                     onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
                     placeholder="Type your answer here..."
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:text-gray-500"
                     autoFocus={!isInstructor && !isEditMode}
                 />
               );
@@ -377,93 +390,68 @@ const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   const renderConsensusView = () => {
-      // Group votes by answer
-      const groupedVotes: Record<string, TaskVote[]> = {};
-      
-      teamVotes.forEach(vote => {
-          const answerKey = Array.isArray(vote.answer) ? vote.answer.sort().join(', ') : String(vote.answer);
-          if (!groupedVotes[answerKey]) groupedVotes[answerKey] = [];
-          groupedVotes[answerKey].push(vote);
-      });
-
       return (
-      <div className="space-y-6">
-          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
-              <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-gray-700 dark:text-gray-200 flex items-center gap-2">
-                      <Users className="w-5 h-5 text-indigo-500" /> Team Decisions
+          <div className="space-y-4 animate-in fade-in">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                  <h3 className="font-black text-blue-800 dark:text-blue-300 uppercase tracking-widest text-xs mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Team Consensus ({teamVotes.length} Voted)
                   </h3>
-                  <div className="text-xs font-bold px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300">
-                      {teamVotes.length} Voted
-                  </div>
-              </div>
-              
-              <div className="space-y-3">
-                  {Object.entries(groupedVotes).map(([answerKey, votes]) => {
-                      const isMyVoteGroup = votes.some(v => v.deviceId === myDeviceId);
-                      return (
-                          <div key={answerKey} className={`rounded-xl border p-3 ${isMyVoteGroup ? 'bg-indigo-50 border-indigo-200 dark:bg-indigo-900/20 dark:border-indigo-800' : 'bg-white border-gray-200 dark:bg-gray-700 dark:border-gray-600'}`}>
-                              <div className="flex justify-between items-start mb-2">
-                                  <div className="font-bold text-lg text-gray-900 dark:text-white break-words flex-1 pr-2">
-                                      {answerKey}
-                                  </div>
-                                  <div className="bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 font-bold px-2 py-0.5 rounded text-xs">
-                                      {votes.length}
-                                  </div>
-                              </div>
-                              <div className="flex flex-wrap gap-1">
-                                  {votes.map((v, i) => (
-                                      <span key={i} className="text-[10px] px-2 py-1 bg-white/50 dark:bg-black/20 rounded-full text-gray-600 dark:text-gray-300 border border-black/5 dark:border-white/10">
-                                          {v.userName || "Unknown"}
-                                      </span>
-                                  ))}
-                              </div>
+                  <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                      {teamVotes.map((vote, idx) => (
+                          <div key={idx} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded-lg text-sm border border-gray-100 dark:border-gray-700 shadow-sm">
+                              <span className="font-bold text-gray-700 dark:text-gray-200">{vote.userName}</span>
+                              <span className="text-gray-500 dark:text-gray-400 font-mono text-xs bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">
+                                  {typeof vote.answer === 'object' ? (Array.isArray(vote.answer) ? vote.answer.join(', ') : JSON.stringify(vote.answer)) : String(vote.answer)}
+                              </span>
                           </div>
-                      );
-                  })}
-              </div>
-          </div>
-
-          {hasConflict ? (
-              <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200 p-4 rounded-xl flex items-start gap-3 animate-pulse">
-                  <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-                  <div>
-                      <h4 className="font-bold">Disagreement Detected!</h4>
-                      <p className="text-sm mt-1">Discuss with your team. You must all agree on one answer to submit.</p>
+                      ))}
                   </div>
               </div>
-          ) : consensusReached ? (
-              <div className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200 p-4 rounded-xl flex items-center gap-3">
-                  <ThumbsUp className="w-6 h-6 flex-shrink-0" />
-                  <div>
-                      <h4 className="font-bold">Consensus Reached!</h4>
-                      <p className="text-sm mt-1">Everyone agrees. Ready to submit.</p>
-                  </div>
-              </div>
-          ) : (
-              <div className="text-center text-gray-500 text-sm flex flex-col items-center gap-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-orange-500" />
-                  Waiting for teammates to vote...
-              </div>
-          )}
 
-          <div className="flex gap-3">
-              <button 
-                  onClick={() => setIsVoting(false)}
-                  className="flex-1 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold rounded-xl hover:bg-gray-300 transition-colors"
-              >
-                  Change My Vote
-              </button>
-              {consensusReached && (
-                  <button 
-                      onClick={handleFinalize}
-                      className="flex-1 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 shadow-lg transition-colors flex items-center justify-center gap-2"
-                  >
-                      <CheckCircle className="w-5 h-5" /> Submit Final
-                  </button>
+              {hasConflict && (
+                  <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg flex items-start gap-3 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-400 animate-pulse">
+                      <AlertTriangle className="w-5 h-5 shrink-0" />
+                      <div>
+                          <p className="font-black text-xs uppercase tracking-wide mb-1">Conflict Detected</p>
+                          <p className="text-xs font-medium">Team members have different answers. Discuss and resubmit to reach consensus.</p>
+                      </div>
+                  </div>
               )}
+
+              {consensusReached && teamVotes.length > 0 ? (
+                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg flex items-center gap-3 border border-green-100 dark:border-green-800 text-green-600 dark:text-green-400">
+                      <ThumbsUp className="w-5 h-5 shrink-0" />
+                      <div>
+                          <p className="font-black text-xs uppercase tracking-wide">Consensus Reached</p>
+                          <p className="text-xs font-medium">Ready to submit final answer.</p>
+                      </div>
+                  </div>
+              ) : (
+                  !hasConflict && (
+                    <div className="flex items-center justify-center py-2 text-gray-400">
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Waiting for others...</span>
+                    </div>
+                  )
+              )}
+
+              <div className="flex gap-3 pt-2">
+                  <button 
+                      onClick={() => setIsVoting(false)}
+                      className="flex-1 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold uppercase tracking-wide text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                      Change My Vote
+                  </button>
+                  {consensusReached && (
+                      <button 
+                          onClick={handleFinalize}
+                          className="flex-[2] py-3 bg-green-600 text-white rounded-xl font-bold uppercase tracking-wide text-xs hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20"
+                      >
+                          Finalize & Submit
+                      </button>
+                  )}
+              </div>
           </div>
-      </div>
       );
   };
 
@@ -486,8 +474,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{point.title}</h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {isInstructor || isEditMode
-                    ? (isEditMode ? 'Editor View' : 'Instructor View')
-                    : (point.isUnlocked ? 'You are at the location!' : `Distance: ${Math.round(distance)}m`)}
+                    ? (isEditMode ? 'Editor View' : 'Instructor View (Read Only)')
+                    : (isPlayground ? 'Virtual Zone Task' : (point.isUnlocked ? 'You are at the location!' : `Distance: ${Math.round(distance)}m`))}
                 </p>
               </div>
             </div>
@@ -568,11 +556,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
               </div>
 
               {(isInstructor || isEditMode) && (
-                <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-3">
+                <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-3 animate-in fade-in">
                   <span className="text-xs font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">Solution</span>
-                  <p className="text-orange-900 dark:text-orange-200 font-medium">
+                  <p className="text-orange-900 dark:text-orange-200 font-medium mt-1">
                       {point.task.type === 'slider' 
-                        ? point.task.range?.correctValue 
+                        ? `Target: ${point.task.range?.correctValue} (Range: ${point.task.range?.min}-${point.task.range?.max})`
                         : (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown' ? point.task.correctAnswers?.join(', ') : point.task.answer)}
                   </p>
                 </div>
@@ -594,24 +582,34 @@ const TaskModal: React.FC<TaskModalProps> = ({
               )}
 
               {!point.isCompleted && !isEditMode ? (
-                isVoting ? renderConsensusView() : (
-                    <form onSubmit={handleSubmitVote} className="space-y-4">
-                    
-                    {renderInput()}
-
-                    {errorMsg && (
-                        <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2 animate-in slide-in-from-top-1">
-                            <AlertCircle className="w-4 h-4" /> {errorMsg}
+                isInstructor ? (
+                    // Instructor Read-Only View
+                    <div className="opacity-80 pointer-events-none">
+                        {renderInput()}
+                        <div className="mt-4 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            Task Preview Mode
                         </div>
-                    )}
+                    </div>
+                ) : (
+                    isVoting ? renderConsensusView() : (
+                        <form onSubmit={handleSubmitVote} className="space-y-4">
+                        
+                        {renderInput()}
 
-                    <button 
-                        type="submit"
-                        className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-orange-600/20 mt-4"
-                    >
-                        {isInstructor ? 'Verify Answer' : 'Submit to Team'}
-                    </button>
-                    </form>
+                        {errorMsg && (
+                            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2 animate-in slide-in-from-top-1">
+                                <AlertCircle className="w-4 h-4" /> {errorMsg}
+                            </div>
+                        )}
+
+                        <button 
+                            type="submit"
+                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-orange-600/20 mt-4"
+                        >
+                            Submit to Team
+                        </button>
+                        </form>
+                    )
                 )
               ) : (!isEditMode && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">

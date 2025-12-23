@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useMemo } from 'react';
+
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Team, Game } from '../types';
 import * as db from '../services/db';
 import { teamSync } from '../services/teamSync';
-import { X, Users, RefreshCw, Hash, ChevronRight, Calendar, Clock, CheckCircle, ChevronDown, Anchor, Play, Edit2, Check, AlertCircle } from 'lucide-react';
+import { X, Users, RefreshCw, Hash, ChevronRight, Calendar, Clock, CheckCircle, ChevronDown, Anchor, Play, Edit2, Check, AlertCircle, Camera, Shield } from 'lucide-react';
 
 interface TeamsModalProps {
   gameId: string | null;
@@ -11,18 +12,21 @@ interface TeamsModalProps {
   onSelectGame: (id: string) => void;
   onClose: () => void;
   onEnterLobby?: (team: Team) => void;
+  isAdmin?: boolean; // New: Admin privileges for instructor
 }
 
-const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, onSelectGame, onClose }) => {
+const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, onSelectGame, onClose, isAdmin = false }) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<'TODAY' | 'PLANNED' | 'COMPLETED'>('TODAY');
   const [showGameSwitch, setShowGameSwitch] = useState(false);
   const [activeLobbyView, setActiveLobbyView] = useState<Team | null>(null);
   
-  // Edit State for Captain
+  // Edit State for Captain/Admin
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadTeams = async (targetId: string | null) => {
     if (!targetId) return;
@@ -62,6 +66,15 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
       }
   };
 
+  const handleMakeCaptain = async (memberDeviceId: string) => {
+      if (!activeLobbyView || !memberDeviceId) return;
+      if (!confirm("Promote this member to Captain?")) return;
+      
+      await db.updateTeamCaptain(activeLobbyView.id, memberDeviceId);
+      setActiveLobbyView(prev => prev ? { ...prev, captainDeviceId: memberDeviceId } : null);
+      loadTeams(gameId);
+  };
+
   const filteredGames = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -81,17 +94,19 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
 
   if (activeLobbyView) {
       const myDeviceId = teamSync.getDeviceId();
-      const isCaptain = activeLobbyView.captainDeviceId === myDeviceId;
+      const isCaptain = activeLobbyView.captainDeviceId === myDeviceId || isAdmin;
 
       return (
-          <div className="fixed inset-0 z-[2100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center sm:p-4 animate-in zoom-in-95">
+          <div className="fixed inset-0 z-[5200] bg-slate-950/90 backdrop-blur-md flex items-center justify-center sm:p-4 animate-in zoom-in-95">
               <div className="bg-slate-900 border-2 border-orange-500/50 w-full h-full sm:h-auto sm:max-h-[85vh] max-w-md sm:rounded-[2rem] overflow-hidden flex flex-col shadow-2xl relative">
                   {/* Footprint Pattern */}
                   <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/footprints.png')]" />
 
                   <div className="p-4 sm:p-6 bg-slate-950 border-b border-slate-800 flex justify-between items-center relative z-10 shrink-0">
                       <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest">TEAM STATUS</span>
+                          <span className="text-[10px] font-black text-orange-500 uppercase tracking-widest flex items-center gap-1">
+                              TEAM STATUS {isAdmin && <span className="bg-red-600 text-white px-1.5 rounded text-[8px]">ADMIN</span>}
+                          </span>
                           {isEditingName ? (
                               <div className="flex items-center gap-2 mt-1">
                                   <input 
@@ -118,8 +133,13 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                   </div>
                   <div className="p-4 sm:p-6 flex-1 relative z-10 overflow-y-auto">
                       <div className="flex items-center gap-4 mb-6 sm:mb-8">
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shrink-0">
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shrink-0 relative group">
                               {activeLobbyView.photoUrl ? <img src={activeLobbyView.photoUrl} className="w-full h-full object-cover" /> : <Users className="w-8 h-8 text-slate-600 m-auto mt-4 sm:mt-6" />}
+                              {isAdmin && (
+                                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                      <Camera className="w-6 h-6 text-white" />
+                                  </div>
+                              )}
                           </div>
                           <div>
                               <div className="bg-slate-950 px-2 py-1 rounded text-[10px] font-black text-white mb-1 inline-block uppercase font-mono">JOIN CODE: {activeLobbyView.joinCode}</div>
@@ -132,10 +152,10 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                       
                       {isCaptain && (
                           <div className="mb-6 bg-blue-900/20 border border-blue-500/30 p-3 rounded-xl flex items-center gap-3">
-                              <Anchor className="w-5 h-5 text-blue-400" />
+                              {isAdmin ? <Shield className="w-5 h-5 text-red-400" /> : <Anchor className="w-5 h-5 text-blue-400" />}
                               <div>
-                                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">CAPTAIN CONTROLS</p>
-                                  <p className="text-xs text-slate-300">You can edit team name.</p>
+                                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">{isAdmin ? 'ADMIN OVERRIDE' : 'CAPTAIN CONTROLS'}</p>
+                                  <p className="text-xs text-slate-300">You can edit team name{isAdmin ? ', promote captains, and manage players' : ''}.</p>
                               </div>
                           </div>
                       )}
@@ -150,17 +170,29 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                   // Compatibility check: m might be a string (legacy) or object (new)
                                   const name = typeof m === 'string' ? m : m.name;
                                   const photo = typeof m === 'string' ? null : m.photo;
-                                  const isMemberCaptain = typeof m === 'string' ? false : m.deviceId === activeLobbyView.captainDeviceId;
+                                  const deviceId = typeof m === 'string' ? '' : m.deviceId;
+                                  const isMemberCaptain = deviceId === activeLobbyView.captainDeviceId;
 
                                   return (
-                                      <div key={i} className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex items-center justify-between">
+                                      <div key={i} className="bg-slate-800/50 p-3 rounded-xl border border-slate-700 flex items-center justify-between group">
                                           <div className="flex items-center gap-3">
                                               <div className="w-6 h-6 rounded-full bg-slate-700 overflow-hidden">
                                                   {photo ? <img src={photo} className="w-full h-full object-cover"/> : <Users className="w-3 h-3 m-auto mt-1.5 text-slate-500"/>}
                                               </div>
                                               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">{name || 'Unknown Agent'}</span>
                                           </div>
-                                          {isMemberCaptain && <div title="Captain"><Anchor className="w-3 h-3 text-orange-500" /></div>}
+                                          <div className="flex items-center gap-2">
+                                              {isMemberCaptain && <div title="Captain"><Anchor className="w-3 h-3 text-orange-500" /></div>}
+                                              {isAdmin && !isMemberCaptain && deviceId && (
+                                                  <button 
+                                                    onClick={() => handleMakeCaptain(deviceId)}
+                                                    className="opacity-0 group-hover:opacity-100 bg-slate-700 hover:bg-orange-600 text-white p-1.5 rounded transition-all"
+                                                    title="Promote to Captain"
+                                                  >
+                                                      <Anchor className="w-3 h-3" />
+                                                  </button>
+                                              )}
+                                          </div>
                                       </div>
                                   );
                               })}
@@ -177,7 +209,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
 
   if (!gameId) {
       return (
-        <div className="fixed inset-0 z-[1500] bg-black/80 backdrop-blur-sm flex items-center justify-center sm:p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-[5200] bg-black/80 backdrop-blur-sm flex items-center justify-center sm:p-4 animate-in fade-in">
             <div className="bg-slate-900 border border-slate-800 w-full h-full sm:h-auto sm:max-h-[85vh] max-w-md rounded-none sm:rounded-2xl overflow-hidden flex flex-col shadow-2xl relative">
                 {/* Footprint Pattern */}
                 <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/footprints.png')]" />
@@ -214,7 +246,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
   const selectedGame = gamesArr.find(g => g.id === gameId);
 
   return (
-    <div className="fixed inset-0 z-[1500] bg-black/80 backdrop-blur-sm flex items-center justify-center sm:p-4 animate-in fade-in">
+    <div className="fixed inset-0 z-[5200] bg-black/80 backdrop-blur-sm flex items-center justify-center sm:p-4 animate-in fade-in">
         <div className="bg-slate-900 border border-slate-800 w-full h-full sm:h-auto sm:max-h-[85vh] max-w-md rounded-none sm:rounded-2xl overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 relative">
             {/* Footprint Pattern */}
             <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/footprints.png')]" />

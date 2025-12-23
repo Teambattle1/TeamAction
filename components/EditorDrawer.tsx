@@ -6,7 +6,6 @@ import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, Chevron
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import LocationSearch from './LocationSearch';
 
 interface EditorDrawerProps {
   onClose: () => void;
@@ -37,6 +36,7 @@ interface EditorDrawerProps {
   onOpenPlaygroundEditor?: () => void;
   initialExpanded?: boolean;
   onAddTask?: (type: 'MANUAL' | 'AI' | 'LIBRARY', playgroundId?: string) => void;
+  onExpandChange?: (expanded: boolean) => void; // New prop
 }
 
 const SortablePointItem: React.FC<{ 
@@ -262,8 +262,8 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onClose,
   activeGame,
   activeGameName,
-  points, // This is technically "displayPoints" passed from App
-  allPoints = [], // This is the full list from activeGame
+  points,
+  allPoints = [], 
   games,
   onSelectGame,
   onOpenGameChooser,
@@ -286,23 +286,26 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onOpenPlaygroundEditor,
   initialExpanded = false,
   onAddTask,
-  userLocation
+  userLocation,
+  onExpandChange
 }) => {
   const [showSourceMenu, setShowSourceMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [isExpanded, setIsExpanded] = useState(initialExpanded); 
   const [isSaved, setIsSaved] = useState(false);
-  const [clearConfirm, setClearConfirm] = useState(false);
   
   // Grouping State
-  const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': true }); // Default collapsed
+  const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': true });
   const [activeAddMenu, setActiveAddMenu] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialExpanded) setIsExpanded(true);
   }, [initialExpanded]);
 
-  // Initialize collapse state for playgrounds once loaded
+  useEffect(() => {
+      if (onExpandChange) onExpandChange(isExpanded);
+  }, [isExpanded, onExpandChange]);
+
   useEffect(() => {
       if (activeGame?.playgrounds) {
           setCollapsedZones(prev => {
@@ -335,30 +338,26 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
     let targetPlaygroundId: string | undefined = undefined;
     let isReorder = false;
 
-    // Determine target zone
     if (overId === 'zone-map') {
         targetPlaygroundId = undefined;
     } else if (overId.startsWith('zone-pg-')) {
         targetPlaygroundId = overId.replace('zone-pg-', '');
     } else {
-        // Dropped on another Item
         const overPoint = allPoints.find(p => p.id === overId);
         if (overPoint) {
             targetPlaygroundId = overPoint.playgroundId;
             isReorder = true;
         } else {
-            return; // Unknown drop target
+            return; 
         }
     }
 
     if (activePoint.playgroundId !== targetPlaygroundId) {
-        // Move to new zone
         const updatedPoints = allPoints.map(p => {
             if (p.id === activeId) {
                 return {
                     ...p,
                     playgroundId: targetPlaygroundId,
-                    // Reset position if moving to map (use center or user loc), or set default if moving to playground
                     location: targetPlaygroundId ? { lat: 0, lng: 0 } : (userLocation || { lat: 0, lng: 0 }),
                     playgroundPosition: targetPlaygroundId ? { x: 50, y: 50 } : undefined,
                     playgroundScale: targetPlaygroundId ? 1 : undefined
@@ -375,7 +374,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
              onReorderPoints(updatedPoints);
         }
     } else {
-        // Same zone, simple reorder
         if (isReorder && activeId !== overId) {
             const oldIndex = allPoints.findIndex(p => p.id === activeId);
             const newIndex = allPoints.findIndex(p => p.id === overId);
@@ -395,7 +393,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
       setCollapsedZones(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Group Points
   const mapPoints = allPoints.filter(p => !p.playgroundId);
   const playgroundGroups = activeGame?.playgrounds?.map(pg => ({
       ...pg,
@@ -447,13 +444,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 </div>
             )}
 
-            {/* Location Search Added Here */}
-            {onSearchLocation && (
-              <div className="px-4 pt-4 pb-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                  <LocationSearch onSelectLocation={onSearchLocation} className="h-10" />
-              </div>
-            )}
-
             <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900 flex-shrink-0 z-[60]">
                 <div>
                     <h2 className="font-bold text-xs text-gray-400 uppercase tracking-wide">Tasks List</h2>
@@ -497,7 +487,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                         >
                             Reset Filter (Show All)
                         </button>
-                        {/* Simplified filter menu for now */}
                         <div className="text-center text-[10px] text-gray-400 p-2">Use map filter bar for advanced options.</div>
                     </div>
                 )}

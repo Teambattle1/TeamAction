@@ -58,6 +58,7 @@ export interface ChatMessage {
   message: string;
   sender: string;
   timestamp: number;
+  isUrgent?: boolean; // New: Urgent flag
 }
 
 export interface TeamSyncState {
@@ -143,7 +144,9 @@ export interface Playground {
   buttonLabel?: string;
   iconId?: IconId;
   iconUrl?: string; // New: Custom icon for the HUD button
+  buttonSize?: number; // Size in pixels for the HUD button
   orientationLock?: 'portrait' | 'landscape' | 'none'; // New: Force orientation
+  location?: Coordinate; // New: Fixed location on the map for the playground marker
 }
 
 // Template for saving to library
@@ -177,7 +180,8 @@ export interface GamePoint {
 
   // Appearance
   iconId: IconId;
-  areaColor?: string;
+  iconUrl?: string; // Custom uploaded pin
+  areaColor?: string; // Custom radius color
 
   // Logic & Scoring
   points: number;
