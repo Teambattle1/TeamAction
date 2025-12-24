@@ -10,23 +10,23 @@ import { haversineMeters } from '../utils/geo';
 import { seedDatabase, seedTeams } from '../utils/demoContent';
 
 // Components
-import GameMap, { GameMapHandle } from './GameMap';
-import GameHUD from './GameHUD';
-import TaskModal from './TaskModal';
-import GameManager from './GameManager';
-import GameChooser from './GameChooser';
-import TaskMaster from './TaskMaster';
-import EditorDrawer from './EditorDrawer';
-import WelcomeScreen from './WelcomeScreen';
-import ResultsView from './ResultsView';
-import TaskPreview from './TaskPreview';
-import PlaygroundEditor from './PlaygroundEditor';
-import PlaygroundModal from './PlaygroundModal';
-import PlaygroundLibraryModal from './PlaygroundLibraryModal';
-import PlaygroundManager from './PlaygroundManager';
-import TeamDashboard from './TeamDashboard';
-import TeamsModal from './TeamsModal';
-import GameCreator from './GameCreator';
+import GameMap, { GameMapHandle } from './components/GameMap';
+import GameHUD from './components/GameHUD';
+import TaskModal from './components/TaskModal';
+import GameManager from './components/GameManager';
+import GameChooser from './components/GameChooser';
+import TaskMaster from './components/TaskMaster';
+import EditorDrawer from './components/EditorDrawer';
+import WelcomeScreen from './components/WelcomeScreen';
+import ResultsView from './components/ResultsView';
+import TaskPreview from './components/TaskPreview';
+import PlaygroundEditor from './components/PlaygroundEditor';
+import PlaygroundModal from './components/PlaygroundModal';
+import PlaygroundLibraryModal from './components/PlaygroundLibraryModal';
+import PlaygroundManager from './components/PlaygroundManager';
+import TeamDashboard from './components/TeamDashboard';
+import TeamsModal from './components/TeamsModal';
+import GameCreator from './components/GameCreator';
 import InitialLanding from './components/InitialLanding';
 import CreatorHub from './components/CreatorHub';
 import TeamsHubModal from './components/TeamsHubModal';
@@ -335,13 +335,6 @@ const App: React.FC = () => {
           }
       }
 
-      // Check if we should prompt for game chooser
-      // ONLY prompt if we are NOT showing the landing page (already in-app) OR if user forced a mode via URL/Config
-      // But typically we land on the Hub now.
-      if (!showLanding && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !storedGameId) {
-          setShowGameChooser(true);
-      }
-
       setLoading(false);
     };
 
@@ -494,7 +487,8 @@ const App: React.FC = () => {
       setMode(nextMode);
       localStorage.setItem(STORAGE_KEY_MODE, nextMode);
 
-      if ((nextMode === GameMode.EDIT || nextMode === GameMode.INSTRUCTOR) && !gameState.activeGameId) {
+      // Only prompt for chooser if entering Edit/Instructor and we aren't already editing something valid
+      if ((nextMode === GameMode.EDIT || nextMode === GameMode.INSTRUCTOR) && !gameState.activeGameId && !activeTemplateGame) {
           setShowGameChooser(true);
       }
   };
@@ -1391,6 +1385,45 @@ const App: React.FC = () => {
                   setGameState(prev => ({ ...prev, activeGameId: id }));
                   localStorage.setItem(STORAGE_KEY_GAME_ID, id);
                   setShowGameChooser(false);
+                  
+                  if (pendingPlaygroundTemplate) {
+                      // ADD PLAYGROUND TO SELECTED GAME LOGIC
+                      const targetGame = gameState.games.find(g => g.id === id);
+                      if (targetGame) {
+                          const nextIndex = (targetGame.playgrounds?.length || 0) + 1;
+                          const idNum = nextIndex.toString().padStart(2, '0');
+                          const newPG = { 
+                              ...pendingPlaygroundTemplate.playgroundData, 
+                              id: `pg-${Date.now()}`,
+                              title: `${pendingPlaygroundTemplate.playgroundData.title} ${idNum}`
+                          };
+                          const newTasks = pendingPlaygroundTemplate.tasks.map(t => ({ 
+                              ...t, 
+                              id: `p-${Date.now()}-${Math.random()}`, 
+                              playgroundId: newPG.id 
+                          }));
+                          
+                          const updatedTargetGame = {
+                              ...targetGame,
+                              playgrounds: [...(targetGame.playgrounds || []), newPG],
+                              points: [...targetGame.points, ...newTasks]
+                          };
+                          
+                          // Save immediately
+                          db.saveGame(updatedTargetGame);
+                          
+                          // Update local state to reflect changes if this game becomes active
+                          setGameState(prev => ({
+                              ...prev,
+                              games: prev.games.map(g => g.id === id ? updatedTargetGame : g)
+                          }));
+                          
+                          // If we just selected the active game, update it immediately in memory
+                          // (Note: updateActiveGame is for current active game state, but we just switched ID so state update handles it)
+                      }
+                      setPendingPlaygroundTemplate(null);
+                  }
+
                   if (pendingView === 'PLAYGROUNDS') {
                       setShowPlaygroundEditor(true);
                       setPendingView(null);
@@ -1400,6 +1433,7 @@ const App: React.FC = () => {
               onClose={() => {
                   setShowGameChooser(false);
                   setPendingView(null);
+                  setPendingPlaygroundTemplate(null);
                   if (!activeGame) setShowLanding(true);
               }}
               onSaveAsTemplate={async (gid, name) => {
@@ -1502,7 +1536,14 @@ const App: React.FC = () => {
           <PlaygroundLibraryModal 
               onClose={() => setShowPlaygroundLibrary(false)}
               onImport={(tpl) => {
-                  const newPG = { ...tpl.playgroundData, id: `pg-${Date.now()}` };
+                  const nextIndex = (activeGame.playgrounds?.length || 0) + 1;
+                  const idNum = nextIndex.toString().padStart(2, '0');
+                  
+                  const newPG = { 
+                      ...tpl.playgroundData, 
+                      id: `pg-${Date.now()}`,
+                      title: `${tpl.playgroundData.title} ${idNum}`
+                  };
                   const newTasks = tpl.tasks.map(t => ({ 
                       ...t, 
                       id: `p-${Date.now()}-${Math.random()}`, 

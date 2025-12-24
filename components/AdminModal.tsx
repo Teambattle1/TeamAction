@@ -100,7 +100,7 @@ ALTER TABLE public.account_invites ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public account_invites access" ON public.account_invites;
 CREATE POLICY "Public account_invites access" ON public.account_invites FOR ALL USING (true) WITH CHECK (true);
 
--- 7. PLAYGROUND_LIBRARY Table
+-- 7. PLAYGROUND_LIBRARY Table (GLOBAL PLAYGROUNDS)
 CREATE TABLE IF NOT EXISTS public.playground_library (
     id TEXT PRIMARY KEY,
     title TEXT,

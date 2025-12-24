@@ -384,11 +384,13 @@ export const submitClientTask = async (listId: string, task: TaskTemplate) => {
     }
 };
 
+// --- GLOBAL PLAYGROUND LIBRARY ---
+
 export const fetchPlaygroundLibrary = async (): Promise<PlaygroundTemplate[]> => {
     try {
         const { data, error } = await withTimeout(supabase.from('playground_library').select('*'));
         if (error) { 
-            if (error.code === '42P01') console.log("Playground library table missing");
+            if (error.code === '42P01') console.log("Playground library table missing - run SQL setup in admin");
             else logError('fetchPlaygroundLibrary', error); 
             return []; 
         }

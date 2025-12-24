@@ -33,7 +33,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   const [templateName, setTemplateName] = useState('');
   
   // Save State Tracking
-  // Assume if title is "New Template", it hasn't been properly saved/named yet.
   const [hasSaved, setHasSaved] = useState(() => {
       const title = game.playgrounds?.[0]?.title;
       return title && title !== 'New Template';
@@ -194,9 +193,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   // --- OTHER ACTIONS ---
 
   const handleCreatePlayground = () => {
+      const nextIndex = (game.playgrounds?.length || 0) + 1;
       const newPlayground: Playground = {
           id: `pg-${Date.now()}`,
-          title: 'New Zone',
+          title: `Zone ${nextIndex.toString().padStart(2, '0')}`,
           buttonVisible: true,
           backgroundStyle: 'contain',
           iconId: 'default',
@@ -251,13 +251,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
       
       // If in TEMPLATE MODE
       if (isTemplateMode && onSaveTemplate) {
-          // If we haven't saved properly yet (still generic name) or user explicitly wants to check metadata, allow modal
-          // Or if we just want to force name check on first save of session
           if (!hasSaved) {
               setTemplateName(activePlayground.title);
               setShowSaveModal(true);
           } else {
-              // Quick update if already saved/named
               await onSaveTemplate(activePlayground.title);
               setHasSaved(true);
               alert("Template Updated Successfully!");
@@ -280,13 +277,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
           setShowSaveModal(false);
           if (!isTemplateMode) alert("Saved as new template!");
       } else {
-          // Fallback logic (internal game mode save)
+          // Fallback logic: Save directly to the new 'playground_library' table
           const templateTasks = game.points.filter(p => p.playgroundId === activePlayground.id);
 
           const template: PlaygroundTemplate = {
               id: `pg-tpl-${Date.now()}`,
               title: templateName,
-              playgroundData: activePlayground,
+              playgroundData: { ...activePlayground, title: templateName },
               tasks: templateTasks,
               createdAt: Date.now(),
               isGlobal: true
@@ -294,7 +291,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
 
           await db.savePlaygroundTemplate(template);
           setShowSaveModal(false);
-          alert("Playground template saved successfully! You can find it in the Global Library.");
+          alert("Playground template saved successfully! It is now available in the global library.");
       }
   };
 
@@ -305,13 +302,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   };
 
   const stripHtml = (html: any) => typeof html === 'string' ? html.replace(/<[^>]*>?/gm, '') : '';
-
-  const containerStyle = {
-      transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`,
-      width: '800px', // Base reference width
-      height: '600px', // Base reference height
-      transformOrigin: '0 0'
-  };
 
   return (
     <div className="fixed inset-0 z-[2200] bg-gray-100 dark:bg-gray-900 flex flex-col animate-in fade-in font-sans">
@@ -325,13 +315,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
                 </h2>
                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700"></div>
                 <div className="flex gap-2">
-                    {game.playgrounds?.map(pg => (
+                    {game.playgrounds?.map((pg, index) => (
                         <button 
                             key={pg.id}
                             onClick={() => { setActivePlaygroundId(pg.id); setView({x:0, y:0, scale:1}); }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border transition-all hover:scale-105 active:scale-95 whitespace-nowrap ${activePlaygroundId === pg.id ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 border-gray-200 dark:border-gray-600 hover:text-orange-500'}`}
+                            className={`relative px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border transition-all hover:scale-105 active:scale-95 whitespace-nowrap flex flex-col items-center justify-center min-w-[4rem] ${activePlaygroundId === pg.id ? 'bg-orange-600 text-white border-orange-600' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 border-gray-200 dark:border-gray-600 hover:text-orange-500'}`}
                         >
-                            {pg.title}
+                            <span className="text-[9px] opacity-60 leading-none mb-0.5 font-black">{(index + 1).toString().padStart(2, '0')}</span>
+                            <span className="leading-none">{pg.title}</span>
                         </button>
                     ))}
                     {!isTemplateMode && <button onClick={handleCreatePlayground} className="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-green-600 hover:bg-green-50 transition-all border border-dashed border-gray-300 dark:border-gray-600 hover:scale-110 active:scale-95"><Plus className="w-4 h-4" /></button>}
@@ -362,7 +353,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-            
+            {/* Sidebar and Canvas (unchanged logic) */}
             {/* Sidebar */}
             <div className="w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col z-10 shrink-0 shadow-xl">
                 {activePlayground ? (

@@ -159,10 +159,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     const handleSelectTemplate = (template: TaskTemplate) => {
         if (isSelectionMode) {
+            // In selection mode, clicking selects/deselects for adding
             setSelectedTemplateIds(prev => 
                 prev.includes(template.id) ? prev.filter(id => id !== template.id) : [...prev, template.id]
             );
         } else {
+            // In normal mode, clicking edits the template
             setEditingTemplate(template);
         }
     };
@@ -201,8 +203,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const handleUseList = (e: React.MouseEvent, list: TaskList) => {
         e.stopPropagation();
         if (isSelectionMode && onSelectTasksForGame) {
+            // DIRECTLY ADD TO ZONE IF IN SELECTION MODE
             onSelectTasksForGame(list.tasks);
         } else {
+            // OTHERWISE OPEN GAME CHOOSER POPUP
             setTargetListForGame(list);
         }
     };
