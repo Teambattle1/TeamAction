@@ -55,7 +55,19 @@ type MeasureNode = { type: 'point', id: string } | { type: 'coord', loc: Coordin
 
 const App: React.FC = () => {
   // --- STATE ---
-  const [mode, setMode] = useState<GameMode>(GameMode.PLAY);
+  const [mode, setMode] = useState<GameMode>(() => {
+      // Initial mode selection logic
+      const storedMode = localStorage.getItem(STORAGE_KEY_MODE) as GameMode;
+      if (storedMode && Object.values(GameMode).includes(storedMode)) {
+          return storedMode;
+      }
+      // Default to EDIT on Desktop (screen width > 1024px), otherwise PLAY
+      if (window.innerWidth > 1024) {
+          return GameMode.EDIT;
+      }
+      return GameMode.PLAY;
+  });
+
   const [gameState, setGameState] = useState<GameState>({
     activeGameId: null,
     games: [],
@@ -301,7 +313,7 @@ const App: React.FC = () => {
       const storedGameId = localStorage.getItem(STORAGE_KEY_GAME_ID);
       const storedTeamName = localStorage.getItem(STORAGE_KEY_TEAM_NAME);
       const storedUserName = localStorage.getItem(STORAGE_KEY_USER_NAME);
-      const storedMode = localStorage.getItem(STORAGE_KEY_MODE) as GameMode;
+      // const storedMode = localStorage.getItem(STORAGE_KEY_MODE) as GameMode; // Handled by useState initializer
 
       if (storedGameId) {
           setGameState(prev => ({ ...prev, activeGameId: storedGameId, teamName: storedTeamName || undefined, userName: storedUserName || undefined }));
@@ -312,11 +324,9 @@ const App: React.FC = () => {
           }
       }
 
-      if (storedMode && Object.values(GameMode).includes(storedMode)) {
-          setMode(storedMode);
-          if ((storedMode === GameMode.EDIT || storedMode === GameMode.INSTRUCTOR) && !storedGameId) {
-              setShowGameChooser(true);
-          }
+      // Check if we should prompt for game chooser
+      if ((mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !storedGameId) {
+          setShowGameChooser(true);
       }
 
       setLoading(false);
@@ -871,6 +881,7 @@ const App: React.FC = () => {
               accuracy={gameState.gpsAccuracy}
               mode={mode}
               toggleMode={handleToggleMode}
+              onSetMode={setMode} // New prop
               onOpenGameManager={() => setShowGameManager(true)}
               onOpenTaskMaster={() => { setTaskMasterTab('LIBRARY'); setShowTaskMaster(true); }}
               onOpenTeams={() => setShowTeamsHub(true)}

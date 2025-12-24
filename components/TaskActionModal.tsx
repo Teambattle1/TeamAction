@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { GamePoint, GameAction, TaskLogic, ActionType, Playground } from '../types';
-import { X, Plus, Trash2, Zap, CheckCircle, XCircle, Unlock, Lock, Eye, MessageSquare, Music, Coins, Save, ArrowRight, Skull, PenTool, LayoutGrid } from 'lucide-react';
+import { X, Plus, Trash2, Zap, CheckCircle, XCircle, Unlock, Lock, Eye, MessageSquare, Music, Coins, Save, ArrowRight, Skull, PenTool, LayoutGrid, Info } from 'lucide-react';
 
 interface TaskActionModalProps {
   point: GamePoint;
@@ -20,13 +20,13 @@ const TRIGGER_TABS: { id: TriggerType; label: string; icon: any; color: string }
     { id: 'onIncorrect', label: 'IF INCORRECT', icon: XCircle, color: 'text-red-500' },
 ];
 
-const ACTION_TYPES: { id: ActionType; label: string; icon: any }[] = [
-    { id: 'unlock', label: 'Unlock Task', icon: Unlock },
-    { id: 'lock', label: 'Lock Task', icon: Lock },
-    { id: 'score', label: 'Give/Take Points', icon: Coins },
-    { id: 'message', label: 'Show Message', icon: MessageSquare },
-    { id: 'double_trouble', label: 'Double Trouble', icon: Skull },
-    { id: 'open_playground', label: 'Open Playground', icon: LayoutGrid }, // New
+const ACTION_TYPES: { id: ActionType; label: string; icon: any; description: string }[] = [
+    { id: 'unlock', label: 'Unlock Task', icon: Unlock, description: 'Reveals a hidden or locked task on the map.' },
+    { id: 'lock', label: 'Lock Task', icon: Lock, description: 'Disables a task so it cannot be accessed.' },
+    { id: 'score', label: 'Give/Take Points', icon: Coins, description: 'Award bonus points or apply a penalty.' },
+    { id: 'message', label: 'Show Message', icon: MessageSquare, description: 'Display a popup message to the player.' },
+    { id: 'double_trouble', label: 'Double Trouble', icon: Skull, description: 'Next task has 2x points but high risk.' },
+    { id: 'open_playground', label: 'Open Playground', icon: LayoutGrid, description: 'Enter a specific virtual sub-zone.' },
 ];
 
 const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, playgrounds, onSave, onClose, onStartDrawMode }) => {
@@ -61,6 +61,21 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
   };
 
   const handleSave = () => {
+      // Validation Logic
+      const allTriggers = ['onOpen', 'onCorrect', 'onIncorrect'];
+      for (const trigger of allTriggers) {
+          const actions = logic[trigger as TriggerType];
+          if (actions) {
+               const invalid = actions.find(a => (['unlock', 'lock', 'reveal', 'open_playground'].includes(a.type) && !a.targetId));
+               if (invalid) {
+                   const triggerLabel = TRIGGER_TABS.find(t => t.id === trigger)?.label || trigger;
+                   const actionLabel = ACTION_TYPES.find(t => t.id === invalid.type)?.label || invalid.type;
+                   alert(`Please select a target for the "${actionLabel}" action in "${triggerLabel}". An action cannot be left incomplete.`);
+                   return;
+               }
+          }
+      }
+
       onSave({ ...point, logic });
       onClose();
   };
@@ -86,7 +101,7 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
               <div className="flex flex-col gap-2">
                   {(action.type === 'unlock' || action.type === 'lock' || action.type === 'reveal') && (
                       <select 
-                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm"
+                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm focus:border-indigo-500 outline-none"
                           value={action.targetId || ''}
                           onChange={(e) => handleUpdateAction(action.id, { targetId: e.target.value })}
                       >
@@ -99,7 +114,7 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
 
                   {action.type === 'open_playground' && (
                       <select 
-                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm"
+                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm focus:border-indigo-500 outline-none"
                           value={action.targetId || ''}
                           onChange={(e) => handleUpdateAction(action.id, { targetId: e.target.value })}
                       >
@@ -114,7 +129,7 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
                       <div className="flex items-center gap-2">
                           <input 
                               type="number" 
-                              className="w-24 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm"
+                              className="w-24 p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm focus:border-indigo-500 outline-none"
                               value={action.value || 0}
                               onChange={(e) => handleUpdateAction(action.id, { value: parseInt(e.target.value) })}
                               placeholder="Points"
@@ -125,7 +140,7 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
 
                   {action.type === 'message' && (
                       <textarea 
-                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm min-h-[60px]"
+                          className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm min-h-[60px] focus:border-indigo-500 outline-none"
                           value={action.value || ''}
                           onChange={(e) => handleUpdateAction(action.id, { value: e.target.value })}
                           placeholder="Enter message to display..."
@@ -213,14 +228,21 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
             <div className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wider">ADD NEW ACTION</div>
             <div className="grid grid-cols-2 gap-2 mb-4">
                 {ACTION_TYPES.map(type => (
-                    <button
-                        key={type.id}
-                        onClick={() => handleAddAction(type.id)}
-                        className="flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm"
-                    >
-                        <type.icon className="w-4 h-4" />
-                        <span className="text-xs font-bold uppercase">{type.label}</span>
-                    </button>
+                    <div key={type.id} className="relative group">
+                        <button
+                            onClick={() => handleAddAction(type.id)}
+                            className="w-full flex items-center gap-2 p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 hover:border-indigo-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all shadow-sm"
+                        >
+                            <type.icon className="w-4 h-4" />
+                            <span className="text-xs font-bold uppercase">{type.label}</span>
+                        </button>
+                        
+                        {/* Hover Explainer Tooltip */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-[10px] p-2 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 text-center font-medium border border-slate-700">
+                            {type.description}
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45 border-r border-b border-slate-700"></div>
+                        </div>
+                    </div>
                 ))}
             </div>
             
