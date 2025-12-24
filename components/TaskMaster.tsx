@@ -11,7 +11,7 @@ import {
     PlayCircle, MapPin, Globe, Filter, 
     CheckSquare, MousePointerClick, RefreshCw, Grid, List, 
     ChevronRight, ChevronDown, Check, Download, AlertCircle,
-    Trophy, Eye, HelpCircle, CheckSquare as CheckIcon, Save, Image as ImageIcon, Upload, Printer, QrCode
+    Trophy, Eye, HelpCircle, CheckSquare as CheckIcon, Save, Image as ImageIcon, Upload, Printer, QrCode, ArrowLeft
 } from 'lucide-react';
 
 interface TaskMasterProps {
@@ -120,6 +120,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         }
     }, [initialEditingListId, lists]);
 
+    // Auto-switch to LISTS if LIBRARY is empty but LISTS has data (UX improvement)
+    useEffect(() => {
+        if (initialTab === 'LIBRARY' && (!library || library.length === 0) && lists && lists.length > 0) {
+            setActiveTab('LISTS');
+        }
+    }, [initialTab, library, lists]);
+
     const activeGame = useMemo(() => {
         if (!activeGameId || !games) return null;
         return games.find(g => g.id === activeGameId);
@@ -191,6 +198,15 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         window.print();
     };
 
+    const handleUseList = (e: React.MouseEvent, list: TaskList) => {
+        e.stopPropagation();
+        if (isSelectionMode && onSelectTasksForGame) {
+            onSelectTasksForGame(list.tasks);
+        } else {
+            setTargetListForGame(list);
+        }
+    };
+
     if (editingTemplate) {
         const dummyPoint: any = { ...editingTemplate, location: { lat: 0, lng: 0 }, radiusMeters: 30, activationTypes: ['radius'], isUnlocked: true, isCompleted: false, order: 0 };
         return (
@@ -204,6 +220,99 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 onClose={() => setEditingTemplate(null)}
                 isTemplateMode={true}
             />
+        );
+    }
+
+    if (editingList) {
+        return (
+            <div className="fixed inset-0 z-[4200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-white dark:bg-gray-900 w-full max-w-4xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-800">
+                    <div className="p-6 bg-slate-900 flex justify-between items-center shrink-0">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setEditingList(null)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-full text-white transition-colors">
+                                <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <h2 className="text-xl font-black text-white uppercase tracking-wider">{editingList.name}</h2>
+                        </div>
+                        <button onClick={handleSaveListUpdate} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2">
+                            <Save className="w-4 h-4" /> Save List
+                        </button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-6 bg-gray-50 dark:bg-gray-950">
+                        <div className="flex gap-6 mb-8">
+                            <div 
+                                onClick={() => listImageInputRef.current?.click()}
+                                className="w-40 h-40 bg-gray-200 dark:bg-gray-800 rounded-2xl flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity overflow-hidden relative border-2 border-dashed border-gray-300 dark:border-gray-700"
+                            >
+                                {editingList.imageUrl ? (
+                                    <img src={editingList.imageUrl} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="flex flex-col items-center text-gray-400">
+                                        <ImageIcon className="w-8 h-8 mb-2" />
+                                        <span className="text-[9px] font-bold uppercase">Upload Cover</span>
+                                    </div>
+                                )}
+                                <input ref={listImageInputRef} type="file" className="hidden" onChange={handleListImageUpload} accept="image/*" />
+                            </div>
+                            <div className="flex-1 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">List Name</label>
+                                    <input 
+                                        value={editingList.name}
+                                        onChange={(e) => setEditingList({...editingList, name: e.target.value})}
+                                        className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 font-bold text-gray-900 dark:text-white"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Description</label>
+                                    <textarea 
+                                        value={editingList.description}
+                                        onChange={(e) => setEditingList({...editingList, description: e.target.value})}
+                                        className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white h-20 resize-none"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-gray-500 uppercase text-xs tracking-widest">Tasks ({editingList.tasks.length})</h3>
+                            {isSelectionMode && (
+                                <button 
+                                    onClick={() => { onSelectTasksForGame && onSelectTasksForGame(editingList.tasks); setEditingList(null); }}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-blue-700 shadow-md flex items-center gap-2"
+                                >
+                                    <Plus className="w-4 h-4" /> Add All To Zone
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="space-y-3">
+                            {editingList.tasks.map((task, i) => (
+                                <div key={i} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+                                    <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                                        {React.createElement(ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default, { className: "w-5 h-5 text-gray-500 dark:text-gray-300" })}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-bold text-sm text-gray-800 dark:text-white">{task.title}</h4>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.task.question}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const newTasks = [...editingList.tasks];
+                                            newTasks.splice(i, 1);
+                                            setEditingList({...editingList, tasks: newTasks});
+                                        }}
+                                        className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
         );
     }
 
@@ -481,10 +590,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             </h3>
                                             
                                             <button 
-                                                onClick={(e) => { e.stopPropagation(); setTargetListForGame(list); }}
-                                                className="pointer-events-auto w-full py-2 bg-orange-600 hover:bg-orange-700 text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all shadow-lg flex items-center justify-center gap-1 group-hover:translate-y-0 translate-y-2 opacity-0 group-hover:opacity-100 duration-300"
+                                                onClick={(e) => handleUseList(e, list)}
+                                                className={`pointer-events-auto w-full py-2 text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all shadow-lg flex items-center justify-center gap-1 group-hover:translate-y-0 translate-y-2 opacity-0 group-hover:opacity-100 duration-300 ${isSelectionMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}
                                             >
-                                                USE IN GAME <ChevronRight className="w-3 h-3" />
+                                                {isSelectionMode ? "ADD TO ZONE" : "USE IN GAME"} <ChevronRight className="w-3 h-3" />
                                             </button>
                                         </div>
                                     </div>

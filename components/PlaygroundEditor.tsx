@@ -16,7 +16,7 @@ interface PlaygroundEditorProps {
   showScores?: boolean;
   onToggleScores?: () => void;
   onHome?: () => void;
-  onSaveTemplate?: (name: string) => void; 
+  onSaveTemplate?: (name: string) => Promise<void> | void; 
   isTemplateMode?: boolean;
 }
 
@@ -31,6 +31,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   // Template Save Modal State
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  
+  // Save State Tracking
+  // Assume if title is "New Template", it hasn't been properly saved/named yet.
+  const [hasSaved, setHasSaved] = useState(() => {
+      const title = game.playgrounds?.[0]?.title;
+      return title && title !== 'New Template';
+  });
 
   // View Transform State
   const [view, setView] = useState({ x: 0, y: 0, scale: 1 });
@@ -239,16 +246,26 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
       }
   };
 
-  const handleOpenSaveModal = () => {
+  const handleOpenSaveModal = async () => {
       if (!activePlayground) return;
       
-      // If we are in TEMPLATE MODE, we just save/update immediately with current title.
+      // If in TEMPLATE MODE
       if (isTemplateMode && onSaveTemplate) {
-          onSaveTemplate(activePlayground.title);
+          // If we haven't saved properly yet (still generic name) or user explicitly wants to check metadata, allow modal
+          // Or if we just want to force name check on first save of session
+          if (!hasSaved) {
+              setTemplateName(activePlayground.title);
+              setShowSaveModal(true);
+          } else {
+              // Quick update if already saved/named
+              await onSaveTemplate(activePlayground.title);
+              setHasSaved(true);
+              alert("Template Updated Successfully!");
+          }
           return;
       }
 
-      // If we are saving a game playground as a NEW template, open modal
+      // If in GAME MODE (Save As New Template)
       setTemplateName(activePlayground.title);
       setShowSaveModal(true);
   };
@@ -256,12 +273,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
   const handleSaveAsTemplate = async () => {
       if (!activePlayground || !templateName.trim()) return;
 
-      if (onSaveTemplate && !isTemplateMode) {
-          // Logic for callback if provided but not in strict edit mode (rare case)
-          onSaveTemplate(templateName);
+      if (onSaveTemplate) {
+          // Template Mode or Game Mode with callback
+          await onSaveTemplate(templateName);
+          setHasSaved(true);
           setShowSaveModal(false);
+          if (!isTemplateMode) alert("Saved as new template!");
       } else {
-          // Game Mode: Create a copy
+          // Fallback logic (internal game mode save)
           const templateTasks = game.points.filter(p => p.playgroundId === activePlayground.id);
 
           const template: PlaygroundTemplate = {
@@ -270,12 +289,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
               playgroundData: activePlayground,
               tasks: templateTasks,
               createdAt: Date.now(),
-              isGlobal: false
+              isGlobal: true
           };
 
           await db.savePlaygroundTemplate(template);
           setShowSaveModal(false);
-          alert("Playground template saved successfully!");
+          alert("Playground template saved successfully! You can find it in the Global Library.");
       }
   };
 
@@ -551,10 +570,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ game, onUpdateGame,
                         <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                             <button 
                                 onClick={handleOpenSaveModal}
-                                className={`w-full py-3 text-white rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-lg mb-2 hover:scale-105 active:scale-95 transition-all ${isTemplateMode ? 'bg-green-600 hover:bg-green-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                                className={`w-full py-3 text-white rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 shadow-lg mb-2 hover:scale-105 active:scale-95 transition-all ${isTemplateMode ? (hasSaved ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700') : 'bg-indigo-600 hover:bg-indigo-700'}`}
                             >
-                                {isTemplateMode ? <RefreshCw className="w-4 h-4" /> : <Save className="w-4 h-4" />} 
-                                {isTemplateMode ? 'UPDATE TEMPLATE' : 'SAVE AS TEMPLATE'}
+                                {isTemplateMode ? (hasSaved ? <RefreshCw className="w-4 h-4" /> : <Save className="w-4 h-4" />) : <Save className="w-4 h-4" />} 
+                                {isTemplateMode ? (hasSaved ? 'UPDATE TEMPLATE' : 'SAVE TEMPLATE') : 'SAVE AS TEMPLATE'}
                             </button>
                             {!isTemplateMode && (
                                 <button 

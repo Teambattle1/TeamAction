@@ -153,8 +153,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div className="fixed inset-0 z-[1000] bg-slate-950 text-white flex flex-col font-sans overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none" />
+        {/* Background with Footprints Pattern */}
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/footprints.png')] opacity-10 pointer-events-none" />
         
         {/* ==================== VIEW: MAIN MENU ==================== */}
         {mode === 'MENU' && (
@@ -200,12 +200,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             <span className="text-2xl font-black uppercase tracking-widest text-white leading-none mb-2">JOIN TEAM</span>
                             <span className="text-[10px] font-bold text-slate-500 group-hover:text-blue-200 uppercase tracking-widest transition-colors">USING CODE OR QR</span>
                         </div>
-                    </button>
-                </div>
-
-                <div className="p-6 z-10 text-center pb-8">
-                    <button onClick={onBack} title="Back to Hub" className="text-slate-600 hover:text-white transition-colors">
-                        <Home className="w-6 h-6" />
                     </button>
                 </div>
             </div>

@@ -1,27 +1,18 @@
 
 import React, { useState } from 'react';
 import { Game } from '../types';
-import { X, Trash2, Calendar, MapPin, Database, AlertTriangle, Terminal, Copy } from 'lucide-react';
+import { X, Database, AlertTriangle, Terminal, Copy, Check } from 'lucide-react';
 
 interface AdminModalProps {
-  games: Game[];
+  games: Game[]; // Kept for compatibility if needed, though unused for deletion now
   onClose: () => void;
-  onDeleteGame: (id: string) => void;
+  onDeleteGame: (id: string) => void; // Kept for interface compatibility but unused
+  initialShowSql?: boolean;
 }
 
-const AdminModal: React.FC<AdminModalProps> = ({ games, onClose, onDeleteGame }) => {
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [showSql, setShowSql] = useState(false);
-
-  const handleDeleteClick = (id: string) => {
-    if (deleteConfirmId === id) {
-      onDeleteGame(id);
-      setDeleteConfirmId(null);
-    } else {
-      setDeleteConfirmId(id);
-      setTimeout(() => setDeleteConfirmId(null), 3000); // Reset confirm after 3s
-    }
-  };
+const AdminModal: React.FC<AdminModalProps> = ({ onClose, initialShowSql = false }) => {
+  const [showSql, setShowSql] = useState(initialShowSql);
+  const [copied, setCopied] = useState(false);
 
   const sqlCode = `-- COPY THIS INTO THE SUPABASE SQL EDITOR TO FIX DATABASE ISSUES
 
@@ -53,7 +44,7 @@ ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public teams access" ON public.teams;
 CREATE POLICY "Public teams access" ON public.teams FOR ALL USING (true) WITH CHECK (true);
 
--- MIGRATION: Ensure columns exist if table was created previously
+-- MIGRATION: Ensure columns exist for TEAMS (Fixes PGRST204)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teams' AND column_name = 'completed_point_ids') THEN
@@ -121,6 +112,18 @@ CREATE TABLE IF NOT EXISTS public.playground_library (
 ALTER TABLE public.playground_library ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public playground library access" ON public.playground_library;
 CREATE POLICY "Public playground library access" ON public.playground_library FOR ALL USING (true) WITH CHECK (true);
+
+-- MIGRATION: Ensure columns exist for PLAYGROUNDS
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'playground_library' AND column_name = 'is_global') THEN
+        ALTER TABLE public.playground_library ADD COLUMN is_global BOOLEAN DEFAULT false;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'playground_library' AND column_name = 'title') THEN
+        ALTER TABLE public.playground_library ADD COLUMN title TEXT;
+    END IF;
+END $$;
 
 -- 8. HIGH PERFORMANCE TAG PURGE FUNCTION
 CREATE OR REPLACE FUNCTION public.purge_tag_globally(tag_to_purge TEXT)
@@ -256,7 +259,7 @@ BEGIN
         )
         FROM jsonb_array_elements(task_lists.data->'tasks') t
     )
-    WHERE task_lists.data->'tasks' @> ('[{"tags": ["' || old_tag || '"]}]')::jsonb;
+    WHERE task_lists.data->'tasks' @> ('[{"tags": ["' || tag_to_purge || '"]}]')::jsonb;
 END;
 $$;
 
@@ -266,23 +269,27 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'teams') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.teams;
     END IF;
-END $$;`;
+END $$;
+
+-- 11. REFRESH SCHEMA CACHE
+NOTIFY pgrst, 'reload config';`;
 
   const copyToClipboard = () => {
       navigator.clipboard.writeText(sqlCode);
-      alert("SQL copied to clipboard!");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-lg max-h-[85vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
         <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
           <div>
             <h2 className="text-lg font-black text-white uppercase tracking-widest flex items-center gap-2">
-              <Database className="w-5 h-5 text-red-500"/> ADMIN
+              <Database className="w-5 h-5 text-indigo-500"/> DATABASE TOOLS
             </h2>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">MANAGE GAMES & DB</p>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">SYSTEM MAINTENANCE & SQL</p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
             <X className="w-6 h-6" />
@@ -294,14 +301,17 @@ END $$;`;
           
           <button 
             onClick={() => setShowSql(!showSql)}
-            className="w-full p-3 bg-indigo-900/20 border border-indigo-500/30 rounded-xl flex items-center justify-between text-indigo-400 hover:bg-indigo-900/40 hover:text-indigo-300 transition-all mb-4"
+            className="w-full p-4 bg-indigo-900/20 border border-indigo-500/30 rounded-xl flex items-center justify-between text-indigo-400 hover:bg-indigo-900/40 hover:text-indigo-300 transition-all mb-4"
           >
-              <span className="text-xs font-bold uppercase flex items-center gap-2"><Terminal className="w-4 h-4" /> Setup Database Tables</span>
+              <div className="flex flex-col items-start">
+                  <span className="text-sm font-bold uppercase flex items-center gap-2"><Terminal className="w-4 h-4" /> Setup Database Tables</span>
+                  <span className="text-[10px] text-indigo-400/60 font-bold mt-1">RUN THIS IF YOU SEE SUPABASE ERRORS</span>
+              </div>
               <span className="text-[10px] bg-indigo-500/20 px-2 py-1 rounded">CLICK TO VIEW SQL</span>
           </button>
 
           {showSql && (
-              <div className="bg-black rounded-xl p-4 border border-slate-700 mb-4 relative">
+              <div className="bg-black rounded-xl p-4 border border-slate-700 mb-4 relative animate-in zoom-in-95">
                   <div className="bg-amber-900/30 border border-amber-500/50 p-3 rounded-lg mb-3 flex gap-3 items-start">
                       <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                       <div>
@@ -312,57 +322,27 @@ END $$;`;
                           </p>
                       </div>
                   </div>
-                  <pre className="text-[10px] text-green-400 font-mono overflow-x-auto whitespace-pre-wrap max-h-60 custom-scrollbar">
+                  <pre className="text-[10px] text-green-400 font-mono overflow-x-auto whitespace-pre-wrap max-h-60 custom-scrollbar p-2 bg-[#0d1117] rounded-lg border border-white/10">
                       {sqlCode}
                   </pre>
                   <button 
                     onClick={copyToClipboard}
-                    className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                    className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors border border-slate-600"
                     title="Copy SQL"
                   >
-                      <Copy className="w-4 h-4" />
+                      {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </button>
                   <p className="text-[10px] text-slate-500 mt-2 italic">
                       Paste this into the Supabase SQL Editor to fix any missing tables or permissions.
                   </p>
               </div>
           )}
-
-          {games.length === 0 && (
-            <div className="text-center py-12 text-slate-500">
-              <Database className="w-12 h-12 mx-auto mb-3 opacity-20" />
-              <p className="font-bold uppercase tracking-wide text-sm">NO GAMES FOUND</p>
-            </div>
-          )}
-
-          {games.map(game => (
-            <div key={game.id} className="bg-slate-800 rounded-xl p-4 border border-slate-700 flex items-center justify-between group hover:border-slate-600 transition-colors">
-              <div className="flex-1 min-w-0 pr-4">
-                <h3 className="font-bold text-white truncate text-base mb-1 uppercase">{game.name}</h3>
-                <div className="flex items-center gap-3 text-xs text-slate-500 font-medium uppercase">
-                  <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(game.createdAt).toLocaleDateString()}</span>
-                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {game.points.length} TASKS</span>
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => handleDeleteClick(game.id)}
-                className={`p-3 rounded-xl transition-all flex items-center gap-2 font-bold uppercase text-xs tracking-wider ${deleteConfirmId === game.id ? 'bg-red-600 text-white w-24 justify-center' : 'bg-slate-700 text-slate-400 hover:bg-red-900/30 hover:text-red-400'}`}
-              >
-                {deleteConfirmId === game.id ? (
-                  "CONFIRM"
-                ) : (
-                  <Trash2 className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-          ))}
         </div>
 
         {/* Footer */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 text-center">
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                <AlertTriangle className="w-3 h-3" /> WARNING: DELETING A GAME CANNOT BE UNDONE
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                USE WITH CAUTION
             </p>
         </div>
       </div>

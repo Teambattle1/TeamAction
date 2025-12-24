@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Game, GameState, GameMode, GamePoint, Coordinate, 
-  MapStyleId, Language, Team, TaskTemplate, TaskList, TaskType, ChatMessage, DangerZone 
+  MapStyleId, Language, Team, TaskTemplate, TaskList, TaskType, ChatMessage, DangerZone, PlaygroundTemplate 
 } from './types';
 import * as db from './services/db';
 import { teamSync } from './services/teamSync';
@@ -23,6 +23,7 @@ import TaskPreview from './components/TaskPreview';
 import PlaygroundEditor from './components/PlaygroundEditor';
 import PlaygroundModal from './components/PlaygroundModal';
 import PlaygroundLibraryModal from './components/PlaygroundLibraryModal';
+import PlaygroundManager from './components/PlaygroundManager';
 import TeamDashboard from './components/TeamDashboard';
 import TeamsModal from './components/TeamsModal';
 import GameCreator from './components/GameCreator';
@@ -42,6 +43,8 @@ import Dashboard from './components/Dashboard';
 import TaskEditor from './components/TaskEditor';
 import ChatDrawer from './components/ChatDrawer'; 
 import DangerZoneModal from './components/DangerZoneModal';
+import AdminModal from './components/AdminModal';
+import DeleteGamesModal from './components/DeleteGamesModal';
 
 // Constants
 const STORAGE_KEY_GAME_ID = 'geohunt_active_game_id';
@@ -108,9 +111,12 @@ const App: React.FC = () => {
   const [showDashboard, setShowDashboard] = useState(false);
   const [showAiGenerator, setShowAiGenerator] = useState(false);
   const [showPlaygroundLibrary, setShowPlaygroundLibrary] = useState(false);
+  const [showPlaygroundManager, setShowPlaygroundManager] = useState(false);
   const [showTeamsHub, setShowTeamsHub] = useState(false);
   const [showTaskPlaylist, setShowTaskPlaylist] = useState(false);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showDeleteGamesModal, setShowDeleteGamesModal] = useState(false);
   
   // Teams Modal Admin State
   const [teamsModalAdmin, setTeamsModalAdmin] = useState(false);
@@ -132,6 +138,11 @@ const App: React.FC = () => {
   const [showActionModal, setShowActionModal] = useState(false);
   const [isDrawingLogic, setIsDrawingLogic] = useState<{ trigger: 'onOpen' | 'onCorrect' | 'onIncorrect', sourcePointId: string } | null>(null);
   const [showContextMenu, setShowContextMenu] = useState<{ point: GamePoint } | null>(null);
+  const [targetPlaygroundIdForTasks, setTargetPlaygroundIdForTasks] = useState<string | null>(null);
+
+  // Playground Template Editing
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [activeTemplateGame, setActiveTemplateGame] = useState<Game | null>(null);
 
   // Client / External
   const [clientSubmissionToken, setClientSubmissionToken] = useState<string | null>(null);
@@ -146,8 +157,8 @@ const App: React.FC = () => {
 
   // --- DERIVED STATE ---
   const activeGame = useMemo(() => 
-    gameState.games.find(g => g.id === gameState.activeGameId) || null
-  , [gameState.games, gameState.activeGameId]);
+    activeTemplateGame || (gameState.games.find(g => g.id === gameState.activeGameId) || null)
+  , [gameState.games, gameState.activeGameId, activeTemplateGame]);
 
   const displayPoints = useMemo(() => {
       return activeGame ? activeGame.points : [];
@@ -430,14 +441,10 @@ const App: React.FC = () => {
           }, 1000);
       } else {
           clearInterval(dangerTimerRef.current);
-          // If we leave the zone, we might want to allow re-penalizing if re-entering? 
-          // For now, let's reset the penalized set only when starting a new game session or explicitly clearing.
-          // Or per-session entry. For this strict rule, typically you get hit once per entry session.
-          // So no change to penalizedZones here (it resets on mount).
       }
 
       return () => clearInterval(dangerTimerRef.current);
-  }, [activeDangerZone?.id, activeGame]); // Added activeGame dependency to access fresh penalty config
+  }, [activeDangerZone?.id, activeGame]); 
 
 
   useEffect(() => {
@@ -460,6 +467,11 @@ const App: React.FC = () => {
   }, [mode, activeGame, showLanding]);
 
   const updateActiveGame = (updatedGame: Game) => {
+      if (activeTemplateGame && updatedGame.id === activeTemplateGame.id) {
+          setActiveTemplateGame(updatedGame);
+          return;
+      }
+
       setGameState(prev => ({
           ...prev,
           games: prev.games.map(g => g.id === updatedGame.id ? updatedGame : g)
@@ -468,9 +480,11 @@ const App: React.FC = () => {
       if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current);
       }
-      saveTimeoutRef.current = setTimeout(() => {
-          db.saveGame(updatedGame);
-      }, 1000); 
+      if (!activeTemplateGame) {
+          saveTimeoutRef.current = setTimeout(() => {
+              db.saveGame(updatedGame);
+          }, 1000); 
+      }
   };
 
   const handleToggleMode = () => {
@@ -481,6 +495,10 @@ const App: React.FC = () => {
       if ((nextMode === GameMode.EDIT || nextMode === GameMode.INSTRUCTOR) && !gameState.activeGameId) {
           setShowGameChooser(true);
       }
+  };
+
+  const ensureDesktopMode = () => {
+      setMode(GameMode.EDIT);
   };
 
   const handleToggleScores = () => {
@@ -565,6 +583,7 @@ const App: React.FC = () => {
       } else if (type === 'LIBRARY') {
           setTaskMasterTab('LIBRARY');
           setShowTaskMaster(true);
+          if (playgroundId) setTargetPlaygroundIdForTasks(playgroundId);
       } else {
           const newPoint: GamePoint = {
               id: `p-${Date.now()}`,
@@ -691,7 +710,7 @@ const App: React.FC = () => {
       }
   };
 
-  const handleLandingAction = (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY') => {
+  const handleLandingAction = (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES') => {
       switch(action) {
           case 'PLAY':
               setShowLanding(false);
@@ -752,12 +771,7 @@ const App: React.FC = () => {
               break;
           case 'PLAYGROUNDS':
               setShowLanding(false);
-              if (activeGame) {
-                  setShowPlaygroundEditor(true);
-              } else {
-                  setPendingView('PLAYGROUNDS');
-                  setShowGameChooser(true);
-              }
+              setShowPlaygroundManager(true);
               break;
           case 'CLIENT_PORTAL':
               setShowLanding(false);
@@ -783,6 +797,12 @@ const App: React.FC = () => {
               // Admin mode for teams modal
               setTeamsModalAdmin(true);
               setShowTeamsModal(true);
+              break;
+          case 'DATABASE':
+              setShowAdminModal(true);
+              break;
+          case 'DELETE_GAMES':
+              setShowDeleteGamesModal(true);
               break;
       }
   };
@@ -825,6 +845,69 @@ const App: React.FC = () => {
       if (!activeGame) return;
       const updatedZones = (activeGame.dangerZones || []).filter(z => z.id !== id);
       updateActiveGame({ ...activeGame, dangerZones: updatedZones });
+  };
+
+  // Playground Template Editing Handlers
+  const handleEditTemplate = (tpl: PlaygroundTemplate) => {
+      const dummyGame: Game = {
+          id: `temp-game-${Date.now()}`,
+          name: tpl.title,
+          description: 'Template Editing Session',
+          points: tpl.tasks.map(t => ({...t, playgroundId: tpl.playgroundData.id})), // Ensure linkage
+          playgrounds: [tpl.playgroundData],
+          createdAt: Date.now(),
+          dangerZones: []
+      };
+      setActiveTemplateGame(dummyGame);
+      setEditingTemplateId(tpl.id);
+      setShowPlaygroundManager(false);
+      setShowPlaygroundEditor(true);
+      ensureDesktopMode();
+  };
+
+  const handleCreateTemplate = () => {
+      const newPgId = `pg-${Date.now()}`;
+      const dummyGame: Game = {
+          id: `temp-game-${Date.now()}`,
+          name: 'New Template',
+          description: 'Template Editing Session',
+          points: [],
+          playgrounds: [{
+              id: newPgId,
+              title: 'New Template',
+              buttonVisible: true,
+              iconId: 'default'
+          }],
+          createdAt: Date.now(),
+          dangerZones: []
+      };
+      setActiveTemplateGame(dummyGame);
+      setEditingTemplateId(`pg-tpl-${Date.now()}`); // New ID
+      setShowPlaygroundManager(false);
+      setShowPlaygroundEditor(true);
+      ensureDesktopMode();
+  };
+
+  const savePlaygroundTemplate = async (name: string) => {
+      if (!activeTemplateGame || !editingTemplateId || !activeGame?.playgrounds?.[0]) return;
+      
+      const pg = activeGame.playgrounds[0];
+      const tasks = activeGame.points.filter(p => p.playgroundId === pg.id);
+      
+      const template: PlaygroundTemplate = {
+          id: editingTemplateId,
+          title: name,
+          playgroundData: { ...pg, title: name },
+          tasks: tasks,
+          createdAt: Date.now(),
+          isGlobal: true
+      };
+      
+      await db.savePlaygroundTemplate(template);
+      
+      const updatedPG = { ...pg, title: name };
+      const updatedGame = { ...activeTemplateGame, playgrounds: [updatedPG] };
+      setActiveTemplateGame(updatedGame);
   };
 
   if (clientSubmissionToken) {
@@ -876,7 +959,7 @@ const App: React.FC = () => {
       </div>
 
       {/* HUD LAYER */}
-      {!showLanding && !showWelcome && (
+      {!showLanding && !showWelcome && !showPlaygroundManager && (
           <GameHUD 
               accuracy={gameState.gpsAccuracy}
               mode={mode}
@@ -958,6 +1041,14 @@ const App: React.FC = () => {
           />
       )}
 
+      {showPlaygroundManager && (
+          <PlaygroundManager 
+              onClose={() => { setShowPlaygroundManager(false); setShowLanding(true); }}
+              onEdit={handleEditTemplate}
+              onCreate={handleCreateTemplate}
+          />
+      )}
+
       {/* DANGER ZONE EDITOR MODAL */}
       {editingDangerZone && mode === GameMode.EDIT && (
           <DangerZoneModal 
@@ -968,7 +1059,7 @@ const App: React.FC = () => {
           />
       )}
 
-      {mode === GameMode.EDIT && !showLanding && (
+      {mode === GameMode.EDIT && !showLanding && !showPlaygroundManager && (
         <EditorDrawer 
           onClose={() => setMode(GameMode.PLAY)} 
           activeGame={activeGame}
@@ -1120,17 +1211,45 @@ const App: React.FC = () => {
           <PlaygroundEditor 
               game={activeGame}
               onUpdateGame={updateActiveGame}
-              onClose={() => setShowPlaygroundEditor(false)}
+              onClose={() => {
+                  setShowPlaygroundEditor(false);
+                  if (editingTemplateId) {
+                      // If editing template, strictly go back to manager
+                      setEditingTemplateId(null);
+                      setActiveTemplateGame(null);
+                      setShowPlaygroundManager(true);
+                  } else {
+                      // If normal game, strictly go to Editor Mode and hide Landing
+                      setShowLanding(false);
+                      setMode(GameMode.EDIT);
+                  }
+                  ensureDesktopMode();
+              }}
               onEditPoint={setEditingPoint}
               onPointClick={handlePointClick} 
               onAddTask={handleAddTask}
-              onOpenLibrary={() => setShowPlaygroundLibrary(true)}
+              onOpenLibrary={(playgroundId) => { 
+                  setTargetPlaygroundIdForTasks(playgroundId);
+                  setTaskMasterTab('LIBRARY');
+                  setShowTaskMaster(true);
+                  setShowPlaygroundLibrary(false); // Force close global playground modal if open
+                  setShowPlaygroundManager(false);
+              }}
               showScores={showScores}
               onToggleScores={handleToggleScores}
               onHome={() => {
                   setShowPlaygroundEditor(false);
-                  setShowLanding(true);
+                  if (editingTemplateId) {
+                      setEditingTemplateId(null);
+                      setActiveTemplateGame(null);
+                      setShowPlaygroundManager(true);
+                  } else {
+                      setShowLanding(true);
+                  }
+                  ensureDesktopMode();
               }}
+              onSaveTemplate={editingTemplateId ? savePlaygroundTemplate : undefined} // Only pass if in template mode
+              isTemplateMode={!!editingTemplateId}
           />
       )}
 
@@ -1208,7 +1327,7 @@ const App: React.FC = () => {
               games={gameState.games}
               activeGameId={activeGame?.id}
               onAddTasksToGame={(gid, tasks) => {
-                  const targetGame = gameState.games.find(g => g.id === gid);
+                  const targetGame = activeTemplateGame?.id === gid ? activeTemplateGame : gameState.games.find(g => g.id === gid);
                   if (targetGame) {
                       const newPoints = tasks.map((t, i) => ({
                           ...t,
@@ -1218,10 +1337,16 @@ const App: React.FC = () => {
                           activationTypes: ['radius'],
                           isUnlocked: true,
                           isCompleted: false,
-                          order: targetGame.points.length + i
+                          order: targetGame.points.length + i,
+                          points: 100,
+                          // Use the target playground ID if we are in playground edit mode
+                          playgroundId: targetPlaygroundIdForTasks || undefined,
+                          playgroundPosition: targetPlaygroundIdForTasks ? { x: 50, y: 50 } : undefined
                       } as GamePoint));
                       updateActiveGame({ ...targetGame, points: [...targetGame.points, ...newPoints] });
                   }
+                  // Reset target playground to avoid affecting future adds
+                  if(targetPlaygroundIdForTasks) setTargetPlaygroundIdForTasks(null);
               }}
               initialEditingListId={taskMasterEditingListId}
           />
@@ -1382,6 +1507,26 @@ const App: React.FC = () => {
           teamId={gameState.teamId}
           teams={instructorTeams} // Pass fetched teams to Chat Drawer
       />
+
+      {showAdminModal && (
+          <AdminModal 
+              games={gameState.games} 
+              onClose={() => setShowAdminModal(false)}
+              onDeleteGame={() => {}} // No-op, managed by DeleteGamesModal now
+              initialShowSql={true}
+          />
+      )}
+
+      {showDeleteGamesModal && (
+          <DeleteGamesModal 
+              games={gameState.games}
+              onClose={() => setShowDeleteGamesModal(false)}
+              onDeleteGame={(id) => {
+                  db.deleteGame(id);
+                  setGameState(prev => ({ ...prev, games: prev.games.filter(g => g.id !== id) }));
+              }}
+          />
+      )}
 
       {activeGame && mode === GameMode.PLAY && !showLanding && !showWelcome && (
           <GameStats 

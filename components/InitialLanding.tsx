@@ -5,12 +5,12 @@ import {
   UserCircle, Settings, MapPin, ChevronRight, Play,
   LayoutDashboard, LayoutTemplate, LayoutGrid, UserPlus,
   Monitor, Tag, Radar, Plus, Database, ArrowLeft,
-  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode, MessageSquare, Anchor, Home
+  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode, MessageSquare, Anchor, Home, Trash2
 } from 'lucide-react';
 import { Game } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
@@ -237,8 +237,15 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           title="DATABASE / SQL" 
                           subtitle="SYSTEM MAINTENANCE" 
                           icon={Database} 
-                          color="bg-red-500"
-                          onClick={() => onAction('ADMIN')}
+                          color="bg-blue-600"
+                          onClick={() => onAction('DATABASE')} 
+                      />
+                      <NavCard 
+                          title="DELETE GAMES" 
+                          subtitle="REMOVE SESSIONS" 
+                          icon={Trash2} 
+                          color="bg-red-600"
+                          onClick={() => onAction('DELETE_GAMES')} 
                       />
                   </div>
               );
@@ -287,7 +294,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                                 <button
                                     key={game.id}
                                     onClick={() => { onSelectGame(game.id); setShowGameMenu(false); }}
-                                    className={`w-full text-left px-4 py-3 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-between ${game.id === activeGameId ? 'text-orange-500' : 'text-slate-300'}`}
+                                    className={`w-full text-left px-4 py-3 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-center ${game.id === activeGameId ? 'text-orange-500' : 'text-slate-300'}`}
                                 >
                                     <span className="truncate">{game.name}</span>
                                     {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500" />}

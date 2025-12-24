@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline
 import L from 'leaflet';
 import { GamePoint, Coordinate, GameMode, MapStyleId, Team, DangerZone } from '../types';
 import { getLeafletIcon } from '../utils/icons';
-import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock } from 'lucide-react';
+import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock, Users } from 'lucide-react';
 
 const UserIcon = L.divIcon({
   className: 'custom-user-icon',
@@ -20,13 +20,57 @@ const getTeamColor = (teamName: string) => {
     return '#' + "00000".substring(0, 6 - c.length) + c;
 };
 
-const createTeamIcon = (teamName: string) => {
+const createTeamIcon = (teamName: string, photoUrl?: string) => {
     const color = getTeamColor(teamName);
+    
+    // Pin Design: Teardrop shape with image inside
+    // We use a rotated square with rounded corners to create the teardrop
+    const pinHtml = `
+      <div style="position: relative; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+        <!-- Shadow -->
+        <div style="position: absolute; bottom: 0; width: 30px; height: 10px; background: rgba(0,0,0,0.3); border-radius: 50%; filter: blur(4px); transform: translateY(5px);"></div>
+        
+        <!-- Pin Shape -->
+        <div style="
+          width: 50px; 
+          height: 50px; 
+          background: white; 
+          border-radius: 50% 50% 50% 0; 
+          transform: rotate(-45deg); 
+          box-shadow: 2px 2px 10px rgba(0,0,0,0.2); 
+          display: flex; 
+          align-items: center; 
+          justify-content: center;
+          border: 2px solid white;
+        ">
+          <!-- Image Container (Un-rotated) -->
+          <div style="
+            width: 44px; 
+            height: 44px; 
+            border-radius: 50%; 
+            overflow: hidden; 
+            transform: rotate(45deg); 
+            background-color: ${color};
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+          ">
+            ${photoUrl 
+              ? `<img src="${photoUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`
+              : `<div style="font-weight: 900; font-size: 16px; color: white; text-transform: uppercase;">${teamName.substring(0, 2)}</div>`
+            }
+          </div>
+        </div>
+      </div>
+    `;
+
     return L.divIcon({
-        className: 'custom-team-icon',
-        html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px; color: white;">${teamName.charAt(0).toUpperCase()}</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
+        className: 'custom-team-pin',
+        html: pinHtml,
+        iconSize: [60, 60],
+        iconAnchor: [30, 56], // Tip of the pin (bottom center approx)
+        popupAnchor: [0, -60]
     });
 };
 
@@ -516,6 +560,9 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
 
   const measurePathKey = measurePath ? measurePath.map(p => `${p.lat},${p.lng}`).join('|') : 'empty';
 
+  // Calculate Total Tasks for Team Progress display
+  const totalTasks = points.filter(p => !p.isSectionHeader && !p.playgroundId).length;
+
   return (
     <div className="relative w-full h-full">
         {isRelocating && (
@@ -623,7 +670,34 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
                 if (!team || pathCoords.length < 2) return null;
                 return <Polyline key={`trail-${teamId}`} positions={pathCoords.map(c => [c.lat, c.lng])} pathOptions={{ color: getTeamColor(team.name), weight: 3, opacity: 0.6, dashArray: '5, 10' }} />;
             })}
-            {teams && teams.map((item, idx) => <Marker key={`team-${item.team.id}-${idx}`} position={[item.location.lat, item.location.lng]} icon={createTeamIcon(item.team.name)} eventHandlers={{ click: () => onTeamClick && onTeamClick(item.team.id) }} zIndexOffset={1000} />)}
+            
+            {teams && teams.map((item, idx) => {
+                const completedCount = item.team.completedPointIds?.length || 0;
+                return (
+                    <Marker 
+                        key={`team-${item.team.id}-${idx}`} 
+                        position={[item.location.lat, item.location.lng]} 
+                        icon={createTeamIcon(item.team.name, item.team.photoUrl)} 
+                        eventHandlers={{ click: () => onTeamClick && onTeamClick(item.team.id) }} 
+                        zIndexOffset={1000} 
+                    >
+                        <Tooltip direction="top" offset={[0, -50]} opacity={1} className="custom-leaflet-tooltip">
+                            <div className="bg-white dark:bg-gray-900 p-2 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 shrink-0">
+                                    {item.team.photoUrl ? <img src={item.team.photoUrl} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center font-bold text-xs">{item.team.name.substring(0,2)}</div>}
+                                </div>
+                                <div>
+                                    <div className="font-black text-xs uppercase text-gray-900 dark:text-white leading-none mb-0.5">{item.team.name}</div>
+                                    <div className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase leading-none">
+                                        TASKS: {completedCount} / {totalTasks}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-900 rotate-45 border-b border-r border-gray-200 dark:border-gray-700"></div>
+                        </Tooltip>
+                    </Marker>
+                );
+            })}
             
             {mapPoints.map(point => (
                 <MapTaskMarker 
