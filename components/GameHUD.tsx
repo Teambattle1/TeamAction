@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { GameMode, MapStyleId, Language, Playground, TimerConfig, Coordinate } from '../types';
-import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin, Maximize, Target, Hash, MessageSquare } from 'lucide-react';
+import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin, Maximize, Target, Hash, MessageSquare, Skull, Siren, AlertTriangle, GripHorizontal } from 'lucide-react';
 import { formatDistance } from '../utils/geo';
 import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
@@ -39,6 +39,8 @@ interface GameHUDProps {
   onToggleChat?: () => void; // New: Chat Toggle
   unreadMessagesCount?: number; // New: Unread count
   targetPlaygroundId?: string; // New: ID of playground activated by currently selected point
+  onAddDangerZone?: () => void; // New: Handler for adding danger zones
+  activeDangerZone?: { id: string; enteredAt: number; timeRemaining: number } | null; // New: Runtime alert state
 }
 
 // Timer Sub-component
@@ -139,10 +141,16 @@ const GameHUD: React.FC<GameHUDProps> = ({
   hiddenPlaygroundIds = [],
   onToggleChat,
   unreadMessagesCount = 0,
-  targetPlaygroundId // Recieving logic target
+  targetPlaygroundId, // Recieving logic target
+  onAddDangerZone,
+  activeDangerZone
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEditBanner, setShowEditBanner] = useState(false);
+
+  // Floating Toolbar State
+  const [toolbarPos, setToolbarPos] = useState({ x: 0, y: 0 });
+  const dragStartRef = useRef<{ x: number, y: number, initialX: number, initialY: number } | null>(null);
 
   useEffect(() => {
       let timer: ReturnType<typeof setTimeout>;
@@ -178,6 +186,67 @@ const GameHUD: React.FC<GameHUDProps> = ({
   const leftMenuPositionClass = (mode === GameMode.EDIT && isDrawerExpanded) ? 'sm:left-[340px]' : 'left-4';
   // Shift search bar center if drawer is open on desktop
   const searchBarPositionClass = (mode === GameMode.EDIT && isDrawerExpanded) ? 'sm:left-[calc(50%+160px)]' : 'sm:left-1/2 sm:-translate-x-1/2';
+
+  // Toolbar Drag Handlers
+  const handlePointerDown = (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.target as Element).setPointerCapture(e.pointerId);
+      dragStartRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          initialX: toolbarPos.x,
+          initialY: toolbarPos.y
+      };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+      if (!dragStartRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      setToolbarPos({
+          x: dragStartRef.current.initialX + dx,
+          y: dragStartRef.current.initialY + dy
+      });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+      if (dragStartRef.current) {
+          (e.target as Element).releasePointerCapture(e.pointerId);
+          dragStartRef.current = null;
+      }
+  };
+
+  // DANGER ZONE OVERLAY
+  if (activeDangerZone && mode === GameMode.PLAY) {
+      return (
+          <div className="fixed inset-0 z-[9999] bg-red-600 animate-pulse flex flex-col items-center justify-center text-white p-8 text-center pointer-events-none">
+              <div className="bg-black/80 backdrop-blur-xl p-10 rounded-[3rem] border-8 border-red-500 shadow-[0_0_100px_rgba(255,0,0,0.8)] max-w-lg w-full flex flex-col items-center">
+                  <Siren className="w-24 h-24 text-red-500 mb-6 animate-bounce" />
+                  <h1 className="text-5xl font-black uppercase tracking-widest mb-2 text-red-500 drop-shadow-lg">WARNING</h1>
+                  <h2 className="text-2xl font-black uppercase tracking-widest mb-8">RESTRICTED AREA</h2>
+                  
+                  {activeDangerZone.timeRemaining > 0 ? (
+                      <>
+                          <p className="text-sm font-bold uppercase tracking-widest mb-4 text-gray-300">LEAVE IMMEDIATELY OR LOSE POINTS</p>
+                          <div className="text-8xl font-black font-mono tabular-nums text-white animate-pulse">
+                              {activeDangerZone.timeRemaining}
+                          </div>
+                          <p className="text-xs font-bold uppercase mt-2 text-red-400">SECONDS REMAINING</p>
+                      </>
+                  ) : (
+                      <>
+                          <AlertTriangle className="w-16 h-16 text-red-500 mb-4" />
+                          <h3 className="text-3xl font-black text-white uppercase tracking-widest mb-2">DAMAGE TAKEN</h3>
+                          <p className="text-xl font-bold text-red-400 uppercase">-500 POINTS</p>
+                      </>
+                  )}
+              </div>
+          </div>
+      );
+  }
 
   return (
     <>
@@ -351,132 +420,170 @@ const GameHUD: React.FC<GameHUDProps> = ({
             )}
       </div>
 
-      <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2 h-12 pointer-events-auto">
-        
-        {/* EDIT MODE CONTROLS */}
-        {mode === GameMode.EDIT && (
-            <>
-                {/* View Controls Group */}
-                <div className="flex bg-slate-900/95 dark:bg-gray-800 rounded-2xl border border-white/10 p-1 mr-2 shadow-2xl h-12 items-center">
-                    {onFitBounds && (
-                        <button 
-                            onClick={onFitBounds}
-                            title="Fit Tasks to Screen"
-                            className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                        >
-                            <Maximize className="w-5 h-5" />
-                        </button>
-                    )}
-                    {onLocateMe && (
-                        <button 
-                            onClick={onLocateMe}
-                            title="My Position"
-                            className="w-10 h-10 flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                        >
-                            <Target className="w-5 h-5" />
-                        </button>
-                    )}
-                    {onToggleScores && (
-                        <button 
-                            onClick={onToggleScores}
-                            title="Toggle Score Badges"
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors ${showScores ? 'text-blue-400 bg-blue-900/30' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-                        >
-                            <Hash className="w-5 h-5" />
-                        </button>
-                    )}
-                </div>
+      {/* FLOATING DRAGGABLE TOOLBAR (Replaces Top Right) */}
+      <div 
+        className="absolute top-4 right-4 z-[1000] pointer-events-auto"
+        style={{ transform: `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`, touchAction: 'none' }}
+      >
+        <div className="bg-slate-900/95 dark:bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl p-2 flex flex-col gap-2 min-w-[60px] items-center transition-shadow hover:shadow-orange-500/10">
+            
+            {/* Drag Handle */}
+            <div 
+                className="w-full flex justify-center py-1 cursor-grab active:cursor-grabbing text-slate-600 hover:text-white transition-colors border-b border-white/5 mb-1"
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                title="Drag Toolbar"
+            >
+                <GripHorizontal className="w-5 h-5" />
+            </div>
 
-                {/* Map Styles */}
-                <div className="flex bg-slate-900/95 dark:bg-gray-800 rounded-2xl border border-white/10 p-1 mr-2 shadow-2xl h-12 items-center">
-                    {mapStyles.map((style) => (
-                        <button
-                            key={style.id}
-                            onClick={() => onSetMapStyle(style.id)}
-                            title={style.label}
-                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all ${mapStyle === style.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-                        >
-                            <style.icon className="w-5 h-5" />
-                        </button>
-                    ))}
-                </div>
+            {/* Global Actions Row */}
+            <div className="flex gap-2">
+                {/* Mode Toggle Button */}
+                <button 
+                  onClick={toggleMode} 
+                  title={mode === GameMode.PLAY ? "Enter Edit Mode" : mode === GameMode.EDIT ? "Enter Instructor Mode" : "Return to Play Mode"}
+                  className={`w-10 h-10 flex items-center justify-center shadow-lg rounded-xl transition-all border border-white/10 hover:scale-105 active:scale-95 group relative ${mode === GameMode.EDIT ? 'bg-orange-600 text-white' : mode === GameMode.INSTRUCTOR ? 'bg-amber-50 text-amber-600' : 'bg-slate-800 text-white'}`}
+                >
+                  {mode === GameMode.EDIT ? <Layers className="w-5 h-5" /> : mode === GameMode.INSTRUCTOR ? <GraduationCap className="w-5 h-5" /> : <MapIcon className="w-5 h-5" />}
+                </button>
 
-                {/* Relocate Button */}
-                {onRelocateGame && (
+                {/* Global Chat Button */}
+                {onToggleChat && (
                     <button
-                        onClick={onRelocateGame}
-                        title={isRelocating ? "Place Pins Here" : "Relocate All Tasks"}
-                        className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${
-                            isRelocating 
-                            ? 'bg-green-600 text-white border-green-500 animate-pulse hover:bg-green-700' 
-                            : 'bg-slate-900/95 dark:bg-gray-800 text-blue-500 border-blue-500/50 hover:bg-blue-600 hover:text-white'
+                        onClick={onToggleChat}
+                        title="Open Chat"
+                        className={`w-10 h-10 flex items-center justify-center shadow-lg rounded-xl transition-all border border-white/10 hover:scale-105 active:scale-95 group relative ${
+                            unreadMessagesCount > 0 
+                            ? 'bg-orange-600 border-orange-500 animate-pulse text-white' 
+                            : 'bg-slate-800 text-white hover:border-white/30'
                         }`}
                     >
-                        {isRelocating ? <MapPin className="w-6 h-6" /> : <Move className="w-6 h-6" />}
-                        <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">
-                            {isRelocating ? "PASTE PINS" : "RELOCATE ALL"}
-                        </div>
+                        <MessageSquare className="w-5 h-5" />
+                        {unreadMessagesCount > 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900">
+                                {unreadMessagesCount}
+                            </div>
+                        )}
                     </button>
                 )}
 
-                {/* Measure Button */}
-                {onToggleMeasure && !isRelocating && (
-                    <button
-                        onClick={onToggleMeasure}
-                        title={isMeasuring ? "Stop Measuring" : "Measure Distance"}
-                        className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative ${isMeasuring ? 'bg-pink-600 text-white border-pink-500' : 'bg-slate-900/95 dark:bg-gray-800 text-pink-500 border-pink-500/50 hover:bg-pink-600 hover:text-white'}`}
+                {/* Instructor Dashboard Button */}
+                {mode === GameMode.INSTRUCTOR && onOpenInstructorDashboard && (
+                    <button 
+                      onClick={onOpenInstructorDashboard} 
+                      title="Instructor Dashboard"
+                      className="w-10 h-10 bg-slate-800 text-amber-500 shadow-lg rounded-xl flex items-center justify-center transition-all border border-amber-500/50 hover:bg-amber-500 hover:text-white hover:scale-105 active:scale-95 group relative"
                     >
-                        <Ruler className="w-6 h-6" />
-                        <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">Measure</div>
+                        <LayoutDashboard className="w-5 h-5" />
                     </button>
                 )}
-            </>
-        )}
+            </div>
 
-        {/* Global Chat Button (Available in all modes) */}
-        {onToggleChat && (
-            <button
-                onClick={onToggleChat}
-                title="Open Chat"
-                className={`w-12 h-12 shadow-2xl rounded-2xl flex items-center justify-center transition-all border group relative mr-2 ${
-                    unreadMessagesCount > 0 
-                    ? 'bg-orange-600 border-orange-500 animate-pulse text-white shadow-[0_0_20px_rgba(234,88,12,0.6)]' 
-                    : 'bg-slate-900/95 dark:bg-gray-800 border-white/10 text-white hover:border-white/30'
-                }`}
-            >
-                <MessageSquare className="w-6 h-6" />
-                {unreadMessagesCount > 0 && (
-                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-slate-900">
-                        {unreadMessagesCount}
+            {/* EDIT MODE CONTROLS */}
+            {mode === GameMode.EDIT && (
+                <>
+                    {/* TASKS SECTION */}
+                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">TASKS</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {onAddDangerZone && (
+                                <button
+                                    onClick={onAddDangerZone}
+                                    title="Add Danger Zone"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-colors border border-white/5"
+                                >
+                                    <Skull className="w-5 h-5" />
+                                </button>
+                            )}
+                            {onToggleScores && (
+                                <button 
+                                    onClick={onToggleScores}
+                                    title="Toggle Score Badges"
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-colors border border-white/5 ${showScores ? 'text-blue-400 bg-blue-900/30' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10'}`}
+                                >
+                                    <Hash className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
                     </div>
-                )}
-                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">CHAT</div>
-            </button>
-        )}
 
-        {/* Instructor Dashboard Button */}
-        {mode === GameMode.INSTRUCTOR && onOpenInstructorDashboard && (
-            <button 
-              onClick={onOpenInstructorDashboard} 
-              title="Instructor Dashboard"
-              className="w-12 h-12 bg-slate-900/95 dark:bg-gray-800 text-amber-500 shadow-2xl rounded-2xl flex items-center justify-center transition-all border border-amber-500/50 hover:bg-amber-500 hover:text-white hover:scale-105 active:scale-95 group relative"
-            >
-                <LayoutDashboard className="w-6 h-6" />
-                <div className="absolute top-full right-0 mt-2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">Dashboard</div>
-            </button>
-        )}
-        
-        {/* Mode Toggle Button */}
-        <button 
-          onClick={toggleMode} 
-          title={mode === GameMode.PLAY ? "Enter Edit Mode" : mode === GameMode.EDIT ? "Enter Instructor Mode" : "Return to Play Mode"}
-          className={`h-12 w-12 items-center justify-center shadow-2xl rounded-2xl transition-all border border-white/10 hover:scale-105 active:scale-95 group relative ${mode === GameMode.PLAY ? 'hidden md:flex' : 'flex'} ${mode === GameMode.EDIT ? 'bg-orange-600 text-white' : mode === GameMode.INSTRUCTOR ? 'bg-amber-50 text-amber-600' : 'bg-slate-900/95 dark:bg-gray-800 text-white'}`}
-        >
-          {mode === GameMode.EDIT ? <Layers className="w-6 h-6" /> : mode === GameMode.INSTRUCTOR ? <GraduationCap className="w-6 h-6" /> : <MapIcon className="w-6 h-6" />}
-          <div className="absolute top-full right-0 mt-2 bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap z-[2000] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-              {mode === GameMode.PLAY ? 'MODE: PLAY' : mode === GameMode.EDIT ? 'MODE: EDIT' : 'MODE: INST'}
-          </div>
-        </button>
+                    {/* ZOOM SECTION */}
+                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">ZOOM</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {onFitBounds && (
+                                <button 
+                                    onClick={onFitBounds}
+                                    title="Fit Tasks to Screen"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
+                                >
+                                    <Maximize className="w-5 h-5" />
+                                </button>
+                            )}
+                            {onLocateMe && (
+                                <button 
+                                    onClick={onLocateMe}
+                                    title="My Position"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10 transition-colors border border-white/5"
+                                >
+                                    <Target className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* MAP SECTION */}
+                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">MAP</span>
+                        <div className="grid grid-cols-2 gap-2">
+                            {mapStyles.map((style) => (
+                                <button
+                                    key={style.id}
+                                    onClick={() => onSetMapStyle(style.id)}
+                                    title={style.label}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border border-white/5 ${mapStyle === style.id ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10'}`}
+                                >
+                                    <style.icon className="w-5 h-5" />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* EDIT SECTION */}
+                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
+                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">EDIT</span>
+                        <div className="flex flex-col gap-2 w-full">
+                            {onRelocateGame && (
+                                <button
+                                    onClick={onRelocateGame}
+                                    title={isRelocating ? "Place Pins Here" : "Relocate All Tasks"}
+                                    className={`w-full h-10 shadow-lg rounded-xl flex items-center justify-center transition-all border group relative ${
+                                        isRelocating 
+                                        ? 'bg-green-600 text-white border-green-500 animate-pulse hover:bg-green-700' 
+                                        : 'bg-slate-800 text-blue-500 border-blue-500/30 hover:bg-blue-600 hover:text-white'
+                                    }`}
+                                >
+                                    {isRelocating ? <MapPin className="w-5 h-5" /> : <Move className="w-5 h-5" />}
+                                </button>
+                            )}
+
+                            {onToggleMeasure && !isRelocating && (
+                                <button
+                                    onClick={onToggleMeasure}
+                                    title={isMeasuring ? "Stop Measuring" : "Measure Distance"}
+                                    className={`w-full h-10 shadow-lg rounded-xl flex items-center justify-center transition-all border group relative ${isMeasuring ? 'bg-pink-600 text-white border-pink-500' : 'bg-slate-800 text-pink-500 border-pink-500/30 hover:bg-pink-600 hover:text-white'}`}
+                                >
+                                    <Ruler className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
+        </div>
       </div>
     </>
   );

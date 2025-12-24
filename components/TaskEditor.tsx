@@ -527,6 +527,25 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                        )}
                                    </div>
                                </div>
+
+                               {/* Geofence Radius Slider (Moved from Actions Tab) */}
+                               {editedPoint.activationTypes.includes('radius') && (
+                                   <div className="mt-4">
+                                       <div className="flex justify-between items-end mb-2">
+                                           <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em]">GEOFENCE RADIUS</label>
+                                           <span className="text-xs font-bold text-orange-600 dark:text-orange-400">{editedPoint.radiusMeters}m</span>
+                                       </div>
+                                       <input 
+                                           type="range" 
+                                           min="10" 
+                                           max="500" 
+                                           step="5" 
+                                           value={editedPoint.radiusMeters} 
+                                           onChange={(e) => setEditedPoint({...editedPoint, radiusMeters: parseInt(e.target.value)})} 
+                                           className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-600"
+                                       />
+                                   </div>
+                               )}
                            </div>
 
                            {/* INSTRUCTOR NOTES */}
@@ -679,16 +698,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    </div>
                                </button>
                            </div>
-
-                           {editedPoint.activationTypes.includes('radius') && (
-                               <div className="p-5 bg-gray-50 dark:bg-gray-850 rounded-2xl border-2 border-gray-100 dark:border-gray-800">
-                                   <div className="flex justify-between items-center mb-4">
-                                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">GEOFENCE RADIUS</label>
-                                       <span className="text-xl font-black text-orange-600">{editedPoint.radiusMeters}m</span>
-                                   </div>
-                                   <input type="range" min="10" max="500" step="5" value={editedPoint.radiusMeters} onChange={(e) => setEditedPoint({...editedPoint, radiusMeters: parseInt(e.target.value)})} className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-600"/>
-                               </div>
-                           )}
                        </div>
                    )}
                </div>

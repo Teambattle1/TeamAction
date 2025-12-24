@@ -149,6 +149,14 @@ export interface Playground {
   location?: Coordinate; // New: Fixed location on the map for the playground marker
 }
 
+export interface DangerZone {
+  id: string;
+  location: Coordinate;
+  radius: number;
+  penalty: number; // Points deducted
+  duration: number; // Seconds to escape
+}
+
 // Template for saving to library
 export interface PlaygroundTemplate {
   id: string;
@@ -261,6 +269,7 @@ export interface Game {
   description: string;
   points: GamePoint[];
   playgrounds?: Playground[]; 
+  dangerZones?: DangerZone[]; // New: Hostile areas
   createdAt: number;
   defaultMapStyle?: MapStyleId;
   

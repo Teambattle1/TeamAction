@@ -2,9 +2,9 @@
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline, Tooltip } from 'react-leaflet';
 import L from 'leaflet';
-import { GamePoint, Coordinate, GameMode, MapStyleId, Team } from '../types';
+import { GamePoint, Coordinate, GameMode, MapStyleId, Team, DangerZone } from '../types';
 import { getLeafletIcon } from '../utils/icons';
-import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap } from 'lucide-react';
+import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock } from 'lucide-react';
 
 const UserIcon = L.divIcon({
   className: 'custom-user-icon',
@@ -46,6 +46,7 @@ interface GameMapProps {
   measurePath?: Coordinate[];
   logicLinks?: { from: Coordinate; to: Coordinate; color?: string; type?: 'onOpen' | 'onCorrect' | 'onIncorrect' | 'open_playground' }[]; 
   playgroundMarkers?: { id: string; location: Coordinate; title: string; iconId: string }[]; 
+  dangerZones?: DangerZone[]; 
   dependentPointIds?: string[]; 
   accuracy: number | null;
   mode: GameMode;
@@ -59,6 +60,7 @@ interface GameMapProps {
   onDeletePoint?: (pointId: string) => void;
   onPointHover?: (point: GamePoint | null) => void;
   showScores?: boolean;
+  onZoneClick?: (zone: DangerZone) => void; // New Prop
 }
 
 const MapClickParams = ({ onClick }: { onClick?: (c: Coordinate) => void }) => {
@@ -352,21 +354,35 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
                         </div>
                     )}
                     {mode === GameMode.EDIT && (
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="mt-2 space-y-1 border-t border-gray-100 dark:border-gray-800 pt-2">
                             {point.isHiddenBeforeScan && (
-                                <span className="text-[9px] font-black text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-purple-100 dark:border-purple-800">
-                                    <EyeOff className="w-2.5 h-2.5" /> HIDDEN
-                                </span>
+                                <div className="text-[9px] font-black text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-1 rounded flex items-center gap-1.5 border border-purple-100 dark:border-purple-800">
+                                    <EyeOff className="w-3 h-3" /> HIDDEN UNTIL SCAN
+                                </div>
                             )}
-                            {hasActions && (
-                                <span className="text-[9px] font-black text-red-600 dark:text-red-300 bg-red-50 dark:bg-red-900/20 px-1.5 py-0.5 rounded flex items-center gap-1 border border-red-100 dark:border-red-800">
-                                    <Zap className="w-2.5 h-2.5" /> LOGIC
-                                </span>
+                            
+                            {(point.logic?.onOpen?.length || 0) > 0 && (
+                                <div className="text-[9px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-1 rounded flex items-center gap-1.5 border border-amber-100 dark:border-amber-800">
+                                    <Zap className="w-3 h-3 fill-amber-500" /> ON OPEN: {point.logic?.onOpen?.length} ACTIONS
+                                </div>
                             )}
+                            
+                            {(point.logic?.onCorrect?.length || 0) > 0 && (
+                                <div className="text-[9px] font-black text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-1.5 py-1 rounded flex items-center gap-1.5 border border-green-100 dark:border-green-800">
+                                    <CheckCircle className="w-3 h-3" /> ON CORRECT: {point.logic?.onCorrect?.length} ACTIONS
+                                </div>
+                            )}
+                            
+                            {(point.logic?.onIncorrect?.length || 0) > 0 && (
+                                <div className="text-[9px] font-black text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-1.5 py-1 rounded flex items-center gap-1.5 border border-red-100 dark:border-red-800">
+                                    <AlertTriangle className="w-3 h-3" /> ON MISTAKE: {point.logic?.onIncorrect?.length} ACTIONS
+                                </div>
+                            )}
+
                             {isDependent && (
-                                <span className="text-[9px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-700">
-                                    LOCKED
-                                </span>
+                                <div className="text-[9px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-1 rounded border border-gray-200 dark:border-gray-700 flex items-center gap-1.5">
+                                    <Lock className="w-3 h-3" /> LOCKED BY LOGIC
+                                </div>
                             )}
                         </div>
                     )}
@@ -390,6 +406,89 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
   );
 };
 
+const DangerZoneMarker: React.FC<{ 
+    zone: DangerZone; 
+    mode: GameMode; 
+    onMove?: (id: string, loc: Coordinate) => void; 
+    onDelete?: (id: string) => void;
+    onClick?: (zone: DangerZone) => void;
+}> = ({ zone, mode, onMove, onDelete, onClick }) => {
+    const map = useMap();
+    
+    const eventHandlers = React.useMemo(() => ({
+        click: (e: L.LeafletMouseEvent) => {
+            if (mode === GameMode.EDIT && onClick) {
+                L.DomEvent.stopPropagation(e); // Stop map click from firing
+                onClick(zone);
+            }
+        },
+        dragend(e: L.LeafletEvent) {
+            const marker = e.target as L.Marker;
+            if (marker) {
+                const ll = marker.getLatLng();
+                // Check if dropped on trash
+                const trash = document.getElementById('map-trash-bin');
+                if (trash) {
+                    const markerPoint = map.latLngToContainerPoint(ll);
+                    const trashRect = trash.getBoundingClientRect();
+                    const mapRect = map.getContainer().getBoundingClientRect();
+                    const hitX = mapRect.left + markerPoint.x;
+                    const hitY = mapRect.top + markerPoint.y;
+                    const hitMargin = 40;
+                    if (hitX >= trashRect.left - hitMargin && hitX <= trashRect.right + hitMargin && hitY >= trashRect.top - hitMargin && hitY <= trashRect.bottom + hitMargin) {
+                        if (onDelete) onDelete(zone.id);
+                        return;
+                    }
+                }
+                if (onMove) onMove(zone.id, { lat: ll.lat, lng: ll.lng });
+            }
+        },
+        dragstart: () => {
+            const trash = document.getElementById('map-trash-bin');
+            if (trash) {
+                trash.classList.add('bg-red-600', 'text-white', 'border-red-600', 'scale-110');
+            }
+        },
+        drag: (e: L.LeafletEvent) => {
+            // Optional: visual feedback during drag
+        }
+    }), [zone, onMove, onDelete, onClick, map, mode]);
+
+    const isDraggable = mode === GameMode.EDIT;
+
+    return (
+        <>
+            {isDraggable && (
+                <Marker
+                    position={[zone.location.lat, zone.location.lng]}
+                    draggable={true}
+                    eventHandlers={eventHandlers}
+                    icon={getLeafletIcon('skull', true, false, undefined, false, '#ef4444')}
+                    zIndexOffset={900}
+                >
+                    <Tooltip direction="top" offset={[0, -40]} opacity={1} permanent className="custom-leaflet-tooltip">
+                        <div className="bg-red-600 text-white px-2 py-1 rounded font-black text-[10px] uppercase tracking-wider border border-red-400 shadow-lg cursor-pointer">
+                            DANGER ZONE ({zone.radius}m)
+                        </div>
+                    </Tooltip>
+                </Marker>
+            )}
+            <Circle 
+                center={[zone.location.lat, zone.location.lng]}
+                radius={zone.radius}
+                pathOptions={{
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.3,
+                    weight: 2,
+                    dashArray: '10, 10', // Striped effect
+                    className: 'danger-zone-circle' // Add CSS animation class if desired
+                }}
+            />
+        </>
+    );
+};
+
 const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string }> = {
   osm: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap' },
   satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri' },
@@ -397,7 +496,7 @@ const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string }> = {
   light: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap' }
 };
 
-const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points, teams, teamTrails, pointLabels, measurePath, logicLinks, playgroundMarkers = [], dependentPointIds, accuracy, mode, mapStyle, selectedPointId, isRelocating, onPointClick, onTeamClick, onMapClick, onPointMove, onDeletePoint, onPointHover, showScores }, ref) => {
+const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points, teams, teamTrails, pointLabels, measurePath, logicLinks, playgroundMarkers = [], dangerZones = [], dependentPointIds, accuracy, mode, mapStyle, selectedPointId, isRelocating, onPointClick, onTeamClick, onMapClick, onPointMove, onDeletePoint, onPointHover, showScores, onZoneClick }, ref) => {
   const center = userLocation || { lat: 55.6761, lng: 12.5683 };
   const currentLayer = MAP_LAYERS[mapStyle] || MAP_LAYERS.osm;
   
@@ -464,6 +563,18 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
                     />
                 );
             })}
+
+            {/* DANGER ZONES */}
+            {dangerZones.map(zone => (
+                <DangerZoneMarker 
+                    key={zone.id} 
+                    zone={zone} 
+                    mode={mode} 
+                    onMove={onPointMove} 
+                    onDelete={onDeletePoint}
+                    onClick={onZoneClick}
+                />
+            ))}
 
             {playgroundMarkers.map((pg) => (
                 <Marker 

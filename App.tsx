@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Game, GameState, GameMode, GamePoint, Coordinate, 
-  MapStyleId, Language, Team, TaskTemplate, TaskList, TaskType, ChatMessage 
+  MapStyleId, Language, Team, TaskTemplate, TaskList, TaskType, ChatMessage, DangerZone 
 } from './types';
 import * as db from './services/db';
 import { teamSync } from './services/teamSync';
@@ -41,6 +41,7 @@ import GameStats from './components/GameStats';
 import Dashboard from './components/Dashboard';
 import TaskEditor from './components/TaskEditor';
 import ChatDrawer from './components/ChatDrawer'; 
+import DangerZoneModal from './components/DangerZoneModal';
 
 // Constants
 const STORAGE_KEY_GAME_ID = 'geohunt_active_game_id';
@@ -73,6 +74,11 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('English');
   const [loading, setLoading] = useState(true);
   const [showScores, setShowScores] = useState(localStorage.getItem('geohunt_show_scores') !== 'false');
+
+  // Danger Zone Logic State
+  const [activeDangerZone, setActiveDangerZone] = useState<{ id: string; enteredAt: number; timeRemaining: number } | null>(null);
+  const [penalizedZones, setPenalizedZones] = useState<Set<string>>(new Set());
+  const [editingDangerZoneId, setEditingDangerZoneId] = useState<string | null>(null);
 
   // UI Toggles & Modals
   const [showLanding, setShowLanding] = useState(true); 
@@ -124,6 +130,7 @@ const App: React.FC = () => {
 
   const mapRef = useRef<GameMapHandle>(null);
   const saveTimeoutRef = useRef<any>(null); 
+  const dangerTimerRef = useRef<any>(null);
 
   // --- DERIVED STATE ---
   const activeGame = useMemo(() => 
@@ -232,8 +239,6 @@ const App: React.FC = () => {
                           links.push({ from: p.location, to: target.location, color, type: trigger as any });
                       }
                   }
-                  
-                  // NOTE: 'open_playground' links are now handled visually by icons/buttons, removed lines here.
               });
           });
       });
@@ -350,6 +355,81 @@ const App: React.FC = () => {
     };
   }, [showChatDrawer]);
 
+  // --- DANGER ZONE MONITORING ---
+  useEffect(() => {
+      // Only monitor in Play mode with location and active game
+      if (mode !== GameMode.PLAY || !gameState.userLocation || !activeGame || !activeGame.dangerZones) {
+          if (activeDangerZone) {
+              setActiveDangerZone(null); // Clear if mode changes
+          }
+          return;
+      }
+
+      const foundZone = activeGame.dangerZones.find(z => 
+          haversineMeters(gameState.userLocation, z.location) <= z.radius
+      );
+
+      if (foundZone) {
+          // We are inside a danger zone
+          if (!activeDangerZone || activeDangerZone.id !== foundZone.id) {
+              // Newly entered or switched zone. Use zone-specific duration if available, else default 10s.
+              setActiveDangerZone({
+                  id: foundZone.id,
+                  enteredAt: Date.now(),
+                  timeRemaining: foundZone.duration || 10 
+              });
+          }
+      } else {
+          // We are outside all zones
+          if (activeDangerZone) {
+              setActiveDangerZone(null);
+          }
+      }
+  }, [gameState.userLocation, activeGame, mode]);
+
+  // --- DANGER ZONE TIMER LOGIC ---
+  useEffect(() => {
+      if (activeDangerZone) {
+          // Timer tick
+          dangerTimerRef.current = setInterval(() => {
+              setActiveDangerZone(prev => {
+                  if (!prev) return null;
+                  const newTime = prev.timeRemaining - 1;
+                  
+                  // Check Penalty
+                  if (newTime <= 0) {
+                      if (!penalizedZones.has(prev.id)) {
+                          // Look up specific penalty for this zone
+                          const zoneConfig = activeGame?.dangerZones?.find(z => z.id === prev.id);
+                          const penaltyAmount = zoneConfig ? (zoneConfig.penalty !== undefined ? zoneConfig.penalty : 500) : 500;
+
+                          // Apply Penalty
+                          setGameState(curr => ({ ...curr, score: Math.max(0, curr.score - penaltyAmount) }));
+                          setPenalizedZones(prevSet => new Set(prevSet).add(prev.id));
+                          
+                          // Sync penalty to team score if playing in a team
+                          if (gameState.teamName && activeGame) {
+                              const teamId = `team-${gameState.teamName.replace(/\s+/g, '-').toLowerCase()}-${activeGame.id}`;
+                              db.updateTeamScore(teamId, -penaltyAmount);
+                          }
+                      }
+                      return { ...prev, timeRemaining: 0 };
+                  }
+                  return { ...prev, timeRemaining: newTime };
+              });
+          }, 1000);
+      } else {
+          clearInterval(dangerTimerRef.current);
+          // If we leave the zone, we might want to allow re-penalizing if re-entering? 
+          // For now, let's reset the penalized set only when starting a new game session or explicitly clearing.
+          // Or per-session entry. For this strict rule, typically you get hit once per entry session.
+          // So no change to penalizedZones here (it resets on mount).
+      }
+
+      return () => clearInterval(dangerTimerRef.current);
+  }, [activeDangerZone?.id, activeGame]); // Added activeGame dependency to access fresh penalty config
+
+
   useEffect(() => {
       if (showChatDrawer) {
           setUnreadMessagesCount(0);
@@ -405,6 +485,7 @@ const App: React.FC = () => {
           name: gameData.name || 'New Game',
           description: gameData.description || '',
           points: [],
+          dangerZones: [],
           createdAt: Date.now(),
           client: gameData.client,
           timerConfig: gameData.timerConfig
@@ -495,6 +576,25 @@ const App: React.FC = () => {
       }
   };
 
+  const handleAddDangerZone = () => {
+      if (!activeGame) return;
+      const center = mapRef.current?.getCenter() || gameState.userLocation || { lat: 0, lng: 0 };
+      const newZone: DangerZone = {
+          id: `dz-${Date.now()}`,
+          location: center,
+          radius: 25, 
+          penalty: 500,
+          duration: 10 // Default duration
+      };
+      updateActiveGame({ ...activeGame, dangerZones: [...(activeGame.dangerZones || []), newZone] });
+  };
+
+  const handleUpdateDangerZone = (updatedZone: DangerZone) => {
+      if (!activeGame) return;
+      const updatedZones = (activeGame.dangerZones || []).map(z => z.id === updatedZone.id ? updatedZone : z);
+      updateActiveGame({ ...activeGame, dangerZones: updatedZones });
+  };
+
   const handleRelocateGame = () => {
       if (isRelocating) {
           if (!activeGame || activeGame.points.length === 0) {
@@ -530,7 +630,16 @@ const App: React.FC = () => {
               };
           });
 
-          updateActiveGame({ ...activeGame, points: updatedPoints });
+          // Relocate Danger Zones too
+          const updatedZones = (activeGame.dangerZones || []).map(z => ({
+              ...z,
+              location: {
+                  lat: z.location.lat + deltaLat,
+                  lng: z.location.lng + deltaLng
+              }
+          }));
+
+          updateActiveGame({ ...activeGame, points: updatedPoints, dangerZones: updatedZones });
           setIsRelocating(false);
       } else {
           setIsRelocating(true);
@@ -573,9 +682,6 @@ const App: React.FC = () => {
   };
 
   const handleLandingAction = (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY') => {
-      // Don't close landing immediately for some actions if validation fails
-      // But usually fine.
-
       switch(action) {
           case 'PLAY':
               setShowLanding(false);
@@ -691,14 +797,32 @@ const App: React.FC = () => {
           return;
       }
 
+      // Check if it's a Danger Zone
+      const dzIndex = activeGame.dangerZones?.findIndex(z => z.id === id);
+      if (dzIndex !== undefined && dzIndex !== -1 && activeGame.dangerZones) {
+          const updatedZones = [...activeGame.dangerZones];
+          updatedZones[dzIndex] = { ...updatedZones[dzIndex], location: loc };
+          updateActiveGame({ ...activeGame, dangerZones: updatedZones });
+          return;
+      }
+
       // Normal point drag
       const updatedPoints = activeGame.points.map(p => p.id === id ? { ...p, location: loc } : p);
       updateActiveGame({ ...activeGame, points: updatedPoints });
   };
 
+  const handleDeleteDangerZone = (id: string) => {
+      if (!activeGame) return;
+      const updatedZones = (activeGame.dangerZones || []).filter(z => z.id !== id);
+      updateActiveGame({ ...activeGame, dangerZones: updatedZones });
+  };
+
   if (clientSubmissionToken) {
       return <ClientSubmissionView token={clientSubmissionToken} />;
   }
+
+  // Find the DangerZone being edited
+  const editingDangerZone = activeGame?.dangerZones?.find(z => z.id === editingDangerZoneId);
 
   return (
     <div className="w-full h-screen overflow-hidden bg-slate-900 text-white font-sans">
@@ -715,7 +839,8 @@ const App: React.FC = () => {
                   isRelocating={isRelocating}
                   measurePath={measurePath}
                   logicLinks={logicInfo.links}
-                  playgroundMarkers={logicInfo.playgroundMarkers} // Pass markers
+                  playgroundMarkers={logicInfo.playgroundMarkers} 
+                  dangerZones={activeGame.dangerZones} 
                   dependentPointIds={dependentPointIds}
                   onPointClick={handlePointClick}
                   showScores={showScores}
@@ -727,9 +852,15 @@ const App: React.FC = () => {
                   onPointMove={handlePointMove}
                   onDeletePoint={(id) => {
                       if (!activeGame) return;
-                      updateActiveGame({ ...activeGame, points: activeGame.points.filter(p => p.id !== id) });
+                      // Determine if removing point or zone
+                      if (id.startsWith('dz-')) {
+                          handleDeleteDangerZone(id);
+                      } else {
+                          updateActiveGame({ ...activeGame, points: activeGame.points.filter(p => p.id !== id) });
+                      }
                   }}
                   accuracy={gameState.gpsAccuracy}
+                  onZoneClick={(zone) => setEditingDangerZoneId(zone.id)} // Trigger modal
               />
           )}
       </div>
@@ -775,7 +906,9 @@ const App: React.FC = () => {
               hiddenPlaygroundIds={mode === GameMode.PLAY ? hiddenPlaygroundIds : []}
               onToggleChat={() => setShowChatDrawer(prev => !prev)}
               unreadMessagesCount={unreadMessagesCount}
-              targetPlaygroundId={targetPlaygroundId} // NEW: Highlight logic target
+              targetPlaygroundId={targetPlaygroundId}
+              onAddDangerZone={handleAddDangerZone} 
+              activeDangerZone={activeDangerZone} 
           />
       )}
 
@@ -811,6 +944,16 @@ const App: React.FC = () => {
                   setShowWelcome(false);
                   setShowLanding(false);
               }}
+          />
+      )}
+
+      {/* DANGER ZONE EDITOR MODAL */}
+      {editingDangerZone && mode === GameMode.EDIT && (
+          <DangerZoneModal 
+              zone={editingDangerZone}
+              onSave={handleUpdateDangerZone}
+              onDelete={() => { handleDeleteDangerZone(editingDangerZone.id); setEditingDangerZoneId(null); }}
+              onClose={() => setEditingDangerZoneId(null)}
           />
       )}
 
