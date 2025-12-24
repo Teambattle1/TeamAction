@@ -11,7 +11,7 @@ import {
     PlayCircle, MapPin, Globe, Filter, 
     CheckSquare, MousePointerClick, RefreshCw, Grid, List, 
     ChevronRight, ChevronDown, Check, Download, AlertCircle,
-    Trophy, Eye, HelpCircle, CheckSquare as CheckIcon, Save, Image as ImageIcon, Upload, Printer, QrCode, ArrowLeft
+    Trophy, Eye, HelpCircle, CheckSquare as CheckIcon, Save, Image as ImageIcon, Upload, Printer, QrCode, ArrowLeft, Gamepad2, LayoutGrid
 } from 'lucide-react';
 
 interface TaskMasterProps {
@@ -28,8 +28,11 @@ interface TaskMasterProps {
     onSelectTasksForGame?: (tasks: TaskTemplate[]) => void;
     games?: Game[];
     activeGameId?: string | null;
-    onAddTasksToGame?: (gameId: string, tasks: TaskTemplate[]) => void;
+    onAddTasksToGame?: (gameId: string, tasks: TaskTemplate[], targetPlaygroundId?: string | null) => void;
     initialEditingListId?: string | null;
+    initialPlaygroundId?: string | null;
+    onOpenGameChooser?: () => void;
+    onOpenPlaygroundManager?: () => void;
 }
 
 const LIST_COLORS = ['#3b82f6', '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#8b5cf6', '#d946ef', '#f43f5e', '#64748b'];
@@ -93,7 +96,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     games,
     activeGameId,
     onAddTasksToGame,
-    initialEditingListId
+    initialEditingListId,
+    initialPlaygroundId,
+    onOpenGameChooser,
+    onOpenPlaygroundManager
 }) => {
     const [activeTab, setActiveTab] = useState<'LISTS' | 'LIBRARY' | 'QR'>((initialTab === 'LISTS' || initialTab === 'LIBRARY' || initialTab === 'QR') ? initialTab : 'LIBRARY');
     const [searchQuery, setSearchQuery] = useState('');
@@ -103,11 +109,17 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [showLoquizImporter, setShowLoquizImporter] = useState(false);
     const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
     const [isUploading, setIsUploading] = useState(false);
+    const [isSelectionModeLocal, setIsSelectionModeLocal] = useState(isSelectionMode);
     
     // State for selecting game to add list to
     const [targetListForGame, setTargetListForGame] = useState<TaskList | null>(null);
     
     const listImageInputRef = useRef<HTMLInputElement>(null);
+
+    // Sync local selection mode if prop changes
+    useEffect(() => {
+        setIsSelectionModeLocal(isSelectionMode);
+    }, [isSelectionMode]);
 
     // Auto-open list editor if initialEditingListId is provided
     useEffect(() => {
@@ -158,7 +170,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     };
 
     const handleSelectTemplate = (template: TaskTemplate) => {
-        if (isSelectionMode) {
+        if (isSelectionModeLocal) {
             // In selection mode, clicking selects/deselects for adding
             setSelectedTemplateIds(prev => 
                 prev.includes(template.id) ? prev.filter(id => id !== template.id) : [...prev, template.id]
@@ -173,6 +185,49 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         if (onSelectTasksForGame) {
             const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
             onSelectTasksForGame(selectedTasks);
+        }
+    };
+
+    const handleAddToGameMap = () => {
+        if (selectedTemplateIds.length === 0) return;
+        
+        if (!activeGameId && onOpenGameChooser) {
+            onOpenGameChooser();
+            return;
+        }
+
+        if (activeGameId && onAddTasksToGame) {
+            const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+            // Force Map (null playgroundId)
+            onAddTasksToGame(activeGameId, selectedTasks, null);
+            setSelectedTemplateIds([]);
+            setIsSelectionModeLocal(false);
+            onClose();
+        }
+    };
+
+    const handleAddToPlayground = () => {
+        if (selectedTemplateIds.length === 0) return;
+
+        if (initialPlaygroundId && activeGameId && onAddTasksToGame) {
+            // Contextual Playground exists
+            const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+            onAddTasksToGame(activeGameId, selectedTasks, initialPlaygroundId);
+            setSelectedTemplateIds([]);
+            setIsSelectionModeLocal(false);
+            onClose();
+        } else {
+            // No specific playground context -> Open Manager (to pick global template or manage)
+            if (onOpenPlaygroundManager) {
+                onOpenPlaygroundManager();
+                // We keep selection open or close? 
+                // Usually we'd want to *apply* selection to the playground we pick... 
+                // but the PlaygroundManager is for templates. 
+                // For now just open it as requested.
+                // Or if user just wants to add to *some* playground in active game:
+                // We could show a picker here. 
+                // But following the prompt "or else open GLOBAL PLAYGROUND template list".
+            }
         }
     };
 
@@ -202,13 +257,18 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     const handleUseList = (e: React.MouseEvent, list: TaskList) => {
         e.stopPropagation();
-        if (isSelectionMode && onSelectTasksForGame) {
+        if (isSelectionModeLocal && onSelectTasksForGame) {
             // DIRECTLY ADD TO ZONE IF IN SELECTION MODE
             onSelectTasksForGame(list.tasks);
         } else {
             // OTHERWISE OPEN GAME CHOOSER POPUP
             setTargetListForGame(list);
         }
+    };
+
+    const toggleSelectionMode = () => {
+        setIsSelectionModeLocal(!isSelectionModeLocal);
+        setSelectedTemplateIds([]);
     };
 
     if (editingTemplate) {
@@ -281,7 +341,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-gray-500 uppercase text-xs tracking-widest">Tasks ({editingList.tasks.length})</h3>
-                            {isSelectionMode && (
+                            {isSelectionModeLocal && (
                                 <button 
                                     onClick={() => { onSelectTasksForGame && onSelectTasksForGame(editingList.tasks); setEditingList(null); }}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-blue-700 shadow-md flex items-center gap-2"
@@ -336,7 +396,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 w-full max-w-6xl h-full max-h-[90vh] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-800 print:hidden">
+            <div className="bg-white dark:bg-gray-900 w-full max-w-6xl h-full max-h-[90vh] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-gray-200 dark:border-gray-800 print:hidden relative">
                 {/* Header */}
                 <div className="p-6 bg-slate-900 text-white flex justify-between items-center shrink-0">
                     <div className="flex items-center gap-4">
@@ -349,6 +409,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
+                        <button 
+                            onClick={toggleSelectionMode}
+                            className={`flex items-center gap-2 px-4 py-2 border rounded-xl transition-all font-bold text-xs uppercase tracking-widest ${isSelectionModeLocal ? 'bg-orange-600 text-white border-orange-600' : 'bg-transparent text-gray-400 border-gray-700 hover:text-white hover:border-white'}`}
+                        >
+                            <CheckSquare className="w-4 h-4" /> SELECT
+                        </button>
                         <button 
                             onClick={() => setShowLoquizImporter(true)}
                             className="hidden sm:flex items-center gap-2 px-4 py-2 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white border border-blue-500/30 rounded-xl transition-all font-bold text-xs uppercase tracking-widest"
@@ -408,7 +474,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 )}
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-950 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-950 custom-scrollbar pb-24">
                     {activeTab === 'QR' ? (
                         <div className="max-w-4xl mx-auto">
                             <div className="mb-6 flex justify-between items-center bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -595,9 +661,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             
                                             <button 
                                                 onClick={(e) => handleUseList(e, list)}
-                                                className={`pointer-events-auto w-full py-2 text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all shadow-lg flex items-center justify-center gap-1 group-hover:translate-y-0 translate-y-2 opacity-0 group-hover:opacity-100 duration-300 ${isSelectionMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                                                className={`pointer-events-auto w-full py-2 text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-all shadow-lg flex items-center justify-center gap-1 group-hover:translate-y-0 translate-y-2 opacity-0 group-hover:opacity-100 duration-300 ${isSelectionModeLocal ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}
                                             >
-                                                {isSelectionMode ? "ADD TO ZONE" : "USE IN GAME"} <ChevronRight className="w-3 h-3" />
+                                                {isSelectionModeLocal ? "ADD TO ZONE" : "USE IN GAME"} <ChevronRight className="w-3 h-3" />
                                             </button>
                                         </div>
                                     </div>
@@ -607,18 +673,30 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     )}
                 </div>
 
-                {isSelectionMode && selectedTemplateIds.length > 0 && (
-                    <div className="p-6 bg-blue-600 text-white flex justify-between items-center shadow-2xl animate-in slide-in-from-bottom duration-300 shrink-0">
+                {isSelectionModeLocal && selectedTemplateIds.length > 0 && (
+                    <div className="absolute bottom-0 left-0 right-0 p-6 bg-slate-900 border-t border-slate-800 text-white flex flex-col sm:flex-row justify-between items-center shadow-[0_-20px_50px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom duration-300 z-50 gap-4">
                         <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-black text-lg">{selectedTemplateIds.length}</div>
-                            <span className="font-black text-sm uppercase tracking-widest">Tasks selected for mission</span>
+                            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg border border-blue-400">{selectedTemplateIds.length}</div>
+                            <div>
+                                <span className="block font-black text-sm uppercase tracking-widest text-blue-400">TASKS SELECTED</span>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">CHOOSE DESTINATION</span>
+                            </div>
                         </div>
-                        <button 
-                            onClick={handleFinishSelection} 
-                            className="px-8 py-3 bg-white text-blue-600 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all"
-                        >
-                            ADD TO GAME <RefreshCw className="inline-block ml-2 w-4 h-4" />
-                        </button>
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            <button 
+                                onClick={handleAddToGameMap} 
+                                className="flex-1 sm:flex-none px-6 py-3 bg-white text-slate-900 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 hover:bg-gray-100"
+                            >
+                                <MapPin className="w-4 h-4" /> ADD TO MAP
+                            </button>
+                            <button 
+                                onClick={handleAddToPlayground}
+                                className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 border border-orange-500/50"
+                            >
+                                <LayoutGrid className="w-4 h-4" /> 
+                                {initialPlaygroundId ? 'ADD TO PLAYGROUND' : 'ADD TO NEW ZONE'}
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
