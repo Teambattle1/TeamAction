@@ -21,24 +21,9 @@ const ScoreManager: React.FC<ScoreManagerProps> = ({ teams, onClose, activeGameI
         
         // 2. Log "Bonus Task"
         const bonusId = `bonus-${Date.now()}`;
-        // We use a special ID format that TeamsModal will recognize as a bonus
-        // Since `completed_point_ids` is just a list of IDs, we append this.
-        // TeamsModal needs to interpret this.
-        
-        // Fetch fresh team to get current array
         const freshTeam = await db.fetchTeam(team.id);
         if (freshTeam) {
-            const currentPoints = freshTeam.completedPointIds || [];
-            // To make it show in the log, we abuse the ID system slightly. 
-            // In a robust system, we'd have a separate activity log table.
-            // For now: 
-            const newPoints = [...currentPoints, bonusId];
-            await db.updateTeamProgress(team.id, bonusId, freshTeam.score + amount); // Note: score updated twice effectively, careful. fetchTeam gets old score.
-            // Actually `updateTeamScore` handles the math atomically if db.ts is good, 
-            // but `updateTeamProgress` sets absolute score.
-            // Let's rely on `updateTeamProgress` solely.
-            
-            await db.updateTeamProgress(team.id, bonusId, (freshTeam.score || 0) + amount);
+            await db.updateTeamProgress(team.id, bonusId, freshTeam.score); 
         }
 
         setProcessingId(null);

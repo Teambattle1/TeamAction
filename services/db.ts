@@ -3,7 +3,15 @@ import { supabase } from '../lib/supabase';
 import { Game, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage } from '../types';
 
 const logError = (context: string, error: any) => {
-    console.error(`[DB Service] Error in ${context}:`, error);
+    // Check for "Table not found" (Postgres code 42P01)
+    if (error?.code === '42P01') {
+        console.warn(`[DB Service] Table missing in ${context} (42P01). Run Database Setup in Admin Dashboard.`);
+        return;
+    }
+    
+    // Safely serialize error object to string to avoid "[object Object]" in logs
+    const errorMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+    console.error(`[DB Service] Error in ${context}:`, errorMsg);
 };
 
 // --- GAMES ---
@@ -12,6 +20,7 @@ export const fetchGames = async (): Promise<Game[]> => {
     try {
         const { data, error } = await supabase.from('games').select('*');
         if (error) throw error;
+        if (!data) return [];
         return data.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) {
         logError('fetchGames', e);
@@ -47,6 +56,7 @@ export const fetchTeams = async (gameId: string): Promise<Team[]> => {
     try {
         const { data, error } = await supabase.from('teams').select('*').eq('game_id', gameId);
         if (error) throw error;
+        if (!data) return [];
         
         return data.map((row: any) => ({
             id: row.id,
@@ -203,6 +213,7 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
     try {
         const { data, error } = await supabase.from('library').select('*');
         if (error) throw error;
+        if (!data) return [];
         return data.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) {
         logError('fetchLibrary', e);
@@ -237,6 +248,7 @@ export const fetchTaskLists = async (): Promise<TaskList[]> => {
     try {
         const { data, error } = await supabase.from('task_lists').select('*');
         if (error) throw error;
+        if (!data) return [];
         return data.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) {
         logError('fetchTaskLists', e);
@@ -310,6 +322,7 @@ export const fetchPlaygroundLibrary = async (): Promise<PlaygroundTemplate[]> =>
     try {
         const { data, error } = await supabase.from('playground_library').select('*');
         if (error) throw error;
+        if (!data) return [];
         return data.map((row: any) => ({ ...row.data, id: row.id, title: row.title, isGlobal: row.is_global }));
     } catch (e) {
         logError('fetchPlaygroundLibrary', e);
@@ -374,6 +387,7 @@ export const fetchAccountUsers = async (): Promise<AccountUser[]> => {
     try {
         const { data, error } = await supabase.from('account_users').select('*');
         if (error) throw error;
+        if (!data) return [];
         return data.map((row: any) => {
             const user = row.data as AccountUser;
             return {
@@ -385,6 +399,9 @@ export const fetchAccountUsers = async (): Promise<AccountUser[]> => {
             };
         });
     } catch (e) {
+        // Rethrow table missing error so AccountUsers component can see it and prompt setup
+        if ((e as any)?.code === '42P01') throw e;
+        
         logError('fetchAccountUsers', e);
         return [];
     }
@@ -499,6 +516,7 @@ export const fetchAccountInvites = async (): Promise<UserInvite[]> => {
     try {
         const { data, error } = await supabase.from('account_invites').select('*');
         if (error) throw error;
+        if (!data) return [];
         return data.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) {
         logError('fetchAccountInvites', e);

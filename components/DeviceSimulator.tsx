@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Tablet, RotateCw, X, Lock } from 'lucide-react';
+import { Smartphone, Tablet, RotateCw, X } from 'lucide-react';
 
 interface DeviceSimulatorProps {
     children: React.ReactNode;
@@ -20,7 +20,6 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
         }
     }, [device, orientation, onConfigChange]);
 
-    // Dimensions for common devices
     const getStyles = () => {
         if (device === 'mobile') {
             return orientation === 'portrait' 
@@ -39,7 +38,6 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
 
     return (
         <div className="fixed inset-0 z-[6000] bg-slate-950 flex flex-col items-center justify-center p-4">
-            {/* Simulator Toolbar */}
             <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-slate-900 border-b border-slate-800 shadow-xl z-50">
                 <div className="flex items-center gap-6">
                     <div>
@@ -78,19 +76,14 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
                 </button>
             </div>
             
-            {/* Device Frame */}
             <div className="flex-1 w-full flex items-center justify-center overflow-auto py-20 bg-slate-950">
                 <div 
                     className="relative bg-white dark:bg-slate-900 shadow-2xl transition-all duration-500 ease-in-out border-[12px] border-[#1a1a1a] rounded-[2.5rem] ring-1 ring-white/10"
                     style={getStyles()}
                 >
-                    {/* Screen Content */}
-                    {/* transform: translateZ(0) makes this a containing block for fixed children */}
                     <div className="w-full h-full relative overflow-hidden" style={{ transform: 'translateZ(0)' }}>
                         {children}
                     </div>
-
-                    {/* Fake Home Bar */}
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-white/20 rounded-full pointer-events-none z-[9999]" />
                 </div>
             </div>

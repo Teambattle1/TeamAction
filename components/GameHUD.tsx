@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { GameMode, MapStyleId, Language, Playground, TimerConfig, Coordinate } from '../types';
-import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin, Maximize, Target, Hash, MessageSquare, Skull, Siren, AlertTriangle, GripHorizontal, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Map as MapIcon, Layers, GraduationCap, Menu, X, Globe, Moon, Sun, Library, Users, Home, LayoutDashboard, Ruler, Gamepad2, Shield, Clock, Move, MapPin, Maximize, Target, Hash, MessageSquare, Skull, Siren, AlertTriangle, GripHorizontal, ToggleLeft, ToggleRight, Anchor } from 'lucide-react';
 import { formatDistance } from '../utils/geo';
 import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
@@ -25,7 +25,7 @@ interface GameHUDProps {
   measuredDistance?: number;
   playgrounds?: Playground[];
   onOpenPlayground?: (id: string) => void;
-  onOpenTeamDashboard?: () => void;
+  onOpenTeamDashboard?: () => void; // This opens the Stats View (TeamDashboard)
   onRelocateGame?: () => void;
   isRelocating?: boolean;
   timerConfig?: TimerConfig; 
@@ -376,20 +376,9 @@ const GameHUD: React.FC<GameHUDProps> = ({
               onLocateMe={onLocateMe}
               onFitBounds={onFitBounds}
               hideSearch={!onSearchLocation}
+              labelButtons={mode === GameMode.INSTRUCTOR}
           />
       </div>
-
-      {/* MODE TOGGLE */}
-      {/* Instructor Mode is accessed via login, so standard toggle just swaps Play/Edit for development convenience if needed, 
-          or restricted in production. Assuming dev access for now. */}
-      {/* <div className="absolute top-4 right-4 z-[2000] flex gap-2 pointer-events-auto">
-          <button 
-              onClick={toggleMode} 
-              className={`px-4 py-2 rounded-xl shadow-xl font-black text-xs uppercase tracking-widest border-2 transition-all hover:scale-105 active:scale-95 ${mode === GameMode.PLAY ? 'bg-green-500 border-green-400 text-white' : (mode === GameMode.EDIT ? 'bg-orange-500 border-orange-400 text-white' : 'bg-indigo-600 border-indigo-500 text-white')}`}
-          >
-              {mode} MODE
-          </button>
-      </div> */}
 
       {/* FLOATING ACTION BUTTONS (PLAY MODE) */}
       {mode === GameMode.PLAY && (
@@ -414,6 +403,24 @@ const GameHUD: React.FC<GameHUDProps> = ({
                       <Hash className="w-6 h-6" />
                   </button>
               )}
+          </div>
+      )}
+
+      {/* FLOATING TOOLBAR (INSTRUCTOR MODE - MOBILE STYLE) */}
+      {mode === GameMode.INSTRUCTOR && (
+          <div className="absolute bottom-32 left-1/2 -translate-x-1/2 z-[2500] pointer-events-auto">
+              <button 
+                  onClick={onOpenInstructorDashboard}
+                  className="bg-slate-900 border border-slate-700 text-white rounded-3xl px-6 py-3 shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 transition-all"
+              >
+                  <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center">
+                      <Shield className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="text-left">
+                      <span className="block text-[10px] font-black uppercase text-slate-400 leading-none mb-0.5">OPEN MENU</span>
+                      <span className="block text-xs font-bold uppercase tracking-widest">INSTRUCTOR</span>
+                  </div>
+              </button>
           </div>
       )}
 

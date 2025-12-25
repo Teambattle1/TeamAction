@@ -12,8 +12,7 @@ interface InstructorMobileDashboardProps {
 
 const InstructorMobileDashboard: React.FC<InstructorMobileDashboardProps> = ({ user, onAction, onLogout, activeGameName }) => {
     return (
-        <div className="fixed inset-0 z-[4000] bg-slate-950 flex flex-col text-white font-sans">
-            {/* Header */}
+        <div className="fixed inset-0 z-[4000] bg-slate-950 flex flex-col text-white font-sans animate-in slide-in-from-bottom duration-300">
             <div className="p-6 bg-slate-900 border-b border-slate-800 flex justify-between items-center">
                 <div>
                     <h1 className="text-xl font-black uppercase tracking-widest text-white">INSTRUCTOR</h1>
@@ -30,7 +29,6 @@ const InstructorMobileDashboard: React.FC<InstructorMobileDashboardProps> = ({ u
                 </div>
             </div>
 
-            {/* Grid Buttons */}
             <div className="flex-1 p-6 grid grid-cols-2 gap-4 content-center">
                 <button 
                     onClick={() => onAction('MAP')}
@@ -73,7 +71,6 @@ const InstructorMobileDashboard: React.FC<InstructorMobileDashboardProps> = ({ u
                 </button>
             </div>
 
-            {/* Footer */}
             <div className="p-6">
                 <button 
                     onClick={onLogout}

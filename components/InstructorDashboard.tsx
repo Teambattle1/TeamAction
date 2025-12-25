@@ -6,6 +6,7 @@ import * as db from '../services/db';
 import { teamSync } from '../services/teamSync';
 import GameMap, { GameMapHandle } from './GameMap';
 import PlaygroundModal from './PlaygroundModal';
+import LocationSearch from './LocationSearch'; // Added import
 import { ICON_COMPONENTS } from '../utils/icons';
 import { haversineMeters } from '../utils/geo';
 
@@ -363,15 +364,25 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                             mapStyle="osm"
                             onPointClick={(p) => setSelectedPointId(p.id)} 
                             onTeamClick={(teamId) => {
-                                // Just open chat drawer for that team
-                                // The map popup handles this now, but if clicking the marker body directly:
                                 setSelectedTeamId(teamId);
                             }}
                             selectedPointId={selectedPointId}
                         />
                         
+                        {/* Instructor Map Tools - Zoom / Locate */}
+                        <div className="absolute top-4 right-4 z-[1000] pointer-events-auto">
+                            <LocationSearch 
+                                onSelectLocation={(c) => mapRef.current?.jumpTo(c)} 
+                                onLocateMe={() => { /* Instructor usually doesn't need to locate self, but useful for testing */ }}
+                                onFitBounds={() => mapRef.current?.fitBounds(game.points)}
+                                hideSearch={true}
+                                className="h-10"
+                                labelButtons={true} // New prop to force text labels
+                            />
+                        </div>
+
                         {/* Legend for Status */}
-                        <div className="absolute top-16 right-4 z-[1000] bg-slate-900/90 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md pointer-events-none">
+                        <div className="absolute top-20 right-4 z-[1000] bg-slate-900/90 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md pointer-events-none">
                             <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">STATUS LEGEND</h4>
                             <div className="space-y-1.5">
                                 <div className="flex items-center gap-2">

@@ -9,9 +9,10 @@ interface LocationSearchProps {
   onFitBounds?: () => void;
   className?: string;
   hideSearch?: boolean;
+  labelButtons?: boolean; // New prop
 }
 
-const LocationSearch: React.FC<LocationSearchProps> = ({ onSelectLocation, onLocateMe, onFitBounds, className = "", hideSearch = false }) => {
+const LocationSearch: React.FC<LocationSearchProps> = ({ onSelectLocation, onLocateMe, onFitBounds, className = "", hideSearch = false, labelButtons = false }) => {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -84,32 +85,34 @@ const LocationSearch: React.FC<LocationSearchProps> = ({ onSelectLocation, onLoc
         </div>
       )}
 
-      <div className="flex gap-1.5 h-full">
+      <div className="flex gap-2 h-full">
           {onLocateMe && (
-            <div className="relative group h-12 w-12">
+            <div className="relative group h-full">
               <button 
                 onClick={onLocateMe} 
                 title="Locate Me (GPS)"
-                className="w-full h-full bg-slate-900/95 dark:bg-gray-850 backdrop-blur-md text-blue-400 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-center hover:bg-slate-800 transition-all active:scale-95" 
+                className="h-full aspect-square bg-slate-900/95 dark:bg-gray-850 backdrop-blur-md text-blue-400 rounded-2xl shadow-2xl border border-white/10 flex flex-col items-center justify-center hover:bg-slate-800 transition-all active:scale-95" 
                 aria-label="Locate Me"
               >
-                <Target className="w-6 h-6" />
+                <Target className="w-5 h-5" />
+                {labelButtons && <span className="text-[8px] font-black uppercase mt-0.5">LOCATE</span>}
               </button>
-              <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">My Location</div>
+              {!labelButtons && <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">My Location</div>}
             </div>
           )}
 
           {onFitBounds && (
-            <div className="relative group h-12 w-12">
+            <div className="relative group h-full">
               <button 
                 onClick={onFitBounds} 
                 title="Show All Tasks"
-                className="w-full h-full bg-slate-900/95 dark:bg-gray-850 backdrop-blur-md text-orange-400 rounded-2xl shadow-2xl border border-white/10 flex items-center justify-center hover:bg-slate-800 transition-all active:scale-95" 
+                className="h-full aspect-square bg-slate-900/95 dark:bg-gray-850 backdrop-blur-md text-orange-400 rounded-2xl shadow-2xl border border-white/10 flex flex-col items-center justify-center hover:bg-slate-800 transition-all active:scale-95" 
                 aria-label="Fit Map to Tasks"
               >
-                <Maximize className="w-6 h-6" />
+                <Maximize className="w-5 h-5" />
+                {labelButtons && <span className="text-[8px] font-black uppercase mt-0.5">FIT MAP</span>}
               </button>
-              <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">View All</div>
+              {!labelButtons && <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-950 text-white text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded shadow-xl border border-white/10 whitespace-nowrap">View All</div>}
             </div>
           )}
       </div>
