@@ -315,6 +315,28 @@ export const generateAiImage = async (prompt: string, style: string = 'cartoon')
     }
 };
 
+export const generateAvatar = async (keywords: string): Promise<string | null> => {
+    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    try {
+        const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
+            model: 'gemini-2.5-flash-image', 
+            contents: `A cool, stylized, circular avatar for a game player profile. Keywords: ${keywords}. Style: Modern vector art, colorful, vibrant, expressive, white or solid background suitable for a profile picture.`,
+        }));
+        
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                }
+            }
+        }
+        return null;
+    } catch (e) {
+        handleAiError(e);
+        return null;
+    }
+};
+
 export const findCompanyDomain = async (query: string): Promise<string | null> => {
     const ai = new GoogleGenAI({ apiKey: getApiKey() });
     try {

@@ -1,11 +1,12 @@
 
 import React, { useState, useRef } from 'react';
 import { Game, MapStyleId, Language, Coordinate, Team } from '../types';
-import { Play, Users, MapPin, Globe, ArrowLeft, LogOut, Plus, Search, RefreshCw, Clock, User, Hash, Camera, ChevronDown, QrCode, Image as ImageIcon, X, Home } from 'lucide-react';
+import { Play, Users, MapPin, Globe, ArrowLeft, LogOut, Plus, Search, RefreshCw, Clock, User, Hash, Camera, ChevronDown, QrCode, Image as ImageIcon, X, Home, Check } from 'lucide-react';
 import { t } from '../utils/i18n';
 import { haversineMeters } from '../utils/geo';
 import * as db from '../services/db';
 import jsQR from 'jsqr';
+import AvatarCreator from './AvatarCreator';
 
 interface WelcomeScreenProps {
   games: Game[];
@@ -43,7 +44,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const [isScanning, setIsScanning] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Sorting games by distance for default selection logic if needed
   const sortedGames = [...games].sort((a, b) => {
@@ -59,9 +59,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const selectedGame = games.find(g => g.id === selectedGameId) || sortedGames[0];
 
   const handleStart = () => {
-      if (selectedGameId && teamName && userName) {
+      if (selectedGameId && teamName && userName && userPhoto) {
           // In a real app, we would save the photo to the team/member profile here
-          // For now, we proceed with the start callback
+          // For now, we proceed with the start callback. Ideally pass photo up.
+          // Note: App.tsx handles team creation, we need to pass photo.
+          // Currently App.tsx doesn't take photo arg in handleStartGame, but we persist to DB inside App.
+          // We'll attach it to a temporary storage or pass via extended args if refactored.
+          // For now, assuming App.tsx will be updated or we save to LocalStorage for App to pickup.
+          // Quick Fix: Save to localStorage for retrieval in App.tsx handleStartGame
+          localStorage.setItem('geohunt_temp_user_photo', userPhoto);
+          
           onStartGame(selectedGameId, teamName, userName, 'osm');
       }
   };
@@ -78,17 +85,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       // In a real implementation, we would look up the team by code
       // For this UI demo, we'll simulate finding a team or just start if valid
       alert("Join logic would verify code: " + joinCode);
-  };
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setUserPhoto(reader.result as string);
-          };
-          reader.readAsDataURL(file);
-      }
   };
 
   // QR Scanning Logic
@@ -207,8 +203,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
         {/* ==================== VIEW: CREATE TEAM (Screenshot Match) ==================== */}
         {mode === 'CREATE_TEAM' && (
-            <div className="flex flex-col h-full items-center bg-slate-950 overflow-y-auto">
-                <div className="w-full max-w-sm p-6 flex flex-col items-center">
+            <div className="flex flex-col h-full items-center bg-slate-950 overflow-y-auto custom-scrollbar">
+                <div className="w-full max-w-sm p-6 flex flex-col items-center pb-20">
                     <button onClick={() => setMode('MENU')} className="self-start p-2 bg-slate-900 rounded-full text-slate-400 hover:text-white mb-4">
                         <ArrowLeft className="w-5 h-5" />
                     </button>
@@ -277,32 +273,35 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             </div>
                         </div>
 
-                        {/* Profile Photo */}
+                        {/* Profile Photo - AI Generator */}
                         <div>
                             <div className="flex justify-between items-center mb-2 ml-1">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PROFILE PHOTO</label>
-                                <span className="text-[9px] font-black text-red-500 uppercase tracking-widest">REQUIRED</span>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">PROFILE AVATAR</label>
+                                <span className={`text-[9px] font-black uppercase tracking-widest ${userPhoto ? 'text-green-500' : 'text-red-500'}`}>{userPhoto ? 'READY' : 'REQUIRED'}</span>
                             </div>
-                            <div 
-                                className="w-full h-32 border-2 border-dashed border-slate-700 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-slate-500 hover:bg-slate-800/50 transition-all relative overflow-hidden group"
-                                onClick={() => photoInputRef.current?.click()}
-                            >
-                                {userPhoto ? (
-                                    <img src={userPhoto} className="w-full h-full object-cover" />
-                                ) : (
-                                    <>
-                                        <Camera className="w-8 h-8 text-slate-600 mb-2 group-hover:text-slate-400" />
-                                        <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest group-hover:text-slate-400">TAKE PROFILE PHOTO</span>
-                                    </>
-                                )}
-                                <input ref={photoInputRef} type="file" accept="image/*" capture="user" className="hidden" onChange={handlePhotoUpload} />
-                            </div>
+                            
+                            {!userPhoto ? (
+                                <AvatarCreator 
+                                    onConfirm={(img) => setUserPhoto(img)} 
+                                />
+                            ) : (
+                                <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-2xl border border-slate-700">
+                                    <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-green-500">
+                                        <img src={userPhoto} className="w-full h-full object-cover" alt="Profile" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-xs font-bold text-white uppercase mb-1">AVATAR SET</p>
+                                        <button onClick={() => setUserPhoto(null)} className="text-[10px] font-black text-slate-400 uppercase hover:text-white underline">CHANGE</button>
+                                    </div>
+                                    <Check className="w-6 h-6 text-green-500 mr-2" />
+                                </div>
+                            )}
                         </div>
 
                         {/* Submit Button */}
                         <button 
                             onClick={handleStart}
-                            disabled={!teamName || !userName || !selectedGameId}
+                            disabled={!teamName || !userName || !selectedGameId || !userPhoto}
                             className="w-full bg-slate-700 hover:bg-orange-600 text-white py-4 rounded-xl font-black text-sm uppercase tracking-[0.2em] shadow-lg transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed group"
                         >
                             CREATE LOBBY <ArrowLeft className="w-4 h-4 rotate-180 group-hover:translate-x-1 transition-transform" />

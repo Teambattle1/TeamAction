@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Game, GameState, GameMode, GamePoint, Coordinate, 
@@ -45,6 +44,7 @@ import ChatDrawer from './components/ChatDrawer';
 import DangerZoneModal from './components/DangerZoneModal';
 import AdminModal from './components/AdminModal';
 import DeleteGamesModal from './components/DeleteGamesModal';
+import TeamChatOverview from './components/TeamChatOverview';
 
 // Constants
 const STORAGE_KEY_GAME_ID = 'geohunt_active_game_id';
@@ -84,7 +84,7 @@ const App: React.FC = () => {
 
   // Instructor specific state
   const [instructorTeams, setInstructorTeams] = useState<Team[]>([]);
-  const [chatTargetTeamId, setChatTargetTeamId] = useState<string | undefined>(undefined);
+  const [chatTargetTeamIds, setChatTargetTeamIds] = useState<string[] | null>(null);
 
   const [mapStyle, setMapStyle] = useState<MapStyleId>('osm');
   const [language, setLanguage] = useState<Language>('English');
@@ -116,6 +116,7 @@ const App: React.FC = () => {
   const [showTeamsHub, setShowTeamsHub] = useState(false);
   const [showTaskPlaylist, setShowTaskPlaylist] = useState(false);
   const [showChatDrawer, setShowChatDrawer] = useState(false);
+  const [showTeamChatOverview, setShowTeamChatOverview] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showDeleteGamesModal, setShowDeleteGamesModal] = useState(false);
   
@@ -821,7 +822,8 @@ const App: React.FC = () => {
                   alert("Please select a session first.");
                   return;
               }
-              setShowChatDrawer(true);
+              // Open Overview instead of direct drawer
+              setShowTeamChatOverview(true);
               break;
           case 'TEAM_LOBBY':
               if (!activeGame) {
@@ -1499,11 +1501,23 @@ const App: React.FC = () => {
               }}
               isAdmin={teamsModalAdmin}
               onChatWithTeam={(teamId) => {
-                  setChatTargetTeamId(teamId);
+                  setChatTargetTeamIds([teamId]); // Fixed
                   setShowChatDrawer(true);
               }}
               chatHistory={chatHistory} 
               onUpdateGame={updateActiveGame} 
+          />
+      )}
+
+      {showTeamChatOverview && activeGame && (
+          <TeamChatOverview 
+              teams={instructorTeams}
+              onClose={() => setShowTeamChatOverview(false)}
+              onChatWithTeams={(teamIds) => {
+                  setChatTargetTeamIds(teamIds);
+                  setShowTeamChatOverview(false);
+                  setShowChatDrawer(true);
+              }}
           />
       )}
 
@@ -1539,14 +1553,14 @@ const App: React.FC = () => {
       {/* Global Chat Drawer */}
       <ChatDrawer 
           isOpen={showChatDrawer} 
-          onClose={() => { setShowChatDrawer(false); setChatTargetTeamId(undefined); }}
+          onClose={() => { setShowChatDrawer(false); setChatTargetTeamIds(null); }}
           messages={chatHistory}
           gameId={activeGame?.id || ''}
           mode={mode}
           userName={gameState.userName || 'Anonymous'}
           teamId={gameState.teamId}
           teams={instructorTeams} // Pass fetched teams to Chat Drawer
-          selectedTeamId={chatTargetTeamId} // Pass the specific team target
+          selectedTeamIds={chatTargetTeamIds} // Pass the specific team targets (array)
           isInstructor={showLanding || mode === GameMode.INSTRUCTOR || mode === GameMode.EDIT} // Editors are also Instructors
       />
 

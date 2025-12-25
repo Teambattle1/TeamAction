@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
-import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline, Tooltip, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { GamePoint, Coordinate, GameMode, MapStyleId, Team, DangerZone, TeamStatus } from '../types';
 import { getLeafletIcon } from '../utils/icons';
-import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock, Users } from 'lucide-react';
+import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock, Users, Trophy, MessageSquare, MapPin } from 'lucide-react';
 
 const UserIcon = L.divIcon({
   className: 'custom-user-icon',
@@ -55,7 +55,26 @@ const createTeamIcon = (teamName: string, photoUrl?: string, status?: TeamStatus
 
     // Pin Design: Teardrop shape with image inside
     const pinHtml = `
-      <div style="position: relative; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;">
+      <div style="position: relative; width: 60px; height: 60px; display: flex; flex-col; align-items: center; justify-content: center;">
+        <!-- Label above pin -->
+        <div style="
+            position: absolute; 
+            top: -25px; 
+            left: 50%; 
+            transform: translateX(-50%); 
+            background: rgba(0,0,0,0.8); 
+            color: white; 
+            padding: 2px 8px; 
+            border-radius: 12px; 
+            font-size: 10px; 
+            font-weight: 900; 
+            white-space: nowrap; 
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+            z-index: 20;
+        ">${teamName}</div>
+
         <!-- Shadow -->
         <div style="position: absolute; bottom: 0; width: 30px; height: 10px; background: rgba(0,0,0,0.3); border-radius: 50%; filter: blur(4px); transform: translateY(5px);"></div>
         
@@ -121,7 +140,18 @@ export interface GameMapHandle {
 interface GameMapProps {
   userLocation: Coordinate | null;
   points: GamePoint[];
-  teams?: { team: Team, location: Coordinate, status?: TeamStatus }[]; // Updated prop type
+  teams?: { 
+      team: Team, 
+      location: Coordinate, 
+      status?: TeamStatus,
+      // Extended stats for popup
+      stats?: {
+          rank: number;
+          mapSolved: number;
+          mapTotal: number;
+          playgroundStats: { name: string; solved: number; total: number }[];
+      }
+  }[];
   teamTrails?: Record<string, Coordinate[]>; 
   pointLabels?: Record<string, string>; 
   measurePath?: Coordinate[];
@@ -506,9 +536,6 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
 
   const measurePathKey = measurePath ? measurePath.map(p => `${p.lat},${p.lng}`).join('|') : 'empty';
 
-  // Calculate Total Tasks for Team Progress display
-  const totalTasks = points.filter(p => !p.isSectionHeader && !p.playgroundId).length;
-
   return (
     <div className="relative w-full h-full">
         {isRelocating && (
@@ -583,32 +610,59 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ userLocation, points,
             })}
             
             {teams && teams.map((item, idx) => {
-                const completedCount = item.team.completedPointIds?.length || 0;
                 return (
                     <Marker 
                         key={`team-${item.team.id}-${idx}`} 
                         position={[item.location.lat, item.location.lng]} 
                         icon={createTeamIcon(item.team.name, item.team.photoUrl, item.status)} 
-                        eventHandlers={{ click: () => onTeamClick && onTeamClick(item.team.id) }} 
                         zIndexOffset={1000} 
                     >
-                        <Tooltip direction="top" offset={[0, -50]} opacity={1} className="custom-leaflet-tooltip">
-                            <div className="bg-white dark:bg-gray-900 p-2 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 shrink-0">
-                                    {item.team.photoUrl ? <img src={item.team.photoUrl} className="w-full h-full object-cover"/> : <div className="w-full h-full flex items-center justify-center font-bold text-xs">{item.team.name.substring(0,2)}</div>}
+                        <Popup className="custom-team-popup" closeButton={false}>
+                            <div className="bg-slate-900 text-white rounded-xl overflow-hidden shadow-2xl border border-slate-700 w-64 p-0">
+                                <div className="p-3 bg-slate-800 border-b border-slate-700 flex justify-between items-center">
+                                    <h3 className="font-black uppercase tracking-wider text-sm">{item.team.name}</h3>
+                                    {item.stats?.rank && (
+                                        <span className="bg-yellow-500 text-black px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wide">
+                                            RANK #{item.stats.rank}
+                                        </span>
+                                    )}
                                 </div>
-                                <div>
-                                    <div className="font-black text-xs uppercase text-gray-900 dark:text-white leading-none mb-0.5">{item.team.name}</div>
-                                    <div className="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase leading-none">
-                                        TASKS: {completedCount} / {totalTasks}
+                                <div className="p-3 space-y-3">
+                                    <div className="flex justify-between items-center text-xs">
+                                        <span className="text-slate-400 font-bold uppercase flex items-center gap-1"><Users className="w-3 h-3"/> MEMBERS</span>
+                                        <span className="font-black text-white">{item.team.members.length}</span>
                                     </div>
-                                    <div className="text-[8px] font-bold text-gray-500 uppercase mt-1">
-                                        STATUS: {item.status || 'IDLE'}
+                                    
+                                    {/* Stats Breakdown */}
+                                    <div className="space-y-1">
+                                        {item.stats && (
+                                            <>
+                                                <div className="flex justify-between items-center text-[10px] bg-slate-800 p-1.5 rounded">
+                                                    <span className="text-slate-400 font-bold uppercase flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-500"/> ON MAP</span>
+                                                    <span className="font-bold text-white">{item.stats.mapSolved}/{item.stats.mapTotal}</span>
+                                                </div>
+                                                {item.stats.playgroundStats.map(pg => (
+                                                    <div key={pg.name} className="flex justify-between items-center text-[10px] bg-slate-800 p-1.5 rounded">
+                                                        <span className="text-slate-400 font-bold uppercase truncate max-w-[120px]">{pg.name}</span>
+                                                        <span className="font-bold text-white">{pg.solved}/{pg.total}</span>
+                                                    </div>
+                                                ))}
+                                            </>
+                                        )}
                                     </div>
+
+                                    {/* Chat Action */}
+                                    <button 
+                                        onClick={(e) => {
+                                            if (onTeamClick) onTeamClick(item.team.id);
+                                        }}
+                                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-colors"
+                                    >
+                                        <MessageSquare className="w-3 h-3" /> SEND MESSAGE
+                                    </button>
                                 </div>
                             </div>
-                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white dark:bg-gray-900 rotate-45 border-b border-r border-gray-200 dark:border-gray-700"></div>
-                        </Tooltip>
+                        </Popup>
                     </Marker>
                 );
             })}

@@ -96,7 +96,7 @@ const CreatorHub: React.FC<CreatorHubProps> = ({ activeGameName, onAction, onCho
 
                   <button onClick={() => onAction('TEAM')} className="group relative h-32 bg-slate-800 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-transform hover:scale-[1.02]">
                       <Users className="w-8 h-8 text-amber-400 mb-2 group-hover:scale-110 transition-transform" />
-                      <span className="text-lg font-black text-white tracking-widest uppercase">TEAMS</span>
+                      <span className="text-lg font-black text-white tracking-widest uppercase">TEAM LOGIN</span>
                   </button>
 
                   <button onClick={() => onAction('TASKS')} className="group relative h-32 bg-slate-800 rounded-2xl flex flex-col items-center justify-center shadow-lg transition-transform hover:scale-[1.02]">

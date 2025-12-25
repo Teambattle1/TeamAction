@@ -121,11 +121,43 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
       await db.saveGame({ ...game, showRankingToPlayers: newVal });
   }
 
+  // Calculate detailed stats per team
+  const getTeamStats = (team: Team, index: number) => {
+      const completedIds = team.completedPointIds || [];
+      const mapTasks = game.points.filter(p => !p.playgroundId && !p.isSectionHeader);
+      const mapSolved = mapTasks.filter(p => completedIds.includes(p.id)).length;
+
+      const playgroundStats = (game.playgrounds || []).map(pg => {
+          const zoneTasks = game.points.filter(p => p.playgroundId === pg.id);
+          const solved = zoneTasks.filter(p => completedIds.includes(p.id)).length;
+          return {
+              name: pg.title,
+              solved,
+              total: zoneTasks.length
+          };
+      });
+
+      return {
+          rank: index + 1,
+          mapSolved,
+          mapTotal: mapTasks.length,
+          playgroundStats
+      };
+  };
+
   const teamLocations = useMemo(() => {
       if (!showTeams) return [];
-      const locs: { team: Team, location: Coordinate, status: TeamStatus }[] = [];
+      // Sort teams for ranking logic
+      const sortedTeams = [...teams].sort((a, b) => b.score - a.score);
+
+      const locs: { 
+          team: Team, 
+          location: Coordinate, 
+          status: TeamStatus,
+          stats: any 
+      }[] = [];
       
-      teams.forEach(team => {
+      sortedTeams.forEach((team, index) => {
           // Identify Captain
           const captainId = team.captainDeviceId || (team.members.length > 0 ? team.members[0].deviceId : null);
           if (!captainId) return;
@@ -153,12 +185,13 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
               locs.push({ 
                   team: team, 
                   location: captainMember.location,
-                  status: status
+                  status: status,
+                  stats: getTeamStats(team, index)
               });
           }
       });
       return locs;
-  }, [teams, onlineMembers, showTeams, locationHistory]);
+  }, [teams, onlineMembers, showTeams, locationHistory, game.points, game.playgrounds]);
 
   // Trails only for Captains
   const teamTrails = useMemo(() => {
@@ -227,8 +260,10 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
   };
 
   const handleTeamClickOnMap = (teamId: string) => {
+      // Just select logic for modal, the popup handles chat trigger
       setSelectedTeamId(teamId);
-      setShowTeamControl(true);
+      // Don't show control modal on map click anymore since popup has info
+      // setShowTeamControl(true); 
   };
 
   const selectedTeam = teams.find(t => t.id === selectedTeamId);
@@ -327,7 +362,11 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                             mode={GameMode.INSTRUCTOR} 
                             mapStyle="osm"
                             onPointClick={(p) => setSelectedPointId(p.id)} 
-                            onTeamClick={handleTeamClickOnMap}
+                            onTeamClick={(teamId) => {
+                                // Just open chat drawer for that team
+                                // The map popup handles this now, but if clicking the marker body directly:
+                                setSelectedTeamId(teamId);
+                            }}
                             selectedPointId={selectedPointId}
                         />
                         
@@ -428,7 +467,7 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
             </div>
         </div>
 
-        {/* TEAM CONTROL MODAL */}
+        {/* TEAM CONTROL MODAL (Manual Score Adjustment) */}
         {showTeamControl && selectedTeam && (
             <div className="fixed inset-0 z-[3000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
                 <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-2xl overflow-hidden flex flex-col shadow-2xl">

@@ -5,12 +5,12 @@ import {
   UserCircle, Settings, MapPin, ChevronRight, Play,
   LayoutDashboard, LayoutTemplate, LayoutGrid, UserPlus,
   Monitor, Tag, Radar, Plus, Database, ArrowLeft,
-  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode, MessageSquare, Anchor, Home, Trash2
+  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode, MessageSquare, Anchor, Home, Trash2, Map
 } from 'lucide-react';
 import { Game } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
@@ -154,13 +154,19 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
               return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <NavCard 
-                          title="TEAMS" 
-                          subtitle="OPERATIONS HUB" 
-                          icon={Radar} 
+                          title="TEAM LOGIN" 
+                          subtitle="JOIN MISSION" 
+                          icon={UserPlus} 
                           color="bg-blue-500"
                           onClick={() => onAction('TEAMS')}
                       />
-                      {/* Team Zone removed as requested */}
+                      <NavCard 
+                          title="TEAMS MAP VIEW" 
+                          subtitle="COMMAND CENTER" 
+                          icon={Map} 
+                          color="bg-cyan-500"
+                          onClick={() => onAction('TEAMS_MAP_VIEW')}
+                      />
                       <NavCard 
                           title="TEAM CHAT" 
                           subtitle="COMMS CHANNEL" 

@@ -3,7 +3,8 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Team, Game, ChatMessage, GamePoint } from '../types';
 import * as db from '../services/db';
 import { teamSync } from '../services/teamSync';
-import { X, Users, RefreshCw, Hash, ChevronRight, Calendar, Clock, CheckCircle, ChevronDown, Anchor, Play, Edit2, Check, AlertCircle, Camera, Shield, MessageSquare, MapPin, LayoutGrid, CheckSquare, Upload, User, ToggleLeft, ToggleRight, List, AlertTriangle, Radio, Crown, Trophy } from 'lucide-react';
+import { X, Users, RefreshCw, Hash, ChevronRight, Calendar, Clock, CheckCircle, ChevronDown, Anchor, Play, Edit2, Check, AlertCircle, Camera, Shield, MessageSquare, MapPin, LayoutGrid, CheckSquare, Upload, User, ToggleLeft, ToggleRight, List, AlertTriangle, Radio, Crown, Trophy, Star } from 'lucide-react';
+import AvatarCreator from './AvatarCreator';
 
 interface TeamsModalProps {
   gameId: string | null;
@@ -56,7 +57,10 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
   // Edit State
   const [isEditingName, setIsEditingName] = useState(false);
   const [editedName, setEditedName] = useState('');
-  const [uploadTargetMemberId, setUploadTargetMemberId] = useState<string | null>(null);
+  
+  // Avatar Modal State
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarTargetMemberId, setAvatarTargetMemberId] = useState<string | null>(null);
   
   // View State
   const [collapsedLogSections, setCollapsedLogSections] = useState<Record<string, boolean>>({});
@@ -64,7 +68,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const teamPhotoInputRef = useRef<HTMLInputElement>(null);
-  const memberPhotoInputRef = useRef<HTMLInputElement>(null);
 
   const activeGame = games.find(g => g.id === gameId);
 
@@ -130,48 +133,41 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
       }
   };
 
-  const handleMemberPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file && activeLobbyView && uploadTargetMemberId) {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-              const base64 = reader.result as string;
-              await db.updateMemberPhoto(activeLobbyView.id, uploadTargetMemberId, base64);
-              
-              // Update local state
-              setActiveLobbyView(prev => {
-                  if (!prev) return null;
-                  const newMembers = prev.members.map(m => {
-                      // Helper to get ID safely during map
-                      let mId = '';
-                      if (typeof m === 'string') {
-                          try {
-                              const p = JSON.parse(m);
-                              mId = p.deviceId || p.DEVICEID || '';
-                          } catch { mId = ''; }
-                      } else {
-                          mId = m.deviceId;
-                      }
+  const saveMemberAvatar = async (base64: string) => {
+      if (!activeLobbyView || !avatarTargetMemberId) return;
+      
+      await db.updateMemberPhoto(activeLobbyView.id, avatarTargetMemberId, base64);
+      
+      // Update local state
+      setActiveLobbyView(prev => {
+          if (!prev) return null;
+          const newMembers = prev.members.map(m => {
+              let mId = '';
+              if (typeof m === 'string') {
+                  try {
+                      const p = JSON.parse(m);
+                      mId = p.deviceId || p.DEVICEID || '';
+                  } catch { mId = ''; }
+              } else {
+                  mId = m.deviceId;
+              }
 
-                      if (mId === uploadTargetMemberId) {
-                          // Ensure we convert string to object if updating
-                          const mName = typeof m === 'string' ? (JSON.parse(m).name || m) : m.name;
-                          return { name: mName, deviceId: mId, photo: base64 };
-                      }
-                      return m;
-                  });
-                  return { ...prev, members: newMembers };
-              });
-              setUploadTargetMemberId(null);
-              loadTeams(gameId);
-          };
-          reader.readAsDataURL(file);
-      }
+              if (mId === avatarTargetMemberId) {
+                  const mName = typeof m === 'string' ? (JSON.parse(m).name || m) : m.name;
+                  return { name: mName, deviceId: mId, photo: base64 };
+              }
+              return m;
+          });
+          return { ...prev, members: newMembers };
+      });
+      setShowAvatarModal(false);
+      setAvatarTargetMemberId(null);
+      loadTeams(gameId);
   };
 
-  const triggerMemberPhotoUpload = (memberId: string) => {
-      setUploadTargetMemberId(memberId);
-      setTimeout(() => memberPhotoInputRef.current?.click(), 100);
+  const openAvatarCreator = (memberId: string) => {
+      setAvatarTargetMemberId(memberId);
+      setShowAvatarModal(true);
   };
 
   const filteredGames = useMemo(() => {
@@ -416,6 +412,9 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
           points: activeGame.points.filter(p => p.playgroundId === pg.id)
       })) || [];
 
+      // Extract Bonus Tasks (items in completedPointIds starting with 'bonus-')
+      const bonusIds = activeLobbyView.completedPointIds?.filter(id => id.startsWith('bonus-')) || [];
+
       // Calculate Rank
       const sortedTeams = [...teams].sort((a, b) => b.score - a.score);
       const myRank = sortedTeams.findIndex(t => t.id === activeLobbyView.id) + 1;
@@ -460,7 +459,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
 
                   {/* Hidden Input for Team Photo Upload */}
                   <input ref={teamPhotoInputRef} type="file" accept="image/*" className="hidden" onChange={handleTeamPhotoUpload} />
-                  <input ref={memberPhotoInputRef} type="file" accept="image/*" className="hidden" onChange={handleMemberPhotoUpload} />
 
                   <div className="p-4 sm:p-6 bg-slate-950 border-b border-slate-800 flex justify-between items-center relative z-10 shrink-0">
                       <div className="flex flex-col">
@@ -567,10 +565,15 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                       return (
                                           <div key={i} className="group relative flex flex-col items-center">
                                               <div 
-                                                onClick={() => isAdmin && triggerMemberPhotoUpload(deviceId)}
+                                                onClick={() => {
+                                                    // Allow editing avatar if isAdmin OR if I'm editing my own avatar
+                                                    if (isAdmin || deviceId === teamSync.getDeviceId()) {
+                                                        openAvatarCreator(deviceId);
+                                                    }
+                                                }}
                                                 className={`w-full aspect-square rounded-2xl bg-slate-800 overflow-hidden relative shrink-0 border-2 transition-all 
                                                     ${isMemberCaptain ? 'border-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' : 'border-slate-700 hover:border-slate-500'}
-                                                    ${isAdmin ? 'cursor-pointer' : ''}`}
+                                                    cursor-pointer`}
                                               >
                                                   {photo ? <img src={photo} className="w-full h-full object-cover"/> : <User className="w-8 h-8 m-auto absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-slate-600"/>}
                                                   
@@ -580,11 +583,9 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                                       </div>
                                                   )}
 
-                                                  {isAdmin && (
-                                                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                                          <Upload className="w-4 h-4 text-white"/>
-                                                      </div>
-                                                  )}
+                                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                                      <Edit2 className="w-4 h-4 text-white"/>
+                                                  </div>
                                               </div>
                                               
                                               <div className="text-center w-full mt-1.5 px-1">
@@ -699,6 +700,29 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                           </div>
 
                                           <div className="space-y-4">
+                                              {/* Bonus/Penalty Log */}
+                                              {bonusIds.length > 0 && (
+                                                  <CollapsibleSection
+                                                      title="BONUS & PENALTIES"
+                                                      icon={Star}
+                                                      isOpen={true}
+                                                      onToggle={() => {}}
+                                                  >
+                                                      <div className="space-y-1">
+                                                          {bonusIds.map((id, i) => (
+                                                              <div key={i} className="flex justify-between items-center py-2 border-b border-slate-800/50 last:border-0">
+                                                                  <span className="text-[10px] font-bold uppercase truncate max-w-[70%] text-yellow-500">
+                                                                      ADMIN ADJUSTMENT
+                                                                  </span>
+                                                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-[9px] font-black uppercase bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">
+                                                                      <CheckCircle className="w-3 h-3" /> APPLIED
+                                                                  </div>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  </CollapsibleSection>
+                                              )}
+
                                               {/* Map Tasks Collapsible */}
                                               {mapTasks.length > 0 && (
                                                   <CollapsibleSection 
@@ -735,6 +759,21 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                       )}
                   </div>
               </div>
+
+              {/* AVATAR CREATOR OVERLAY */}
+              {showAvatarModal && (
+                  <div className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-6">
+                      <div className="relative">
+                          <button onClick={() => setShowAvatarModal(false)} className="absolute -top-12 right-0 text-white/50 hover:text-white p-2">
+                              <X className="w-6 h-6" />
+                          </button>
+                          <AvatarCreator 
+                              onConfirm={saveMemberAvatar}
+                              onCancel={() => setShowAvatarModal(false)}
+                          />
+                      </div>
+                  </div>
+              )}
           </div>
       );
   }

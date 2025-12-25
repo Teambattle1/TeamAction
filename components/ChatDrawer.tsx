@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ChatMessage, GameMode, Team } from '../types';
-import { X, Send, MessageSquare, User, Shield, Radio, Siren, CheckCircle2, ChevronDown, Globe } from 'lucide-react';
+import { X, Send, MessageSquare, User, Shield, Radio, Siren, CheckCircle2, ChevronDown, Globe, Check } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
 
 interface ChatDrawerProps {
@@ -13,7 +13,7 @@ interface ChatDrawerProps {
   userName: string;
   teamId?: string;
   teams?: Team[]; // List of teams for instructor to select from
-  selectedTeamId?: string; // Pre-selected team from external trigger
+  selectedTeamIds?: string[] | null; // Changed from selectedTeamId
   isInstructor?: boolean; // Force instructor mode (e.g. from Hub)
 }
 
@@ -26,13 +26,13 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
   userName,
   teamId,
   teams = [],
-  selectedTeamId,
+  selectedTeamIds,
   isInstructor = false
 }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [isSending, setIsSending] = useState(false);
-  const [targetTeamId, setTargetTeamId] = useState<string | null>(null); // Null = Global Broadcast
+  const [targetTeamIds, setTargetTeamIds] = useState<string[] | null>(null); // Null = Global Broadcast
   const [showTeamSelector, setShowTeamSelector] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -42,12 +42,8 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
   // Sync prop to state when drawer opens or prop changes
   useEffect(() => {
-      if (selectedTeamId) {
-          setTargetTeamId(selectedTeamId);
-      } else {
-          setTargetTeamId(null);
-      }
-  }, [selectedTeamId, isOpen]);
+      setTargetTeamIds(selectedTeamIds || null);
+  }, [selectedTeamIds, isOpen]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -62,8 +58,16 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
 
     const urgentFlag = isInstructorMode ? isUrgent : false;
     
-    // Send to specific team channel if selected, otherwise global
-    teamSync.sendChatMessage(gameId, newMessage, targetTeamId, urgentFlag);
+    // Send to specific team channels if selected, otherwise global
+    if (targetTeamIds && targetTeamIds.length > 0) {
+        // Multi-cast
+        targetTeamIds.forEach(id => {
+            teamSync.sendChatMessage(gameId, newMessage, id, urgentFlag);
+        });
+    } else {
+        // Broadcast
+        teamSync.sendChatMessage(gameId, newMessage, null, urgentFlag);
+    }
     
     setNewMessage('');
     setIsUrgent(false);
@@ -71,9 +75,26 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
   };
 
   const getTargetLabel = () => {
-      if (!targetTeamId) return "BROADCAST (ALL TEAMS)";
-      const t = teams.find(team => team.id === targetTeamId);
-      return t ? `TO: ${t.name}` : "UNKNOWN TEAM";
+      if (!targetTeamIds || targetTeamIds.length === 0) return "BROADCAST (ALL TEAMS)";
+      if (targetTeamIds.length === 1) {
+          const t = teams.find(team => team.id === targetTeamIds[0]);
+          return t ? `TO: ${t.name}` : "UNKNOWN TEAM";
+      }
+      return `TO: ${targetTeamIds.length} TEAMS`;
+  };
+
+  const toggleTarget = (id: string) => {
+      setTargetTeamIds(prev => {
+          const current = prev || [];
+          if (current.includes(id)) {
+              const next = current.filter(tid => tid !== id);
+              return next.length === 0 ? null : next; // If empty, switch to global? Or keep empty? 
+              // Let's say null is global. If user deselects all, maybe we explicitly set empty array? 
+              // But standard UI usually defaults to Global if nothing selected. Let's assume null is global.
+          } else {
+              return [...current, id];
+          }
+      });
   };
 
   return (
@@ -103,10 +124,10 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
           <div className="px-4 py-2 bg-slate-900 border-b border-slate-800 relative z-20">
               <button 
                 onClick={() => setShowTeamSelector(!showTeamSelector)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-all ${targetTeamId ? 'bg-blue-900/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-xs font-bold uppercase tracking-wide transition-all ${targetTeamIds && targetTeamIds.length > 0 ? 'bg-blue-900/20 border-blue-500 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-300'}`}
               >
                   <span className="flex items-center gap-2">
-                      {targetTeamId ? <User className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
+                      {targetTeamIds && targetTeamIds.length > 0 ? <User className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
                       {getTargetLabel()}
                   </span>
                   <ChevronDown className="w-3 h-3" />
@@ -115,21 +136,24 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
               {showTeamSelector && (
                   <div className="absolute top-full left-0 right-0 mt-1 mx-4 bg-slate-800 border border-slate-700 rounded-xl shadow-xl max-h-60 overflow-y-auto animate-in slide-in-from-top-1">
                       <button 
-                        onClick={() => { setTargetTeamId(null); setShowTeamSelector(false); }}
+                        onClick={() => { setTargetTeamIds(null); setShowTeamSelector(false); }}
                         className="w-full text-left px-4 py-3 border-b border-slate-700/50 hover:bg-slate-700 text-xs font-bold text-white flex items-center gap-2 uppercase"
                       >
                           <Globe className="w-3 h-3 text-orange-500" /> BROADCAST TO ALL
                       </button>
-                      {teams.map(t => (
-                          <button
-                            key={t.id}
-                            onClick={() => { setTargetTeamId(t.id); setShowTeamSelector(false); }}
-                            className="w-full text-left px-4 py-3 hover:bg-slate-700 text-xs font-medium text-slate-300 border-b border-slate-700/50 last:border-0 flex justify-between items-center"
-                          >
-                              <span>{t.name}</span>
-                              {targetTeamId === t.id && <CheckCircle2 className="w-3 h-3 text-green-500" />}
-                          </button>
-                      ))}
+                      {teams.map(t => {
+                          const isSelected = targetTeamIds?.includes(t.id);
+                          return (
+                              <button
+                                key={t.id}
+                                onClick={() => toggleTarget(t.id)}
+                                className={`w-full text-left px-4 py-3 hover:bg-slate-700 text-xs font-medium border-b border-slate-700/50 last:border-0 flex justify-between items-center ${isSelected ? 'text-blue-400' : 'text-slate-300'}`}
+                              >
+                                  <span>{t.name}</span>
+                                  {isSelected && <Check className="w-3 h-3" />}
+                              </button>
+                          );
+                      })}
                   </div>
               )}
           </div>
@@ -199,7 +223,7 @@ const ChatDrawer: React.FC<ChatDrawerProps> = ({
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={targetTeamId ? "Message team..." : "Broadcast to all..."}
+            placeholder={targetTeamIds && targetTeamIds.length > 0 ? "Message selected..." : "Broadcast to all..."}
             className={`w-full bg-slate-900 border-2 rounded-xl pl-4 pr-12 py-3 text-sm text-white font-bold outline-none transition-all placeholder:text-slate-600 ${isUrgent ? 'border-red-900/50 focus:border-red-500' : 'border-slate-800 focus:border-blue-600'}`}
           />
           <button 

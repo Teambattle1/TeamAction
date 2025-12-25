@@ -12,6 +12,14 @@ export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'light';
 
 export type Language = 'English' | 'Danish' | 'German' | 'Spanish';
 
+// --- Auth Types ---
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Owner' | 'Admin' | 'Full' | 'Instructor' | 'Viewer';
+}
+
 // --- Team Sync Types ---
 export interface TeamMember {
   deviceId: string;
