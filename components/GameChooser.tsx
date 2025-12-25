@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef } from 'react';
 import { Game, TaskList, GamePoint } from '../types';
 import { X, Calendar, CheckCircle, Play, MapPin, ChevronRight, Trophy, LayoutTemplate, Gamepad2, Save, RefreshCw, Home, Plus, Zap, Clock, AlertTriangle, Search, Filter, MoreHorizontal, Settings, Edit2, LayoutList, Trash2, Check, Upload, Image as ImageIcon, LayoutGrid, Layers, Grid, List as ListIcon, Map } from 'lucide-react';
@@ -16,7 +15,7 @@ interface GameChooserProps {
   onEditTemplate?: (id: string) => void; 
   onUpdateList?: (list: TaskList) => Promise<void>; 
   onDeleteList?: (id: string) => Promise<void>; 
-  onEditTemplateContent?: (templateId: string) => void; // New prop
+  onEditTemplateContent?: (templateId: string) => void;
 }
 
 type MainView = 'GAMES' | 'TEMPLATES';
@@ -43,14 +42,12 @@ const GameChooser: React.FC<GameChooserProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
   
-  // Template Editing State
   const [editingTemplate, setEditingTemplate] = useState<TaskList | null>(null);
   const [templateForm, setTemplateForm] = useState({ name: '', description: '', imageUrl: '' });
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [isDeleteConfirming, setIsDeleteConfirming] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Custom Input Modal State
   const [inputModal, setInputModal] = useState<{
       isOpen: boolean;
       title: string;
@@ -145,7 +142,6 @@ const GameChooser: React.FC<GameChooserProps> = ({
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  // --- TEMPLATE EDITING LOGIC ---
   const openTemplateDetails = (list: TaskList) => {
       setEditingTemplate(list);
       setTemplateForm({
@@ -190,23 +186,6 @@ const GameChooser: React.FC<GameChooserProps> = ({
       setIsDeleteConfirming(false);
   };
 
-  // Helper to calculate zone stats
-  const getTemplateStats = (list: TaskList) => {
-      const tasks = list.tasks as unknown as GamePoint[]; // Cast to access playgroundId
-      const playgroundCounts: Record<string, number> = {};
-      let unlistedCount = 0;
-
-      tasks.forEach(t => {
-          if (t.playgroundId) {
-              playgroundCounts[t.playgroundId] = (playgroundCounts[t.playgroundId] || 0) + 1;
-          } else {
-              unlistedCount++;
-          }
-      });
-
-      return { playgroundCounts, unlistedCount, total: tasks.length };
-  };
-
   return (
     <div className="fixed inset-0 z-[4000] bg-slate-950 text-white flex flex-col font-sans overflow-hidden animate-in fade-in duration-300">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent)] opacity-40 pointer-events-none" />
@@ -225,6 +204,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
           </div>
 
           <div className="flex items-center gap-4 w-full md:w-auto">
+              {/* Search Bar */}
               <div className="relative flex-1 md:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                   <input 
@@ -353,22 +333,27 @@ const GameChooser: React.FC<GameChooserProps> = ({
                                               <div className="flex-1 min-w-0">
                                                   <h3 className="font-black text-white text-sm uppercase truncate group-hover:text-orange-500 transition-colors">{game.name}</h3>
                                                   <div className="flex items-center gap-3 mt-1">
-                                                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{game.client?.name || "INTERNAL"}</span>
-                                                      <span className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-1"><Calendar className="w-3 h-3" /> {gameDate.toLocaleDateString()}</span>
+                                                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                                                          <Calendar className="w-3 h-3" /> {gameDate.toLocaleDateString()}
+                                                      </span>
+                                                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide flex items-center gap-1">
+                                                          <MapPin className="w-3 h-3" /> {totalCount} TASKS
+                                                      </span>
                                                   </div>
                                               </div>
-                                              <div className="hidden sm:block w-32 mr-4">
-                                                  <div className="flex justify-between text-[9px] font-bold text-slate-500 uppercase mb-1">
-                                                      <span>PROGRESS</span>
-                                                      <span className="text-orange-500">{progress}%</span>
-                                                  </div>
-                                                  <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                                                      <div className="h-full bg-gradient-to-r from-orange-600 to-red-600" style={{ width: `${Math.max(5, progress)}%` }} />
-                                                  </div>
+                                              
+                                              {/* Actions in List View */}
+                                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                  {onEditGame && (
+                                                      <button onClick={(e) => { e.stopPropagation(); onEditGame(game.id); }} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white transition-colors">
+                                                          <Settings className="w-4 h-4" />
+                                                      </button>
+                                                  )}
                                               </div>
-                                              <button className="p-3 bg-slate-800 group-hover:bg-white group-hover:text-black text-slate-400 rounded-xl transition-all hover:scale-110">
-                                                  <Play className="w-4 h-4 fill-current" />
-                                              </button>
+
+                                              <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors shrink-0">
+                                                  <Play className="w-4 h-4 ml-0.5" />
+                                              </div>
                                           </div>
                                       );
                                   }
@@ -378,63 +363,64 @@ const GameChooser: React.FC<GameChooserProps> = ({
                                       <div 
                                           key={game.id}
                                           onClick={() => onSelectGame(game.id)}
-                                          className="group bg-slate-900 border border-slate-800 hover:border-orange-500/50 rounded-3xl overflow-hidden shadow-xl hover:shadow-orange-500/20 transition-all cursor-pointer flex flex-col relative hover:-translate-y-2"
+                                          className="group relative bg-slate-900 border border-slate-800 hover:border-orange-500/50 rounded-3xl overflow-hidden shadow-xl transition-all hover:shadow-orange-500/10 cursor-pointer flex flex-col h-[280px]"
                                       >
+                                          {/* Card Image */}
                                           <div className="h-32 bg-slate-800 relative overflow-hidden group-hover:brightness-110 transition-all">
                                               {game.client?.logoUrl ? (
-                                                  <div className="absolute inset-0 p-6 flex items-center justify-center bg-white">
-                                                      <img src={game.client.logoUrl} className="max-w-full max-h-full object-contain" alt="Client Logo" />
-                                                  </div>
+                                                  <img src={game.client.logoUrl} className="w-full h-full object-contain p-4 bg-white" alt="Logo" />
                                               ) : (
-                                                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 group-hover:opacity-20 transition-opacity" />
+                                                  <div className="absolute inset-0 flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity">
+                                                      <Gamepad2 className="w-16 h-16" />
+                                                  </div>
                                               )}
-                                              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border border-white/10 flex items-center gap-1.5 shadow-md">
-                                                  <Calendar className="w-3 h-3 text-orange-500" />
-                                                  {gameDate.toLocaleDateString()}
-                                              </div>
-                                              <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 duration-300">
-                                                  {onSaveAsTemplate && (
-                                                      <button 
-                                                          onClick={(e) => handleSaveTemplateClick(e, game)}
-                                                          className="p-1.5 bg-black/60 hover:bg-orange-600 rounded-lg text-white transition-colors border border-white/10 hover:scale-110"
-                                                          title="Save as Template"
-                                                      >
-                                                          <Save className="w-3.5 h-3.5" />
-                                                      </button>
-                                                  )}
-                                              </div>
+                                              
+                                              {onSaveAsTemplate && (
+                                                  <button 
+                                                      onClick={(e) => handleSaveTemplateClick(e, game)}
+                                                      className="absolute top-2 right-2 p-2 bg-slate-900/80 hover:bg-blue-600 text-slate-400 hover:text-white rounded-xl backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                                      title="Save as Template"
+                                                  >
+                                                      <Save className="w-4 h-4" />
+                                                  </button>
+                                              )}
+
+                                              {onEditGame && (
+                                                  <button 
+                                                      onClick={(e) => { e.stopPropagation(); onEditGame(game.id); }}
+                                                      className="absolute top-2 left-2 p-2 bg-slate-900/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl backdrop-blur-sm transition-colors opacity-0 group-hover:opacity-100 z-10"
+                                                      title="Edit Game Settings"
+                                                  >
+                                                      <Settings className="w-4 h-4" />
+                                                  </button>
+                                              )}
                                           </div>
 
-                                          <div className="p-5 flex flex-col flex-1">
-                                              <div className="mb-4">
-                                                  <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight mb-1 truncate group-hover:text-orange-500 transition-colors">{game.name}</h3>
-                                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">
-                                                      {game.client?.name || "INTERNAL SESSION"}
-                                                  </p>
+                                          {/* Card Content */}
+                                          <div className="p-5 flex-1 flex flex-col justify-between relative">
+                                              <div>
+                                                  <div className="flex justify-between items-start mb-1">
+                                                      <span className="text-[9px] font-black text-orange-500 uppercase tracking-widest">{game.client?.name || 'PRIVATE GAME'}</span>
+                                                      <span className="text-[9px] font-bold text-slate-600 uppercase">{gameDate.toLocaleDateString()}</span>
+                                                  </div>
+                                                  <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight line-clamp-2 mb-2 group-hover:text-orange-500 transition-colors">
+                                                      {game.name}
+                                                  </h3>
+                                                  <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                                                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {totalCount} TASKS</span>
+                                                      {game.playgrounds && game.playgrounds.length > 0 && (
+                                                          <span className="flex items-center gap-1"><LayoutGrid className="w-3 h-3" /> {game.playgrounds.length} ZONES</span>
+                                                      )}
+                                                  </div>
                                               </div>
 
-                                              <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-                                                  <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {totalCount} TASKS</span>
-                                                  <span className="flex items-center gap-1"><Trophy className="w-3 h-3 text-orange-500" /> {progress}%</span>
-                                              </div>
-
-                                              <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden mb-4">
-                                                  <div 
-                                                      className="h-full bg-gradient-to-r from-orange-600 to-red-600 transition-all duration-500" 
-                                                      style={{ width: `${Math.max(5, progress)}%` }}
-                                                  />
-                                              </div>
-
-                                              <div className="mt-auto">
-                                                  <button 
-                                                      onClick={(e) => {
-                                                          e.stopPropagation();
-                                                          if (onEditGame) onEditGame(game.id);
-                                                      }}
-                                                      className="w-full py-3 bg-slate-800 group-hover:bg-white group-hover:text-black text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 active:scale-95 hover:shadow-lg"
-                                                  >
-                                                      EDIT SESSION <Settings className="w-3 h-3" />
-                                                  </button>
+                                              <div className="mt-4 pt-4 border-t border-slate-800 flex items-center justify-between">
+                                                  <div className="flex items-center gap-1 text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                                                      {progress > 0 ? `${progress}% COMPLETE` : 'READY TO START'}
+                                                  </div>
+                                                  <div className="flex items-center gap-2 text-[9px] font-black text-white uppercase tracking-widest group-hover:text-orange-500 transition-colors">
+                                                      ENTER LOBBY <ChevronRight className="w-3 h-3" />
+                                                  </div>
                                               </div>
                                           </div>
                                       </div>
@@ -446,338 +432,198 @@ const GameChooser: React.FC<GameChooserProps> = ({
               )}
 
               {mainView === 'TEMPLATES' && (
-                  <div className={viewMode === 'GRID' ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6" : "space-y-3"}>
+                  <>
                       {filteredTemplates.length === 0 ? (
-                          <div className="col-span-full py-20 text-center text-slate-600 uppercase font-black tracking-widest text-sm opacity-50">NO TEMPLATES FOUND</div>
-                      ) : filteredTemplates.map(list => {
-                          const { playgroundCounts, unlistedCount } = getTemplateStats(list);
-                          const playzones = Object.keys(playgroundCounts).length;
-
-                          if (viewMode === 'LIST') {
-                              return (
+                          <div className="flex flex-col items-center justify-center py-20 text-slate-600">
+                              <LayoutTemplate className="w-16 h-16 mb-4 opacity-20" />
+                              <p className="font-black uppercase tracking-[0.2em] text-sm">NO TEMPLATES FOUND</p>
+                          </div>
+                      ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                              {filteredTemplates.map(list => (
                                   <div 
                                       key={list.id} 
+                                      className="group bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-3xl overflow-hidden shadow-xl transition-all hover:shadow-blue-500/10 cursor-pointer flex flex-col h-[280px]"
                                       onClick={() => openTemplateDetails(list)}
-                                      className="group flex items-center gap-4 bg-slate-900 border border-slate-800 hover:border-blue-500/50 p-3 rounded-2xl cursor-pointer transition-all shadow-sm hover:shadow-blue-500/10 hover:translate-x-1"
                                   >
-                                      <div className="w-16 h-16 bg-slate-800 rounded-xl overflow-hidden relative shrink-0 border border-slate-700 group-hover:border-blue-500/30">
+                                      <div className="h-32 bg-slate-800 relative overflow-hidden group-hover:brightness-110 transition-all">
                                           {list.imageUrl ? (
-                                              <img src={list.imageUrl} className="w-full h-full object-cover" alt="Template" />
+                                              <img src={list.imageUrl} className="w-full h-full object-cover" alt={list.name} />
                                           ) : (
-                                              <div 
-                                                  className="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-50 transition-opacity" 
-                                                  style={{ backgroundColor: list.color }}
-                                              >
-                                                  <LayoutTemplate className="w-6 h-6 text-white" />
+                                              <div className="absolute inset-0 flex items-center justify-center opacity-20" style={{ backgroundColor: list.color || '#3b82f6' }}>
+                                                  <LayoutList className="w-12 h-12 text-white" />
                                               </div>
                                           )}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                          <h3 className="font-black text-white text-sm uppercase truncate group-hover:text-blue-500 transition-colors">{list.name}</h3>
-                                          <p className="text-[10px] font-bold text-slate-500 uppercase truncate max-w-xs">{list.description || "No description"}</p>
-                                      </div>
-                                      <div className="hidden sm:flex items-center gap-4 mr-4">
-                                          <div className="text-[10px] font-black text-slate-500 uppercase bg-slate-800 px-2 py-1 rounded">
-                                              {list.tasks.length} TASKS
+                                          
+                                          {/* Hover Overlay Actions */}
+                                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
+                                              <button 
+                                                  onClick={(e) => { e.stopPropagation(); handleCreateFromTemplate(list); }}
+                                                  className="p-3 bg-green-600 text-white rounded-xl hover:scale-110 transition-transform shadow-lg"
+                                                  title="Create Game from this Template"
+                                              >
+                                                  <Play className="w-5 h-5 ml-0.5" />
+                                              </button>
+                                              {onEditTemplateContent && (
+                                                  <button 
+                                                      onClick={(e) => { e.stopPropagation(); onEditTemplateContent(list.id); }}
+                                                      className="p-3 bg-orange-600 text-white rounded-xl hover:scale-110 transition-transform shadow-lg"
+                                                      title="Edit Template Content (Ghost Game)"
+                                                  >
+                                                      <Edit2 className="w-5 h-5" />
+                                                  </button>
+                                              )}
                                           </div>
-                                          <div className="text-[10px] font-black text-slate-500 uppercase bg-slate-800 px-2 py-1 rounded">
-                                              {playzones} ZONES
-                                          </div>
                                       </div>
-                                      <button className="p-3 bg-slate-800 group-hover:bg-white group-hover:text-black text-slate-400 rounded-xl transition-all hover:scale-110">
-                                          <ChevronRight className="w-4 h-4" />
-                                      </button>
-                                  </div>
-                              );
-                          }
 
-                          return (
-                              <div 
-                                  key={list.id} 
-                                  onClick={() => openTemplateDetails(list)}
-                                  className="group bg-slate-900 border border-slate-800 hover:border-blue-500/50 rounded-3xl overflow-hidden shadow-xl hover:shadow-blue-500/20 transition-all cursor-pointer flex flex-col relative hover:-translate-y-2"
-                              >
-                                  {/* Banner - Styled like Game Cards */}
-                                  <div className="h-32 bg-slate-800 relative overflow-hidden">
-                                      {list.imageUrl ? (
-                                          <div className="absolute inset-0 bg-white group-hover:scale-105 transition-transform duration-700">
-                                              <img src={list.imageUrl} className="w-full h-full object-cover" alt="Template" />
-                                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                      <div className="p-5 flex-1 flex flex-col justify-between">
+                                          <div>
+                                              <div className="flex justify-between items-start mb-1">
+                                                  <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">TEMPLATE</span>
+                                                  <span className="text-[9px] font-bold text-slate-600 uppercase">{list.tasks.length} TASKS</span>
+                                              </div>
+                                              <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight line-clamp-2 mb-2 group-hover:text-blue-400 transition-colors">
+                                                  {list.name}
+                                              </h3>
+                                              <p className="text-[10px] text-slate-500 font-medium line-clamp-2 leading-relaxed">
+                                                  {list.description || "No description provided."}
+                                              </p>
                                           </div>
-                                      ) : (
-                                          <div 
-                                              className="absolute inset-0 flex items-center justify-center opacity-30 group-hover:opacity-40 transition-opacity" 
-                                              style={{ backgroundColor: list.color }}
-                                          >
-                                              <LayoutTemplate className="w-12 h-12 text-white" />
-                                          </div>
-                                      )}
-                                      
-                                      <div className="absolute top-3 left-3 bg-blue-600/90 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border border-white/10 flex items-center gap-1.5 shadow-md">
-                                          <LayoutList className="w-3 h-3" /> TEMPLATE
                                       </div>
                                   </div>
-
-                                  {/* Content - Matching Game Cards Structure */}
-                                  <div className="p-5 flex flex-col flex-1">
-                                      <div className="mb-4">
-                                          <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight mb-1 truncate group-hover:text-blue-500 transition-colors">{list.name}</h3>
-                                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">
-                                              {list.description || "No description"}
-                                          </p>
-                                      </div>
-
-                                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-4">
-                                          <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {list.tasks.length} TASKS</span>
-                                          <span className="flex items-center gap-1"><LayoutGrid className="w-3 h-3 text-blue-500" /> {playzones} ZONES</span>
-                                      </div>
-
-                                      <div className="mt-auto">
-                                          <button 
-                                              onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  openTemplateDetails(list);
-                                              }}
-                                              className="w-full py-3 bg-slate-800 group-hover:bg-white group-hover:text-black text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-2 hover:scale-105 active:scale-95 shadow-lg"
-                                          >
-                                              VIEW DETAILS <ChevronRight className="w-3 h-3" />
-                                          </button>
-                                      </div>
-                                  </div>
-                              </div>
-                          );
-                      })}
-                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </>
               )}
-
           </div>
       </div>
 
-      {/* TEMPLATE DETAILS MODAL */}
+      {/* Input Modal */}
+      {inputModal && inputModal.isOpen && (
+          <div className="fixed inset-0 z-[5000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+              <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-6 shadow-2xl">
+                  <h3 className="text-lg font-black text-white uppercase tracking-wider mb-4">{inputModal.title}</h3>
+                  <input 
+                      type="text" 
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-4 text-white font-bold outline-none focus:border-orange-500 mb-6 uppercase"
+                      autoFocus
+                  />
+                  <div className="flex gap-3">
+                      <button 
+                          onClick={() => setInputModal(null)} 
+                          className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl font-bold uppercase tracking-widest text-xs"
+                      >
+                          CANCEL
+                      </button>
+                      <button 
+                          onClick={() => { inputModal.onConfirm(inputValue); setInputModal(null); }} 
+                          disabled={!inputValue.trim()}
+                          className="flex-1 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black uppercase tracking-widest text-xs disabled:opacity-50"
+                      >
+                          CONFIRM
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Template Details / Edit Modal */}
       {editingTemplate && (
           <div className="fixed inset-0 z-[5000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-              <div className="bg-slate-900 border border-slate-800 w-full max-w-3xl rounded-[2rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-                  {/* Header */}
-                  <div className="p-6 bg-slate-950 border-b border-slate-800 flex justify-between items-center shrink-0">
-                      <h2 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2">
-                          <LayoutTemplate className="w-6 h-6 text-blue-500" />
-                          TEMPLATE DETAILS
-                      </h2>
-                      <button onClick={() => setEditingTemplate(null)} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors hover:scale-110">
+              <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+                  <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+                      <div>
+                          <h2 className="text-xl font-black text-white uppercase tracking-tight">TEMPLATE DETAILS</h2>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">ID: {editingTemplate.id}</p>
+                      </div>
+                      <button onClick={() => setEditingTemplate(null)} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-colors">
                           <X className="w-6 h-6" />
                       </button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-900 custom-scrollbar">
-                      {/* Image Upload Banner */}
-                      <div className="w-full h-48 bg-slate-800 border-2 border-dashed border-slate-700 rounded-2xl flex items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-500 transition-colors" onClick={() => fileInputRef.current?.click()}>
-                          {templateForm.imageUrl ? (
-                              <img src={templateForm.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
-                          ) : (
-                              <div className="flex flex-col items-center text-slate-500">
-                                  <ImageIcon className="w-8 h-8 mb-2 group-hover:scale-110 transition-transform" />
-                                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-white">UPLOAD COVER IMAGE</span>
-                              </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                              <Upload className="w-8 h-8 text-white scale-125" />
+                  <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                      <div className="flex flex-col md:flex-row gap-8 mb-8">
+                          <div 
+                              onClick={() => fileInputRef.current?.click()}
+                              className="w-full md:w-48 aspect-video md:aspect-square bg-slate-800 border-2 border-dashed border-slate-700 rounded-2xl flex items-center justify-center cursor-pointer hover:border-blue-500 hover:bg-slate-800/50 transition-all relative overflow-hidden group shrink-0"
+                          >
+                              {templateForm.imageUrl ? (
+                                  <>
+                                      <img src={templateForm.imageUrl} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" />
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                          <Upload className="w-6 h-6 text-white" />
+                                      </div>
+                                  </>
+                              ) : (
+                                  <div className="text-center text-slate-500 group-hover:text-blue-500 transition-colors">
+                                      <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+                                      <span className="text-[10px] font-black uppercase tracking-wide">UPLOAD IMAGE</span>
+                                  </div>
+                              )}
+                              <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
                           </div>
-                          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                      </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-4">
+                          <div className="flex-1 space-y-4">
                               <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">TEMPLATE NAME</label>
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">TEMPLATE NAME</label>
                                   <input 
+                                      type="text" 
                                       value={templateForm.name}
-                                      onChange={(e) => setTemplateForm({...templateForm, name: e.target.value})}
-                                      className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white font-bold focus:border-blue-500 outline-none transition-colors"
+                                      onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
+                                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-blue-500 transition-all"
                                   />
                               </div>
                               <div>
-                                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">DESCRIPTION</label>
+                                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">DESCRIPTION</label>
                                   <textarea 
                                       value={templateForm.description}
-                                      onChange={(e) => setTemplateForm({...templateForm, description: e.target.value})}
-                                      className="w-full p-3 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm focus:border-blue-500 outline-none transition-colors h-24 resize-none"
+                                      onChange={(e) => setTemplateForm({ ...templateForm, description: e.target.value })}
+                                      className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-sm font-medium outline-none focus:border-blue-500 transition-all h-24 resize-none"
                                   />
                               </div>
                           </div>
+                      </div>
 
-                          <div className="space-y-4">
-                              <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-800">
-                                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Settings className="w-3 h-3"/> STATS</h3>
-                                  <div className="grid grid-cols-2 gap-4">
-                                      <div>
-                                          <span className="text-[9px] text-slate-400 font-bold uppercase block">TOTAL TASKS</span>
-                                          <span className="text-lg font-black text-white">{editingTemplate.tasks.length}</span>
-                                      </div>
-                                      <div>
-                                          <span className="text-[9px] text-slate-400 font-bold uppercase block">PLAYZONES</span>
-                                          <span className="text-lg font-black text-blue-500">
-                                              {Object.keys(getTemplateStats(editingTemplate).playgroundCounts).length}
-                                          </span>
-                                      </div>
-                                      <div>
-                                          <span className="text-[9px] text-slate-400 font-bold uppercase block">TIMES PLAYED</span>
-                                          <span className="text-lg font-black text-white">{editingTemplate.usageCount || 0}</span>
-                                      </div>
-                                      <div>
-                                          <span className="text-[9px] text-slate-400 font-bold uppercase block">CREATED</span>
-                                          <span className="text-xs font-bold text-slate-300 mt-1 block">{new Date(editingTemplate.createdAt).toLocaleDateString()}</span>
-                                      </div>
+                      <div className="bg-slate-800/50 rounded-2xl p-6 border border-slate-800 mb-8">
+                          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">INCLUDED TASKS ({editingTemplate.tasks.length})</h3>
+                          <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                              {editingTemplate.tasks.map((task, idx) => (
+                                  <div key={idx} className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex items-center gap-3">
+                                      <span className="text-[10px] font-mono text-slate-500">{(idx + 1).toString().padStart(2, '0')}</span>
+                                      <span className="text-xs font-bold text-slate-300 truncate flex-1">{task.title}</span>
+                                      <span className="text-[9px] font-black text-slate-600 uppercase bg-slate-900 px-2 py-0.5 rounded">{task.task.type}</span>
                                   </div>
-                              </div>
-
-                              <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-800">
-                                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Layers className="w-3 h-3"/> CONTENT BREAKDOWN</h3>
-                                  <div className="space-y-2">
-                                      {(() => {
-                                          const { playgroundCounts, unlistedCount } = getTemplateStats(editingTemplate);
-                                          const zones = Object.entries(playgroundCounts);
-                                          return (
-                                              <>
-                                                  {zones.map(([pid, count], idx) => (
-                                                      <div key={pid} className="flex justify-between items-center text-xs">
-                                                          <span className="font-bold text-slate-300 uppercase flex items-center gap-2">
-                                                              <LayoutGrid className="w-3 h-3 text-orange-500" />
-                                                              PLAYGROUND ZONE {idx + 1}
-                                                          </span>
-                                                          <span className="font-black text-slate-500">{count} TASKS</span>
-                                                      </div>
-                                                  ))}
-                                                  <div className="flex justify-between items-center text-xs pt-1 border-t border-slate-800/50 mt-1">
-                                                      <span className="font-bold text-slate-400 uppercase flex items-center gap-2">
-                                                          <MapPin className="w-3 h-3" />
-                                                          UNLISTED / MAP TASKS
-                                                      </span>
-                                                      <span className="font-black text-slate-500">{unlistedCount} TASKS</span>
-                                                  </div>
-                                              </>
-                                          );
-                                      })()}
-                                  </div>
-                              </div>
+                              ))}
                           </div>
                       </div>
-                  </div>
 
-                  <div className={`p-6 border-t border-slate-800 flex flex-col sm:flex-row gap-3 transition-colors ${isDeleteConfirming ? 'bg-red-950/30' : 'bg-slate-950'}`}>
                       {isDeleteConfirming ? (
-                          <div className="flex-1 flex items-center gap-4 animate-in slide-in-from-left-4 fade-in">
-                              <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-                              <div className="flex-1">
-                                  <p className="text-xs font-black text-red-500 uppercase tracking-widest">ARE YOU SURE?</p>
-                                  <p className="text-[10px] font-bold text-red-400/70 uppercase">THIS ACTION CANNOT BE UNDONE.</p>
+                          <div className="bg-red-900/20 border border-red-500/30 rounded-2xl p-6 text-center animate-in zoom-in-95">
+                              <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-3" />
+                              <h3 className="text-lg font-black text-white uppercase tracking-wide mb-2">DELETE TEMPLATE?</h3>
+                              <p className="text-xs text-slate-400 font-medium mb-6">This action cannot be undone.</p>
+                              <div className="flex gap-3 justify-center">
+                                  <button onClick={() => setIsDeleteConfirming(false)} className="px-6 py-2 bg-slate-800 text-white rounded-xl font-bold uppercase text-xs hover:bg-slate-700">CANCEL</button>
+                                  <button onClick={performDeleteTemplate} className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold uppercase text-xs hover:bg-red-700 shadow-lg">CONFIRM DELETE</button>
                               </div>
-                              <button 
-                                  onClick={() => setIsDeleteConfirming(false)}
-                                  className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:scale-105 transition-transform"
-                              >
-                                  CANCEL
-                              </button>
-                              <button 
-                                  onClick={performDeleteTemplate}
-                                  className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg shadow-red-900/20 hover:scale-105 transition-transform"
-                              >
-                                  CONFIRM DELETE
-                              </button>
                           </div>
                       ) : (
-                          <>
-                              <button 
-                                  onClick={() => setIsDeleteConfirming(true)}
-                                  className="px-6 py-4 bg-red-900/20 text-red-500 border border-red-900/50 hover:bg-red-900/40 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-105"
-                              >
-                                  <Trash2 className="w-4 h-4" /> DELETE
+                          <div className="flex justify-between items-center pt-6 border-t border-slate-800">
+                              <button onClick={() => setIsDeleteConfirming(true)} className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-400 transition-colors uppercase tracking-wide px-4 py-2 hover:bg-red-900/10 rounded-lg">
+                                  <Trash2 className="w-4 h-4" /> DELETE TEMPLATE
                               </button>
-                              <button 
-                                  onClick={() => { handleCreateFromTemplate(editingTemplate); setEditingTemplate(null); }}
-                                  className="flex-1 sm:flex-none px-6 py-4 bg-slate-800 text-white hover:bg-slate-700 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all hover:scale-105"
-                              >
-                                  <Plus className="w-4 h-4" /> CREATE GAME
+                              <button onClick={saveTemplateChanges} disabled={isSavingTemplate} className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg flex items-center gap-2 disabled:opacity-50">
+                                  {isSavingTemplate ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} SAVE CHANGES
                               </button>
-                              
-                              {/* NEW: Edit Content Button */}
-                              {onEditTemplateContent && (
-                                <button 
-                                    onClick={() => { onEditTemplateContent(editingTemplate.id); setEditingTemplate(null); }}
-                                    className="flex-1 sm:flex-none px-6 py-4 bg-purple-600 text-white hover:bg-purple-700 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg hover:scale-105"
-                                >
-                                    <Map className="w-4 h-4" /> EDIT CONTENT
-                                </button>
-                              )}
-
-                              <button 
-                                  onClick={saveTemplateChanges}
-                                  disabled={!templateForm.name.trim() || isSavingTemplate}
-                                  className="flex-1 sm:flex-none px-8 py-4 bg-blue-600 text-white hover:bg-blue-500 rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 hover:scale-105 active:scale-95"
-                              >
-                                  {isSavingTemplate ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                                  UPDATE TEMPLATE
-                              </button>
-                          </>
+                          </div>
                       )}
                   </div>
               </div>
           </div>
       )}
-
-      {/* CUSTOM INPUT MODAL OVERLAY */}
-      {inputModal && inputModal.isOpen && (
-          <div className="absolute inset-0 z-[5000] bg-black/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
-              <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-8 shadow-2xl relative">
-                  <button 
-                      onClick={() => setInputModal(null)} 
-                      className="absolute top-4 right-4 text-slate-500 hover:text-white p-2 hover:scale-110 transition-transform"
-                  >
-                      <X className="w-5 h-5" />
-                  </button>
-                  <h3 className="text-sm font-black text-orange-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                      <Zap className="w-4 h-4" /> ACTION REQUIRED
-                  </h3>
-                  <h2 className="text-xl font-black text-white uppercase tracking-wide mb-6">
-                      {inputModal.title}
-                  </h2>
-                  <input 
-                      type="text" 
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      className="w-full bg-slate-950 border-2 border-slate-800 rounded-xl p-4 text-white font-bold mb-8 outline-none focus:border-orange-500 transition-colors uppercase placeholder-slate-700 text-lg"
-                      autoFocus
-                      placeholder="ENTER NAME..."
-                      onKeyDown={(e) => {
-                          if (e.key === 'Enter' && inputValue.trim()) {
-                              inputModal.onConfirm(inputValue);
-                              setInputModal(null);
-                          }
-                      }}
-                  />
-                  <div className="flex gap-4">
-                      <button 
-                          onClick={() => setInputModal(null)}
-                          className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl font-black uppercase tracking-wide transition-all text-xs hover:scale-105"
-                      >
-                          Cancel
-                      </button>
-                      <button 
-                          onClick={() => {
-                              if (inputValue.trim()) {
-                                  inputModal.onConfirm(inputValue);
-                                  setInputModal(null);
-                              }
-                          }}
-                          disabled={!inputValue.trim()}
-                          className="flex-1 py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black uppercase tracking-wide transition-all text-xs disabled:opacity-50 shadow-lg hover:scale-105 active:scale-95"
-                      >
-                          Confirm
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
-
     </div>
   );
 };

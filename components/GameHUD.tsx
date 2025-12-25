@@ -44,6 +44,7 @@ interface GameHUDProps {
   activeDangerZone?: { id: string; enteredAt: number; timeRemaining: number } | null; 
   showOtherTeams?: boolean;
   onToggleShowOtherTeams?: () => void;
+  simulatedOrientation?: 'portrait' | 'landscape'; // New prop
 }
 
 // Timer Sub-component
@@ -146,7 +147,8 @@ const GameHUD: React.FC<GameHUDProps> = ({
   onAddDangerZone,
   activeDangerZone,
   showOtherTeams,
-  onToggleShowOtherTeams
+  onToggleShowOtherTeams,
+  simulatedOrientation
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showEditBanner, setShowEditBanner] = useState(false);
@@ -284,294 +286,169 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
       {/* PLAYGROUND BUTTONS */}
       {visiblePlaygrounds.length > 0 && (mode === GameMode.PLAY || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex gap-4 pointer-events-auto items-end">
+          <div className="absolute bottom-24 sm:bottom-8 left-1/2 -translate-x-1/2 z-[1000] flex gap-4 pointer-events-auto items-end">
               {visiblePlaygrounds.map(pg => {
                   const iconId = pg.iconId || 'default';
                   const Icon = ICON_COMPONENTS[iconId];
-                  const size = pg.buttonSize || 80;
-                  const isTargeted = pg.id === targetPlaygroundId;
-
+                  const isTarget = targetPlaygroundId === pg.id;
+                  
                   return (
                       <button
                           key={pg.id}
-                          onClick={() => onOpenPlayground?.(pg.id)}
-                          style={{ width: size, height: size }}
-                          className={`rounded-3xl flex items-center justify-center transition-all border-4 group relative overflow-visible hover:scale-110 active:scale-95 ${
-                              pg.iconUrl ? 'bg-white border-white' : 'bg-gradient-to-br from-orange-500 to-red-600 border-white/30'
-                          } ${
-                              isTargeted 
-                                ? 'shadow-[0_0_20px_rgba(249,115,22,0.6)] ring-4 ring-orange-500 ring-offset-2 ring-offset-black scale-110' 
-                                : (mode === GameMode.PLAY ? 'shadow-[0_0_30px_rgba(234,88,12,0.6)] animate-pulse hover:animate-none' : 'shadow-2xl')
-                          }`}
+                          onClick={() => onOpenPlayground && onOpenPlayground(pg.id)}
+                          style={{ width: pg.buttonSize || 80, height: pg.buttonSize || 80 }}
+                          className={`rounded-3xl flex items-center justify-center transition-all border-4 group relative overflow-hidden shadow-2xl hover:scale-105 active:scale-95 ${pg.iconUrl ? 'bg-white border-white' : 'bg-gradient-to-br from-purple-600 to-indigo-600 border-white/30'} ${isTarget ? 'ring-4 ring-orange-500 animate-pulse' : ''}`}
                       >
-                          {pg.iconUrl ? (
-                              <img src={pg.iconUrl} className="w-full h-full object-cover rounded-[1.3rem]" alt={pg.title} />
-                          ) : (
-                              <Icon className="w-1/2 h-1/2 text-white" />
+                          {pg.iconUrl ? <img src={pg.iconUrl} className="w-full h-full object-cover" alt={pg.title} /> : <Icon className="w-1/2 h-1/2 text-white" />}
+                          {pg.buttonLabel && (
+                              <div className="absolute bottom-2 left-0 right-0 text-center text-[9px] font-black uppercase text-white drop-shadow-md truncate px-1">
+                                  {pg.buttonLabel}
+                              </div>
                           )}
-                          
-                          <div className={`absolute -bottom-10 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-opacity whitespace-nowrap pointer-events-none backdrop-blur-sm border border-white/10 ${mode === GameMode.EDIT ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                              {pg.title}
-                          </div>
                       </button>
                   );
               })}
           </div>
       )}
 
-      {/* SEARCH BAR */}
-      {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && onSearchLocation && (
-          <div className={`absolute top-4 ${searchBarPositionClass} left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto transition-all duration-300 ease-in-out`}>
-              <div className="hidden sm:block shadow-2xl">
-                  <LocationSearch 
-                      onSelectLocation={onSearchLocation} 
-                      className="h-12" 
-                      hideSearch={false}
-                  />
-              </div>
+      {/* TOP LEFT MENU */}
+      <div className={`absolute top-4 ${leftMenuPositionClass} z-[2000] flex gap-2 transition-all duration-300 pointer-events-auto`}>
+          <button 
+              onClick={onBackToHub} 
+              className="p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-xl rounded-2xl text-slate-700 dark:text-slate-200 hover:text-orange-500 transition-colors"
+              title="Home"
+          >
+              <Home className="w-6 h-6" />
+          </button>
+          
+          <div className="relative">
+              <button 
+                  onClick={() => setIsMenuOpen(!isMenuOpen)} 
+                  className={`p-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-xl rounded-2xl text-slate-700 dark:text-slate-200 hover:text-orange-500 transition-colors ${isMenuOpen ? 'text-orange-500' : ''}`}
+              >
+                  <Menu className="w-6 h-6" />
+              </button>
+
+              {isMenuOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-3xl shadow-2xl p-4 flex flex-col gap-2 animate-in slide-in-from-top-2">
+                      <h3 className="text-[10px] font-black uppercase text-slate-400 mb-1 ml-2 tracking-widest">MAP MODE</h3>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                          {mapStyles.map(s => (
+                              <button 
+                                  key={s.id}
+                                  onClick={() => { onSetMapStyle(s.id); setIsMenuOpen(false); }}
+                                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${mapStyle === s.id ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-500 text-orange-600 dark:text-orange-400' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500'}`}
+                              >
+                                  <s.icon className="w-5 h-5" />
+                                  <span className="text-[9px] font-black uppercase">{s.label}</span>
+                              </button>
+                          ))}
+                      </div>
+
+                      <h3 className="text-[10px] font-black uppercase text-slate-400 mb-1 ml-2 tracking-widest">ACTIONS</h3>
+                      <button onClick={() => { onToggleMeasure?.(); setIsMenuOpen(false); }} className="p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl flex items-center gap-3 text-xs font-bold uppercase text-slate-600 dark:text-slate-300 transition-colors">
+                          <Ruler className="w-4 h-4 text-pink-500" /> MEASURE DISTANCE
+                      </button>
+                      <button onClick={() => { onOpenTeamDashboard?.(); setIsMenuOpen(false); }} className="p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl flex items-center gap-3 text-xs font-bold uppercase text-slate-600 dark:text-slate-300 transition-colors">
+                          <Users className="w-4 h-4 text-blue-500" /> MY TEAM
+                      </button>
+                      
+                      {mode === GameMode.EDIT && (
+                          <>
+                              <div className="h-px bg-gray-200 dark:bg-gray-700 my-1" />
+                              <button onClick={() => { onRelocateGame?.(); setIsMenuOpen(false); }} className={`p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl flex items-center gap-3 text-xs font-bold uppercase text-slate-600 dark:text-slate-300 transition-colors ${isRelocating ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : ''}`}>
+                                  <Move className="w-4 h-4 text-green-500" /> {isRelocating ? 'FINISH RELOCATING' : 'RELOCATE GAME'}
+                              </button>
+                              <button onClick={() => { onAddDangerZone?.(); setIsMenuOpen(false); }} className="p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl flex items-center gap-3 text-xs font-bold uppercase text-slate-600 dark:text-slate-300 transition-colors">
+                                  <Skull className="w-4 h-4 text-red-500" /> ADD DANGER ZONE
+                              </button>
+                          </>
+                      )}
+                  </div>
+              )}
+          </div>
+      </div>
+
+      {/* TOP SEARCH BAR */}
+      <div className={`absolute top-4 ${searchBarPositionClass} z-[2000] pointer-events-none transition-all duration-300 w-full max-w-sm px-4`}>
+          <LocationSearch 
+              onSelectLocation={(c) => onSearchLocation && onSearchLocation(c)} 
+              onLocateMe={onLocateMe}
+              onFitBounds={onFitBounds}
+              hideSearch={!onSearchLocation}
+          />
+      </div>
+
+      {/* MODE TOGGLE */}
+      {/* Instructor Mode is accessed via login, so standard toggle just swaps Play/Edit for development convenience if needed, 
+          or restricted in production. Assuming dev access for now. */}
+      {/* <div className="absolute top-4 right-4 z-[2000] flex gap-2 pointer-events-auto">
+          <button 
+              onClick={toggleMode} 
+              className={`px-4 py-2 rounded-xl shadow-xl font-black text-xs uppercase tracking-widest border-2 transition-all hover:scale-105 active:scale-95 ${mode === GameMode.PLAY ? 'bg-green-500 border-green-400 text-white' : (mode === GameMode.EDIT ? 'bg-orange-500 border-orange-400 text-white' : 'bg-indigo-600 border-indigo-500 text-white')}`}
+          >
+              {mode} MODE
+          </button>
+      </div> */}
+
+      {/* FLOATING ACTION BUTTONS (PLAY MODE) */}
+      {mode === GameMode.PLAY && (
+          <div className="absolute bottom-8 right-4 z-[1000] flex flex-col gap-3 pointer-events-auto">
+              <button 
+                  onClick={onToggleChat}
+                  className="w-14 h-14 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 relative"
+              >
+                  <MessageSquare className="w-6 h-6" />
+                  {unreadMessagesCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold flex items-center justify-center rounded-full border-2 border-slate-900 animate-bounce">
+                          {unreadMessagesCount}
+                      </span>
+                  )}
+              </button>
+              
+              {onToggleScores && (
+                  <button 
+                      onClick={onToggleScores}
+                      className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 ${showScores ? 'bg-white text-slate-900' : 'bg-slate-800 text-white'}`}
+                  >
+                      <Hash className="w-6 h-6" />
+                  </button>
+              )}
           </div>
       )}
 
-      {/* TOP LEFT BUTTONS */}
-      <div className={`absolute top-4 ${leftMenuPositionClass} z-[1000] pointer-events-auto h-12 flex items-center gap-2 transition-all duration-300 ease-in-out`}>
-            {mode === GameMode.PLAY && onOpenTeamDashboard ? (
-                <button
-                    onClick={onOpenTeamDashboard}
-                    className="h-12 pl-3 pr-4 bg-slate-900/95 dark:bg-gray-900/95 border-2 border-orange-500 rounded-2xl flex items-center justify-center gap-2.5 shadow-2xl hover:scale-105 active:scale-95 transition-all group hover:bg-slate-800"
-                >
-                    <Shield className="w-5 h-5 text-orange-500 group-hover:text-white transition-colors" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
-                        TEAM ZONE
-                    </span>
-                </button>
-            ) : (
-                <div className="relative group">
-                    <button 
-                      onClick={() => setIsMenuOpen(!isMenuOpen)}
-                      title="Main Menu"
-                      className={`h-12 w-12 flex items-center justify-center shadow-2xl rounded-2xl transition-all border border-white/10 hover:scale-105 active:scale-95 hover:border-white/30 ${isMenuOpen ? 'bg-white text-slate-900' : 'bg-slate-900/95 dark:bg-gray-800 text-white hover:bg-slate-800'}`}
-                    >
-                      {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                    </button>
-                </div>
-            )}
-            
-            {/* Menu Dropdown */}
-            {isMenuOpen && mode !== GameMode.PLAY && (
-                <div className="absolute top-14 left-0 bg-slate-950 border border-slate-800 rounded-2xl shadow-2xl p-2 min-w-[240px] animate-in slide-in-from-top-2 fade-in duration-200 origin-top-left z-[3000]">
-                    <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 mb-1">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">MENU</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        <button onClick={() => { onBackToHub(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide">
-                            <Home className="w-4 h-4" /> HUB
-                        </button>
-                        <button onClick={() => { onOpenTeams(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide">
-                            <Users className="w-4 h-4" /> TEAMS
-                        </button>
-                        <button onClick={() => { onOpenGameManager(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide">
-                            <LayoutDashboard className="w-4 h-4" /> GAMES
-                        </button>
-                        <button onClick={() => { if(onOpenTeamDashboard) onOpenTeamDashboard(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide">
-                            <MessageSquare className="w-4 h-4" /> CHAT / STATUS
-                        </button>
-                        <button onClick={() => { onOpenTaskMaster(); setIsMenuOpen(false); }} className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors text-left font-bold text-xs uppercase tracking-wide">
-                            <Library className="w-4 h-4" /> TASKS
-                        </button>
-                    </div>
-                </div>
-            )}
-      </div>
-
-      {/* FLOATING DRAGGABLE TOOLBAR */}
-      <div 
-        className="absolute top-4 right-4 z-[1000] pointer-events-auto"
-        style={{ transform: `translate(${toolbarPos.x}px, ${toolbarPos.y}px)`, touchAction: 'none' }}
-      >
-        <div className="bg-slate-900/95 dark:bg-gray-900/95 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl p-2 flex flex-col gap-2 min-w-[72px] items-center transition-shadow hover:shadow-orange-500/10">
-            
-            {/* Drag Handle */}
-            <div 
-                className="w-full flex justify-center py-1 cursor-grab active:cursor-grabbing text-slate-600 hover:text-white transition-colors border-b border-white/5 mb-1"
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-                onPointerCancel={handlePointerUp}
-                title="Drag Toolbar"
-            >
-                <GripHorizontal className="w-5 h-5" />
-            </div>
-
-            {/* Permanent Mode Switcher (Reordered: Editor -> Instructor -> Play) */}
-            <div className="flex flex-col items-center gap-1 w-full pb-2 border-b border-white/10">
-                <div className="flex gap-1 bg-slate-800/80 p-1 rounded-xl">
-                    <button 
-                        onClick={() => handleSetMode(GameMode.EDIT)} 
-                        className={`p-2 rounded-lg transition-all hover:scale-110 active:scale-95 ${mode === GameMode.EDIT ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-                        title="Editor Mode"
-                    >
-                        <Layers className="w-4 h-4" />
-                    </button>
-                    <button 
-                        onClick={() => handleSetMode(GameMode.INSTRUCTOR)} 
-                        className={`p-2 rounded-lg transition-all hover:scale-110 active:scale-95 ${mode === GameMode.INSTRUCTOR ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-                        title="Instructor Mode"
-                    >
-                        <GraduationCap className="w-4 h-4" />
-                    </button>
-                    <button 
-                        onClick={() => handleSetMode(GameMode.PLAY)} 
-                        className={`p-2 rounded-lg transition-all hover:scale-110 active:scale-95 ${mode === GameMode.PLAY ? 'bg-orange-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
-                        title="Team Mode"
-                    >
-                        <Shield className="w-4 h-4" />
-                    </button>
-                </div>
-                <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
-                    {mode === GameMode.PLAY ? 'TEAM ZONE' : mode === GameMode.EDIT ? 'EDITOR' : 'INSTRUCTOR'}
-                </span>
-            </div>
-
-            {/* Global Actions */}
-            <div className="flex gap-2 justify-center w-full">
-                {onToggleChat && (
-                    <button
-                        onClick={onToggleChat}
-                        title="Chat"
-                        className={`w-10 h-10 flex items-center justify-center shadow-lg rounded-xl transition-all border border-white/10 hover:scale-110 active:scale-95 relative ${unreadMessagesCount > 0 ? 'bg-orange-600 text-white animate-pulse' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'}`}
-                    >
-                        <MessageSquare className="w-5 h-5" />
-                        {unreadMessagesCount > 0 && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-600 rounded-full flex items-center justify-center text-[9px] font-black border-2 border-slate-900">
-                                {unreadMessagesCount}
-                            </div>
-                        )}
-                    </button>
-                )}
-                {mode === GameMode.INSTRUCTOR && onOpenInstructorDashboard && (
-                    <button 
-                      onClick={onOpenInstructorDashboard} 
-                      title="Dashboard"
-                      className="w-10 h-10 bg-slate-800 text-amber-500 shadow-lg rounded-xl flex items-center justify-center transition-all border border-amber-500/50 hover:bg-amber-500 hover:text-white hover:scale-110 active:scale-95"
-                    >
-                        <LayoutDashboard className="w-5 h-5" />
-                    </button>
-                )}
-            </div>
-
-            {/* EDITOR CONTROLS */}
-            {mode === GameMode.EDIT && (
-                <>
-                    {/* TASKS SECTION */}
-                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
-                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">TASKS</span>
-                        <div className="grid grid-cols-2 gap-2">
-                            {onAddDangerZone && (
-                                <button
-                                    onClick={onAddDangerZone}
-                                    title="Add Danger Zone"
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:bg-red-600 hover:text-white transition-all border border-white/5 hover:scale-110 active:scale-95"
-                                >
-                                    <Skull className="w-5 h-5" />
-                                </button>
-                            )}
-                            {onToggleScores && (
-                                <button 
-                                    onClick={onToggleScores}
-                                    title="Toggle Scores"
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border border-white/5 hover:scale-110 active:scale-95 ${showScores ? 'text-blue-400 bg-blue-900/30' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    <Hash className="w-5 h-5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* SETTINGS SECTION (Moved from Drawer) */}
-                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
-                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">SETTINGS</span>
-                        <div className="grid grid-cols-1 gap-2">
-                            {onToggleShowOtherTeams && (
-                                <button 
-                                    onClick={onToggleShowOtherTeams}
-                                    title="Show Teams to Teams"
-                                    className={`w-full py-2 flex items-center justify-center gap-2 rounded-xl transition-all border border-white/5 hover:scale-105 active:scale-95 ${showOtherTeams ? 'text-green-400 bg-green-900/30' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    {showOtherTeams ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                                    <span className="text-[8px] font-black uppercase">VIS TEAMS</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* ZOOM SECTION */}
-                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
-                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">ZOOM</span>
-                        <div className="grid grid-cols-2 gap-2">
-                            {onFitBounds && (
-                                <button 
-                                    onClick={onFitBounds}
-                                    title="Fit Tasks"
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10 transition-all border border-white/5 hover:scale-110 active:scale-95"
-                                >
-                                    <Maximize className="w-5 h-5" />
-                                </button>
-                            )}
-                            {onLocateMe && (
-                                <button 
-                                    onClick={onLocateMe}
-                                    title="My Location"
-                                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10 transition-all border border-white/5 hover:scale-110 active:scale-95"
-                                >
-                                    <Target className="w-5 h-5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* MAP SECTION (Includes Styles + Edit Tools) */}
-                    <div className="w-full pt-2 border-t border-white/10 mt-1 flex flex-col items-center">
-                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1.5">MAP</span>
-                        <div className="grid grid-cols-2 gap-2 mb-2">
-                            {mapStyles.map((style) => (
-                                <button
-                                    key={style.id}
-                                    onClick={() => onSetMapStyle(style.id)}
-                                    title={style.label}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border border-white/5 hover:scale-110 active:scale-95 ${mapStyle === style.id ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-white/10'}`}
-                                >
-                                    <style.icon className="w-5 h-5" />
-                                </button>
-                            ))}
-                        </div>
-                        
-                        <div className="w-full h-px bg-white/5 mb-2"></div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            {onRelocateGame && (
-                                <button
-                                    onClick={onRelocateGame}
-                                    title={isRelocating ? "Place Pins" : "Relocate"}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border hover:scale-110 active:scale-95 ${isRelocating ? 'bg-green-600 text-white border-green-500 animate-pulse' : 'bg-slate-800 text-blue-500 border-blue-500/30 hover:bg-blue-600 hover:text-white'}`}
-                                >
-                                    {isRelocating ? <MapPin className="w-5 h-5" /> : <Move className="w-5 h-5" />}
-                                </button>
-                            )}
-                            {onToggleMeasure && !isRelocating && (
-                                <button
-                                    onClick={onToggleMeasure}
-                                    title={isMeasuring ? "Stop" : "Measure"}
-                                    className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all border hover:scale-110 active:scale-95 ${isMeasuring ? 'bg-pink-600 text-white border-pink-500' : 'bg-slate-800 text-pink-500 border-pink-500/30 hover:bg-pink-600 hover:text-white'}`}
-                                >
-                                    <Ruler className="w-5 h-5" />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                </>
-            )}
-        </div>
-      </div>
+      {/* FLOATING TOOLBAR (EDIT MODE) */}
+      {mode === GameMode.EDIT && (
+          <div 
+              className="absolute z-[2500] pointer-events-auto flex flex-col gap-2 p-2 bg-slate-900/90 backdrop-blur-md rounded-3xl border border-slate-700 shadow-2xl touch-none"
+              style={{ 
+                  left: `calc(100% - 80px + ${toolbarPos.x}px)`, 
+                  top: `calc(50% - 150px + ${toolbarPos.y}px)` 
+              }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+          >
+              <div className="w-full h-6 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-50 hover:opacity-100">
+                  <GripHorizontal className="w-4 h-4 text-slate-400" />
+              </div>
+              
+              <button onClick={onOpenGameManager} className="w-12 h-12 bg-orange-600 hover:bg-orange-500 text-white rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110" title="Game Settings">
+                  <Gamepad2 className="w-6 h-6" />
+              </button>
+              <button onClick={onOpenTaskMaster} className="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110" title="Task Library">
+                  <Library className="w-6 h-6" />
+              </button>
+              <button onClick={onOpenTeams} className="w-12 h-12 bg-green-600 hover:bg-green-500 text-white rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110" title="Teams">
+                  <Users className="w-6 h-6" />
+              </button>
+              {onOpenInstructorDashboard && (
+                  <button onClick={onOpenInstructorDashboard} className="w-12 h-12 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg transition-transform hover:scale-110" title="Instructor View">
+                      <Shield className="w-6 h-6" />
+                  </button>
+              )}
+          </div>
+      )}
     </>
   );
 };

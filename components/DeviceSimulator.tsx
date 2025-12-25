@@ -1,17 +1,24 @@
 
-import React, { useState } from 'react';
-import { Smartphone, Tablet, RotateCw, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Smartphone, Tablet, RotateCw, X, Lock } from 'lucide-react';
 
 interface DeviceSimulatorProps {
     children: React.ReactNode;
     onClose: () => void;
     initialType?: 'mobile' | 'tablet';
     label: string;
+    onConfigChange?: (config: { device: 'mobile' | 'tablet', orientation: 'portrait' | 'landscape' }) => void;
 }
 
-const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, initialType = 'mobile', label }) => {
+const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, initialType = 'mobile', label, onConfigChange }) => {
     const [device, setDevice] = useState<'mobile' | 'tablet'>(initialType);
     const [orientation, setOrientation] = useState<'portrait' | 'landscape'>('portrait');
+
+    useEffect(() => {
+        if (onConfigChange) {
+            onConfigChange({ device, orientation });
+        }
+    }, [device, orientation, onConfigChange]);
 
     // Dimensions for common devices
     const getStyles = () => {
@@ -24,6 +31,10 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
                 ? { width: '768px', height: '1024px' }
                 : { width: '1024px', height: '768px' };
         }
+    };
+
+    const handleRotate = () => {
+        setOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait');
     };
 
     return (
@@ -43,21 +54,22 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
                             onClick={() => setDevice('mobile')} 
                             className={`px-3 py-2 rounded flex gap-2 items-center transition-all ${device === 'mobile' ? 'bg-[#00adef] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
                         >
-                            <Smartphone className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">Mobile</span>
+                            <Smartphone className="w-4 h-4" /> <span className="text-[10px] font-black uppercase hidden sm:inline">Mobile</span>
                         </button>
                         <button 
                             onClick={() => setDevice('tablet')} 
                             className={`px-3 py-2 rounded flex gap-2 items-center transition-all ${device === 'tablet' ? 'bg-[#00adef] text-black shadow-lg' : 'text-slate-400 hover:text-white'}`}
                         >
-                            <Tablet className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">Tablet</span>
+                            <Tablet className="w-4 h-4" /> <span className="text-[10px] font-black uppercase hidden sm:inline">Tablet</span>
                         </button>
                     </div>
 
                     <button 
-                        onClick={() => setOrientation(prev => prev === 'portrait' ? 'landscape' : 'portrait')} 
+                        onClick={handleRotate} 
                         className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-400 hover:text-white flex gap-2 items-center hover:bg-slate-700 transition-colors"
+                        title="Rotate Device"
                     >
-                        <RotateCw className="w-4 h-4" /> <span className="text-[10px] font-black uppercase">{orientation}</span>
+                        <RotateCw className="w-4 h-4" /> <span className="text-[10px] font-black uppercase hidden sm:inline">{orientation}</span>
                     </button>
                 </div>
 
@@ -67,7 +79,7 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
             </div>
             
             {/* Device Frame */}
-            <div className="flex-1 w-full flex items-center justify-center overflow-auto py-20">
+            <div className="flex-1 w-full flex items-center justify-center overflow-auto py-20 bg-slate-950">
                 <div 
                     className="relative bg-white dark:bg-slate-900 shadow-2xl transition-all duration-500 ease-in-out border-[12px] border-[#1a1a1a] rounded-[2.5rem] ring-1 ring-white/10"
                     style={getStyles()}
@@ -79,7 +91,7 @@ const DeviceSimulator: React.FC<DeviceSimulatorProps> = ({ children, onClose, in
                     </div>
 
                     {/* Fake Home Bar */}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-white/20 rounded-full pointer-events-none" />
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-1/3 h-1 bg-white/20 rounded-full pointer-events-none z-[9999]" />
                 </div>
             </div>
         </div>
