@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline, Tooltip, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { GamePoint, Coordinate, GameMode, MapStyleId, Team, DangerZone, TeamStatus } from '../types';
+import { GamePoint, Coordinate, GameMode, MapStyleId, Team, DangerZone, TeamStatus, GameRoute } from '../types';
 import { getLeafletIcon } from '../utils/icons';
 import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock, Users, Trophy, MessageSquare, MapPin } from 'lucide-react';
 
@@ -77,7 +77,7 @@ const createTeamIcon = (teamName: string, photoUrl?: string, status?: TeamStatus
 };
 
 export interface GameMapHandle {
-  fitBounds: (points: GamePoint[]) => void;
+  fitBounds: (points: GamePoint[] | Coordinate[]) => void;
   getBounds: () => { ne: Coordinate; sw: Coordinate } | null;
   getCenter: () => Coordinate;
   jumpTo: (coord: Coordinate, zoom?: number) => void;
@@ -102,7 +102,8 @@ interface GameMapProps {
   measurePath?: Coordinate[];
   logicLinks?: { from: Coordinate; to: Coordinate; color?: string; type?: 'onOpen' | 'onCorrect' | 'onIncorrect' | 'open_playground' }[]; 
   playgroundMarkers?: { id: string; location: Coordinate; title: string; iconId: string }[]; 
-  dangerZones?: DangerZone[]; 
+  dangerZones?: DangerZone[];
+  routes?: GameRoute[]; // New Prop 
   dependentPointIds?: string[]; 
   accuracy: number | null;
   mode: GameMode;
@@ -160,16 +161,27 @@ const RecenterMap = ({ center, points, mode }: { center: Coordinate | null, poin
 const MapController = ({ handleRef }: { handleRef: React.RefObject<any> }) => {
     const map = useMap();
     
-    // Resize map when it mounts or container changes size
     useEffect(() => {
         map.invalidateSize();
+        const t = setTimeout(() => map.invalidateSize(), 200);
+        return () => clearTimeout(t);
     }, [map]);
 
     useImperativeHandle(handleRef, () => ({
-        fitBounds: (pts: GamePoint[]) => {
-            const validPts = pts.filter(p => p.location.lat !== 0 || p.location.lng !== 0);
-            if (validPts.length === 0) return;
-            const bounds = L.latLngBounds(validPts.map(p => [p.location.lat, p.location.lng]));
+        fitBounds: (pts: GamePoint[] | Coordinate[]) => {
+            let latLngs: L.LatLngExpression[] = [];
+            
+            // Check if pts is GamePoint[] or Coordinate[]
+            if (pts.length > 0 && 'location' in pts[0]) {
+                 const validPts = (pts as GamePoint[]).filter(p => p.location.lat !== 0 || p.location.lng !== 0);
+                 latLngs = validPts.map(p => [p.location.lat, p.location.lng]);
+            } else {
+                 latLngs = (pts as Coordinate[]).map(c => [c.lat, c.lng]);
+            }
+
+            if (latLngs.length === 0) return;
+            
+            const bounds = L.latLngBounds(latLngs);
             if (bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
             }
@@ -211,7 +223,7 @@ interface MapTaskMarkerProps {
 const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({ 
   point, 
   mode, 
-  isSelected,
+  isSelected, 
   isDependent,
   isRelocating,
   label,
@@ -253,7 +265,10 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
 
   const eventHandlers = React.useMemo(
     () => ({
-      click: () => onClick(point),
+      click: (e: L.LeafletMouseEvent) => {
+          L.DomEvent.stopPropagation(e);
+          onClick(point);
+      },
       mouseover: () => {
         if (onHover) {
           hoverTimeoutRef.current = window.setTimeout(() => {
@@ -345,7 +360,7 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
             (hasActions || point.isHiddenBeforeScan) && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR), 
             forcedColor, 
             point.isHiddenBeforeScan, 
-            mode === GameMode.EDIT && showScore ? point.points : undefined, 
+            showScore ? point.points : undefined, 
             point.iconUrl,
             isPlaygroundActivator
         )} 
@@ -360,7 +375,8 @@ const MapTaskMarker: React.FC<MapTaskMarkerProps> = ({
             fillColor: fillColor, 
             fillOpacity: showGeofence ? (isSelected ? 0.4 : 0.2) : 0.1, 
             weight: showGeofence ? (isSelected ? 3 : 2) : 1, 
-            dashArray: visualIsUnlocked ? undefined : '5, 5' 
+            dashArray: visualIsUnlocked ? undefined : '5, 5',
+            interactive: false 
         }} 
       />
     </>
@@ -407,6 +423,26 @@ const DangerZoneMarker: React.FC<{
 
     const isDraggable = mode === GameMode.EDIT;
 
+    // Create Label for Title if it exists
+    const getZoneIcon = () => {
+        let html = getLeafletIcon('skull', true, false, undefined, false, '#ef4444').options.html || '';
+        
+        if (zone.title) {
+            // Remove closing div from base icon
+            html = html.replace('</div>', '');
+            // Append Label centered above
+            html += `<div style="position: absolute; top: -30px; left: 50%; transform: translateX(-50%); background-color: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 8px; border: 2px solid white; z-index: 20; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3); text-transform: uppercase;">${zone.title}</div></div>`;
+        }
+        
+        return L.divIcon({
+            className: 'custom-game-icon',
+            html: html,
+            iconSize: [40, 40],
+            iconAnchor: [20, 40],
+            popupAnchor: [0, -40],
+        });
+    };
+
     return (
         <>
             {isDraggable && (
@@ -414,8 +450,17 @@ const DangerZoneMarker: React.FC<{
                     position={[zone.location.lat, zone.location.lng]}
                     draggable={true}
                     eventHandlers={eventHandlers}
-                    icon={getLeafletIcon('skull', true, false, undefined, false, '#ef4444')}
+                    icon={getZoneIcon()}
                     zIndexOffset={900}
+                />
+            )}
+            {/* If not draggable (Play mode), render marker only if title exists so users can see name on map? Or maybe just render marker always in play mode? Assuming visibility is desired. */}
+            {!isDraggable && (
+                <Marker
+                    position={[zone.location.lat, zone.location.lng]}
+                    interactive={false}
+                    icon={getZoneIcon()}
+                    zIndexOffset={400}
                 />
             )}
             <Circle 
@@ -427,14 +472,15 @@ const DangerZoneMarker: React.FC<{
                     fillOpacity: 0.3,
                     weight: 2,
                     dashArray: '10, 10', 
-                    className: 'danger-zone-circle' 
+                    className: 'danger-zone-circle',
+                    interactive: false
                 }}
             />
         </>
     );
 };
 
-const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string }> = {
+const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string; overlayUrl?: string }> = {
   osm: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap' },
   satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles &copy; Esri' },
   dark: { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap' },
@@ -442,8 +488,38 @@ const MAP_LAYERS: Record<MapStyleId, { url: string; attribution: string }> = {
   clean: { url: 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap, &copy; CartoDB' },
   voyager: { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', attribution: '&copy; OpenStreetMap, &copy; CartoDB' },
   winter: { url: 'https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png', attribution: '&copy; Kartverket' },
-  // Keeping key for type safety if old games use it, but pointing to standard OSM fallback or just removing from UI
+  ski: { 
+      // Switch base to standard OSM to avoid blank screens from OpenTopoMap
+      url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', 
+      overlayUrl: 'https://tiles.opensnowmap.org/pistes/{z}/{x}/{y}.png',
+      attribution: 'Map data: &copy; OpenStreetMap contributors | Pistes: &copy; OpenSnowMap' 
+  },
   ancient: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap' }, 
+};
+
+// Isolated Layer Component to force re-mounting on style change
+const MapLayers: React.FC<{ mapStyle: MapStyleId }> = ({ mapStyle }) => {
+    const currentLayer = MAP_LAYERS[mapStyle] || MAP_LAYERS.osm;
+    
+    // Keying by mapStyle ensures React fully unmounts the old layer and mounts the new one
+    // preventing Leaflet tile caching issues.
+    return (
+        <>
+            <TileLayer 
+                key={mapStyle} 
+                attribution={currentLayer.attribution} 
+                url={currentLayer.url} 
+                zIndex={0}
+            />
+            {currentLayer.overlayUrl && (
+                <TileLayer 
+                    key={`${mapStyle}-overlay`}
+                    url={currentLayer.overlayUrl} 
+                    zIndex={1} 
+                />
+            )}
+        </>
+    );
 };
 
 const GameMap = forwardRef<GameMapHandle, GameMapProps>(({ 
@@ -456,6 +532,7 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
     logicLinks = [], 
     playgroundMarkers = [], 
     dangerZones = [], 
+    routes = [],
     dependentPointIds = [], 
     accuracy, 
     mode, 
@@ -472,9 +549,8 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
     onZoneClick 
 }, ref) => {
   const center = userLocation || { lat: 55.6761, lng: 12.5683 };
-  // Default to OSM if style not found
-  const currentLayer = MAP_LAYERS[mapStyle] || MAP_LAYERS.osm;
-  
+  const [highlightedRouteId, setHighlightedRouteId] = useState<string | null>(null);
+
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
       if (mode === GameMode.PLAY && p.isHiddenBeforeScan && !p.isUnlocked) {
@@ -503,18 +579,51 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
         )}
 
         <MapContainer 
-            key={`${mode}`} 
             center={[center.lat, center.lng]} 
             zoom={15} 
             style={{ height: '100%', width: '100%' }} 
             zoomControl={false}
         >
             <MapController handleRef={ref as any} />
-            <TileLayer attribution={currentLayer.attribution} url={currentLayer.url} />
+            
+            <MapLayers key={mapStyle} mapStyle={mapStyle} />
+            
             <RecenterMap center={userLocation} points={mapPoints} mode={mode} />
             
             {(mode === GameMode.EDIT) && <MapClickParams onClick={onMapClick} />}
             
+            {/* ROUTES / GPX OVERLAYS */}
+            {routes.map(route => {
+                if (!route.isVisible) return null;
+                const isHighlighted = highlightedRouteId === route.id;
+                
+                return (
+                    <Polyline 
+                        key={route.id}
+                        positions={route.points.map(p => [p.lat, p.lng])}
+                        pathOptions={{ 
+                            color: isHighlighted ? '#f97316' : route.color, 
+                            weight: isHighlighted ? 8 : 4, 
+                            opacity: isHighlighted ? 1 : 0.7,
+                            shadowBlur: isHighlighted ? 10 : 0,
+                            interactive: true
+                        }}
+                        eventHandlers={{
+                            click: (e) => {
+                                L.DomEvent.stopPropagation(e);
+                                setHighlightedRouteId(isHighlighted ? null : route.id);
+                            }
+                        }}
+                    >
+                        <Tooltip sticky direction="top" className="custom-leaflet-tooltip">
+                            <span className="font-bold uppercase text-xs bg-black/80 text-white px-2 py-1 rounded shadow-md border border-white/20">
+                                {route.name}
+                            </span>
+                        </Tooltip>
+                    </Polyline>
+                );
+            })}
+
             {userLocation && (
                 <>
                 <Marker position={[userLocation.lat, userLocation.lng]} icon={UserIcon} zIndexOffset={500} />
@@ -527,7 +636,8 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
                             fillOpacity: 0.1, 
                             color: '#3b82f6', 
                             weight: 1,
-                            dashArray: '5, 5'
+                            dashArray: '5, 5',
+                            interactive: false
                         }} 
                     />
                 )}
@@ -539,7 +649,7 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
                 if (link.type === 'open_playground') return null;
                 const key = `link-${idx}`;
                 const color = link.color || '#eab308';
-                return <Polyline key={key} positions={[[link.from.lat, link.from.lng], [link.to.lat, link.to.lng]]} pathOptions={{ color: color, weight: 3, dashArray: '10, 10', opacity: 0.8 }} />;
+                return <Polyline key={key} positions={[[link.from.lat, link.from.lng], [link.to.lat, link.to.lng]]} pathOptions={{ color: color, weight: 3, dashArray: '10, 10', opacity: 0.8, interactive: false }} />;
             })}
 
             {dangerZones && dangerZones.map(zone => (
@@ -562,31 +672,30 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
                     draggable={mode === GameMode.EDIT}
                     eventHandlers={{ 
                         dragend: (e) => { 
-                            // CHECK IF DROPPED ON TRASH BIN (For Playground Markers)
-                            const evt = e as L.LeafletMouseEvent;
-                            if (onDeletePoint && evt.originalEvent) {
-                                const trash = document.getElementById('game-trash-bin');
-                                if (trash) {
-                                    const rect = trash.getBoundingClientRect();
-                                    const { clientX, clientY } = evt.originalEvent;
-                                    if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
-                                        // Playground delete logic handled in editor
-                                    }
-                                }
-                            }
-
                             if (onPointMove) onPointMove(pg.id, (e.target as L.Marker).getLatLng()); 
                         } 
                     }}
                 />
             ))}
 
-            {measurePath && measurePath.length > 1 && (
-                <Polyline 
-                    key={measurePathKey}
-                    positions={measurePath.map(c => [c.lat, c.lng])} 
-                    pathOptions={{ color: '#ec4899', weight: 4, dashArray: '10, 10', opacity: 0.8 }} 
-                />
+            {measurePath && (
+                <>
+                    {measurePath.length > 1 && (
+                        <Polyline 
+                            key={measurePathKey}
+                            positions={measurePath.map(c => [c.lat, c.lng])} 
+                            pathOptions={{ color: '#ec4899', weight: 4, dashArray: '10, 10', opacity: 0.8, interactive: false }} 
+                        />
+                    )}
+                    {measurePath.map((pos, idx) => (
+                        <Circle 
+                            key={`measure-point-${idx}`}
+                            center={[pos.lat, pos.lng]}
+                            radius={4}
+                            pathOptions={{ color: '#ec4899', fillColor: '#fff', fillOpacity: 1, weight: 2, interactive: false }}
+                        />
+                    ))}
+                </>
             )}
             
             {mapPoints.map(point => (
@@ -601,7 +710,7 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
                     onClick={onPointClick} 
                     onMove={onPointMove} 
                     onDelete={onDeletePoint} 
-                    onPointHover={onPointHover} 
+                    onHover={onPointHover} 
                     showScore={showScores}
                 />
             ))}
@@ -626,7 +735,7 @@ const GameMap = forwardRef<GameMapHandle, GameMapProps>(({
                     <Polyline 
                         key={`trail-${teamId}`}
                         positions={trail.map(c => [c.lat, c.lng])}
-                        pathOptions={{ color: getTeamColor(teamId), weight: 2, dashArray: '5, 5', opacity: 0.5 }}
+                        pathOptions={{ color: getTeamColor(teamId), weight: 2, dashArray: '5, 5', opacity: 0.5, interactive: false }}
                     />
                 );
             })}

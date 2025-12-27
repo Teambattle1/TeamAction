@@ -74,8 +74,8 @@ const CategoryButton = ({
         onClick={onClick}
         className={`group relative h-40 rounded-[2rem] flex flex-col items-center justify-center overflow-hidden shadow-2xl transition-all hover:scale-[1.05] active:scale-95 border-2 hover:shadow-3xl cursor-pointer ${color}`}
     >
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/50 to-transparent" />
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/50 to-transparent pointer-events-none" />
         
         <div className="relative z-10 flex flex-col items-center gap-3">
             <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 group-hover:scale-110 transition-transform duration-300 group-hover:bg-white/20">
@@ -288,7 +288,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   return (
     <div className="fixed inset-0 z-[4000] bg-slate-950 text-white flex flex-col font-sans uppercase overflow-hidden">
       {/* Background decoration */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent)] opacity-40" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent)] opacity-40 pointer-events-none" />
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
 
       {/* Main Container */}

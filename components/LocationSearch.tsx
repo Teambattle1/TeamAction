@@ -3,6 +3,19 @@ import React, { useState } from 'react';
 import { Search, Loader2, MapPin, X, Target, Maximize, Hash } from 'lucide-react';
 import { Coordinate } from '../types';
 
+// Extracted to prevent re-mounting on every render
+const ActionButton = ({ onClick, icon: Icon, label, colorClass, active = false }: { onClick: (e: React.MouseEvent) => void, icon: any, label: string, colorClass: string, active?: boolean }) => (
+    <button 
+      type="button"
+      onClick={onClick} 
+      className={`w-12 h-12 rounded-2xl shadow-lg border flex flex-col items-center justify-center transition-all active:scale-95 group pointer-events-auto ${active ? 'bg-orange-600 border-orange-500 hover:bg-orange-500' : 'bg-[#1a202c] border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
+      title={label}
+    >
+      <Icon className={`w-5 h-5 mb-0.5 ${active ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
+      <span className={`text-[8px] font-black uppercase tracking-widest hidden sm:block leading-none ${active ? 'text-white' : 'text-slate-500 group-hover:text-white'}`}>{label}</span>
+    </button>
+);
+
 interface LocationSearchProps {
   onSelectLocation: (coord: Coordinate) => void;
   onLocateMe?: () => void;
@@ -51,18 +64,6 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     setQuery(res.display_name);
   };
 
-  // Restyled Square Action Button
-  const ActionButton = ({ onClick, icon: Icon, label, colorClass, active = false }: { onClick: () => void, icon: any, label: string, colorClass: string, active?: boolean }) => (
-      <button 
-        onClick={onClick} 
-        className={`w-12 h-12 rounded-2xl shadow-lg border flex flex-col items-center justify-center transition-all active:scale-95 group pointer-events-auto ${active ? 'bg-orange-600 border-orange-500 hover:bg-orange-500' : 'bg-[#1a202c] border-slate-700 hover:border-slate-500 hover:bg-slate-800'}`}
-        title={label}
-      >
-        <Icon className={`w-5 h-5 mb-0.5 ${active ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
-        <span className={`text-[8px] font-black uppercase tracking-widest hidden sm:block leading-none ${active ? 'text-white' : 'text-slate-500 group-hover:text-white'}`}>{label}</span>
-      </button>
-  );
-
   return (
     <div className={`flex items-center gap-2 pointer-events-auto ${className}`}>
       {!hideSearch && (
@@ -107,15 +108,31 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
       )}
 
       {onLocateMe && (
-        <ActionButton onClick={onLocateMe} icon={Target} label="LOCATE" colorClass="" />
+        <ActionButton 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocateMe(); }} 
+            icon={Target} 
+            label="LOCATE" 
+            colorClass="" 
+        />
       )}
 
       {onFitBounds && (
-        <ActionButton onClick={onFitBounds} icon={Maximize} label="FIT" colorClass="" />
+        <ActionButton 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFitBounds(); }} 
+            icon={Maximize} 
+            label="FIT" 
+            colorClass="" 
+        />
       )}
 
       {onToggleScores && (
-        <ActionButton onClick={onToggleScores} icon={Hash} label="SCORES" colorClass="" active={showScores} />
+        <ActionButton 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleScores(); }} 
+            icon={Hash} 
+            label="SCORES" 
+            colorClass="" 
+            active={showScores} 
+        />
       )}
     </div>
   );

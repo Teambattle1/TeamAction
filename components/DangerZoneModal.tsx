@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { DangerZone } from '../types';
-import { X, Skull, AlertTriangle, Clock, Trash2, CheckCircle, Crosshair } from 'lucide-react';
+import { X, Skull, AlertTriangle, Clock, Trash2, CheckCircle, Crosshair, Type, Zap, Hourglass } from 'lucide-react';
 
 interface DangerZoneModalProps {
   zone: DangerZone;
@@ -11,26 +11,30 @@ interface DangerZoneModalProps {
 }
 
 const DangerZoneModal: React.FC<DangerZoneModalProps> = ({ zone, onSave, onDelete, onClose }) => {
+  const [title, setTitle] = useState(zone.title || '');
   const [radius, setRadius] = useState(zone.radius);
   const [duration, setDuration] = useState(zone.duration || 10);
   const [penalty, setPenalty] = useState(zone.penalty);
+  const [penaltyType, setPenaltyType] = useState<'fixed' | 'time_based'>(zone.penaltyType || 'fixed');
 
   const handleSave = () => {
     onSave({
       ...zone,
+      title,
       radius,
       duration,
-      penalty
+      penalty,
+      penaltyType
     });
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-      <div className="bg-slate-900 border-2 border-red-600 w-full max-w-sm rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.5)] overflow-hidden flex flex-col">
+      <div className="bg-slate-900 border-2 border-red-600 w-full max-w-sm rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.5)] overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="p-6 bg-red-950/50 border-b border-red-900/50 flex justify-between items-center">
+        <div className="p-6 bg-red-950/50 border-b border-red-900/50 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-600 rounded-lg shadow-lg animate-pulse">
                 <Skull className="w-6 h-6 text-white" />
@@ -45,8 +49,46 @@ const DangerZoneModal: React.FC<DangerZoneModalProps> = ({ zone, onSave, onDelet
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
             
+            {/* Title Input */}
+            <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <Type className="w-3 h-3" /> ZONE NAME (Map Label)
+                </label>
+                <input 
+                    type="text" 
+                    value={title} 
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. RADIATION AREA"
+                    className="w-full bg-slate-800 border-2 border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-red-500 uppercase text-sm"
+                />
+            </div>
+
+            {/* Penalty Type Toggle */}
+            <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <Zap className="w-3 h-3" /> PENALTY MODE
+                </label>
+                <div className="flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+                    <button 
+                        onClick={() => setPenaltyType('fixed')}
+                        className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${penaltyType === 'fixed' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        <Hourglass className="w-3 h-3" /> FIXED (TIMER)
+                    </button>
+                    <button 
+                        onClick={() => setPenaltyType('time_based')}
+                        className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${penaltyType === 'time_based' ? 'bg-red-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        <Clock className="w-3 h-3" /> CONTINUOUS
+                    </button>
+                </div>
+                <p className="text-[10px] text-slate-500 italic mt-1">
+                    {penaltyType === 'fixed' ? 'Players have a countdown to escape before receiving a one-time penalty.' : 'Players lose points every second they remain inside the zone.'}
+                </p>
+            </div>
+
             {/* Radius Slider */}
             <div className="space-y-3">
                 <div className="flex justify-between items-end">
@@ -66,30 +108,32 @@ const DangerZoneModal: React.FC<DangerZoneModalProps> = ({ zone, onSave, onDelet
                 />
             </div>
 
-            {/* Duration Slider */}
-            <div className="space-y-3">
-                <div className="flex justify-between items-end">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> ESCAPE TIME
-                    </label>
-                    <span className="text-xl font-black text-white">{duration}s</span>
+            {/* Duration Slider (Only for Fixed Mode) */}
+            {penaltyType === 'fixed' && (
+                <div className="space-y-3 animate-in slide-in-from-top-2">
+                    <div className="flex justify-between items-end">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> ESCAPE TIME
+                        </label>
+                        <span className="text-xl font-black text-white">{duration}s</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="5" 
+                        max="60" 
+                        step="1" 
+                        value={duration} 
+                        onChange={(e) => setDuration(parseInt(e.target.value))}
+                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                    />
+                    <p className="text-[10px] text-slate-500 italic">Time allowed before penalty strikes.</p>
                 </div>
-                <input 
-                    type="range" 
-                    min="5" 
-                    max="60" 
-                    step="1" 
-                    value={duration} 
-                    onChange={(e) => setDuration(parseInt(e.target.value))}
-                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                />
-                <p className="text-[10px] text-slate-500 italic">Time allowed before penalty strikes.</p>
-            </div>
+            )}
 
             {/* Penalty Input */}
             <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> POINT PENALTY
+                    <AlertTriangle className="w-3 h-3" /> {penaltyType === 'fixed' ? 'ONE-TIME PENALTY' : 'PENALTY PER SECOND'}
                 </label>
                 <div className="relative">
                     <input 
@@ -104,7 +148,7 @@ const DangerZoneModal: React.FC<DangerZoneModalProps> = ({ zone, onSave, onDelet
 
         </div>
 
-        <div className="p-4 border-t border-slate-800 bg-slate-950 flex gap-3">
+        <div className="p-4 border-t border-slate-800 bg-slate-950 flex gap-3 shrink-0">
             <button 
                 onClick={onDelete}
                 className="p-4 bg-slate-800 hover:bg-red-900/50 text-slate-400 hover:text-red-500 rounded-xl transition-colors"

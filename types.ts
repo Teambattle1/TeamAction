@@ -8,7 +8,7 @@ export type IconId = 'default' | 'star' | 'flag' | 'trophy' | 'camera' | 'questi
 
 export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown';
 
-export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'light' | 'ancient' | 'clean' | 'voyager' | 'winter';
+export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'light' | 'ancient' | 'clean' | 'voyager' | 'winter' | 'ski';
 
 export type Language = 'English' | 'Danish' | 'German' | 'Spanish' | 'French' | 'Swedish' | 'Norwegian' | 'Dutch' | 'Belgian' | 'Hebrew';
 
@@ -164,7 +164,18 @@ export interface DangerZone {
   location: Coordinate;
   radius: number;
   penalty: number; 
-  duration: number; 
+  duration: number; // Escape time (seconds)
+  title?: string;
+  penaltyType?: 'fixed' | 'time_based'; // Fixed = Escape timer, Time Based = Per second
+}
+
+// NEW: Routes for Map Overlays (GPX)
+export interface GameRoute {
+  id: string;
+  name: string;
+  color: string;
+  points: Coordinate[];
+  isVisible: boolean;
 }
 
 // Template for saving to library
@@ -281,6 +292,7 @@ export interface Game {
   points: GamePoint[];
   playgrounds?: Playground[]; 
   dangerZones?: DangerZone[]; 
+  routes?: GameRoute[]; // New: GPX Routes
   createdAt: number;
   defaultMapStyle?: MapStyleId;
   showOtherTeams?: boolean; // New: Toggle to show teams to other teams

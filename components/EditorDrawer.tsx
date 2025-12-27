@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { GamePoint, TaskList, Coordinate, Game, GameMode } from '../types';
+import { GamePoint, TaskList, Coordinate, Game, GameMode, GameRoute } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid, Map, Wand2, ToggleLeft, ToggleRight, Radio, FilePlus, RefreshCw, Users, Shield } from 'lucide-react';
+import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid, Map, Wand2, ToggleLeft, ToggleRight, Radio, FilePlus, RefreshCw, Users, Shield, Route, Upload, EyeOff, Hash } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import * as db from '../services/db';
+import { parseGPX } from '../utils/gpx';
 
 interface EditorDrawerProps {
   onClose: () => void;
@@ -32,14 +33,23 @@ interface EditorDrawerProps {
   onOpenTaskMaster: () => void;
   onSearchLocation?: (coord: Coordinate) => void;
   userLocation?: Coordinate | null;
-  onFitBounds: () => void;
+  onFitBounds: (coords?: Coordinate[]) => void; // Updated signature
   onHoverPoint?: (point: GamePoint | null) => void;
   onOpenPlaygroundEditor?: () => void;
   initialExpanded?: boolean;
   onAddTask?: (type: 'MANUAL' | 'AI' | 'LIBRARY', playgroundId?: string) => void;
   onExpandChange?: (expanded: boolean) => void; 
   isGameTemplateMode?: boolean; 
-  onSaveGameTemplate?: () => void; 
+  onSaveGameTemplate?: () => void;
+  // Route Props
+  routes?: GameRoute[];
+  onAddRoute?: (route: GameRoute) => void;
+  onDeleteRoute?: (id: string) => void;
+  onToggleRoute?: (id: string) => void;
+  onUpdateRoute?: (id: string, updates: Partial<GameRoute>) => void;
+  // Score Props
+  showScores?: boolean;
+  onToggleScores?: () => void;
 }
 
 const SortablePointItem: React.FC<{ 
@@ -266,15 +276,24 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   userLocation,
   onExpandChange,
   isGameTemplateMode = false,
-  onSaveGameTemplate
+  onSaveGameTemplate,
+  routes = [],
+  onAddRoute,
+  onDeleteRoute,
+  onToggleRoute,
+  onUpdateRoute,
+  showScores,
+  onToggleScores
 }) => {
-  const [showSourceMenu, setShowSourceMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [isExpanded, setIsExpanded] = useState(initialExpanded); 
   const [isSaved, setIsSaved] = useState(false);
+  const [isRoutesCollapsed, setIsRoutesCollapsed] = useState(true);
   
   const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': false });
   const [activeAddMenu, setActiveAddMenu] = useState<string | null>(null);
+  
+  const gpxInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialExpanded) setIsExpanded(true);
@@ -375,6 +394,29 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
       setCollapsedZones(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleGPXUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !onAddRoute) return;
+
+      try {
+          const coords = await parseGPX(file);
+          const newRoute: GameRoute = {
+              id: `rt-${Date.now()}`,
+              name: file.name.replace('.gpx', ''),
+              color: '#ef4444', // Default Red for Ski Map visibility
+              points: coords,
+              isVisible: true
+          };
+          onAddRoute(newRoute);
+          onFitBounds(coords); // Fit map to new route
+      } catch (err) {
+          alert('Failed to load GPX: ' + err);
+      }
+      
+      // Reset input
+      if (gpxInputRef.current) gpxInputRef.current.value = '';
+  };
+
   const mapPoints = allPoints.filter(p => !p.playgroundId);
   const playgroundGroups = activeGame?.playgrounds?.map(pg => ({
       ...pg,
@@ -437,15 +479,21 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 </div>
                 <div className="flex items-center gap-1">
                     <button 
-                        onClick={onFitBounds} 
+                        onClick={() => onFitBounds()} 
                         className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-full text-orange-600 dark:text-orange-400 transition-colors"
                         title="Fit Map to All Tasks"
                     >
                         <Maximize className="w-5 h-5" />
                     </button>
-                    <button onClick={onClose} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full text-gray-500">
-                        <X className="w-5 h-5" />
-                    </button>
+                    {onToggleScores && (
+                        <button 
+                            onClick={onToggleScores} 
+                            className={`p-2 rounded-full transition-colors ${showScores ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500'}`}
+                            title="Toggle Scores on Map"
+                        >
+                            <Hash className="w-5 h-5" />
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -480,6 +528,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
 
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900/50 z-0">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    {/* --- MAP TASKS --- */}
                     <SortableContext items={mapPoints.map(p => p.id)} strategy={verticalListSortingStrategy}>
                         <ZoneSection 
                             id="zone-map"
@@ -512,6 +561,63 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                         </ZoneSection>
                     </SortableContext>
 
+                    {/* --- GPX ROUTES & OVERLAYS --- */}
+                    <div className="mb-2 rounded-xl">
+                        <div 
+                            onClick={() => setIsRoutesCollapsed(!isRoutesCollapsed)}
+                            className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
+                        >
+                            <div className="flex items-center gap-2">
+                                <Route className="w-4 h-4 text-orange-500" />
+                                <span className="text-xs font-black uppercase text-gray-700 dark:text-gray-200 tracking-wide">ROUTES & TRAILS</span>
+                                <span className="text-[10px] font-bold bg-white dark:bg-gray-900 px-2 py-0.5 rounded text-gray-500">{routes.length}</span>
+                            </div>
+                            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isRoutesCollapsed ? '-rotate-90' : ''}`} />
+                        </div>
+                        
+                        {!isRoutesCollapsed && (
+                            <div className="mt-2 pl-2 border-l-2 border-gray-200 dark:border-gray-800 ml-3 space-y-2">
+                                <button 
+                                    onClick={() => gpxInputRef.current?.click()}
+                                    className="w-full py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold uppercase tracking-wide flex items-center justify-center gap-2 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+                                >
+                                    <Upload className="w-3 h-3" /> UPLOAD GPX
+                                </button>
+                                <input ref={gpxInputRef} type="file" accept=".gpx" className="hidden" onChange={handleGPXUpload} />
+
+                                {routes.map(route => (
+                                    <div key={route.id} className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-between group">
+                                        <div className="flex items-center gap-2 overflow-hidden">
+                                            <input 
+                                                type="color" 
+                                                value={route.color}
+                                                onChange={(e) => onUpdateRoute && onUpdateRoute(route.id, { color: e.target.value })}
+                                                className="w-4 h-4 rounded-full border-none p-0 bg-transparent cursor-pointer overflow-hidden flex-shrink-0"
+                                                title="Change Route Color"
+                                            />
+                                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate cursor-default" title={route.name}>{route.name}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button 
+                                                onClick={() => onToggleRoute && onToggleRoute(route.id)}
+                                                className={`p-1.5 rounded-lg ${route.isVisible ? 'text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20' : 'text-gray-400 hover:text-gray-600'}`}
+                                            >
+                                                {route.isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                                            </button>
+                                            <button 
+                                                onClick={() => onDeleteRoute && onDeleteRoute(route.id)}
+                                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- PLAYGROUNDS --- */}
                     {playgroundGroups.map(pg => (
                         <SortableContext key={pg.id} items={pg.points.map(p => p.id)} strategy={verticalListSortingStrategy}>
                             <ZoneSection 

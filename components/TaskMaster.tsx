@@ -12,7 +12,7 @@ import {
     PlayCircle, MapPin, Globe, Filter, 
     CheckSquare, MousePointerClick, RefreshCw, Grid, List, 
     ChevronRight, ChevronDown, Check, Download, AlertCircle,
-    Trophy, Eye, HelpCircle, CheckSquare as CheckIcon, Save, Image as ImageIcon, Upload, Printer, QrCode, ArrowLeft, Gamepad2, LayoutGrid, Wand2, Calendar, Clock, AlertTriangle
+    Trophy, Eye, HelpCircle, CheckSquare as CheckIcon, Save, Image as ImageIcon, Upload, Printer, QrCode, ArrowLeft, Gamepad2, LayoutGrid, Wand2, Calendar, Clock, AlertTriangle, ArrowRight
 } from 'lucide-react';
 
 interface TaskMasterProps {
@@ -119,6 +119,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [targetListForGame, setTargetListForGame] = useState<TaskList | null>(null);
     const [gameSelectorTab, setGameSelectorTab] = useState<'TODAY' | 'PLANNED' | 'COMPLETED'>('TODAY');
     
+    // Playground Selector State
+    const [showPlaygroundSelector, setShowPlaygroundSelector] = useState(false);
+
     // Confirmation Modal State
     const [confirmDialog, setConfirmDialog] = useState<{
         isOpen: boolean;
@@ -256,105 +259,63 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         }
     };
 
-    const handleFinishSelection = () => {
-        if (onSelectTasksForGame) {
-            const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
-            onSelectTasksForGame(selectedTasks);
+    const addTasksSafe = (targetGameId: string, tasks: TaskTemplate[], targetPlaygroundId: string | null) => {
+        if (!onAddTasksToGame) return;
+
+        const gameToCheck = games?.find(g => g.id === targetGameId);
+        
+        if (gameToCheck) {
+            const uniqueTasks = filterDuplicates(gameToCheck, tasks);
+            if (uniqueTasks.length < tasks.length) {
+                const duplicates = tasks.length - uniqueTasks.length;
+                if (uniqueTasks.length === 0) {
+                    showAlert("Duplicate Tasks", "All selected tasks are already in this game.");
+                    return;
+                }
+                
+                showConfirm(
+                    "Duplicate Tasks Found", 
+                    `${duplicates} tasks are already in this game. Add the remaining ${uniqueTasks.length} tasks?`,
+                    () => {
+                        onAddTasksToGame(targetGameId, uniqueTasks, targetPlaygroundId);
+                        setSelectedTemplateIds([]);
+                        setIsSelectionModeLocal(false);
+                        onClose();
+                        setShowPlaygroundSelector(false);
+                    }
+                );
+                return;
+            }
         }
+
+        onAddTasksToGame(targetGameId, tasks, targetPlaygroundId);
+        setSelectedTemplateIds([]);
+        setIsSelectionModeLocal(false);
+        onClose();
+        setShowPlaygroundSelector(false);
     };
 
     const handleAddToGameMap = () => {
         if (selectedTemplateIds.length === 0) return;
-        
         if (!activeGameId && onOpenGameChooser) {
             onOpenGameChooser();
             return;
         }
-
-        if (activeGameId && onAddTasksToGame) {
+        if (activeGameId) {
             const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
-            // Check duplicates against active game
-            const gameToCheck = games?.find(g => g.id === activeGameId);
-            let tasksToAdd = selectedTasks;
-
-            if (gameToCheck) {
-                const uniqueTasks = filterDuplicates(gameToCheck, selectedTasks);
-                if (uniqueTasks.length < selectedTasks.length) {
-                    const duplicates = selectedTasks.length - uniqueTasks.length;
-                    if (uniqueTasks.length === 0) {
-                        showAlert("Duplicate Tasks", "All selected tasks are already in this game.");
-                        return;
-                    }
-                    
-                    showConfirm(
-                        "Duplicate Tasks Found", 
-                        `${duplicates} tasks are already in this game. Add the remaining ${uniqueTasks.length} tasks?`,
-                        () => {
-                            onAddTasksToGame(activeGameId, uniqueTasks, null);
-                            setSelectedTemplateIds([]);
-                            setIsSelectionModeLocal(false);
-                            onClose();
-                        }
-                    );
-                    return;
-                }
-            }
-
-            // Force Map (null playgroundId)
-            onAddTasksToGame(activeGameId, tasksToAdd, null);
-            setSelectedTemplateIds([]);
-            setIsSelectionModeLocal(false);
-            onClose();
+            addTasksSafe(activeGameId, selectedTasks, null);
         }
     };
 
-    const handleAddToPlayground = () => {
+    const handleAddToNewZone = () => {
         if (selectedTemplateIds.length === 0) return;
-
-        if (activeGameId && onAddTasksToGame) {
+        if (activeGameId) {
             const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
-            
-            // Check duplicates against active game
-            const gameToCheck = games?.find(g => g.id === activeGameId);
-            let tasksToAdd = selectedTasks;
-
-            if (gameToCheck) {
-                const uniqueTasks = filterDuplicates(gameToCheck, selectedTasks);
-                if (uniqueTasks.length < selectedTasks.length) {
-                    const duplicates = selectedTasks.length - uniqueTasks.length;
-                    if (uniqueTasks.length === 0) {
-                        showAlert("Duplicate Tasks", "All selected tasks are already in this game.");
-                        return;
-                    }
-                    showConfirm(
-                        "Duplicate Tasks Found",
-                        `${duplicates} tasks are already in this game. Add the remaining ${uniqueTasks.length} tasks?`,
-                        () => {
-                            if (initialPlaygroundId) {
-                                onAddTasksToGame(activeGameId, uniqueTasks, initialPlaygroundId);
-                            } else {
-                                onAddTasksToGame(activeGameId, uniqueTasks, 'CREATE_NEW');
-                            }
-                            setSelectedTemplateIds([]);
-                            setIsSelectionModeLocal(false);
-                            onClose();
-                        }
-                    );
-                    return;
-                }
-            }
-
             if (initialPlaygroundId) {
-                // Add to specific existing zone
-                onAddTasksToGame(activeGameId, tasksToAdd, initialPlaygroundId);
+                addTasksSafe(activeGameId, selectedTasks, initialPlaygroundId);
             } else {
-                // Add to NEW zone
-                onAddTasksToGame(activeGameId, tasksToAdd, 'CREATE_NEW');
+                addTasksSafe(activeGameId, selectedTasks, 'CREATE_NEW');
             }
-            
-            setSelectedTemplateIds([]);
-            setIsSelectionModeLocal(false);
-            onClose();
         }
     };
 
@@ -409,30 +370,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         // Scenario 3: Contextual Add (e.g. Editing a specific Playground)
         // If we have an active game and are targeting a playground, add directly without popup.
         if (activeGameId && initialPlaygroundId && onAddTasksToGame) {
-            const gameToCheck = games?.find(g => g.id === activeGameId);
-            
-            if (gameToCheck) {
-                const uniqueTasks = filterDuplicates(gameToCheck, list.tasks);
-                if (uniqueTasks.length < list.tasks.length) {
-                    const duplicates = list.tasks.length - uniqueTasks.length;
-                    if (uniqueTasks.length === 0) {
-                        showAlert("Duplicate Tasks", "All tasks from this list are already in the active game.");
-                        return;
-                    }
-                    showConfirm(
-                        "Duplicate Tasks Found",
-                        `${duplicates} tasks are already in the active game. Add the remaining ${uniqueTasks.length} tasks?`,
-                        () => {
-                            onAddTasksToGame(activeGameId, uniqueTasks, initialPlaygroundId);
-                            onClose();
-                        }
-                    );
-                    return;
-                }
-            }
-
-            onAddTasksToGame(activeGameId, list.tasks, initialPlaygroundId);
-            onClose();
+            addTasksSafe(activeGameId, list.tasks, initialPlaygroundId);
             return;
         }
 
@@ -905,8 +843,18 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             >
                                 <MapPin className="w-4 h-4" /> ADD TO MAP
                             </button>
+                            
+                            {!initialPlaygroundId && activeGame?.playgrounds && activeGame.playgrounds.length > 0 && (
+                                 <button 
+                                    onClick={() => setShowPlaygroundSelector(true)}
+                                    className="flex-1 sm:flex-none px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 border border-blue-500/50"
+                                >
+                                    <LayoutGrid className="w-4 h-4" /> EXISTING ZONE
+                                </button>
+                            )}
+
                             <button 
-                                onClick={handleAddToPlayground}
+                                onClick={handleAddToNewZone}
                                 className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 border border-orange-500/50"
                             >
                                 <LayoutGrid className="w-4 h-4" /> 
@@ -919,6 +867,42 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             
             {showLoquizImporter && <LoquizImporter onClose={() => setShowLoquizImporter(false)} onImportTasks={handleImportLoquizTasks} />}
             
+            {showPlaygroundSelector && activeGame && (
+                <div className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
+                        <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+                            <h3 className="font-black text-white uppercase tracking-widest">SELECT ZONE</h3>
+                            <button onClick={() => setShowPlaygroundSelector(false)}><X className="w-5 h-5 text-slate-500 hover:text-white" /></button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-slate-900">
+                            {activeGame.playgrounds?.map(pg => {
+                                const pgTaskCount = activeGame.points.filter(p => p.playgroundId === pg.id).length;
+                                return (
+                                    <button 
+                                        key={pg.id}
+                                        onClick={() => addTasksSafe(activeGame.id, library.filter(t => selectedTemplateIds.includes(t.id)), pg.id)}
+                                        className="w-full flex items-center gap-4 p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-blue-500 rounded-xl transition-all group text-left"
+                                    >
+                                        <div className="w-12 h-12 bg-slate-900 rounded-lg flex items-center justify-center border border-slate-700">
+                                            {pg.imageUrl ? (
+                                                <img src={pg.imageUrl} className="w-full h-full object-cover rounded-lg opacity-80" />
+                                            ) : (
+                                                <LayoutGrid className="w-6 h-6 text-slate-500 group-hover:text-blue-500" />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-white uppercase">{pg.title}</h4>
+                                            <p className="text-xs text-slate-500 font-bold uppercase">{pgTaskCount} TASKS</p>
+                                        </div>
+                                        <ArrowRight className="w-5 h-5 text-slate-600 group-hover:text-white ml-auto" />
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {targetListForGame && (
                 <div onClick={() => setTargetListForGame(null)} className="fixed inset-0 z-[6000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
                    <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-3xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -957,28 +941,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                filteredTargetGames.map(g => (
                                    <button 
                                        key={g.id} 
-                                       onClick={() => { 
-                                           const uniqueTasks = filterDuplicates(g, targetListForGame.tasks);
-                                           if (uniqueTasks.length < targetListForGame.tasks.length) {
-                                               const duplicates = targetListForGame.tasks.length - uniqueTasks.length;
-                                               if (uniqueTasks.length === 0) {
-                                                   showAlert("Duplicate Tasks", `All tasks from "${targetListForGame.name}" are already in "${g.name}"!`);
-                                                   return;
-                                               }
-                                               
-                                               showConfirm(
-                                                   "Duplicate Tasks Found",
-                                                   `${duplicates} tasks are already in "${g.name}". Add the remaining ${uniqueTasks.length} tasks?`,
-                                                   () => {
-                                                       onAddTasksToGame?.(g.id, uniqueTasks);
-                                                       setTargetListForGame(null);
-                                                   }
-                                               );
-                                           } else {
-                                               onAddTasksToGame?.(g.id, targetListForGame.tasks); 
-                                               setTargetListForGame(null);
-                                           }
-                                       }} 
+                                       onClick={() => { addTasksSafe(g.id, targetListForGame.tasks, null); setTargetListForGame(null); }} 
                                        className="w-full text-left p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-orange-500/50 rounded-xl transition-all group shadow-md hover:shadow-orange-500/10 flex justify-between items-center"
                                    >
                                        <div>

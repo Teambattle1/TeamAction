@@ -1,13 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Game, TimerConfig, TimerMode, MapStyleId, Language } from '../types';
-import { X, Gamepad2, Calendar, Building2, Upload, Search, Loader2, Clock, Hourglass, StopCircle, CheckCircle, Image as ImageIcon, Save, Edit, Map, Layers, Globe } from 'lucide-react';
+import { X, Gamepad2, Calendar, Building2, Upload, Search, Loader2, Clock, Hourglass, StopCircle, CheckCircle, Image as ImageIcon, Save, Edit, Map, Layers, Globe, Trash2 } from 'lucide-react';
 import { searchLogoUrl } from '../services/ai';
 
 interface GameCreatorProps {
   onClose: () => void;
   onCreate: (game: Partial<Game>) => void;
   baseGame?: Game; // Optional for edit mode in future
+  onDelete?: (id: string) => void;
 }
 
 const MAP_STYLES: { id: MapStyleId; label: string }[] = [
@@ -16,6 +17,7 @@ const MAP_STYLES: { id: MapStyleId; label: string }[] = [
     { id: 'dark', label: 'Dark Mode' },
     { id: 'light', label: 'Light Mode' },
     { id: 'winter', label: 'Winter (Norway)' },
+    { id: 'ski', label: 'Open Ski Map' },
     { id: 'clean', label: 'Clean' },
     { id: 'voyager', label: 'Voyager' }
 ];
@@ -33,7 +35,7 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
     { value: 'Hebrew', label: '🇮🇱 Hebrew (Ivrit)' },
 ];
 
-const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame }) => {
+const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, onDelete }) => {
   const [name, setName] = useState(baseGame?.name || '');
   const [description, setDescription] = useState(baseGame?.description || '');
   const [language, setLanguage] = useState<Language>(baseGame?.language || 'Danish');
@@ -125,7 +127,20 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame }
           }
       };
 
+      // Pass ID if editing so parent knows it's an update, otherwise partial object is treated as new fields
+      if (baseGame) {
+          newGameData.id = baseGame.id;
+      }
+
       onCreate(newGameData);
+  };
+
+  const handleDelete = () => {
+      if (baseGame && onDelete) {
+          if (confirm(`Are you sure you want to permanently delete "${baseGame.name}"? This cannot be undone.`)) {
+              onDelete(baseGame.id);
+          }
+      }
   };
 
   const isEditMode = !!baseGame;
@@ -362,10 +377,19 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame }
 
             </div>
 
-            <div className="p-6 bg-slate-950 border-t border-slate-800">
+            <div className="p-6 bg-slate-950 border-t border-slate-800 flex gap-3">
+                {isEditMode && onDelete && (
+                    <button 
+                        onClick={handleDelete}
+                        className="p-4 bg-slate-800 hover:bg-red-900/50 text-red-500 rounded-xl transition-colors border border-slate-700 hover:border-red-900"
+                        title="Delete Game"
+                    >
+                        <Trash2 className="w-5 h-5" />
+                    </button>
+                )}
                 <button 
                     onClick={handleCreate}
-                    className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                     {isEditMode ? <Save className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
                     {isEditMode ? 'SAVE CHANGES' : 'CREATE GAME MISSION'}

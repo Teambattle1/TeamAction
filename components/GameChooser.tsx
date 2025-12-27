@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Game, TaskList, MapStyleId } from '../types';
-import { X, Search, Gamepad2, Plus, Calendar, MapPin, RefreshCw, Settings, Layers, Clock, Hourglass, StopCircle, LayoutGrid, Map as MapIcon } from 'lucide-react';
+import { X, Search, Gamepad2, Plus, Calendar, MapPin, RefreshCw, Settings, Layers, Clock, Hourglass, StopCircle, LayoutGrid, Map as MapIcon, List, LayoutList } from 'lucide-react';
 import { getFlag } from '../utils/i18n';
 
 interface GameChooserProps {
@@ -24,7 +24,8 @@ const MAP_LABELS: Record<MapStyleId, string> = {
     ancient: 'Ancient',
     clean: 'Clean',
     voyager: 'Voyager',
-    winter: 'Winter'
+    winter: 'Winter',
+    ski: 'Ski Map'
 };
 
 const GameChooser: React.FC<GameChooserProps> = ({ 
@@ -40,13 +41,14 @@ const GameChooser: React.FC<GameChooserProps> = ({
 }) => {
     const [search, setSearch] = useState('');
     const [view, setView] = useState<'GAMES' | 'TEMPLATES'>('GAMES');
+    const [layout, setLayout] = useState<'GRID' | 'LIST'>('GRID');
 
     const filteredGames = games.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
     
     const getTimerLabel = (game: Game) => {
         if (!game.timerConfig || game.timerConfig.mode === 'none') return { label: 'No Timer', icon: Clock };
-        if (game.timerConfig.mode === 'countdown') return { label: `Countdown: ${game.timerConfig.durationMinutes}m`, icon: Hourglass };
-        if (game.timerConfig.mode === 'scheduled_end') return { label: `End: ${new Date(game.timerConfig.endTime || '').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`, icon: StopCircle };
+        if (game.timerConfig.mode === 'countdown') return { label: `${game.timerConfig.durationMinutes}m`, icon: Hourglass };
+        if (game.timerConfig.mode === 'scheduled_end') return { label: new Date(game.timerConfig.endTime || '').toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), icon: StopCircle };
         return { label: 'Run Time', icon: Clock };
     };
 
@@ -93,6 +95,24 @@ const GameChooser: React.FC<GameChooserProps> = ({
                     />
                 </div>
 
+                {/* Layout Toggle */}
+                <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+                    <button 
+                        onClick={() => setLayout('GRID')} 
+                        className={`p-2 rounded-lg transition-all ${layout === 'GRID' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white'}`}
+                        title="Grid View"
+                    >
+                        <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button 
+                        onClick={() => setLayout('LIST')} 
+                        className={`p-2 rounded-lg transition-all ${layout === 'LIST' ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-white'}`}
+                        title="List View"
+                    >
+                        <LayoutList className="w-4 h-4" />
+                    </button>
+                </div>
+
                 <div className="flex gap-2 w-full sm:w-auto">
                     <button 
                         onClick={onRefresh}
@@ -118,7 +138,7 @@ const GameChooser: React.FC<GameChooserProps> = ({
                         <p className="text-sm font-black uppercase tracking-widest">No games found</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className={layout === 'GRID' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "flex flex-col gap-3"}>
                         {filteredGames.map(game => {
                             const timerInfo = getTimerLabel(game);
                             const TimerIcon = timerInfo.icon;
@@ -129,6 +149,76 @@ const GameChooser: React.FC<GameChooserProps> = ({
                                 title: pg.title,
                                 count: game.points.filter(p => p.playgroundId === pg.id).length
                             }));
+
+                            if (layout === 'LIST') {
+                                return (
+                                    <div 
+                                        key={game.id}
+                                        onClick={() => onSelectGame(game.id)}
+                                        className="group bg-slate-900 border border-slate-800 rounded-xl p-3 hover:border-indigo-500/50 hover:bg-slate-800 transition-all cursor-pointer shadow-sm relative overflow-hidden flex items-center gap-4"
+                                    >
+                                        {/* Icon & Flag */}
+                                        <div className="relative shrink-0">
+                                            <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-700 group-hover:border-indigo-500/30">
+                                                {game.client?.logoUrl ? (
+                                                    <img src={game.client.logoUrl} className="w-full h-full object-cover rounded-lg opacity-80 group-hover:opacity-100" />
+                                                ) : (
+                                                    <Gamepad2 className="w-6 h-6 text-slate-500 group-hover:text-indigo-400" />
+                                                )}
+                                            </div>
+                                            <div className="absolute -top-2 -right-2 text-xl drop-shadow-md bg-slate-900 rounded-full border border-slate-700 w-6 h-6 flex items-center justify-center">
+                                                {getFlag(game.language)}
+                                            </div>
+                                        </div>
+
+                                        {/* Name & Desc */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-sm font-black text-white uppercase tracking-wide truncate group-hover:text-indigo-400">{game.name}</h3>
+                                                <div className="hidden sm:flex items-center gap-2 px-2 py-0.5 bg-slate-950 rounded border border-slate-700">
+                                                    <Layers className="w-3 h-3 text-indigo-400" />
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">{MAP_LABELS[game.defaultMapStyle || 'osm'] || 'Standard'}</span>
+                                                </div>
+                                                <div className="hidden sm:flex items-center gap-2 px-2 py-0.5 bg-slate-950 rounded border border-slate-700">
+                                                    <TimerIcon className="w-3 h-3 text-orange-400" />
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase">{timerInfo.label}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 mt-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+                                                <span className="flex items-center gap-1.5 truncate"><MapPin className="w-3 h-3 text-indigo-500" /> CLIENT: {game.client?.name || 'N/A'}</span>
+                                                <span className="hidden sm:flex items-center gap-1.5 truncate"><Calendar className="w-3 h-3 text-slate-400" /> GAMEDATE: {game.client?.playingDate ? new Date(game.client.playingDate).toLocaleDateString() : new Date(game.createdAt).toLocaleDateString()}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Stats */}
+                                        <div className="hidden md:flex items-center gap-3 shrink-0">
+                                            <div className="flex flex-col items-end">
+                                                <span className="text-[10px] font-black text-white">{mapTaskCount}</span>
+                                                <span className="text-[8px] font-bold text-slate-500 uppercase">ON MAP</span>
+                                            </div>
+                                            <div className="w-px h-6 bg-slate-800"></div>
+                                            <div className="flex flex-col items-start">
+                                                <span className="text-[10px] font-black text-white">{playgroundStats.length}</span>
+                                                <span className="text-[8px] font-bold text-slate-500 uppercase">ZONES</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex items-center gap-2 shrink-0 border-l border-slate-800 pl-4">
+                                            <button 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onEditGame(game);
+                                                }}
+                                                className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                                title="Edit Settings"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            }
 
                             return (
                                 <div 
