@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage } from './types';
 import * as db from './services/db';
@@ -425,7 +426,14 @@ const GameApp: React.FC = () => {
                   onSelectGame={(id) => { setActiveGameId(id); setShowGameChooser(false); }}
                   onDeleteGame={handleDeleteGame}
                   onClose={() => setShowGameChooser(false)}
-                  onEditGame={(id) => { setActiveGameId(id); setMode(GameMode.EDIT); setShowGameChooser(false); setShowLanding(false); }}
+                  onEditGame={(id) => { 
+                      const game = games.find(g => g.id === id);
+                      if (game) {
+                          setGameToEdit(game);
+                          setShowGameCreator(true);
+                          setShowGameChooser(false);
+                      }
+                  }}
                   onEditPoint={setActiveTask}
                   onReorderPoints={() => {}}
                   onCreateTestGame={() => {}}
@@ -490,7 +498,6 @@ const GameApp: React.FC = () => {
                   onRenameTagGlobally={handleRenameTagGlobally}
               />
           )}
-          {/* ... Rest of modals ... */}
           {showGameCreator && (
               <GameCreator 
                   onClose={() => setShowGameCreator(false)}
