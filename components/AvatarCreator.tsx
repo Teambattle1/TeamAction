@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { Wand2, Camera, RefreshCw, CheckCircle, X, Loader2, Upload, User } from 'lucide-react';
 import { generateAvatar } from '../services/ai';
+import { uploadImage } from '../services/storage';
 
 interface AvatarCreatorProps {
     onConfirm: (base64: string) => void;
@@ -14,6 +15,7 @@ interface AvatarCreatorProps {
 const AvatarCreator: React.FC<AvatarCreatorProps> = ({ onConfirm, onCancel, initialImage, title = "CREATE YOUR AGENT", placeholder = "e.g. Cyberpunk ninja cat blue" }) => {
     const [keywords, setKeywords] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(initialImage || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -30,14 +32,19 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = ({ onConfirm, onCancel, init
         }
     };
 
-    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewImage(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            setIsUploading(true);
+            try {
+                // Use storage service to get URL
+                const url = await uploadImage(file);
+                if (url) setPreviewImage(url);
+            } catch (err) {
+                console.error("Upload failed", err);
+            } finally {
+                setIsUploading(false);
+            }
         }
     };
 
@@ -54,7 +61,7 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = ({ onConfirm, onCancel, init
                     ) : (
                         <User className="w-12 h-12 text-slate-600" />
                     )}
-                    {isGenerating && (
+                    {(isGenerating || isUploading) && (
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                             <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
                         </div>
@@ -94,7 +101,8 @@ const AvatarCreator: React.FC<AvatarCreatorProps> = ({ onConfirm, onCancel, init
 
                 <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-3 border-2 border-dashed border-slate-700 hover:border-slate-500 text-slate-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                    disabled={isUploading}
+                    className="w-full py-3 border-2 border-dashed border-slate-700 hover:border-slate-500 text-slate-500 hover:text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                     <Upload className="w-4 h-4" /> UPLOAD PHOTO
                 </button>

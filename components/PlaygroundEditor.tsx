@@ -5,9 +5,10 @@ import {
     X, Plus, LayoutGrid, Globe, Map as MapIcon, ArrowLeft, Trash2, Edit2, 
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut, 
     Maximize, Lock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
-    Smartphone, Tablet, Monitor, MousePointerClick
+    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
+import { uploadImage } from '../services/storage'; // IMPORTED
 
 interface PlaygroundEditorProps {
   game: Game;
@@ -30,16 +31,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     game, 
     onUpdateGame, 
     onClose, 
-    onEditPoint,
-    onPointClick,
-    onAddTask,
-    onOpenLibrary,
-    showScores,
-    onToggleScores,
-    onHome,
-    onSaveTemplate,
-    isTemplateMode,
-    onAddZoneFromLibrary
+    onEditPoint, 
+    onPointClick, 
+    onAddTask, 
+    onOpenLibrary, 
+    showScores, 
+    onToggleScores, 
+    onHome, 
+    onSaveTemplate, 
+    isTemplateMode, 
+    onAddZoneFromLibrary 
 }) => {
     // State
     const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(null);
@@ -47,7 +48,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    
+    // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const audioInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
 
     // Initialize active playground
@@ -78,17 +82,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         onUpdateGame({ ...game, playgrounds: updated });
     };
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                updatePlayground({ imageUrl: reader.result as string });
-            };
-            reader.readAsDataURL(file);
+            const url = await uploadImage(file);
+            if (url) updatePlayground({ imageUrl: url });
         }
     };
 
+    const handleAudioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const url = await uploadImage(file);
+            if (url) updatePlayground({ audioUrl: url, audioLoop: true });
+        }
+        // Reset to allow re-uploading same file
+        if (audioInputRef.current) audioInputRef.current.value = '';
+    };
+
+    // Pan/Zoom, etc.
     const handleWheel = (e: React.WheelEvent) => {
         if (e.ctrlKey || e.metaKey) {
             e.preventDefault();
@@ -112,11 +124,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     };
 
     const handleMouseUp = () => setIsDragging(false);
-
-    const toggleGridSnap = () => {
-        // Implement grid snap toggle logic if stored in playground settings
-        // For now just toggle state locally or add to playground type
-    };
 
     if (!activePlayground) return null;
 
@@ -226,6 +233,58 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
                                 />
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Background Audio Section */}
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                <Music className="w-3 h-3" /> BACKGROUND MUSIC
+                            </span>
+                        </div>
+                        
+                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-3">
+                            {!activePlayground.audioUrl ? (
+                                <button 
+                                    onClick={() => audioInputRef.current?.click()}
+                                    className="w-full py-3 border border-dashed border-slate-600 rounded-lg text-slate-500 hover:text-white hover:border-indigo-500 hover:bg-indigo-500/10 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Upload className="w-4 h-4" /> 
+                                    <span className="text-[10px] font-bold uppercase">UPLOAD MP3</span>
+                                </button>
+                            ) : (
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                                        <div className="flex items-center gap-2 text-indigo-400">
+                                            <Music className="w-4 h-4" />
+                                            <span className="text-[10px] font-bold uppercase">AUDIO TRACK ACTIVE</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => updatePlayground({ audioUrl: undefined })}
+                                            className="p-1.5 hover:bg-red-500/20 text-slate-500 hover:text-red-500 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                        <button
+                                            onClick={() => updatePlayground({ audioLoop: true })}
+                                            className={`flex-1 py-1.5 text-[9px] font-bold uppercase rounded flex items-center justify-center gap-1 transition-colors ${activePlayground.audioLoop !== false ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                        >
+                                            <Repeat className="w-3 h-3" /> LOOP
+                                        </button>
+                                        <button
+                                            onClick={() => updatePlayground({ audioLoop: false })}
+                                            className={`flex-1 py-1.5 text-[9px] font-bold uppercase rounded flex items-center justify-center gap-1 transition-colors ${activePlayground.audioLoop === false ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                        >
+                                            <PlayCircle className="w-3 h-3" /> ONCE
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            <input ref={audioInputRef} type="file" className="hidden" accept="audio/mp3,audio/mpeg,audio/wav" onChange={handleAudioUpload} />
                         </div>
                     </div>
 
@@ -396,9 +455,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         </button>
                         <button onClick={() => onAddZoneFromLibrary()} className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg" title="Import Zone">
                             <Users className="w-5 h-5" />
-                        </button>
-                        <button className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg" title="Settings">
-                            <Shield className="w-5 h-5" />
                         </button>
                     </div>
                 </div>

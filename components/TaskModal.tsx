@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { GamePoint, TaskVote, GameMode } from '../types';
 import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
+import DOMPurify from 'dompurify';
 
 interface TaskModalProps {
   point: GamePoint | null;
@@ -34,13 +35,12 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [answer, setAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [sliderValue, setSliderValue] = useState<number>(point?.task.range?.min || 0);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Voting State
   const [isVoting, setIsVoting] = useState(false);
   const [teamVotes, setTeamVotes] = useState<TaskVote[]>([]);
-  const [memberCount, setMemberCount] = useState(1); // Self is 1
+  const [memberCount, setMemberCount] = useState(1);
 
   // Manual Unlock State
   const [unlockCode, setUnlockCode] = useState('');
@@ -51,14 +51,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const isInstructor = isInstructorMode || mode === GameMode.INSTRUCTOR;
   const isPlayground = !!point?.playgroundId;
 
-  const hasActions = useMemo(() => {
-      if (!point?.logic) return false;
-      return (point.logic.onOpen?.length || 0) > 0 || 
-             (point.logic.onCorrect?.length || 0) > 0 || 
-             (point.logic.onIncorrect?.length || 0) > 0;
-  }, [point]);
-
-  // Check for DOUBLE TROUBLE
+  // Double Trouble Logic
   const isDoubleTrouble = useMemo(() => {
       return point?.logic?.onOpen?.some(action => action.type === 'double_trouble');
   }, [point]);
@@ -66,12 +59,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
   // Logic Trigger: ON OPEN & Status Update
   useEffect(() => {
       if (point && !isEditMode && !isInstructor) {
-          // Trigger the open logic (e.g. locks, messages, etc.)
           if (onTaskOpen) onTaskOpen();
-          // Update status to solving
           teamSync.updateStatus(true);
       }
-
       return () => {
           if (!isEditMode && !isInstructor) {
               teamSync.updateStatus(false);
@@ -81,17 +71,15 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   // Subscribe to Realtime Updates
   useEffect(() => {
-      if (!point || isEditMode || isInstructor) return; // Don't sync votes in edit/instructor mode
+      if (!point || isEditMode || isInstructor) return;
       
       const unsubscribeVotes = teamSync.subscribeToVotes((votes) => {
           setTeamVotes(votes);
       });
-      
       const unsubscribeMembers = teamSync.subscribeToMemberCount((count) => {
           setMemberCount(Math.max(teamSync.getVotesForTask(point.id).length, 1)); 
       });
 
-      // Load existing votes if any
       const existing = teamSync.getVotesForTask(point.id);
       if (existing.length > 0) {
           setTeamVotes(existing);
@@ -110,11 +98,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   if (!point) return null;
 
-  // Playground tasks are always unlocked when clicked
-  // Instructor mode treats all tasks as unlocked for viewing
   const isLocked = !point.isUnlocked && !isInstructor && !isEditMode && !isPlayground;
 
-  // --- Logic for Agreement ---
   const checkConsensus = () => {
       if (teamVotes.length === 0) return false;
       const firstAnswer = JSON.stringify(teamVotes[0].answer);
@@ -122,8 +107,6 @@ const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   const consensusReached = checkConsensus();
-  const hasConflict = teamVotes.length > 1 && !consensusReached;
-  const myDeviceId = teamSync.getDeviceId();
 
   const handleSubmitVote = (e: React.FormEvent) => {
     e.preventDefault();
@@ -170,9 +153,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
           onComplete(point.id, finalScore);
           onClose();
       } else {
-          // Logic Trigger: ON INCORRECT
           if (onTaskIncorrect) onTaskIncorrect();
-
           if (isDoubleTrouble && onPenalty) {
               onPenalty(point.points);
               setErrorMsg(`DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`);
@@ -193,21 +174,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
       }
   };
 
-  const handleCheckboxChange = (opt: string) => {
-      setSelectedOptions(prev => {
-          if (prev.includes(opt)) return prev.filter(o => o !== opt);
-          return [...prev, opt];
-      });
-      setErrorMsg(null);
-  };
-
   const renderInput = () => {
-      // ... (Implementation unchanged, omitted for brevity as it's just rendering logic)
-      const { type, options, range, placeholder } = point.task;
+      const { type, options, range } = point.task;
       const isDisabled = isInstructor;
 
       if (isEditMode) {
-          // Simplified editor view
           if (type === 'text') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm italic text-gray-500">Text Input Field</div>;
           if (type === 'slider') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center font-mono">SLIDER {range?.min} - {range?.max}</div>;
           if (type === 'boolean') return <div className="flex gap-2 opacity-80 pointer-events-none"><div className="flex-1 p-3 border rounded-xl text-center">True</div><div className="flex-1 p-3 border rounded-xl text-center">False</div></div>;
@@ -234,7 +205,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                 answer === opt 
                                 ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/50 text-orange-900 dark:text-orange-200 font-bold' 
                                 : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                            } ${isDisabled ? 'cursor-default opacity-100' : ''}`}
+                            }`}
                           >
                              <span>{opt}</span>
                              {answer === opt && <div className="w-4 h-4 bg-orange-600 rounded-full" />}
@@ -242,8 +213,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                       ))}
                   </div>
               );
-          // ... (Other cases same as previous file)
-          default:
+          case 'text':
               return (
                 <input 
                     type="text" 
@@ -255,11 +225,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     autoFocus={!isInstructor && !isEditMode}
                 />
               );
+          default: return null;
       }
   };
 
   const renderConsensusView = () => {
-      // ... (Implementation unchanged)
       return (
           <div className="space-y-4 animate-in fade-in">
               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
@@ -271,7 +241,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                           <div key={idx} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded-lg text-sm border border-gray-100 dark:border-gray-700 shadow-sm">
                               <span className="font-bold text-gray-700 dark:text-gray-200">{vote.userName}</span>
                               <span className="text-gray-500 dark:text-gray-400 font-mono text-xs bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">
-                                  {typeof vote.answer === 'object' ? (Array.isArray(vote.answer) ? vote.answer.join(', ') : JSON.stringify(vote.answer)) : String(vote.answer)}
+                                  {JSON.stringify(vote.answer)}
                               </span>
                           </div>
                       ))}
@@ -296,6 +266,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
           </div>
       );
   };
+
+  const sanitizedQuestion = DOMPurify.sanitize(point.task.question);
 
   return (
     <div className="fixed inset-0 z-[2600] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -360,10 +332,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                     className={`w-24 text-center text-lg font-mono border-2 rounded-lg p-1 outline-none transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${unlockError ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-gray-600 focus:border-orange-500'}`}
                                     autoFocus
                                 />
-                                <button 
-                                    type="submit" 
-                                    className="text-sm bg-orange-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-orange-700"
-                                >
+                                <button type="submit" className="text-sm bg-orange-600 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-orange-700">
                                     Unlock
                                 </button>
                               </div>
@@ -388,44 +357,27 @@ const TaskModal: React.FC<TaskModalProps> = ({
               )}
 
               <div className="prose prose-sm mb-6 dark:prose-invert">
-                <p className="text-gray-800 dark:text-gray-100 text-lg leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: point.task.question }} />
+                {/* SAFE HTML RENDERING */}
+                <p className="text-gray-800 dark:text-gray-100 text-lg leading-relaxed font-medium" dangerouslySetInnerHTML={{ __html: sanitizedQuestion }} />
                 
-                {point.task.imageUrl ? (
+                {point.task.imageUrl && (
                   <div className="mt-4 rounded-lg overflow-hidden shadow-sm">
                     <img src={point.task.imageUrl} alt="Task" className="w-full h-auto object-cover max-h-60" />
                   </div>
-                ) : null}
+                )}
               </div>
 
               {(isInstructor || isEditMode) && (
                 <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-3 animate-in fade-in">
                   <span className="text-xs font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">Solution</span>
                   <p className="text-orange-900 dark:text-orange-200 font-medium mt-1">
-                      {point.task.type === 'slider' 
-                        ? `Target: ${point.task.range?.correctValue} (Range: ${point.task.range?.min}-${point.task.range?.max})`
-                        : (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown' ? point.task.correctAnswers?.join(', ') : point.task.answer)}
+                      {point.task.answer || point.task.correctAnswers?.join(', ') || "See logic"}
                   </p>
                 </div>
               )}
 
-              {/* EDITOR ACTION BUTTON */}
-              {isEditMode && onOpenActions && (
-                  <button 
-                      onClick={onOpenActions}
-                      className="relative w-full mb-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase tracking-wide flex items-center justify-center gap-2 shadow-lg overflow-hidden group"
-                  >
-                      <Zap className="w-5 h-5" /> LOGIC & ACTIONS
-                      {hasActions && (
-                          <div className="absolute top-0 right-0 p-2">
-                              <div className="w-3 h-3 bg-red-500 rounded-full shadow-[0_0_8px_2px_rgba(239,68,68,0.8)] animate-pulse" />
-                          </div>
-                      )}
-                  </button>
-              )}
-
               {!point.isCompleted && !isEditMode ? (
                 isInstructor ? (
-                    // Instructor Read-Only View
                     <div className="opacity-80 pointer-events-none">
                         {renderInput()}
                         <div className="mt-4 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">

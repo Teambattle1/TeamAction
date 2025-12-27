@@ -66,6 +66,36 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
 
   return (
     <div className={`flex items-center gap-2 pointer-events-auto ${className}`}>
+      
+      {/* Moved Action Buttons to the Left */}
+      {onLocateMe && (
+        <ActionButton 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocateMe(); }} 
+            icon={Target} 
+            label="LOCATE" 
+            colorClass="" 
+        />
+      )}
+
+      {onFitBounds && (
+        <ActionButton 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFitBounds(); }} 
+            icon={Maximize} 
+            label="FIT" 
+            colorClass="" 
+        />
+      )}
+
+      {onToggleScores && (
+        <ActionButton 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleScores(); }} 
+            icon={Hash} 
+            label="SCORES" 
+            colorClass="" 
+            active={showScores} 
+        />
+      )}
+
       {!hideSearch && (
         <div className="relative w-full min-w-[180px] sm:w-[260px] h-12">
           <form onSubmit={handleSearch} className="group relative flex items-center h-full">
@@ -105,34 +135,6 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
             </div>
           )}
         </div>
-      )}
-
-      {onLocateMe && (
-        <ActionButton 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLocateMe(); }} 
-            icon={Target} 
-            label="LOCATE" 
-            colorClass="" 
-        />
-      )}
-
-      {onFitBounds && (
-        <ActionButton 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFitBounds(); }} 
-            icon={Maximize} 
-            label="FIT" 
-            colorClass="" 
-        />
-      )}
-
-      {onToggleScores && (
-        <ActionButton 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleScores(); }} 
-            icon={Hash} 
-            label="SCORES" 
-            colorClass="" 
-            active={showScores} 
-        />
       )}
     </div>
   );

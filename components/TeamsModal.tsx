@@ -3,9 +3,11 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { Team, Game, ChatMessage, GamePoint } from '../types';
 import * as db from '../services/db';
 import { teamSync } from '../services/teamSync';
+import { uploadImage } from '../services/storage'; // IMPORTED
 import { X, Users, RefreshCw, Hash, ChevronRight, Calendar, Clock, CheckCircle, ChevronDown, Anchor, Play, Edit2, Check, AlertCircle, Camera, Shield, MessageSquare, MapPin, LayoutGrid, CheckSquare, Upload, User, ToggleLeft, ToggleRight, List, AlertTriangle, Radio, Crown, Trophy, Star, Activity, PauseCircle, XCircle } from 'lucide-react';
 import AvatarCreator from './AvatarCreator';
 
+// ... (Interfaces remain the same) ...
 interface TeamsModalProps {
   gameId: string | null;
   games: Game[];
@@ -127,37 +129,44 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
   };
 
   // --- PHOTO UPLOAD HANDLERS ---
-  const handleTeamPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleTeamPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file && activeLobbyView) {
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-              const base64 = reader.result as string;
-              await db.updateTeamPhoto(activeLobbyView.id, base64);
-              setActiveLobbyView(prev => prev ? { ...prev, photoUrl: base64 } : null);
+          // Use storage service
+          const url = await uploadImage(file);
+          if (url) {
+              await db.updateTeamPhoto(activeLobbyView.id, url);
+              setActiveLobbyView(prev => prev ? { ...prev, photoUrl: url } : null);
               loadTeams(gameId);
-          };
-          reader.readAsDataURL(file);
+          }
       }
   };
 
   const saveMemberAvatar = async (base64: string) => {
+      // Note: AvatarCreator usually returns base64. 
+      // Ideally we would upload this too, but AvatarCreator handles its own logic internally
+      // or returns base64 string directly from AI generation.
+      // If base64 is huge, uploadImage(base64) handles it.
       if (!activeLobbyView || !avatarTargetMemberId) return;
       
-      await db.updateMemberPhoto(activeLobbyView.id, avatarTargetMemberId, base64);
+      const url = await uploadImage(base64); // Ensure storage used if possible
       
-      // Update local state
-      setActiveLobbyView(prev => {
-          if (!prev) return null;
-          const newMembers = prev.members.map(m => {
-              const { deviceId, name } = resolveMember(m);
-              if (deviceId === avatarTargetMemberId) {
-                  return { name, deviceId, photo: base64 };
-              }
-              return m;
+      if (url) {
+          await db.updateMemberPhoto(activeLobbyView.id, avatarTargetMemberId, url);
+          
+          // Update local state
+          setActiveLobbyView(prev => {
+              if (!prev) return null;
+              const newMembers = prev.members.map(m => {
+                  const { deviceId, name } = resolveMember(m);
+                  if (deviceId === avatarTargetMemberId) {
+                      return { name, deviceId, photo: url };
+                  }
+                  return m;
+              });
+              return { ...prev, members: newMembers };
           });
-          return { ...prev, members: newMembers };
-      });
+      }
       setShowAvatarModal(false);
       setAvatarTargetMemberId(null);
       loadTeams(gameId);
@@ -220,7 +229,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
   const resolveMember = (m: any) => {
       // 1. Unwind serialization layers
       let data = m;
-      // Loop a few times to unwrap nested JSON strings (e.g. "{\"name\":\"...\"}")
       let attempts = 0;
       while (typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('"')) && attempts < 5) {
           try {
@@ -238,18 +246,15 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
       let photo = null;
 
       if (typeof data === 'object' && data !== null) {
-          // 3. Extract fields (handle case sensitivity and potential nested JSON in name field)
           const candidateName = data.name || data.NAME || data.Name;
           const candidateId = data.deviceId || data.DEVICEID || data.DeviceId;
           const candidatePhoto = data.photo || data.PHOTO || data.Photo;
 
-          // Attempt to fix nested name objects if present
           if (candidateName) {
               if (typeof candidateName === 'string' && candidateName.trim().startsWith('{')) {
                   try {
                       const parsedNameObj = JSON.parse(candidateName);
                       name = parsedNameObj.name || parsedNameObj.NAME || "Unknown";
-                      // Opportunistic ID recovery if ID is missing at top level
                       if (!candidateId && (parsedNameObj.deviceId || parsedNameObj.DEVICEID)) {
                           deviceId = parsedNameObj.deviceId || parsedNameObj.DEVICEID;
                       }
@@ -267,13 +272,14 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
           if (candidatePhoto) photo = candidatePhoto;
 
       } else {
-          // Fallback if data ended up as a primitive string
           name = String(data);
       }
 
       return { name, deviceId, photo };
   };
 
+  // ... (Render logic remains largely the same, ensuring teamPhotoInputRef onChange is bound to the new handler) ...
+  
   if (isAdmin && !activeLobbyView && activeGame) {
       // Sort teams by rank (highest score first)
       const sortedTeams = [...teams].sort((a, b) => b.score - a.score);
@@ -420,16 +426,19 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
   }
 
   // --- LOBBY / GHOST VIEW ---
-
+  // (Rendering code for individual team lobby remains same as original but using new handlers)
+  
   if (activeLobbyView) {
+      // ... (Rest of component rendering logic)
+      // Just ensure the hidden input for photo upload uses the new ref
+      
       const myDeviceId = teamSync.getDeviceId();
       const isCaptain = activeLobbyView.captainDeviceId === myDeviceId;
-      // Admin implies "Ghost Mode" access. Captains can edit team.
       const canEdit = isCaptain || isAdmin;
       
       const teamChats = chatHistory.filter(msg => 
           msg.targetTeamId === activeLobbyView.id
-      ).slice(-15); // Show last 15 messages
+      ).slice(-15); 
 
       const unreadCount = teamChats.length; 
 
@@ -488,7 +497,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
       return (
           <div className="fixed inset-0 z-[5200] bg-slate-950/90 backdrop-blur-md flex items-center justify-center sm:p-4 animate-in zoom-in-95">
               <div className={`bg-slate-900 border-2 border-orange-500/50 w-full h-full sm:h-auto sm:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative ${isAdmin ? 'max-w-5xl sm:rounded-[2.5rem]' : 'max-w-md sm:rounded-[2rem]'}`}>
-                  {/* Footprint Pattern */}
                   <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/footprints.png')]" />
 
                   {/* Hidden Input for Team Photo Upload */}
@@ -543,9 +551,11 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                       </div>
                   </div>
                   
+                  {/* ... (Rest of layout same as before) ... */}
+                  {/* Left Column, Right Column, Collapsibles */}
+                  
                   <div className="flex-1 overflow-hidden relative z-10 flex flex-col md:flex-row">
-                      
-                      {/* LEFT COLUMN: Team Details */}
+                      {/* ... Left Column ... */}
                       <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 border-b md:border-b-0 md:border-r border-slate-800">
                           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-6 sm:mb-8 bg-slate-800/30 p-4 rounded-3xl border border-white/5">
                               <div 
@@ -573,6 +583,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                               </div>
                           </div>
                           
+                          {/* ... Captain/Member Roster ... */}
                           {canEdit && (
                               <div className="mb-6 bg-blue-900/10 border border-blue-500/20 p-3 rounded-2xl flex items-center gap-3">
                                   <div className="p-2 bg-blue-500/20 rounded-lg"><Anchor className="w-4 h-4 text-blue-400" /></div>
@@ -590,7 +601,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OPERATIVE ROSTER</p>
                               </div>
                               
-                              {/* 3x3 Grid for Team Members */}
                               <div className="grid grid-cols-3 gap-2">
                                   {sortedMembers.map((m: any, i) => {
                                       const { name, deviceId, photo } = resolveMember(m);
@@ -600,7 +610,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                           <div key={i} className="group relative flex flex-col items-center">
                                               <div 
                                                 onClick={() => {
-                                                    // Allow editing avatar if isAdmin OR if I'm editing my own avatar
                                                     if (isAdmin || deviceId === teamSync.getDeviceId()) {
                                                         openAvatarCreator(deviceId);
                                                     }
@@ -626,7 +635,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                                   <h4 className="font-black text-white text-[10px] uppercase truncate w-full">{name}</h4>
                                                   {isMemberCaptain && <span className="text-[8px] font-bold text-yellow-500 uppercase block leading-none mt-0.5">CAPTAIN</span>}
                                                   
-                                                  {/* Actions: Enable Promote for Admin OR Current Captain */}
                                                   {(isAdmin || isCaptain) && !isMemberCaptain && deviceId && (
                                                       <button 
                                                         onClick={() => handleMakeCaptain(deviceId)} 
@@ -643,11 +651,10 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                           </div>
                       </div>
 
-                      {/* RIGHT COLUMN: Task Progress & Chat (Visible if Admin or Enabled) */}
+                      {/* ... Right Column (Chat/Logs) ... */}
                       {showTaskDetails && (
                           <div className="flex-1 flex flex-col min-h-[300px] bg-slate-900/50 relative overflow-hidden">
-                              
-                              {/* TOP: Collapsible Chat Log */}
+                              {/* ... Chat Log ... */}
                               <div className="border-b border-slate-800 bg-slate-950 flex-shrink-0 relative z-20">
                                   <button 
                                     onClick={() => setIsChatCollapsed(!isChatCollapsed)}
@@ -686,10 +693,8 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
                                   )}
                               </div>
 
-                              {/* MAIN: Task List Section or Ranking List */}
+                              {/* ... Task List / Ranking ... */}
                               <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 relative">
-                                  
-                                  {/* Ranking Toggle (if allowed) */}
                                   {showRankingsToPlayers && (
                                       <div className="mb-4">
                                           <button 
@@ -816,7 +821,6 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ gameId, games, targetTeamId, on
       );
   }
 
-  // --- STANDARD GAME PICKER (Fallback) --- 
   return null;
 };
 

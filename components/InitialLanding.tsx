@@ -2,22 +2,22 @@
 import React, { useState } from 'react';
 import { 
   Users, Gamepad2, Library, LayoutList, Shield, Edit2, 
-  UserCircle, Settings, MapPin, ChevronRight, Play,
-  LayoutDashboard, LayoutTemplate, LayoutGrid, UserPlus,
-  Monitor, Tag, Radar, Plus, Database, ArrowLeft,
-  Briefcase, Boxes, ClipboardList, PenTool, Globe, Server, ChevronDown, Link, QrCode, MessageSquare, Anchor, Home, Trash2, Map, Smartphone
+  UserCircle, Settings, Play,
+  LayoutDashboard, LayoutGrid, UserPlus,
+  Plus, Database, ArrowLeft,
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight
 } from 'lucide-react';
 import { Game } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'CREATE_GAME' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
   onSelectGame: (id: string) => void;
 }
 
-type CategoryView = 'HOME' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
+type CategoryView = 'HOME' | 'SETTINGS' | 'CREATE' | 'EDIT_MENU' | 'PLAY_MENU' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
 
 const NavCard = ({ 
   title, 
@@ -59,33 +59,65 @@ const NavCard = ({
   </button>
 );
 
-const CategoryButton = ({
-    title,
-    icon: Icon,
-    color,
-    onClick
-}: {
-    title: string;
-    icon: any;
-    color: string;
+const MapPinButton = ({ 
+    title, 
+    icon: Icon, 
+    gradient, 
+    onClick,
+    delay,
+    scale = 1
+}: { 
+    title: string; 
+    icon: any; 
+    gradient: string; 
     onClick: () => void;
+    delay: number;
+    scale?: number;
 }) => (
-    <button 
+    <div 
+        className="flex flex-col items-center gap-6 group cursor-pointer perspective-1000" 
         onClick={onClick}
-        className={`group relative h-40 rounded-[2rem] flex flex-col items-center justify-center overflow-hidden shadow-2xl transition-all hover:scale-[1.05] active:scale-95 border-2 hover:shadow-3xl cursor-pointer ${color}`}
+        style={{ transform: `scale(${scale})` }}
     >
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/50 to-transparent pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col items-center gap-3">
-            <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 group-hover:scale-110 transition-transform duration-300 group-hover:bg-white/20">
-                <Icon className="w-10 h-10 text-white" />
+        <div className="relative">
+            {/* Pin Shape */}
+            <div 
+                className={`
+                    relative w-36 h-36 md:w-48 md:h-48 
+                    ${gradient}
+                    rounded-full rounded-br-none 
+                    rotate-45 
+                    shadow-[0_10px_40px_rgba(0,0,0,0.5)] 
+                    border-4 border-white/20 
+                    flex items-center justify-center 
+                    transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+                    group-hover:-translate-y-6 group-hover:scale-110 group-hover:shadow-[0_30px_60px_rgba(0,0,0,0.6)] group-hover:border-white/40
+                    animate-in zoom-in fade-in fill-mode-backwards
+                `}
+                style={{ animationDelay: `${delay}ms` }}
+            >
+                {/* Inner Content (Counter-rotated to stay upright) */}
+                <div className="-rotate-45 flex items-center justify-center">
+                    <Icon className="w-12 h-12 md:w-20 md:h-20 text-white drop-shadow-md" strokeWidth={2} />
+                </div>
+                
+                {/* Glass/Shine Effect */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent rounded-full rounded-br-none pointer-events-none" />
             </div>
-            <span className="text-2xl font-black text-white uppercase tracking-[0.2em] drop-shadow-md group-hover:tracking-[0.25em] transition-all">
-                {title}
-            </span>
+            
+            {/* Pulse Ring (behind) */}
+            <div className={`absolute inset-0 rounded-full rounded-br-none rotate-45 ${gradient} opacity-20 blur-xl group-hover:blur-2xl transition-all duration-500 -z-10`} />
         </div>
-    </button>
+
+        {/* Shadow Spot */}
+        <div className="w-24 h-6 bg-black/60 blur-xl rounded-[100%] transition-all duration-500 group-hover:w-16 group-hover:blur-md group-hover:opacity-40 group-hover:translate-y-2" />
+
+        {/* Title Label */}
+        <div className="text-center -mt-4 transform transition-all duration-300 group-hover:-translate-y-2">
+            <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-[0.2em] drop-shadow-2xl whitespace-nowrap bg-black/30 backdrop-blur-sm px-4 py-1 rounded-full">{title}</h2>
+            <div className="h-1 w-12 bg-current mx-auto mt-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        </div>
+    </div>
 );
 
 const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, games, activeGameId, onSelectGame }) => {
@@ -93,139 +125,183 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   const [showGameMenu, setShowGameMenu] = useState(false);
   const activeGame = games.find(g => g.id === activeGameId);
 
+  // Dynamic Header Content
+  const getHeaderContent = () => {
+      switch (view) {
+          case 'CREATE': return { title: 'CREATE CENTER', subtitle: 'NEW RESOURCE SETUP' };
+          case 'EDIT_MENU': return { title: 'EDIT CENTER', subtitle: 'MODIFY RESOURCES' };
+          case 'PLAY_MENU': return { title: 'PLAY CENTER', subtitle: 'GAME OPERATIONS' };
+          case 'SETTINGS': return { title: 'SYSTEM TOOLS', subtitle: 'GLOBAL CONFIGURATION' };
+          case 'PREVIEW_SELECT': return { title: 'SIMULATION', subtitle: 'DEVICE PREVIEW MODE' };
+          default: return { title: 'COMMAND CENTER', subtitle: 'TEAMACTION MANAGEMENT' };
+      }
+  };
+
+  const { title: pageTitle, subtitle: pageSubtitle } = getHeaderContent();
+
   const renderHome = () => (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto w-full">
-          <CategoryButton 
-              title="GAMES" 
-              icon={Gamepad2} 
-              color="bg-orange-600 border-orange-500" 
-              onClick={() => setView('GAMES')} 
+      <div className="flex flex-col md:flex-row gap-12 md:gap-20 items-center justify-center w-full px-4 pb-12 pt-8">
+          <MapPinButton 
+              title="CREATE" 
+              icon={Plus} 
+              gradient="bg-gradient-to-br from-orange-600 to-red-600" 
+              onClick={() => setView('CREATE')} 
+              delay={0}
           />
-          <CategoryButton 
-              title="TEAMS" 
-              icon={Users} 
-              color="bg-blue-600 border-blue-500" 
-              onClick={() => setView('TEAMS')} 
+          <MapPinButton 
+              title="EDIT" 
+              icon={Edit2} 
+              gradient="bg-gradient-to-br from-blue-600 to-indigo-600" 
+              onClick={() => setView('EDIT_MENU')} 
+              delay={100}
           />
-          <CategoryButton 
-              title="TASKS" 
-              icon={Library} 
-              color="bg-emerald-600 border-emerald-500" 
-              onClick={() => setView('TASKS')} 
+          <MapPinButton 
+              title="PLAY" 
+              icon={Play} 
+              gradient="bg-gradient-to-br from-emerald-600 to-teal-600" 
+              onClick={() => setView('PLAY_MENU')} 
+              delay={200}
           />
-          <CategoryButton 
-              title="ADMIN" 
-              icon={Shield} 
-              color="bg-slate-700 border-slate-600" 
-              onClick={() => setView('ADMIN')} 
-          />
+      </div>
+  );
+
+  const renderCreateMenu = () => (
+      <div className="flex flex-col items-center w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+              <MapPinButton 
+                  title="GAME" 
+                  icon={Gamepad2} 
+                  gradient="bg-gradient-to-br from-orange-500 to-red-500" 
+                  onClick={() => onAction('CREATE_GAME')} 
+                  delay={0}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="TASK" 
+                  icon={FilePlus} 
+                  gradient="bg-gradient-to-br from-blue-500 to-cyan-500" 
+                  onClick={() => onAction('TASKS')} 
+                  delay={100}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="TASKLIST" 
+                  icon={LayoutList} 
+                  gradient="bg-gradient-to-br from-purple-500 to-indigo-500" 
+                  onClick={() => onAction('TASKLIST')} 
+                  delay={200}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="PLAYGROUND" 
+                  icon={Globe} 
+                  gradient="bg-gradient-to-br from-emerald-500 to-green-500" 
+                  onClick={() => onAction('PLAYGROUNDS')} 
+                  delay={300}
+                  scale={0.75}
+              />
+          </div>
+      </div>
+  );
+
+  const renderEditMenu = () => (
+      <div className="flex flex-col items-center w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 w-full justify-items-center pb-10 max-w-[1400px] mx-auto">
+              <MapPinButton 
+                  title="EDIT GAME" 
+                  icon={Gamepad2} 
+                  gradient="bg-gradient-to-br from-cyan-600 to-blue-600" 
+                  onClick={() => onAction('GAMES')} 
+                  delay={0}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="EDIT TASK" 
+                  icon={Edit2} 
+                  gradient="bg-gradient-to-br from-purple-600 to-violet-600" 
+                  onClick={() => onAction('TASKS')} 
+                  delay={100}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="EDIT LIST" 
+                  icon={LayoutList} 
+                  gradient="bg-gradient-to-br from-pink-600 to-rose-600" 
+                  onClick={() => onAction('TASKLIST')} 
+                  delay={200}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="EDIT ZONE" 
+                  icon={Globe} 
+                  gradient="bg-gradient-to-br from-emerald-600 to-teal-600" 
+                  onClick={() => onAction('PLAYGROUNDS')} 
+                  delay={300}
+                  scale={0.75}
+              />
+              <MapPinButton 
+                  title="EDIT TEAMS" 
+                  icon={Users} 
+                  gradient="bg-gradient-to-br from-orange-600 to-amber-600" 
+                  onClick={() => onAction('TEAM_LOBBY')} 
+                  delay={400}
+                  scale={0.75}
+              />
+          </div>
+      </div>
+  );
+
+  const renderPlayMenu = () => (
+      <div className="flex flex-col items-center w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+              <MapPinButton 
+                  title="PLAY GAME" 
+                  icon={Play} 
+                  gradient="bg-gradient-to-br from-emerald-600 to-green-600" 
+                  onClick={() => onAction('PLAY')} 
+                  delay={0}
+                  scale={0.85}
+              />
+              <MapPinButton 
+                  title="TEAMLOBBY" 
+                  icon={Users} 
+                  gradient="bg-gradient-to-br from-purple-600 to-indigo-600" 
+                  onClick={() => onAction('TEAM_LOBBY')} 
+                  delay={100}
+                  scale={0.85}
+              />
+              <MapPinButton 
+                  title="NEW TEAM" 
+                  icon={UserPlus} 
+                  gradient="bg-gradient-to-br from-pink-500 to-rose-500" 
+                  onClick={() => onAction('TEAM_LOBBY')} 
+                  delay={200}
+                  scale={0.85}
+              />
+              <MapPinButton 
+                  title="CHAT" 
+                  icon={MessageSquare} 
+                  gradient="bg-gradient-to-br from-blue-600 to-cyan-600" 
+                  onClick={() => onAction('CHAT')} 
+                  delay={300}
+                  scale={0.85}
+              />
+          </div>
       </div>
   );
 
   const renderCategoryContent = () => {
       switch(view) {
-          case 'GAMES':
+          case 'CREATE':
+              return renderCreateMenu();
+          case 'EDIT_MENU':
+              return renderEditMenu();
+          case 'PLAY_MENU':
+              return renderPlayMenu();
+          case 'SETTINGS':
               return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <NavCard 
-                          title="GAMES" 
-                          subtitle="SESSION HUB" 
-                          icon={Gamepad2} 
-                          color="bg-orange-500"
-                          onClick={() => onAction('GAMES')}
-                      />
-                      <NavCard 
-                          title="EDIT GAME" 
-                          subtitle="MAP & LOGIC" 
-                          icon={Edit2} 
-                          color="bg-amber-500"
-                          onClick={() => onAction('EDIT_GAME')}
-                      />
-                      <NavCard 
-                          title="PLAYGROUND TEMPLATES" 
-                          subtitle="GLOBAL LIBRARY" 
-                          icon={LayoutGrid} 
-                          color="bg-violet-500"
-                          onClick={() => onAction('PLAYGROUNDS')}
-                      />
-                  </div>
-              );
-          case 'TEAMS':
-              return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <NavCard 
-                          title="TEAMLOBBY ADMIN" 
-                          subtitle="MONITOR & MANAGE" 
-                          icon={Anchor} 
-                          color="bg-rose-500"
-                          onClick={() => onAction('TEAM_LOBBY')}
-                      />
-                      <NavCard 
-                          title="TEAM CHAT" 
-                          subtitle="COMMS CHANNEL" 
-                          icon={MessageSquare} 
-                          color="bg-indigo-500"
-                          onClick={() => onAction('CHAT')}
-                      />
-                      <NavCard 
-                          title="TEAMS MAP VIEW" 
-                          subtitle="COMMAND CENTER" 
-                          icon={Map} 
-                          color="bg-cyan-500"
-                          onClick={() => onAction('TEAMS_MAP_VIEW')}
-                      />
-                      <NavCard 
-                          title="TEAM LOGIN" 
-                          subtitle="JOIN MISSION" 
-                          icon={UserPlus} 
-                          color="bg-blue-500"
-                          onClick={() => onAction('TEAMS')}
-                      />
-                  </div>
-              );
-          case 'TASKS':
-              return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <NavCard 
-                          title="TASKS" 
-                          subtitle="LIBRARY AI HUB" 
-                          icon={Library} 
-                          color="bg-emerald-500"
-                          onClick={() => onAction('TASKS')}
-                      />
-                      <NavCard 
-                          title="TASK LIST" 
-                          subtitle="LIST MANAGER" 
-                          icon={LayoutList} 
-                          color="bg-green-500"
-                          onClick={() => onAction('TASKLIST')}
-                      />
-                      <NavCard 
-                          title="TAGS" 
-                          subtitle="CATEGORIES" 
-                          icon={Tag} 
-                          color="bg-lime-500"
-                          onClick={() => onAction('TAGS')}
-                      />
-                      <NavCard 
-                          title="CLIENT PORTAL" 
-                          subtitle="EXTERNAL LINKS" 
-                          icon={Link} 
-                          color="bg-pink-500"
-                          onClick={() => onAction('CLIENT_PORTAL')}
-                      />
-                      <NavCard 
-                          title="QR CODES" 
-                          subtitle="PRINT & DOWNLOAD" 
-                          icon={QrCode} 
-                          color="bg-purple-500"
-                          onClick={() => onAction('QR_CODES')}
-                      />
-                  </div>
-              );
-          case 'ADMIN':
-              return (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-right-4">
+                      {/* Admin Tools */}
                       <NavCard 
                           title="USERS" 
                           subtitle="ACCESS & ROLES" 
@@ -234,18 +310,25 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           onClick={() => onAction('USERS')}
                       />
                       <NavCard 
-                          title="DATABASE / SQL" 
+                          title="DATABASE" 
                           subtitle="SYSTEM MAINTENANCE" 
                           icon={Database} 
                           color="bg-blue-600"
                           onClick={() => onAction('DATABASE')} 
                       />
                       <NavCard 
-                          title="DELETE GAMES" 
-                          subtitle="REMOVE SESSIONS" 
-                          icon={Trash2} 
-                          color="bg-red-600"
-                          onClick={() => onAction('DELETE_GAMES')} 
+                          title="GLOBAL LIBRARY" 
+                          subtitle="TASK REPOSITORY" 
+                          icon={Library} 
+                          color="bg-emerald-500"
+                          onClick={() => onAction('TASKS')}
+                      />
+                      <NavCard 
+                          title="TEAM LOBBY" 
+                          subtitle="MANAGE TEAMS" 
+                          icon={Anchor} 
+                          color="bg-rose-500"
+                          onClick={() => onAction('TEAM_LOBBY')}
                       />
                       <NavCard 
                           title="APP PREVIEW" 
@@ -254,13 +337,27 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           color="bg-teal-500"
                           onClick={() => setView('PREVIEW_SELECT')} 
                       />
+                      <NavCard 
+                          title="QR CODES" 
+                          subtitle="PRINT & DOWNLOAD" 
+                          icon={QrCode} 
+                          color="bg-indigo-500"
+                          onClick={() => onAction('QR_CODES')}
+                      />
+                      <NavCard 
+                          title="DELETE GAMES" 
+                          subtitle="REMOVE SESSIONS" 
+                          icon={Trash2} 
+                          color="bg-red-600"
+                          onClick={() => onAction('DELETE_GAMES')} 
+                      />
                   </div>
               );
           case 'PREVIEW_SELECT':
               return (
                   <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4">
-                      <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-xs tracking-widest cursor-pointer hover:text-white" onClick={() => setView('ADMIN')}>
-                          <ArrowLeft className="w-4 h-4" /> Back to Admin
+                      <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-xs tracking-widest cursor-pointer hover:text-white" onClick={() => setView('SETTINGS')}>
+                          <ArrowLeft className="w-4 h-4" /> Back to Settings
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <NavCard 
@@ -286,57 +383,42 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   };
 
   return (
-    <div className="fixed inset-0 z-[4000] bg-slate-950 text-white flex flex-col font-sans uppercase overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent)] opacity-40 pointer-events-none" />
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
+    <div className="fixed inset-0 z-[4000] bg-[#1a1a1a] text-white flex flex-col font-sans uppercase overflow-hidden">
+      
+      {/* --- BACKGROUND LAYER (Grey Map) --- */}
+      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          <svg className="w-full h-full absolute inset-0" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+              <rect width="100%" height="100%" fill="#202020" />
+              <path d="M0 0 L500 0 C 500 300, 300 500, 0 600 Z" fill="#262626" />
+              <path d="M1920 1080 L1400 1080 C 1400 800, 1600 600, 1920 500 Z" fill="#262626" />
+              <path d="M1920 0 L1500 0 C 1600 300, 1800 200, 1920 400 Z" fill="#2a2a2a" />
+              <path d="M600 0 L900 0 L800 1080 L500 1080 Z" fill="#232323" opacity="0.5" />
+              <path d="M -50 650 C 500 650, 700 350, 1100 550 C 1500 750, 1700 550, 2100 650" fill="none" stroke="#404040" strokeWidth="50" strokeLinecap="round" />
+              <path d="M -50 650 C 500 650, 700 350, 1100 550 C 1500 750, 1700 550, 2100 650" fill="none" stroke="#505050" strokeWidth="4" strokeOpacity="0.5" transform="translate(0, -23)" />
+              <path d="M 300 -100 C 300 300, 100 600, 200 1200" fill="none" stroke="#333333" strokeWidth="40" strokeLinecap="round" />
+              <path d="M 1400 -100 C 1400 400, 1200 800, 1500 1200" fill="none" stroke="#2e2e2e" strokeWidth="30" strokeLinecap="round" />
+          </svg>
+          <div className="absolute inset-0 opacity-[0.05]" style={{ backgroundImage: `linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)`, backgroundSize: '100px 100px' }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+      </div>
 
       {/* Main Container */}
       <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar">
-        <div className="max-w-6xl mx-auto px-6 py-12 flex flex-col gap-10 min-h-full">
+        <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col gap-10 min-h-full">
           
-          {/* Dashboard Header */}
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 bg-gradient-to-br from-slate-700 to-slate-900 border border-slate-600 rounded-2xl flex items-center justify-center shadow-2xl">
-                <LayoutDashboard className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black tracking-tight leading-none mb-1">COMMAND CENTER</h1>
-                <p className="text-[10px] font-black text-slate-500 tracking-[0.4em] uppercase">TEAMACTION MANAGEMENT</p>
-              </div>
-            </div>
+          {/* Header Container */}
+          <div className="relative">
             
-            <div className="flex items-center gap-4">
-                {/* Game Session Chooser */}
-                <div className="relative">
-                    <button 
-                        onClick={() => setShowGameMenu(!showGameMenu)}
-                        className={`flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl shadow-lg shadow-orange-900/20 transition-all font-black uppercase text-xs tracking-widest border hover:scale-105 active:scale-95 ${activeGame ? 'border-orange-500' : 'border-red-500 animate-pulse'}`}
-                    >
-                        <span className="max-w-[200px] truncate">{activeGame ? activeGame.name : "SELECT SESSION"}</span>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${showGameMenu ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {showGameMenu && (
-                        <div className="absolute top-full right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
-                            {games.length === 0 && <div className="p-4 text-xs text-slate-500 font-bold text-center">NO GAMES FOUND</div>}
-                            {games.map(game => (
-                                <button
-                                    key={game.id}
-                                    onClick={() => { onSelectGame(game.id); setShowGameMenu(false); }}
-                                    className={`w-full text-left px-4 py-3 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-center ${game.id === activeGameId ? 'text-orange-500' : 'text-slate-300'}`}
-                                >
-                                    <span className="truncate">{game.name}</span>
-                                    {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500" />}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                    {showGameMenu && <div className="fixed inset-0 z-40" onClick={() => setShowGameMenu(false)} />}
-                </div>
-
-                {view !== 'HOME' && (
+            {/* Top Left Status / Home Button */}
+            <div className="absolute top-0 left-0 flex items-center gap-4 z-30">
+                {view === 'HOME' ? (
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <p className="text-[9px] font-black text-slate-500 tracking-[0.4em] uppercase">
+                          SYSTEM ONLINE &bull; v{version}
+                        </p>
+                    </div>
+                ) : (
                     <button 
                         onClick={() => setView('HOME')}
                         className="p-3 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl uppercase tracking-widest text-xs flex items-center gap-2 transition-all hover:scale-105 active:scale-95 border border-slate-700"
@@ -346,10 +428,72 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                     </button>
                 )}
             </div>
+
+            {/* Right Controls */}
+            <div className="absolute top-0 right-0 flex items-center gap-4 z-30">
+                {/* Settings Button */}
+                <button 
+                    onClick={() => setView(view === 'SETTINGS' ? 'HOME' : 'SETTINGS')}
+                    className={`p-3 rounded-xl transition-all hover:scale-105 active:scale-95 border ${view === 'SETTINGS' ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'}`}
+                    title="System Settings & Tools"
+                >
+                    <Settings className="w-5 h-5" />
+                </button>
+            </div>
+
+            {/* Centered Title & Session Selector Block */}
+            <div className="flex flex-col items-center justify-center pt-8 pb-4 gap-6">
+                
+                {/* Title */}
+                <div className="flex flex-col items-center gap-4 animate-in slide-in-from-top-4 duration-500">
+                    <div className="text-center">
+                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none mb-2 text-white drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)]">
+                            {pageTitle}
+                        </h1>
+                        <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
+                            {pageSubtitle}
+                        </p>
+                    </div>
+                </div>
+                
+                {/* Session Selector (Hidden in Create Mode) */}
+                {view !== 'CREATE' && (
+                    <div className="relative z-20 animate-in slide-in-from-bottom-2 duration-500 delay-100">
+                        <button 
+                            onClick={() => setShowGameMenu(!showGameMenu)}
+                            className={`flex items-center gap-3 px-8 py-4 bg-slate-900/80 hover:bg-slate-800 text-white rounded-full shadow-2xl border transition-all font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 backdrop-blur-md ${activeGame ? 'border-orange-500/50 shadow-orange-900/20' : 'border-slate-700 hover:border-slate-500'}`}
+                        >
+                            <span className="max-w-[250px] truncate">{activeGame ? activeGame.name : "SELECT SESSION"}</span>
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showGameMenu ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {showGameMenu && (
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
+                                {games.length === 0 && <div className="p-6 text-xs text-slate-500 font-bold text-center uppercase tracking-widest">NO GAMES FOUND</div>}
+                                {games.map(game => (
+                                    <button
+                                        key={game.id}
+                                        onClick={() => { onSelectGame(game.id); setShowGameMenu(false); }}
+                                        className={`w-full text-left px-5 py-4 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-between ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
+                                    >
+                                        <span className="truncate">{game.name}</span>
+                                        {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange]" />}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                        {showGameMenu && <div className="fixed inset-0 z-40" onClick={() => setShowGameMenu(false)} />}
+                    </div>
+                )}
+            </div>
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
-              {view === 'HOME' ? renderHome() : (
+              {view === 'HOME' || view === 'CREATE' || view === 'EDIT_MENU' || view === 'PLAY_MENU' ? (
+                  <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                      {view === 'HOME' ? renderHome() : (view === 'CREATE' ? renderCreateMenu() : (view === 'EDIT_MENU' ? renderEditMenu() : renderPlayMenu()))}
+                  </div>
+              ) : (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                       <div className="mb-6 flex items-center gap-3 opacity-50">
                           <span className="text-xs font-black uppercase tracking-widest text-slate-400">{view === 'PREVIEW_SELECT' ? 'PREVIEW MODE' : `${view} MODULES`}</span>
@@ -361,14 +505,8 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
           </div>
 
           {/* Footer Branding */}
-          <div className="mt-auto pt-10 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-[9px] font-black text-slate-700 tracking-[0.4em] uppercase">
-                  SYSTEM ONLINE &bull; v{version}
-                </p>
-            </div>
-            <p className="text-[9px] font-black text-slate-800 uppercase tracking-widest">
+          <div className="mt-auto pt-10 border-t border-slate-900/50 flex justify-center items-center gap-4">
+            <p className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
                 POWERED BY TEAMBATTLE
             </p>
           </div>

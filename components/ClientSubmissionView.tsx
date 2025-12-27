@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { TaskList, TaskTemplate, TaskType } from '../types';
 import * as db from '../services/db';
+import { uploadImage } from '../services/storage'; // IMPORTED
 import { Upload, CheckCircle, Image as ImageIcon, Loader2, Send, ArrowRight, ArrowLeft, RefreshCw, AlertCircle, User, Plus } from 'lucide-react';
 
 interface ClientSubmissionViewProps {
@@ -35,12 +36,11 @@ const ClientSubmissionView: React.FC<ClientSubmissionViewProps> = ({ token }) =>
         });
     }, [token]);
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setImage(reader.result as string);
-            reader.readAsDataURL(file);
+            const url = await uploadImage(file);
+            if (url) setImage(url);
         }
     };
 
@@ -101,6 +101,8 @@ const ClientSubmissionView: React.FC<ClientSubmissionViewProps> = ({ token }) =>
         setStep('WELCOME');
     };
 
+    // ... (Render logic mostly same as before) ...
+    
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center flex-col text-slate-400">

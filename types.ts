@@ -156,7 +156,10 @@ export interface Playground {
   buttonSize?: number; 
   orientationLock?: 'portrait' | 'landscape' | 'none'; 
   location?: Coordinate; 
-  showLabels?: boolean; // New: Toggle label visibility
+  showLabels?: boolean; 
+  // Audio Support
+  audioUrl?: string;
+  audioLoop?: boolean; // true = continuous, false = once
 }
 
 export interface DangerZone {

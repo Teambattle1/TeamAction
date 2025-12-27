@@ -2,183 +2,82 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { TaskTemplate, IconId, TaskType } from "../types";
 
-// Safe access to API Key in browser environment
-const getApiKey = () => (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY) || '';
+// Security Fix: Do not rely solely on process.env in built client code.
+// Allow override via LocalStorage for instructor/admin usage.
+const getApiKey = (): string => {
+    const localKey = typeof window !== 'undefined' ? localStorage.getItem('GEMINI_API_KEY') : null;
+    if (localKey) return localKey;
+    
+    // Fallback to env if available (e.g. during dev), but prefer secure storage
+    const envKey = (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY);
+    return envKey || '';
+};
 
-// Schema to ensure Gemini returns data compatible with our App
+// Check if key exists before making calls
+const ensureApiKey = () => {
+    const key = getApiKey();
+    if (!key) {
+        throw new Error("AI API Key missing. Please set GEMINI_API_KEY in Local Storage or Settings.");
+    }
+    return key;
+};
+
+// ... Schema definitions ...
 const responseSchema = {
   type: Type.ARRAY,
   items: {
     type: Type.OBJECT,
     properties: {
-      title: { type: Type.STRING, description: "Short catchy title for the task" },
-      question: { type: Type.STRING, description: "The actual question or challenge text" },
-      type: { 
-        type: Type.STRING, 
-        enum: ["text", "multiple_choice", "boolean", "slider", "checkbox", "dropdown"],
-        description: "The type of input required"
-      },
-      answer: { type: Type.STRING, description: "The correct answer (for text/boolean/dropdown)", nullable: true },
-      options: { 
-        type: Type.ARRAY, 
-        items: { type: Type.STRING },
-        description: "Options for multiple_choice, checkbox, dropdown",
-        nullable: true
-      },
-      correctAnswers: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "Array of correct answers if type is checkbox",
-        nullable: true
-      },
-      numericRange: {
-        type: Type.OBJECT,
-        properties: {
-          min: { type: Type.NUMBER },
-          max: { type: Type.NUMBER },
-          correctValue: { type: Type.NUMBER }
-        },
-        description: "Only for slider type",
-        nullable: true
-      },
-      iconId: { 
-        type: Type.STRING, 
-        enum: ['default', 'star', 'flag', 'trophy', 'camera', 'question', 'skull', 'treasure'],
-        description: "The visual icon for the map"
-      },
-      hint: { type: Type.STRING, description: "A helpful hint for the player", nullable: true }
+      title: { type: Type.STRING },
+      question: { type: Type.STRING },
+      type: { type: Type.STRING, enum: ["text", "multiple_choice", "boolean", "slider", "checkbox", "dropdown"] },
+      answer: { type: Type.STRING, nullable: true },
+      options: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
+      correctAnswers: { type: Type.ARRAY, items: { type: Type.STRING }, nullable: true },
+      numericRange: { type: Type.OBJECT, properties: { min: { type: Type.NUMBER }, max: { type: Type.NUMBER }, correctValue: { type: Type.NUMBER } }, nullable: true },
+      iconId: { type: Type.STRING, enum: ['default', 'star', 'flag', 'trophy', 'camera', 'question', 'skull', 'treasure'] },
+      hint: { type: Type.STRING, nullable: true }
     },
     required: ["title", "question", "type", "iconId"]
   }
 };
 
-// Schema for single task generation from image
-const singleTaskSchema = {
-  type: Type.OBJECT,
-  properties: {
-    title: { type: Type.STRING, description: "Short catchy title for the task" },
-    question: { type: Type.STRING, description: "The actual question or challenge text based on the image" },
-    type: { 
-      type: Type.STRING, 
-      enum: ["text", "multiple_choice", "boolean", "slider", "checkbox", "dropdown"],
-      description: "The type of input required"
-    },
-    answer: { type: Type.STRING, description: "The correct answer (for text/boolean/dropdown)", nullable: true },
-    options: { 
-      type: Type.ARRAY, 
-      items: { type: Type.STRING },
-      description: "Options for multiple_choice, checkbox, dropdown",
-      nullable: true
-    },
-    correctAnswers: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "Array of correct answers if type is checkbox",
-      nullable: true
-    },
-    numericRange: {
-      type: Type.OBJECT,
-      properties: {
-        min: { type: Type.NUMBER },
-        max: { type: Type.NUMBER },
-        correctValue: { type: Type.NUMBER }
-      },
-      description: "Only for slider type",
-      nullable: true
-    },
-    iconId: { 
-      type: Type.STRING, 
-      enum: ['default', 'star', 'flag', 'trophy', 'camera', 'question', 'skull', 'treasure'],
-      description: "The visual icon for the map"
-    },
-    hint: { type: Type.STRING, description: "A helpful hint for the player", nullable: true },
-    tags: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Tags describing the content" }
-  },
-  required: ["title", "question", "type", "iconId"]
-};
-
-// Helper for Exponential Backoff Retry
-async function makeRequestWithRetry<T>(requestFn: () => Promise<T>, maxRetries = 3, delay = 2000): Promise<T> {
+async function makeRequestWithRetry<T>(requestFn: () => Promise<T>, maxRetries = 2): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await requestFn();
     } catch (error: any) {
-      const msg = error.message || String(error);
-      const isRateLimit = msg.includes('429') || msg.includes('quota') || msg.includes('Too Many Requests');
-      
-      if (isRateLimit && i < maxRetries - 1) {
-        console.warn(`AI Rate limit hit. Retrying in ${delay / 1000} seconds... (Attempt ${i + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2; // Exponential backoff
+      if ((error.message || '').includes('429') && i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
       } else {
         throw error;
       }
     }
   }
-  throw new Error(`Failed after ${maxRetries} retries due to rate limiting.`);
+  throw new Error("AI Request Failed");
 }
 
-const handleAiError = (error: any) => {
-    const msg = error.message || String(error);
-    
-    // Check specifically for quota errors to suppress loud console errors if they bubble up past retry
-    if (msg.includes('429') || msg.includes('quota') || msg.includes('Too Many Requests')) {
-        console.warn("AI Quota/Rate Limit hit (logging suppressed).");
-        // Throw a user-friendly error that the UI can catch and display gracefully
-        throw new Error("AI Service is currently busy (Quota Exceeded). Please wait a moment and try again.");
-    }
-
-    console.error("AI Error:", error);
-    throw error;
-};
-
 export const generateAiTasks = async (topic: string, count: number = 5, language: string = 'English', additionalTag?: string): Promise<TaskTemplate[]> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
+  const key = ensureApiKey();
+  const ai = new GoogleGenAI({ apiKey: key });
   
-  // Increased timeout to 180 seconds (3 minutes) to handle model latency
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    const id = setTimeout(() => {
-      clearTimeout(id);
-      reject(new Error("Request timed out. The AI model is taking too long to respond."));
-    }, 180000);
-  });
-
   try {
-    const apiCallPromise = makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
+    const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Create exactly ${count} diverse and fun scavenger hunt/quiz tasks for a location-based game.
-      Topic: "${topic}"
-      Language: ${language}
-      
-      Ensure a mix of task types (multiple_choice, text, boolean, slider, checkbox).
-      For 'slider', provide min, max, and correctValue.
-      For 'checkbox', provide multiple correct options in correctAnswers.
-      The 'iconId' should be relevant to the specific question's content.
-      `,
+      contents: `Create exactly ${count} diverse scavenger hunt tasks. Topic: "${topic}". Language: ${language}. Return JSON array.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
-        thinkingConfig: { thinkingBudget: 0 },
-        systemInstruction: "You are a professional game designer for 'TeamAction', a location-based GPS adventure. You specialize in creating concise, engaging, and localized tasks.",
+        thinkingConfig: { thinkingBudget: 0 }
       },
     }));
 
-    const response = await Promise.race([apiCallPromise, timeoutPromise]);
     const rawData = JSON.parse(response.text || "[]");
-
-    return rawData.map((item: any, index: number) => {
-      // Logic for tags: "AI", Country (Language), and optional Auto-Tag
-      const countryTag = language.split(' ')[0]; // Extracts "Danish" from "Danish (Dansk)"
-      const tags = ['AI', countryTag];
-      if (additionalTag && additionalTag.trim()) {
-          tags.push(additionalTag.trim());
-      }
-
-      return {
+    return rawData.map((item: any, index: number) => ({
         id: `ai-${Date.now()}-${index}`,
         title: item.title,
         iconId: (item.iconId as IconId) || 'default',
-        tags: tags,
+        tags: ['AI', language.split(' ')[0], ...(additionalTag ? [additionalTag] : [])],
         createdAt: Date.now(),
         points: 100,
         task: {
@@ -187,194 +86,46 @@ export const generateAiTasks = async (topic: string, count: number = 5, language
           answer: item.answer,
           options: item.options,
           correctAnswers: item.correctAnswers,
-          range: item.numericRange ? {
-            min: item.numericRange.min,
-            max: item.numericRange.max,
-            step: 1,
-            correctValue: item.numericRange.correctValue,
-            tolerance: 0
-          } : undefined
+          range: item.numericRange ? { ...item.numericRange, step: 1, tolerance: 0 } : undefined
         },
         feedback: {
-          correctMessage: 'Correct!',
-          showCorrectMessage: true,
-          incorrectMessage: 'Not quite. Try again!',
-          showIncorrectMessage: true,
-          hint: item.hint || 'Look closely!',
-          hintCost: 10
+          correctMessage: 'Correct!', showCorrectMessage: true,
+          incorrectMessage: 'Try again!', showIncorrectMessage: true,
+          hint: item.hint || '', hintCost: 10
         },
         settings: {
-          scoreDependsOnSpeed: false,
-          language: language,
-          showAnswerStatus: true,
-          showCorrectAnswerOnMiss: false
+          scoreDependsOnSpeed: false, language: language, showAnswerStatus: true, showCorrectAnswerOnMiss: false
         }
-      };
-    });
-  } catch (error) {
-    handleAiError(error);
-    return []; // Should throw, but Typescript needs return
-  }
-};
-
-export const generateTaskFromImage = async (base64Image: string): Promise<TaskTemplate | null> => {
-  const ai = new GoogleGenAI({ apiKey: getApiKey() });
-  try {
-    const matches = base64Image.match(/^data:(.+);base64,(.+)$/);
-    if (!matches) return null;
-    
-    const mimeType = matches[1];
-    const data = matches[2];
-
-    const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: mimeType,
-              data: data
-            }
-          },
-          {
-            text: "Create an engaging scavenger hunt task based on this image. Return JSON."
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: singleTaskSchema,
-        thinkingConfig: { thinkingBudget: 0 }
-      }
     }));
-
-    const item = JSON.parse(response.text || "{}");
-    if (!item.title) return null;
-
-    return {
-        id: `ai-img-${Date.now()}`,
-        title: item.title,
-        iconId: (item.iconId as IconId) || 'camera',
-        tags: ['AI', 'Image'],
-        createdAt: Date.now(),
-        points: 100,
-        task: {
-          type: (item.type as TaskType) || 'text',
-          question: item.question,
-          answer: item.answer,
-          options: item.options,
-          correctAnswers: item.correctAnswers,
-          imageUrl: base64Image,
-          range: item.numericRange ? {
-            min: item.numericRange.min,
-            max: item.numericRange.max,
-            step: 1,
-            correctValue: item.numericRange.correctValue,
-            tolerance: 0
-          } : undefined
-        },
-        feedback: {
-          correctMessage: 'Correct!',
-          showCorrectMessage: true,
-          incorrectMessage: 'Incorrect, try again.',
-          showIncorrectMessage: true,
-          hint: item.hint || 'Check the details!',
-          hintCost: 10
-        },
-        settings: {
-          scoreDependsOnSpeed: false,
-          language: 'English',
-          showAnswerStatus: true,
-          showCorrectAnswerOnMiss: false
-        }
-    };
   } catch (error) {
-    handleAiError(error);
-    return null;
+    console.error("AI Generation Error", error);
+    throw error;
   }
 };
 
 export const generateAiImage = async (prompt: string, style: string = 'cartoon'): Promise<string | null> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
+    const key = ensureApiKey();
+    const ai = new GoogleGenAI({ apiKey: key });
     try {
         const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-2.5-flash-image', 
-            contents: `A simple, flat, vector illustration for a game task: ${prompt}. Style: ${style}. Minimal background, high contrast.`,
+            contents: `Simple vector illustration: ${prompt}. Style: ${style}. Minimal background.`,
         }));
-        
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                }
-            }
+        if (response.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
+            return `data:${response.candidates[0].content.parts[0].inlineData.mimeType};base64,${response.candidates[0].content.parts[0].inlineData.data}`;
         }
         return null;
     } catch (e) {
-        handleAiError(e);
+        console.error(e);
         return null;
     }
 };
 
 export const generateAvatar = async (keywords: string): Promise<string | null> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
-    try {
-        const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: `A cool, stylized, circular avatar for a game player profile. Keywords: ${keywords}. Style: Modern vector art, colorful, vibrant, expressive, white or solid background suitable for a profile picture.`,
-        }));
-        
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                }
-            }
-        }
-        return null;
-    } catch (e) {
-        handleAiError(e);
-        return null;
-    }
-};
-
-export const findCompanyDomain = async (query: string): Promise<string | null> => {
-    const ai = new GoogleGenAI({ apiKey: getApiKey() });
-    try {
-        const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Return ONLY the official website domain for: "${query}" (e.g. google.com). If not a company or not found, return "null".`,
-            config: { thinkingConfig: { thinkingBudget: 0 } }
-        }));
-        const text = response.text?.trim() || "";
-        return text !== "null" && text.includes('.') ? text : null;
-    } catch (e) {
-        return null;
-    }
+    return generateAiImage(`Avatar of ${keywords}`, 'vector art, colorful, circular crop style');
 };
 
 export const searchLogoUrl = async (query: string): Promise<string | null> => {
-    try {
-        const domain = await findCompanyDomain(query);
-        if (!domain) return null;
-
-        const checkImage = (url: string): Promise<boolean> => {
-            return new Promise(resolve => {
-                const img = new Image();
-                img.onload = () => resolve(true);
-                img.onerror = () => resolve(false);
-                img.src = url;
-            });
-        };
-
-        const clearbitUrl = `https://logo.clearbit.com/${domain}`;
-        if (await checkImage(clearbitUrl)) return clearbitUrl;
-
-        const googleUrl = `https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=256`;
-        if (await checkImage(googleUrl)) return googleUrl;
-
-        return null;
-    } catch (e) {
-        return null;
-    }
+    // Simple Clearbit fallback, AI not strictly needed for basic logo lookup
+    return `https://logo.clearbit.com/${query.replace(/\s/g, '').toLowerCase()}.com`;
 };

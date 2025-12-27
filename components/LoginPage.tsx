@@ -1,17 +1,20 @@
 
 import React, { useState } from 'react';
-import { Shield, ArrowRight, User, Loader2, Gamepad2 } from 'lucide-react';
+import { Shield, ArrowRight, User, Loader2, Gamepad2, X, ChevronLeft } from 'lucide-react';
 import { authService } from '../services/auth';
 import { AuthUser } from '../types';
 
 interface LoginPageProps {
     onLoginSuccess: (user: AuthUser) => void;
     onPlayAsGuest: () => void;
+    onBack: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onPlayAsGuest }) => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState(''); // Simulated
+const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onPlayAsGuest, onBack }) => {
+    // Default credentials pre-filled for Thomas
+    const [email, setEmail] = useState('thomas@teambattle.dk');
+    const [password, setPassword] = useState('Sommer22?');
+    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,26 +24,35 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onPlayAsGuest }) 
         setError(null);
 
         // Simulated delay for "security check"
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        const user = await authService.login(email);
+        // Pass password to auth service
+        const user = await authService.login(email, password);
         
         if (user) {
             onLoginSuccess(user);
         } else {
-            setError("Invalid credentials or unauthorized account.");
+            setError("Invalid credentials.");
         }
         setLoading(false);
     };
 
     return (
-        <div className="fixed inset-0 z-[5000] bg-slate-950 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[5000] bg-slate-950 flex items-center justify-center p-6 animate-in fade-in duration-300">
             <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03] pointer-events-none" />
             
-            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-8 relative overflow-hidden">
+            <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-8 relative overflow-hidden animate-in zoom-in-95 duration-300">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 via-red-500 to-purple-600" />
                 
-                <div className="text-center mb-8">
+                {/* Back Button */}
+                <button 
+                    onClick={onBack}
+                    className="absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-400 hover:text-white transition-all text-[10px] font-bold uppercase tracking-widest border border-slate-700 z-10"
+                >
+                    Back to Hub <X className="w-3 h-3" />
+                </button>
+
+                <div className="text-center mb-8 mt-4">
                     <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700 shadow-lg">
                         <Shield className="w-8 h-8 text-orange-500" />
                     </div>

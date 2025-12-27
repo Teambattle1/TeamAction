@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GamePoint, Playground, GameMode } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { X, CheckCircle, Lock, Smartphone, Tablet, Monitor, RotateCw, Edit2, Maximize, ZoomIn, ZoomOut, EyeOff, HelpCircle, MousePointerClick } from 'lucide-react';
+import { X, CheckCircle, Lock, Smartphone, Tablet, Monitor, RotateCw, Edit2, Maximize, ZoomIn, ZoomOut, EyeOff, HelpCircle, MousePointerClick, Volume2, VolumeX } from 'lucide-react';
 
 interface PlaygroundModalProps {
   playground: Playground;
@@ -32,12 +32,58 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
 
   const [showRotatePrompt, setShowRotatePrompt] = useState(false);
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  
+  // Audio State
+  const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const pointersRef = useRef<Map<number, {x: number, y: number}>>(new Map());
   const prevPinchDistRef = useRef<number | null>(null);
   const dragStartRef = useRef<{ x: number, y: number } | null>(null);
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null);
+
+  // Audio Playback Logic
+  useEffect(() => {
+      if (playground.audioUrl && mode === GameMode.PLAY) {
+          // If already playing same audio, don't restart
+          if (audioRef.current && audioRef.current.src === playground.audioUrl) {
+              return;
+          }
+
+          if (audioRef.current) {
+              audioRef.current.pause();
+          }
+
+          const audio = new Audio(playground.audioUrl);
+          audio.loop = playground.audioLoop !== false; // Default to true (continuous)
+          audio.volume = 0.5; // Default volume
+          audioRef.current = audio;
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+              playPromise.catch(error => {
+                  console.warn("Autoplay prevented:", error);
+                  // UI could show a "Click to unmute/play" button here if needed
+              });
+          }
+      }
+
+      return () => {
+          if (audioRef.current) {
+              audioRef.current.pause();
+              audioRef.current = null;
+          }
+      };
+  }, [playground.audioUrl, mode]);
+
+  const toggleMute = () => {
+      if (audioRef.current) {
+          audioRef.current.muted = !isMuted;
+          setIsMuted(!isMuted);
+      }
+  };
 
   useEffect(() => {
       if (mode === GameMode.EDIT) {
@@ -221,6 +267,12 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                   </div>
               )}
               <div className="flex gap-2 pointer-events-auto">
+                  {/* Mute Button if Audio Active */}
+                  {audioRef.current && (
+                      <button onClick={toggleMute} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all mr-2 border border-white/20">
+                          {isMuted ? <VolumeX className="w-5 h-5 text-red-400" /> : <Volume2 className="w-5 h-5 text-green-400" />}
+                      </button>
+                  )}
                   <button onClick={handleZoomIn} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><ZoomIn className="w-5 h-5 text-white" /></button>
                   <button onClick={handleZoomOut} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><ZoomOut className="w-5 h-5 text-white" /></button>
                   <button onClick={handleResetZoom} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all"><Maximize className="w-5 h-5 text-white" /></button>
@@ -255,7 +307,6 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                   const scale = point.playgroundScale || 1;
                   const questionText = stripHtml(point.task.question);
                   const isOptionsType = ['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(point.task.type);
-                  // RESPECT THE SHOW LABELS SETTING
                   const showLabel = playground.showLabels !== false;
 
                   return (

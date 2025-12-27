@@ -5,6 +5,7 @@ import { ICON_COMPONENTS } from '../utils/icons';
 import { getCroppedImg } from '../utils/image';
 import Cropper from 'react-easy-crop';
 import { generateAiImage } from '../services/ai';
+import { uploadImage } from '../services/storage'; // IMPORTED
 import QRCode from 'qrcode';
 import { 
   X, Save, Trash2, Upload, Link, Loader2, CheckCircle, 
@@ -152,7 +153,11 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
       if (!prompt.trim()) return;
       setIsGeneratingImage(true);
       const img = await generateAiImage(prompt);
-      if (img) setEditedPoint(prev => ({ ...prev, task: { ...prev.task, imageUrl: img } }));
+      if (img) {
+          // Upload AI Image to Storage for persistence
+          const url = await uploadImage(img);
+          setEditedPoint(prev => ({ ...prev, task: { ...prev.task, imageUrl: url || img } }));
+      }
       setIsGeneratingImage(false);
   };
 
@@ -164,7 +169,10 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
       try {
           const prompt = `A simple, flat vector icon representing: "${keyword}". Minimalist design, solid color, white background, high contrast, suitable for a map pin.`;
           const img = await generateAiImage(prompt, 'icon');
-          if (img) setEditedPoint(prev => ({ ...prev, iconUrl: img }));
+          if (img) {
+              const url = await uploadImage(img);
+              setEditedPoint(prev => ({ ...prev, iconUrl: url || img }));
+          }
       } catch (e) {
           console.error(e);
       } finally {
@@ -172,14 +180,13 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
       }
   };
 
-  const handlePinIconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePinIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-              setEditedPoint(prev => ({ ...prev, iconUrl: reader.result as string }));
-          };
-          reader.readAsDataURL(file);
+          setIsUploading(true);
+          const url = await uploadImage(file);
+          if (url) setEditedPoint(prev => ({ ...prev, iconUrl: url }));
+          setIsUploading(false);
       }
   };
 
@@ -206,6 +213,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   };
 
   const renderTypeConfig = () => {
+    // ... (unchanged logic for renderTypeConfig)
     const { type, options, answer } = editedPoint.task;
     const correctAnswers = editedPoint.task.correctAnswers || [];
     
@@ -215,7 +223,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         const newOpts = [...(options||[])]; 
         const oldVal = newOpts[i];
         newOpts[i] = val;
-        
         let newCorrectAnswers = correctAnswers;
         if (correctAnswers.includes(oldVal)) {
             newCorrectAnswers = correctAnswers.map(c => c === oldVal ? val : c);
@@ -224,22 +231,18 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         if (answer === oldVal) {
             newAnswer = val;
         }
-
         setEditedPoint({...editedPoint, task: {...editedPoint.task, options: newOpts, correctAnswers: newCorrectAnswers, answer: newAnswer }});
     };
 
     const removeOption = (i: number) => {
         const optToRemove = options?.[i];
         const newOpts = [...(options||[])]; newOpts.splice(i, 1);
-        
         let newCorrectAnswers = correctAnswers;
         if (optToRemove && correctAnswers.includes(optToRemove)) {
             newCorrectAnswers = correctAnswers.filter(c => c !== optToRemove);
         }
-        
         let newAnswer = answer;
         if (answer === optToRemove) newAnswer = undefined;
-
         setEditedPoint({...editedPoint, task: {...editedPoint.task, options: newOpts, correctAnswers: newCorrectAnswers, answer: newAnswer }});
     };
 
@@ -250,15 +253,9 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
             const newAnswers = current.includes(opt) 
                 ? current.filter(a => a !== opt)
                 : [...current, opt];
-            setEditedPoint({
-                ...editedPoint, 
-                task: { ...editedPoint.task, correctAnswers: newAnswers }
-            });
+            setEditedPoint({...editedPoint, task: { ...editedPoint.task, correctAnswers: newAnswers }});
         } else {
-            setEditedPoint({
-                ...editedPoint, 
-                task: { ...editedPoint.task, answer: opt }
-            });
+            setEditedPoint({...editedPoint, task: { ...editedPoint.task, answer: opt }});
         }
     };
 
@@ -277,26 +274,11 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
             <div className="space-y-2">
                 <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">OPTIONS & ANSWERS</label>
                 {options?.map((opt, idx) => {
-                    const isCorrect = isMulti 
-                        ? correctAnswers.includes(opt) 
-                        : answer === opt;
-
+                    const isCorrect = isMulti ? correctAnswers.includes(opt) : answer === opt;
                     return (
                         <div key={idx} className="flex gap-2 items-center group">
-                            <button 
-                                type="button"
-                                onClick={() => toggleCorrectOption(opt)}
-                                className={`p-2 rounded border transition-colors ${isCorrect ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-400 hover:border-green-400 hover:text-green-400'}`}
-                                title={isCorrect ? "Correct Answer" : "Mark as Correct"}
-                            >
-                                <Check className="w-4 h-4" />
-                            </button>
-                            <input 
-                                type="text" 
-                                value={opt} 
-                                onChange={(e) => updateOption(idx, e.target.value)} 
-                                className={`flex-1 p-2 border rounded bg-white dark:bg-gray-700 text-sm ${isCorrect ? 'border-green-500 ring-1 ring-green-500/20' : ''}`}
-                            />
+                            <button type="button" onClick={() => toggleCorrectOption(opt)} className={`p-2 rounded border transition-colors ${isCorrect ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-400 hover:border-green-400 hover:text-green-400'}`} title={isCorrect ? "Correct Answer" : "Mark as Correct"}><Check className="w-4 h-4" /></button>
+                            <input type="text" value={opt} onChange={(e) => updateOption(idx, e.target.value)} className={`flex-1 p-2 border rounded bg-white dark:bg-gray-700 text-sm ${isCorrect ? 'border-green-500 ring-1 ring-green-500/20' : ''}`}/>
                             <button type="button" onClick={() => removeOption(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded opacity-50 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4"/></button>
                         </div>
                     );
@@ -350,21 +332,22 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                       setIsUploading(true);
                       try {
                           if (!pendingImage) throw new Error("No image to crop");
-                          const img = await getCroppedImg(pendingImage, croppedAreaPixels, rotation);
-                          setEditedPoint({...editedPoint, task: {...editedPoint.task, imageUrl: img}});
+                          const imgBase64 = await getCroppedImg(pendingImage, croppedAreaPixels, rotation);
+                          // Upload the cropped result to storage
+                          const url = await uploadImage(imgBase64);
+                          setEditedPoint({...editedPoint, task: {...editedPoint.task, imageUrl: url || imgBase64}});
                           setIsCropping(false); 
                           setPendingImage(null);
                       } catch(e: any) { 
                           console.error(e);
                       }
                       setIsUploading(false);
-                  }} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-wide">{isUploading ? 'SAVING...' : 'CROP & SAVE'}</button>
+                  }} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold uppercase tracking-wide">{isUploading ? 'UPLOADING...' : 'CROP & SAVE'}</button>
               </div>
            </div>
         ) : (
            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
-               
-               {/* TABS */}
+               {/* ... Tab Navigation (Same as before) ... */}
                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
                    {[
                        {id: 'GENERAL', label: 'General', icon: AlignLeft},
@@ -463,7 +446,12 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    </div>
                                </div>
                                <div className="w-full rounded-2xl border-4 border-dashed border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-850 flex items-center justify-center relative overflow-hidden group min-h-[200px]">
-                                   {editedPoint.task.imageUrl ? (
+                                   {isUploading ? (
+                                       <div className="flex flex-col items-center">
+                                           <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+                                           <p className="text-[10px] font-bold text-gray-500 mt-2">UPLOADING...</p>
+                                       </div>
+                                   ) : editedPoint.task.imageUrl ? (
                                        <>
                                            <img src={editedPoint.task.imageUrl} className="max-w-full max-h-[400px] object-contain" alt="Task Cover" />
                                            <div className="absolute top-4 right-4 flex gap-2">
@@ -490,10 +478,10 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
+                   {/* ... Settings and Actions Tabs ... */}
                    {activeTab === 'SETTINGS' && (
                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-                           
-                           {/* RADIUS */}
+                           {/* ... Radius and Area Color ... */}
                            <div>
                                <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 mb-2 block flex justify-between">
                                    <span>TRIGGER RADIUS</span>
@@ -562,8 +550,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    </div>
                                )}
                            </div>
-
-                           {/* AREA COLOR */}
+                           
+                           {/* ... Area Color ... */}
                            <div>
                                <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 mb-3 block uppercase tracking-widest">AREA COLOR (GEOFENCE)</label>
                                <div className="flex flex-wrap gap-3">
@@ -588,9 +576,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                </div>
                            </div>
 
-                           {/* OTHER SETTINGS (Language, Time Limit) */}
                            <div className="grid grid-cols-2 gap-4">
-                                {/* Time Limit (Existing) */}
                                 <div>
                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em] flex items-center gap-1">
                                       Time limit <Info className="w-3 h-3" />
@@ -607,7 +593,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                   </div>
                               </div>
 
-                              {/* Language */}
                               <div>
                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">LANGUAGE</label>
                                   <select 
@@ -624,7 +609,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                    {activeTab === 'ACTIONS' && (
                        <div className="space-y-6">
-                           {/* ... Actions Content same as previous ... */}
                            <div className="space-y-3">
                                <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">UNLOCK METHODS</label>
                                {[

@@ -4,9 +4,9 @@ import { Game } from '../types';
 import { X, Database, AlertTriangle, Terminal, Copy, Check } from 'lucide-react';
 
 interface AdminModalProps {
-  games: Game[]; // Kept for compatibility if needed, though unused for deletion now
+  games: Game[]; 
   onClose: () => void;
-  onDeleteGame: (id: string) => void; // Kept for interface compatibility but unused
+  onDeleteGame: (id: string) => void; 
   initialShowSql?: boolean;
 }
 
@@ -14,9 +14,17 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, initialShowSql = false
   const [showSql, setShowSql] = useState(initialShowSql);
   const [copied, setCopied] = useState(false);
 
-  const sqlCode = `-- COPY THIS INTO THE SUPABASE SQL EDITOR TO FIX DATABASE ISSUES
+  const sqlCode = `-- SYSTEM UPDATE SCRIPT
+-- RUN THIS IN SUPABASE SQL EDITOR TO FIX STORAGE AND ATOMIC UPDATES
 
--- 1. GAMES Table
+-- 1. ENABLE STORAGE FOR IMAGES
+INSERT INTO storage.buckets (id, name, public) VALUES ('game-assets', 'game-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Public Uploads" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'game-assets');
+CREATE POLICY "Public Reads" ON storage.objects FOR SELECT TO public USING (bucket_id = 'game-assets');
+
+-- 2. GAMES Table
 CREATE TABLE IF NOT EXISTS public.games (
     id TEXT PRIMARY KEY,
     data JSONB,
@@ -26,7 +34,7 @@ ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public games access" ON public.games;
 CREATE POLICY "Public games access" ON public.games FOR ALL USING (true) WITH CHECK (true);
 
--- 2. TEAMS Table
+-- 3. TEAMS Table
 CREATE TABLE IF NOT EXISTS public.teams (
     id TEXT PRIMARY KEY,
     game_id TEXT NOT NULL,
@@ -44,23 +52,25 @@ ALTER TABLE public.teams ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public teams access" ON public.teams;
 CREATE POLICY "Public teams access" ON public.teams FOR ALL USING (true) WITH CHECK (true);
 
--- MIGRATION: Ensure columns exist for TEAMS (Fixes PGRST204)
-DO $$
+-- 4. ATOMIC SCORE INCREMENT (Prevents Race Conditions)
+CREATE OR REPLACE FUNCTION increment_score(team_id TEXT, amount INTEGER)
+RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teams' AND column_name = 'completed_point_ids') THEN
-        ALTER TABLE public.teams ADD COLUMN completed_point_ids TEXT[] DEFAULT '{}';
-    END IF;
-    
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teams' AND column_name = 'captain_device_id') THEN
-        ALTER TABLE public.teams ADD COLUMN captain_device_id TEXT;
-    END IF;
+  UPDATE public.teams
+  SET score = score + amount
+  WHERE id = team_id;
+END;
+$$;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teams' AND column_name = 'is_started') THEN
-        ALTER TABLE public.teams ADD COLUMN is_started BOOLEAN DEFAULT false;
-    END IF;
-END $$;
+-- 5. SERVER TIME (Prevents Cheating)
+CREATE OR REPLACE FUNCTION get_server_time()
+RETURNS TIMESTAMP WITH TIME ZONE LANGUAGE plpgsql AS $$
+BEGIN
+  RETURN now();
+END;
+$$;
 
--- 3. LIBRARY Table
+-- 6. LIBRARY & LISTS
 CREATE TABLE IF NOT EXISTS public.library (
     id TEXT PRIMARY KEY,
     data JSONB,
@@ -70,7 +80,6 @@ ALTER TABLE public.library ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public library access" ON public.library;
 CREATE POLICY "Public library access" ON public.library FOR ALL USING (true) WITH CHECK (true);
 
--- 4. TASK_LISTS Table
 CREATE TABLE IF NOT EXISTS public.task_lists (
     id TEXT PRIMARY KEY,
     data JSONB,
@@ -80,7 +89,7 @@ ALTER TABLE public.task_lists ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public task_lists access" ON public.task_lists;
 CREATE POLICY "Public task_lists access" ON public.task_lists FOR ALL USING (true) WITH CHECK (true);
 
--- 5. ACCOUNT_USERS Table
+-- 7. USERS
 CREATE TABLE IF NOT EXISTS public.account_users (
     id TEXT PRIMARY KEY,
     data JSONB,
@@ -90,17 +99,6 @@ ALTER TABLE public.account_users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public account_users access" ON public.account_users;
 CREATE POLICY "Public account_users access" ON public.account_users FOR ALL USING (true) WITH CHECK (true);
 
--- 6. ACCOUNT_INVITES Table
-CREATE TABLE IF NOT EXISTS public.account_invites (
-    id TEXT PRIMARY KEY,
-    data JSONB,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-ALTER TABLE public.account_invites ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Public account_invites access" ON public.account_invites;
-CREATE POLICY "Public account_invites access" ON public.account_invites FOR ALL USING (true) WITH CHECK (true);
-
--- 7. PLAYGROUND_LIBRARY Table (GLOBAL PLAYGROUNDS)
 CREATE TABLE IF NOT EXISTS public.playground_library (
     id TEXT PRIMARY KEY,
     title TEXT,
@@ -113,157 +111,7 @@ ALTER TABLE public.playground_library ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public playground library access" ON public.playground_library;
 CREATE POLICY "Public playground library access" ON public.playground_library FOR ALL USING (true) WITH CHECK (true);
 
--- MIGRATION: Ensure columns exist for PLAYGROUNDS
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'playground_library' AND column_name = 'is_global') THEN
-        ALTER TABLE public.playground_library ADD COLUMN is_global BOOLEAN DEFAULT false;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'playground_library' AND column_name = 'title') THEN
-        ALTER TABLE public.playground_library ADD COLUMN title TEXT;
-    END IF;
-END $$;
-
--- 8. HIGH PERFORMANCE TAG PURGE FUNCTION
-CREATE OR REPLACE FUNCTION public.purge_tag_globally(tag_to_purge TEXT)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    -- Update Library Templates
-    UPDATE public.library
-    SET data = jsonb_set(
-        data, 
-        '{tags}', 
-        (SELECT jsonb_agg(x) FROM jsonb_array_elements(data->'tags') x WHERE lower(x::text) != lower('"' || tag_to_purge || '"'))
-    )
-    WHERE data->'tags' @> ('["' || tag_to_purge || '"]')::jsonb;
-
-    -- Update Games Points
-    UPDATE public.games
-    SET data = (
-        SELECT jsonb_set(
-            games.data, 
-            '{points}', 
-            jsonb_agg(
-                jsonb_set(
-                    p, 
-                    '{tags}', 
-                    COALESCE((SELECT jsonb_agg(t) FROM jsonb_array_elements(p->'tags') t WHERE lower(t::text) != lower('"' || tag_to_purge || '"')), '[]'::jsonb)
-                )
-            )
-        )
-        FROM jsonb_array_elements(games.data->'points') p
-    )
-    WHERE games.data->'points' @> ('[{"tags": ["' || tag_to_purge || '"]}]')::jsonb;
-
-    -- Update Task Lists
-    UPDATE public.task_lists
-    SET data = (
-        SELECT jsonb_set(
-            task_lists.data, 
-            '{tasks}', 
-            jsonb_agg(
-                jsonb_set(
-                    t, 
-                    '{tags}', 
-                    COALESCE((SELECT jsonb_agg(tag) FROM jsonb_array_elements(t->'tags') tag WHERE lower(tag::text) != lower('"' || tag_to_purge || '"')), '[]'::jsonb)
-                )
-            )
-        )
-        FROM jsonb_array_elements(task_lists.data->'tasks') t
-    )
-    WHERE task_lists.data->'tasks' @> ('[{"tags": ["' || tag_to_purge || '"]}]')::jsonb;
-END;
-$$;
-
--- 9. TAG RENAME FUNCTION
-CREATE OR REPLACE FUNCTION public.rename_tag_globally(old_tag TEXT, new_tag TEXT)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-BEGIN
-    -- Update Library Templates
-    UPDATE public.library
-    SET data = jsonb_set(
-        data, 
-        '{tags}', 
-        (
-            SELECT jsonb_agg(
-                CASE 
-                    WHEN lower(x::text) = lower('"' || old_tag || '"') THEN to_jsonb(new_tag)
-                    ELSE x 
-                END
-            ) 
-            FROM jsonb_array_elements(data->'tags') x
-        )
-    )
-    WHERE data->'tags' @> ('["' || old_tag || '"]')::jsonb;
-
-    -- Update Games Points
-    UPDATE public.games
-    SET data = (
-        SELECT jsonb_set(
-            games.data, 
-            '{points}', 
-            jsonb_agg(
-                jsonb_set(
-                    p, 
-                    '{tags}', 
-                    COALESCE(
-                        (
-                            SELECT jsonb_agg(
-                                CASE 
-                                    WHEN lower(t::text) = lower('"' || old_tag || '"') THEN to_jsonb(new_tag)
-                                    ELSE t 
-                                END
-                            ) 
-                            FROM jsonb_array_elements(p->'tags') t
-                        ), 
-                        '[]'::jsonb
-                    )
-                )
-            )
-        )
-        FROM jsonb_array_elements(games.data->'points') p
-    )
-    WHERE games.data->'points' @> ('[{"tags": ["' || old_tag || '"]}]')::jsonb;
-
-    -- Update Task Lists
-    UPDATE public.task_lists
-    SET data = (
-        SELECT jsonb_set(
-            task_lists.data, 
-            '{tasks}', 
-            jsonb_agg(
-                jsonb_set(
-                    t, 
-                    '{tags}', 
-                    COALESCE(
-                        (
-                            SELECT jsonb_agg(
-                                CASE 
-                                    WHEN lower(tag::text) = lower('"' || old_tag || '"') THEN to_jsonb(new_tag)
-                                    ELSE tag 
-                                END
-                            ) 
-                            FROM jsonb_array_elements(t->'tags') tag
-                        ), 
-                        '[]'::jsonb
-                    )
-                )
-            )
-        )
-        FROM jsonb_array_elements(task_lists.data->'tasks') t
-    )
-    WHERE task_lists.data->'tasks' @> ('[{"tags": ["' || tag_to_purge || '"]}]')::jsonb;
-END;
-$$;
-
--- 10. Enable Realtime for TEAMS
+-- 8. REALTIME
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'teams') THEN
@@ -271,7 +119,6 @@ BEGIN
     END IF;
 END $$;
 
--- 11. REFRESH SCHEMA CACHE
 NOTIFY pgrst, 'reload config';`;
 
   const copyToClipboard = () => {
@@ -305,7 +152,7 @@ NOTIFY pgrst, 'reload config';`;
           >
               <div className="flex flex-col items-start">
                   <span className="text-sm font-bold uppercase flex items-center gap-2"><Terminal className="w-4 h-4" /> Setup Database Tables</span>
-                  <span className="text-[10px] text-indigo-400/60 font-bold mt-1">RUN THIS IF YOU SEE SUPABASE ERRORS</span>
+                  <span className="text-[10px] text-indigo-400/60 font-bold mt-1">RUN THIS TO FIX STORAGE & SCORES</span>
               </div>
               <span className="text-[10px] bg-indigo-500/20 px-2 py-1 rounded">CLICK TO VIEW SQL</span>
           </button>
@@ -317,8 +164,8 @@ NOTIFY pgrst, 'reload config';`;
                       <div>
                           <p className="text-[10px] text-amber-200 font-bold uppercase mb-1">SUPABASE WARNING</p>
                           <p className="text-[10px] text-amber-100/80">
-                              Supabase will warn you about "Destructive Operations". This is because the script updates security policies. 
-                              <br/><strong>It is safe to click "Run this query".</strong>
+                              Go to Supabase Dashboard -&gt; SQL Editor -&gt; New Query.
+                              <br/><strong>Paste this code and run it to enable Image Storage and Atomic Score Counters.</strong>
                           </p>
                       </div>
                   </div>
@@ -332,9 +179,6 @@ NOTIFY pgrst, 'reload config';`;
                   >
                       {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                   </button>
-                  <p className="text-[10px] text-slate-500 mt-2 italic">
-                      Paste this into the Supabase SQL Editor to fix any missing tables or permissions.
-                  </p>
               </div>
           )}
         </div>
@@ -342,7 +186,7 @@ NOTIFY pgrst, 'reload config';`;
         {/* Footer */}
         <div className="p-4 bg-slate-950 border-t border-slate-800 text-center">
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                USE WITH CAUTION
+                ADMIN USE ONLY
             </p>
         </div>
       </div>

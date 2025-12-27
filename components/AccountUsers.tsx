@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import { AccountUser } from '../types';
 
-// Simplified Role List
+// Valid Role List matching AuthUser type
 const ROLES = [
+  "Owner",
+  "Admin",
   "Instructor",
   "Editor"
 ];

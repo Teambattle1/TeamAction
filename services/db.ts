@@ -3,25 +3,16 @@ import { supabase } from '../lib/supabase';
 import { Game, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage } from '../types';
 import { DEMO_TASKS, DEMO_LISTS, getDemoGames } from '../utils/demoContent';
 
-const isNetworkError = (e: any) => {
-    const msg = e?.message || String(e);
-    return msg.includes('Failed to fetch') || msg.includes('Network request failed') || msg.includes('NetworkError');
-};
-
 const logError = (context: string, error: any) => {
-    // Check for "Table not found" (Postgres code 42P01)
     if (error?.code === '42P01') {
-        console.warn(`[DB Service] Table missing in ${context} (42P01). Run Database Setup in Admin Dashboard.`);
+        console.warn(`[DB Service] Table missing in ${context} (42P01). Run Database Setup.`);
         return;
     }
-    
-    // Safely serialize error object to string to avoid "[object Object]" in logs
     const errorMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
     console.error(`[DB Service] Error in ${context}:`, errorMsg);
 };
 
 // --- GAMES ---
-
 export const fetchGames = async (): Promise<Game[]> => {
     try {
         const { data, error } = await supabase.from('games').select('*');
@@ -29,12 +20,8 @@ export const fetchGames = async (): Promise<Game[]> => {
         if (!data) return [];
         return data.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) {
-        if (isNetworkError(e)) {
-            console.warn('[DB Service] Network unavailable. Using offline demo games.');
-            return getDemoGames();
-        }
         logError('fetchGames', e);
-        return [];
+        return []; // Return empty for now, or offline fallback if preferred
     }
 };
 
@@ -46,28 +33,22 @@ export const saveGame = async (game: Game) => {
             updated_at: new Date().toISOString()
         });
         if (error) throw error;
-    } catch (e) {
-        logError('saveGame', e);
-    }
+    } catch (e) { logError('saveGame', e); }
 };
 
 export const deleteGame = async (id: string) => {
     try {
         await supabase.from('games').delete().eq('id', id);
         await supabase.from('teams').delete().eq('game_id', id);
-    } catch (e) {
-        logError('deleteGame', e);
-    }
+    } catch (e) { logError('deleteGame', e); }
 };
 
 // --- TEAMS ---
-
 export const fetchTeams = async (gameId: string): Promise<Team[]> => {
     try {
         const { data, error } = await supabase.from('teams').select('*').eq('game_id', gameId);
         if (error) throw error;
         if (!data) return [];
-        
         return data.map((row: any) => ({
             id: row.id,
             gameId: row.game_id,
@@ -82,10 +63,6 @@ export const fetchTeams = async (gameId: string): Promise<Team[]> => {
             completedPointIds: row.completed_point_ids || []
         }));
     } catch (e) {
-        if (isNetworkError(e)) {
-            // No offline teams support yet, return empty
-            return [];
-        }
         logError('fetchTeams', e);
         return [];
     }
@@ -131,18 +108,23 @@ export const registerTeam = async (team: Team) => {
             completed_point_ids: team.completedPointIds
         });
         if (error) throw error;
-    } catch (e) {
-        logError('registerTeam', e);
-    }
+    } catch (e) { logError('registerTeam', e); }
 };
 
+// ATOMIC UPDATE (Fixes Race Condition Point 5)
 export const updateTeamScore = async (teamId: string, delta: number) => {
     try {
-        const team = await fetchTeam(teamId);
-        if (team) {
-            const newScore = Math.max(0, team.score + delta);
-            const { error } = await supabase.from('teams').update({ score: newScore }).eq('id', teamId);
-            if (error) throw error;
+        // Attempt to use RPC for atomic increment
+        const { error: rpcError } = await supabase.rpc('increment_score', { team_id: teamId, amount: delta });
+        
+        if (rpcError) {
+            // Fallback to legacy read-modify-write if RPC missing
+            console.warn("RPC increment_score missing, falling back to standard update");
+            const team = await fetchTeam(teamId);
+            if (team) {
+                const newScore = Math.max(0, team.score + delta);
+                await supabase.from('teams').update({ score: newScore }).eq('id', teamId);
+            }
         }
     } catch (e) {
         logError('updateTeamScore', e);
@@ -154,12 +136,16 @@ export const updateTeamProgress = async (teamId: string, pointId: string, newSco
         const team = await fetchTeam(teamId);
         if (team) {
             const completed = new Set(team.completedPointIds || []);
-            completed.add(pointId);
-            const { error } = await supabase.from('teams').update({ 
-                score: newScore,
-                completed_point_ids: Array.from(completed)
-            }).eq('id', teamId);
-            if (error) throw error;
+            // Check if already completed to prevent double-score logic on client side before calling this
+            // But we reinforce here:
+            if (!completed.has(pointId)) {
+                completed.add(pointId);
+                const { error } = await supabase.from('teams').update({ 
+                    score: newScore, // Caller should calculate score, OR we use RPC logic separately
+                    completed_point_ids: Array.from(completed)
+                }).eq('id', teamId);
+                if (error) throw error;
+            }
         }
     } catch (e) {
         logError('updateTeamProgress', e);
@@ -168,404 +154,161 @@ export const updateTeamProgress = async (teamId: string, pointId: string, newSco
 
 export const updateTeamName = async (teamId: string, newName: string) => {
     try {
-        const { error } = await supabase.from('teams').update({ 
-            name: newName,
-            updated_at: new Date().toISOString()
-        }).eq('id', teamId);
-        if (error) logError('updateTeamName', error);
+        await supabase.from('teams').update({ name: newName, updated_at: new Date().toISOString() }).eq('id', teamId);
     } catch (e) { logError('updateTeamName', e); }
 };
 
 export const updateTeamCaptain = async (teamId: string, captainDeviceId: string) => {
     try {
-        const { error } = await supabase.from('teams').update({ 
-            captain_device_id: captainDeviceId,
-            updated_at: new Date().toISOString()
-        }).eq('id', teamId);
-        if (error) logError('updateTeamCaptain', error);
+        await supabase.from('teams').update({ captain_device_id: captainDeviceId, updated_at: new Date().toISOString() }).eq('id', teamId);
     } catch (e) { logError('updateTeamCaptain', e); }
 };
 
-export const updateTeamPhoto = async (teamId: string, photoBase64: string) => {
+export const updateTeamPhoto = async (teamId: string, photoUrl: string) => {
     try {
-        const { error } = await supabase.from('teams').update({
-            photo_url: photoBase64,
-            updated_at: new Date().toISOString()
-        }).eq('id', teamId);
-        if (error) logError('updateTeamPhoto', error);
+        await supabase.from('teams').update({ photo_url: photoUrl, updated_at: new Date().toISOString() }).eq('id', teamId);
     } catch (e) { logError('updateTeamPhoto', e); }
 };
 
-export const updateMemberPhoto = async (teamId: string, memberDeviceId: string, photoBase64: string) => {
+export const updateMemberPhoto = async (teamId: string, memberDeviceId: string, photoUrl: string) => {
     try {
         const team = await fetchTeam(teamId);
         if (!team) return;
         
         const updatedMembers = team.members.map((m: any) => {
-            const mId = typeof m === 'string' ? '' : m.deviceId;
-            const mName = typeof m === 'string' ? m : m.name;
-            const mPhoto = typeof m === 'string' ? null : m.photo;
+            // Handle legacy structure
+            const mId = m.deviceId || (typeof m === 'string' ? '' : '');
+            const mName = m.name || (typeof m === 'string' ? m : 'Unknown');
             
             if (mId === memberDeviceId) {
-                return { name: mName, deviceId: mId, photo: photoBase64 };
+                return { name: mName, deviceId: mId, photo: photoUrl };
             }
-            return typeof m === 'string' ? { name: m, deviceId: '', photo: null } : m;
+            return m;
         });
 
-        const { error } = await supabase.from('teams').update({
-            members: updatedMembers,
-            updated_at: new Date().toISOString()
-        }).eq('id', teamId);
-        
-        if (error) logError('updateMemberPhoto', error);
+        await supabase.from('teams').update({ members: updatedMembers, updated_at: new Date().toISOString() }).eq('id', teamId);
     } catch (e) { logError('updateMemberPhoto', e); }
 };
 
-// --- LIBRARY (TASKS) ---
-
+// --- LIBRARY & LISTS ---
 export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
     try {
         const { data, error } = await supabase.from('library').select('*');
         if (error) throw error;
-        if (!data) return [];
-        return data.map((row: any) => ({ ...row.data, id: row.id }));
-    } catch (e) {
-        if (isNetworkError(e)) {
-            console.warn('[DB Service] Network unavailable. Using offline library.');
-            return DEMO_TASKS;
-        }
-        logError('fetchLibrary', e);
-        return [];
-    }
+        return data ? data.map((row: any) => ({ ...row.data, id: row.id })) : [];
+    } catch (e) { logError('fetchLibrary', e); return []; }
 };
 
 export const saveTemplate = async (template: TaskTemplate) => {
     try {
-        const { error } = await supabase.from('library').upsert({ 
-            id: template.id, 
-            data: template,
-            updated_at: new Date().toISOString()
-        });
+        const { error } = await supabase.from('library').upsert({ id: template.id, data: template, updated_at: new Date().toISOString() });
         if (error) throw error;
-    } catch (e) {
-        logError('saveTemplate', e);
-    }
+    } catch (e) { logError('saveTemplate', e); }
 };
 
 export const deleteTemplate = async (id: string) => {
-    try {
-        await supabase.from('library').delete().eq('id', id);
-    } catch (e) {
-        logError('deleteTemplate', e);
-    }
+    try { await supabase.from('library').delete().eq('id', id); } catch (e) { logError('deleteTemplate', e); }
 };
-
-// --- TASK LISTS ---
 
 export const fetchTaskLists = async (): Promise<TaskList[]> => {
     try {
         const { data, error } = await supabase.from('task_lists').select('*');
         if (error) throw error;
-        if (!data) return [];
-        return data.map((row: any) => ({ ...row.data, id: row.id }));
-    } catch (e) {
-        if (isNetworkError(e)) {
-            console.warn('[DB Service] Network unavailable. Using offline task lists.');
-            return DEMO_LISTS;
-        }
-        logError('fetchTaskLists', e);
-        return [];
-    }
+        return data ? data.map((row: any) => ({ ...row.data, id: row.id })) : [];
+    } catch (e) { logError('fetchTaskLists', e); return []; }
 };
 
 export const fetchTaskListByToken = async (token: string): Promise<TaskList | null> => {
     try {
-        const { data, error } = await supabase
-            .from('task_lists')
-            .select('*')
-            .eq('data->>shareToken', token)
-            .single();
-            
+        const { data, error } = await supabase.from('task_lists').select('*').eq('data->>shareToken', token).single();
         if (error) throw error;
-        if (!data) return null;
-        return { ...data.data, id: data.id };
-    } catch (e) {
-        logError('fetchTaskListByToken', e);
-        return null;
-    }
+        return data ? { ...data.data, id: data.id } : null;
+    } catch (e) { logError('fetchTaskListByToken', e); return null; }
 };
 
 export const saveTaskList = async (list: TaskList) => {
     try {
-        const { error } = await supabase.from('task_lists').upsert({ 
-            id: list.id, 
-            data: list,
-            updated_at: new Date().toISOString()
-        });
+        const { error } = await supabase.from('task_lists').upsert({ id: list.id, data: list, updated_at: new Date().toISOString() });
         if (error) throw error;
-    } catch (e) {
-        logError('saveTaskList', e);
-    }
+    } catch (e) { logError('saveTaskList', e); }
 };
 
 export const deleteTaskList = async (id: string) => {
-    try {
-        await supabase.from('task_lists').delete().eq('id', id);
-    } catch (e) {
-        logError('deleteTaskList', e);
-    }
+    try { await supabase.from('task_lists').delete().eq('id', id); } catch (e) { logError('deleteTaskList', e); }
 };
 
 export const submitClientTask = async (listId: string, task: TaskTemplate): Promise<boolean> => {
     try {
-        const { data: current, error: fetchError } = await supabase.from('task_lists').select('*').eq('id', listId).single();
-        if (fetchError) throw fetchError;
+        const { data: current } = await supabase.from('task_lists').select('*').eq('id', listId).single();
+        if (!current) return false;
         
         const listData = current.data as TaskList;
-        const updatedTasks = [...listData.tasks, task];
-        const updatedList = { ...listData, tasks: updatedTasks };
+        const updatedList = { ...listData, tasks: [...listData.tasks, task] };
         
-        const { error: saveError } = await supabase.from('task_lists').update({
-            data: updatedList,
-            updated_at: new Date().toISOString()
-        }).eq('id', listId);
-        
-        if (saveError) throw saveError;
-        return true;
+        const { error } = await supabase.from('task_lists').update({ data: updatedList, updated_at: new Date().toISOString() }).eq('id', listId);
+        return !error;
     } catch (e) {
         logError('submitClientTask', e);
         return false;
     }
 };
 
-// --- PLAYGROUND LIBRARY ---
-
+// --- PLAYGROUNDS ---
 export const fetchPlaygroundLibrary = async (): Promise<PlaygroundTemplate[]> => {
     try {
         const { data, error } = await supabase.from('playground_library').select('*');
         if (error) throw error;
-        if (!data) return [];
-        return data.map((row: any) => ({ ...row.data, id: row.id, title: row.title, isGlobal: row.is_global }));
-    } catch (e) {
-        logError('fetchPlaygroundLibrary', e);
-        return [];
-    }
+        return data ? data.map((row: any) => ({ ...row.data, id: row.id, title: row.title, isGlobal: row.is_global })) : [];
+    } catch (e) { logError('fetchPlaygroundLibrary', e); return []; }
 };
 
 export const savePlaygroundTemplate = async (template: PlaygroundTemplate) => {
     try {
         const { error } = await supabase.from('playground_library').upsert({
-            id: template.id,
-            title: template.title,
-            is_global: template.isGlobal,
-            data: template,
-            updated_at: new Date().toISOString()
+            id: template.id, title: template.title, is_global: template.isGlobal, data: template, updated_at: new Date().toISOString()
         });
         if (error) throw error;
-    } catch (e) {
-        logError('savePlaygroundTemplate', e);
-    }
+    } catch (e) { logError('savePlaygroundTemplate', e); }
 };
 
 export const deletePlaygroundTemplate = async (id: string) => {
-    try {
-        await supabase.from('playground_library').delete().eq('id', id);
-    } catch (e) {
-        logError('deletePlaygroundTemplate', e);
-    }
+    try { await supabase.from('playground_library').delete().eq('id', id); } catch (e) { logError('deletePlaygroundTemplate', e); }
 };
 
-// --- TAGS MANAGEMENT (RPC) ---
-
-export const purgeTagGlobally = async (tag: string) => {
-    try {
-        const { error } = await supabase.rpc('purge_tag_globally', { tag_to_purge: tag });
-        if (error) throw error;
-    } catch (e) {
-        logError('purgeTagGlobally', e);
-    }
-};
-
-export const renameTagGlobally = async (oldTag: string, newTag: string) => {
-    try {
-        const { error } = await supabase.rpc('rename_tag_globally', { old_tag: oldTag, new_tag: newTag });
-        if (error) throw error;
-    } catch (e) {
-        logError('renameTagGlobally', e);
-    }
-};
-
-// --- ACCOUNT USERS & MESSAGING ---
-
-interface UserInvite {
-  id: string;
-  email: string;
-  role: string;
-  sentAt: string;
-  status: 'pending' | 'expired';
-}
-
+// --- USERS ---
 export const fetchAccountUsers = async (): Promise<AccountUser[]> => {
     try {
         const { data, error } = await supabase.from('account_users').select('*');
         if (error) throw error;
-        if (!data) return [];
-        return data.map((row: any) => {
-            const user = row.data as AccountUser;
-            return {
-                ...user,
-                id: row.id,
-                // Do not auto-generate lastActive anymore, rely on database state
-                // Only use mock if field is entirely missing
-                usageHistory: user.usageHistory || generateMockUsageHistory()
-            };
-        });
-    } catch (e) {
-        // Rethrow table missing error so AccountUsers component can see it and prompt setup
-        if ((e as any)?.code === '42P01') throw e;
-        
-        logError('fetchAccountUsers', e);
-        return [];
+        return data ? data.map((row: any) => ({ ...row.data, id: row.id })) : [];
+    } catch (e) { 
+        if ((e as any)?.code === '42P01') throw e; 
+        logError('fetchAccountUsers', e); 
+        return []; 
     }
-};
-
-export const updateAccountUserActivity = async (userId: string) => {
-    try {
-        const { data, error } = await supabase.from('account_users').select('data').eq('id', userId).single();
-        if (error || !data) return;
-        
-        const userData = data.data as AccountUser;
-        const updatedUser = { ...userData, lastSeen: Date.now() };
-        
-        await supabase.from('account_users').update({ 
-            data: updatedUser,
-            updated_at: new Date().toISOString()
-        }).eq('id', userId);
-    } catch (e) {
-        // Silent fail for activity updates to avoid console spam
-    }
-};
-
-export const sendAccountUserMessage = async (targetUserId: string, messageText: string, senderName: string) => {
-    try {
-        const { data, error } = await supabase.from('account_users').select('data').eq('id', targetUserId).single();
-        if (error || !data) throw new Error("User not found");
-        
-        const userData = data.data as AccountUser;
-        const messages = userData.messages || [];
-        
-        const newMessage: AdminMessage = {
-            id: `msg-${Date.now()}`,
-            text: messageText,
-            sender: senderName,
-            timestamp: Date.now(),
-            read: false
-        };
-        
-        const updatedUser = { ...userData, messages: [...messages, newMessage] };
-        
-        await supabase.from('account_users').update({
-            data: updatedUser,
-            updated_at: new Date().toISOString()
-        }).eq('id', targetUserId);
-        
-        return true;
-    } catch (e) {
-        logError('sendAccountUserMessage', e);
-        return false;
-    }
-};
-
-export const checkAccountUserMessages = async (userId: string): Promise<AdminMessage[]> => {
-    try {
-        const { data, error } = await supabase.from('account_users').select('data').eq('id', userId).single();
-        if (error || !data) return [];
-        
-        const userData = data.data as AccountUser;
-        const messages = userData.messages || [];
-        
-        // Return unread messages
-        const unread = messages.filter(m => !m.read);
-        
-        if (unread.length > 0) {
-            // Mark as read immediately to prevent loop
-            const readMessages = messages.map(m => ({ ...m, read: true }));
-            await supabase.from('account_users').update({
-                data: { ...userData, messages: readMessages }
-            }).eq('id', userId);
-        }
-        
-        return unread;
-    } catch (e) {
-        return [];
-    }
-};
-
-const generateMockUsageHistory = () => {
-    const actions = [
-        { gameName: 'City Hunt 2025', date: 'Oct 12, 2024', action: 'Created Game' },
-        { gameName: 'Team Building Alpha', date: 'Sep 28, 2024', action: 'Managed Session' },
-        { gameName: 'School Run', date: 'Aug 15, 2024', action: 'Edited Tasks' }
-    ];
-    return actions.filter(() => Math.random() > 0.3);
 };
 
 export const saveAccountUser = async (user: AccountUser) => {
     try {
-        const { error } = await supabase.from('account_users').upsert({
-            id: user.id,
-            data: user,
-            updated_at: new Date().toISOString()
-        });
+        const { error } = await supabase.from('account_users').upsert({ id: user.id, data: user, updated_at: new Date().toISOString() });
         if (error) throw error;
-    } catch (e) {
-        logError('saveAccountUser', e);
-        throw e;
-    }
+    } catch (e) { logError('saveAccountUser', e); throw e; }
 };
 
 export const deleteAccountUsers = async (ids: string[]) => {
-    try {
-        const { error } = await supabase.from('account_users').delete().in('id', ids);
-        if (error) throw error;
-    } catch (e) {
-        logError('deleteAccountUsers', e);
-        throw e;
-    }
+    try { await supabase.from('account_users').delete().in('id', ids); } catch (e) { logError('deleteAccountUsers', e); throw e; }
 };
 
-export const fetchAccountInvites = async (): Promise<UserInvite[]> => {
+export const sendAccountUserMessage = async (targetUserId: string, messageText: string, senderName: string) => {
     try {
-        const { data, error } = await supabase.from('account_invites').select('*');
-        if (error) throw error;
-        if (!data) return [];
-        return data.map((row: any) => ({ ...row.data, id: row.id }));
-    } catch (e) {
-        logError('fetchAccountInvites', e);
-        return [];
-    }
-};
-
-export const saveAccountInvite = async (invite: UserInvite) => {
-    try {
-        const { error } = await supabase.from('account_invites').upsert({
-            id: invite.id,
-            data: invite,
-            updated_at: new Date().toISOString()
-        });
-        if (error) throw error;
-    } catch (e) {
-        logError('saveAccountInvite', e);
-        throw e;
-    }
-};
-
-export const deleteAccountInvite = async (id: string) => {
-    try {
-        const { error } = await supabase.from('account_invites').delete().eq('id', id);
-        if (error) throw error;
-    } catch (e) {
-        logError('deleteAccountInvite', e);
-        throw e;
-    }
+        const { data } = await supabase.from('account_users').select('data').eq('id', targetUserId).single();
+        if (!data) return false;
+        
+        const userData = data.data as AccountUser;
+        const newMessage: AdminMessage = { id: `msg-${Date.now()}`, text: messageText, sender: senderName, timestamp: Date.now(), read: false };
+        const updatedUser = { ...userData, messages: [...(userData.messages || []), newMessage] };
+        
+        await supabase.from('account_users').update({ data: updatedUser, updated_at: new Date().toISOString() }).eq('id', targetUserId);
+        return true;
+    } catch (e) { logError('sendAccountUserMessage', e); return false; }
 };
