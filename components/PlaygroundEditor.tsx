@@ -644,7 +644,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 pointer-events-auto">
+                    <div className="flex items-center gap-3 pointer-events-auto">
                         {/* Orientation Selector */}
                         <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-orange-500/30 shadow-lg pointer-events-auto">
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">ORIENTATION</span>
@@ -696,6 +696,45 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     type="button"
                                 >
                                     <Lock className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Show Box */}
+                        <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-orange-500/30 shadow-lg pointer-events-auto">
+                            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">SHOW</span>
+                            <div className="flex gap-1 pointer-events-auto">
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowTaskScores(!showTaskScores);
+                                    }}
+                                    className={`p-2 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                        showTaskScores
+                                            ? 'bg-orange-600 text-white shadow-lg'
+                                            : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                    }`}
+                                    title="Show/Hide Task Scores"
+                                    type="button"
+                                >
+                                    <span className="text-xs font-bold">$</span>
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setShowTaskOrder(!showTaskOrder);
+                                    }}
+                                    className={`p-2 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                        showTaskOrder
+                                            ? 'bg-orange-600 text-white shadow-lg'
+                                            : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                    }`}
+                                    title="Show/Hide Task Order Numbers"
+                                    type="button"
+                                >
+                                    <span className="text-xs font-bold">#</span>
                                 </button>
                             </div>
                         </div>
