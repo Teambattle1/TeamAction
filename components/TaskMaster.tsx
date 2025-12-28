@@ -322,7 +322,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             <Icon className="w-4 h-4" />
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 font-bold text-white truncate max-w-xs">{task.title}</td>
+                                    <td
+                                        className="px-4 py-3 font-bold text-white truncate max-w-xs cursor-pointer hover:text-blue-400 transition-colors"
+                                        onClick={() => !selectionMode && setEditingTemplate(task)}
+                                        title="Click to edit"
+                                    >
+                                        {task.title}
+                                    </td>
                                     <td className="px-4 py-3 text-slate-400 truncate max-w-sm">{task.task.question}</td>
                                     <td className="px-4 py-3">
                                         {task.settings?.language ? (
