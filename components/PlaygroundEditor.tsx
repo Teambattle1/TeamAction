@@ -179,7 +179,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const ROW_HEIGHT = 20; // Space between rows
 
         // Sort points by current Y position (top to bottom), then X (left to right)
-        const sortedPoints = [...playgroundPoints].sort((a, b) => {
+        const sortedPoints = [...uniquePlaygroundPoints].sort((a, b) => {
             const aY = a.playgroundPosition?.y || 50;
             const bY = b.playgroundPosition?.y || 50;
             const aX = a.playgroundPosition?.x || 50;
