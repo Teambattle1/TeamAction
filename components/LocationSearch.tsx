@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Search, Loader2, MapPin, X, Target, Maximize, Hash } from 'lucide-react';
 import { Coordinate } from '../types';
@@ -25,6 +24,7 @@ interface LocationSearchProps {
   labelButtons?: boolean;
   onToggleScores?: () => void;
   showScores?: boolean;
+  locateFeedback?: string | null;
 }
 
 const LocationSearch: React.FC<LocationSearchProps> = ({ 
