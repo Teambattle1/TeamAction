@@ -942,7 +942,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                             {/* Tasks List */}
                             <div className="space-y-3">
-                                {playgroundPoints.length === 0 ? (
+                                {uniquePlaygroundPoints.length === 0 ? (
                                     <div className="text-center py-8">
                                         <p className="text-[10px] text-slate-500 uppercase tracking-wide">No tasks in zone yet</p>
                                         <p className="text-[9px] text-slate-600 mt-2">Use the buttons above to add your first task</p>
