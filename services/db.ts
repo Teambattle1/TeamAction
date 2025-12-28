@@ -381,8 +381,28 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
             'fetchLibrary',
             CHUNK_SIZE
         );
-        return rows.map((row: any) => ({ ...row.data, id: row.id }));
-    } catch (e) { logError('fetchLibrary', e); return []; }
+        return rows.map((row: any) => {
+            // Handle both direct data objects and stringified JSON
+            const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+            return { ...rowData, id: row.id };
+        });
+    } catch (e) {
+        logError('fetchLibrary', e);
+        // Try fallback: fetch without chunking as last resort
+        try {
+            console.warn('[DB Service] Attempting fetchLibrary fallback (no chunking)...');
+            const { data, error } = await supabase.from('library').select('id, data').limit(10000);
+            if (error) throw error;
+            if (!data) return [];
+            return data.map((row: any) => {
+                const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+                return { ...rowData, id: row.id };
+            });
+        } catch (fallbackError) {
+            logError('fetchLibrary[fallback]', fallbackError);
+            return [];
+        }
+    }
 };
 
 export const saveTemplate = async (template: TaskTemplate) => {
