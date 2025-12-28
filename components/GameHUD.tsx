@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GameMode, MapStyleId, Language, Coordinate, TimerConfig, Playground, GameRoute } from '../types';
-import { 
-    Map as MapIcon, Layers, Crosshair, ChevronLeft, Ruler, Settings, 
+import {
+    Map as MapIcon, Layers, Crosshair, ChevronLeft, Ruler, Settings,
     MessageSquare, Shield, Globe, Skull, Clock,
     Route as RouteIcon, Eye, EyeOff, Snowflake, GripHorizontal, Mountain, Sun, Navigation, Upload, Users,
-    MapPin, Play, LogOut, Navigation as NavigationIcon
+    MapPin, Play, LogOut, Navigation as NavigationIcon, ExternalLink
 } from 'lucide-react';
 import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
@@ -194,6 +194,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
     );
 
     const isSkiMode = mapStyle === 'ski';
+    const isNorwegianMode = mapStyle === 'norwegian';
     const sidebarOffset = (mode === GameMode.EDIT && isDrawerExpanded) ? 'sm:translate-x-[320px]' : '';
 
     return (
