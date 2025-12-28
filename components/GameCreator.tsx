@@ -524,12 +524,12 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                       <div className="grid grid-cols-3 gap-6">
                           <div className="col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Game Name</label>
-                              <input 
-                                  type="text" 
+                              <input
+                                  type="text"
                                   value={name}
-                                  onChange={(e) => setName(e.target.value)}
-                                  placeholder="e.g. City Explorer 2025"
-                                  className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none transition-colors text-lg"
+                                  onChange={(e) => setName(e.target.value.toUpperCase())}
+                                  placeholder="e.g. CITY EXPLORER 2025"
+                                  className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none transition-colors text-lg uppercase"
                               />
                           </div>
                           <div className="col-span-1 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
