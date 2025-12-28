@@ -996,6 +996,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </div>
                         </div>
 
+                        {/* Orientation Lock Warning */}
+                        {isOrientationLocked && (
+                            <div className="absolute top-24 left-6 bg-orange-900/80 border border-orange-500 rounded-lg p-3 text-[9px] text-orange-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
+                                ⚠️ Orientation is LOCKED to {activePlayground?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'} when playing
+                            </div>
+                        )}
+
                         {/* Show Box */}
                         <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-orange-500/30 shadow-lg pointer-events-auto">
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">SHOW</span>
