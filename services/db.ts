@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Game, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage, Coordinate, GameChangeLogEntry } from '../types';
+import { Game, GamePoint, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage, Coordinate, GameChangeLogEntry } from '../types';
 import { DEMO_TASKS, DEMO_LISTS, getDemoGames } from '../utils/demoContent';
 
 const logError = (context: string, error: any) => {
@@ -79,6 +79,44 @@ export const updateGameItemLocation = async (
         return updatedGame;
     } catch (e) {
         logError('updateGameItemLocation', e);
+        return null;
+    }
+};
+
+export const patchGamePoints = async (
+    gameId: string,
+    patches: { pointId: string; patch: Partial<GamePoint> }[],
+    opts?: { user?: string; action?: string }
+): Promise<Game | null> => {
+    try {
+        const game = await fetchGame(gameId);
+        if (!game) return null;
+
+        const updatedAt = new Date().toISOString();
+
+        const changeEntry: GameChangeLogEntry = {
+            timestamp: Date.now(),
+            user: opts?.user || 'Unknown',
+            action: opts?.action || 'Patched Points'
+        };
+
+        const patchMap = new Map(patches.map(p => [p.pointId, p.patch]));
+
+        const updatedGame: Game = {
+            ...game,
+            dbUpdatedAt: updatedAt,
+            lastModifiedBy: opts?.user || game.lastModifiedBy,
+            changeLog: [...(game.changeLog || []), changeEntry],
+            points: game.points.map(p => {
+                const patch = patchMap.get(p.id);
+                return patch ? ({ ...p, ...patch } as GamePoint) : p;
+            })
+        };
+
+        await saveGame(updatedGame);
+        return updatedGame;
+    } catch (e) {
+        logError('patchGamePoints', e);
         return null;
     }
 };
