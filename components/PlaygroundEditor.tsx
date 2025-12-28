@@ -169,7 +169,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     const handleSnapAllToGrid = () => {
         // Dynamically calculate columns based on number of icons
-        const totalIcons = playgroundPoints.length;
+        const totalIcons = uniquePlaygroundPoints.length;
         let COLS = 3;
 
         if (totalIcons > 12) COLS = 4;
