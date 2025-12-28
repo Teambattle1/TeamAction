@@ -235,6 +235,15 @@ const MapLayers: React.FC<{ mapStyle: string }> = React.memo(({ mapStyle }) => {
               }
           `}</style>
       )}
+
+      {/* Nordic Filter CSS Injection */}
+      {mapStyle === 'norwegian' && (
+          <style>{`
+              .map-filter-nordic {
+                  filter: saturate(1.15) brightness(1.08) contrast(1.05) !important;
+              }
+          `}</style>
+      )}
     </>
   );
 });
