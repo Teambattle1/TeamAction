@@ -410,7 +410,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {taskLists.map(list => (
-                                    <div key={list.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg group hover:border-blue-500/50 transition-all">
+                                    <div key={list.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg group hover:border-blue-500/50 transition-all flex flex-col h-full">
                                         <div className="h-32 bg-slate-800 relative">
                                             {list.imageUrl ? (
                                                 <img src={list.imageUrl} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
@@ -422,18 +422,47 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             <div className="absolute top-2 right-2 bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded">
                                                 {list.tasks.length} TASKS
                                             </div>
+                                            {countGameUsage(list.id) > 0 && (
+                                                <div className="absolute top-2 left-2 bg-purple-600 text-white text-[9px] font-bold px-2 py-1 rounded flex items-center gap-1">
+                                                    📊 {countGameUsage(list.id)} GAME{countGameUsage(list.id) !== 1 ? 'S' : ''}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="p-5">
+                                        <div className="p-5 flex flex-col flex-1">
                                             <h3 className="text-lg font-black text-white uppercase truncate mb-1">{list.name}</h3>
-                                            <p className="text-xs text-slate-500 line-clamp-2 mb-4 h-8">{list.description || "No description"}</p>
-                                            <div className="flex gap-2">
-                                                <button 
+                                            <p className="text-xs text-slate-500 line-clamp-2 mb-3 h-8 flex-grow">{list.description || "No description"}</p>
+
+                                            {/* Language Flags */}
+                                            {getLanguagesFromTasks(list.tasks).length > 0 && (
+                                                <div className="mb-3 flex flex-wrap gap-1">
+                                                    {getLanguagesFromTasks(list.tasks).map(lang => (
+                                                        <span key={lang} title={lang} className="text-lg">
+                                                            {getLanguageFlag(lang)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="flex gap-2 mt-auto">
+                                                {onImportTaskList && (
+                                                    <button
+                                                        onClick={() => {
+                                                            onImportTaskList(list);
+                                                            onClose();
+                                                        }}
+                                                        className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide transition-colors"
+                                                        title="Add this entire tasklist to your game"
+                                                    >
+                                                        ADD TO GAME
+                                                    </button>
+                                                )}
+                                                <button
                                                     onClick={() => setEditingList(list)}
                                                     className="flex-1 py-2 bg-slate-800 hover:bg-blue-600 text-slate-300 hover:text-white rounded-lg font-bold uppercase text-[10px] tracking-wide transition-colors"
                                                 >
                                                     EDIT
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         if (confirm('Delete this list?')) {
                                                             const updated = taskLists.filter(l => l.id !== list.id);
