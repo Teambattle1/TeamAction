@@ -505,8 +505,26 @@ const GameApp: React.FC = () => {
 
   const handleManualUnlock = async (pointId: string) => {
       if (!currentGameObj) return;
-      const updatedPoints = currentGameObj.points.map(p => p.id === pointId ? { ...p, isUnlocked: true } : p);
-      await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
+
+      if (mode === GameMode.SIMULATION) {
+          const updatedPoints = currentGameObj.points.map(p => (p.id === pointId ? { ...p, isUnlocked: true } : p));
+          await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
+          return;
+      }
+
+      const remote = await db.patchGamePoints(
+          currentGameObj.id,
+          [{ pointId, patch: { isUnlocked: true } }],
+          { user: authUser?.name, action: 'Manual Unlock' }
+      );
+
+      if (remote) {
+          setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+          setActiveGame(remote);
+      } else {
+          const updatedPoints = currentGameObj.points.map(p => (p.id === pointId ? { ...p, isUnlocked: true } : p));
+          await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
+      }
   };
 
   const handleTaskComplete = (id: string, pts?: number) => {
@@ -539,8 +557,26 @@ const GameApp: React.FC = () => {
       }
 
       const updatedPoints = currentGameObj?.points.map(p => p.id === id ? { ...p, isCompleted: true } : p) || [];
-      if (currentGameObj) updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
-      
+
+      if (currentGameObj) {
+          if (mode === GameMode.SIMULATION) {
+              updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
+          } else {
+              const remote = await db.patchGamePoints(
+                  currentGameObj.id,
+                  [{ pointId: id, patch: { isCompleted: true } }],
+                  { user: authUser?.name, action: 'Task Completed' }
+              );
+
+              if (remote) {
+                  setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+                  setActiveGame(remote);
+              } else {
+                  updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
+              }
+          }
+      }
+
       setActiveTaskModalId(null);
   };
 
