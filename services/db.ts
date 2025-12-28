@@ -107,10 +107,26 @@ export const fetchGames = async (): Promise<Game[]> => {
             'fetchGames',
             CHUNK_SIZE
         );
-        return rows.map((row: any) => ({ ...row.data, id: row.id, dbUpdatedAt: row.updated_at }));
+        return rows.map((row: any) => {
+            const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+            return { ...rowData, id: row.id, dbUpdatedAt: row.updated_at };
+        });
     } catch (e) {
         logError('fetchGames', e);
-        return []; // Return empty for now, or offline fallback if preferred
+        // Try fallback: fetch without chunking as last resort
+        try {
+            console.warn('[DB Service] Attempting fetchGames fallback (no chunking)...');
+            const { data, error } = await supabase.from('games').select('id, data, updated_at').limit(10000);
+            if (error) throw error;
+            if (!data) return [];
+            return data.map((row: any) => {
+                const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+                return { ...rowData, id: row.id, dbUpdatedAt: row.updated_at };
+            });
+        } catch (fallbackError) {
+            logError('fetchGames[fallback]', fallbackError);
+            return [];
+        }
     }
 };
 
