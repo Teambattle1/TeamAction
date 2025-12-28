@@ -319,6 +319,11 @@ const GameHUD: React.FC<GameHUDProps> = ({
                                 <Layers className="w-6 h-6 text-slate-700 dark:text-slate-200" />
                             </button>
                         )}
+                        {isNorwegianMode && mode !== GameMode.EDIT && (
+                            <button onClick={() => window.open('https://www.skisporet.no', '_blank')} className="w-12 h-12 bg-blue-600 dark:bg-blue-700 rounded-2xl shadow-lg flex items-center justify-center border border-blue-500 hover:scale-105 transition-transform" title="Check grooming status on Skisporet.no">
+                                <ExternalLink className="w-6 h-6 text-white" />
+                            </button>
+                        )}
                     </div>
                     {/* Playground Scroller */}
                     <div className="flex gap-4 items-end pointer-events-auto max-w-[60vw] overflow-x-auto pb-2 no-scrollbar px-2">
