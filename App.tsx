@@ -934,8 +934,8 @@ const GameApp: React.FC = () => {
         )}
 
         {!activeGameId && mode === GameMode.PLAY && !showLanding && !playgroundTemplateToEdit && (
-            <WelcomeScreen 
-                games={games}
+            <WelcomeScreen
+                games={playableGames}
                 userLocation={userLocation}
                 onStartGame={handleStartGame}
                 onSetMapStyle={(s) => setLocalMapStyle(s)}
