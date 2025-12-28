@@ -72,6 +72,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
     const [singleTaskGameSelector, setSingleTaskGameSelector] = useState<{taskId: string} | null>(null);
 
+    // Pending imports - store what needs to be imported
+    const [pendingImportTasks, setPendingImportTasks] = useState<TaskTemplate[] | null>(null);
+    const [pendingImportList, setPendingImportList] = useState<TaskList | null>(null);
+    const [showGameSelectorForImport, setShowGameSelectorForImport] = useState(false);
+
     // Refs
     const listImageInputRef = useRef<HTMLInputElement>(null);
 
