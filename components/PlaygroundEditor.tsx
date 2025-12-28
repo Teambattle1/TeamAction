@@ -557,6 +557,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         };
 
         updatePointPlaygroundPosition(id, clamped);
+
+        // Check if dragging over delete zone
+        const deleteZoneRect = document.getElementById('delete-zone-btn')?.getBoundingClientRect();
+        if (deleteZoneRect) {
+            const isOver = e.clientX >= deleteZoneRect.left && e.clientX <= deleteZoneRect.right &&
+                          e.clientY >= deleteZoneRect.top && e.clientY <= deleteZoneRect.bottom;
+            setIsOverDeleteZone(isOver);
+        }
     };
 
     const handleTaskPointerUp = (e: React.PointerEvent) => {
