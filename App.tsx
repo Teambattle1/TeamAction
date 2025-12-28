@@ -529,6 +529,7 @@ const GameApp: React.FC = () => {
                   onDeleteGame={handleDeleteGame}
                   onClose={() => setShowGameChooser(false)}
                   onEditGame={(id) => { setActiveGameId(id); setMode(GameMode.EDIT); setShowGameChooser(false); setShowLanding(false); }}
+                  onCreateFromTemplate={handleCreateGameFromTemplate}
                   onEditPoint={setActiveTask}
                   onReorderPoints={() => {}}
                   onCreateTestGame={() => {}}
