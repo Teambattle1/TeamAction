@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GamePoint, TaskList, Coordinate, Game, GameMode, GameRoute } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
@@ -689,8 +688,22 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                     Manage Global Library <ChevronRight className="w-3 h-3" />
                 </button>
 
-                <button 
-                    onClick={handleSaveClick} 
+                {!isGameTemplateMode && onSaveGameTemplate && (
+                    <button
+                        onClick={() => {
+                            if (!activeGame) return;
+                            onSaveGameTemplate();
+                        }}
+                        className="w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wide bg-purple-600 text-white hover:bg-purple-700"
+                    >
+                        <div className="flex items-center gap-2">
+                            <Upload className="w-4 h-4" /> Save as Game Template
+                        </div>
+                    </button>
+                )}
+
+                <button
+                    onClick={handleSaveClick}
                     className={`w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wide ${isSaved ? 'bg-green-100 text-green-700 border-2 border-green-500' : (isGameTemplateMode ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-green-600 text-white hover:bg-green-700 shadow-green-600/20')}`}
                 >
                     {isSaved ? <><div className="flex items-center gap-2"><Check className="w-4 h-4" /> {isGameTemplateMode ? 'TEMPLATE UPDATED!' : 'GAME SAVED!'}</div></> : (isGameTemplateMode ? <><div className="flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Update Template</div></> : <><div className="flex items-center gap-2"><Save className="w-4 h-4" /> Save Game</div></>)}
