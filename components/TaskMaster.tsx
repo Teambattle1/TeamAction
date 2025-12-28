@@ -724,13 +724,29 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
             {/* Loquiz Importer */}
             {showLoquiz && (
-                <LoquizImporter 
+                <LoquizImporter
                     onClose={() => setShowLoquiz(false)}
                     onImportTasks={async (tasks) => {
                         for (const t of tasks) await db.saveTemplate(t);
                         loadLibrary();
                         setShowLoquiz(false);
                     }}
+                />
+            )}
+
+            {/* Task Editor Modal */}
+            {editingTemplate && (
+                <TaskEditor
+                    point={templateToGamePoint(editingTemplate)}
+                    onSave={handleSaveTemplate}
+                    onDelete={async (pointId) => {
+                        await db.deleteTemplate(pointId);
+                        const updatedLibrary = library.filter(t => t.id !== pointId);
+                        setLibrary(updatedLibrary);
+                        setEditingTemplate(null);
+                    }}
+                    onClose={() => setEditingTemplate(null)}
+                    isTemplateMode={true}
                 />
             )}
         </div>
