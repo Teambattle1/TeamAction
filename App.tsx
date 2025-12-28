@@ -191,27 +191,32 @@ const GameApp: React.FC = () => {
           if (geofenceCheckRunningRef.current) return;
           geofenceCheckRunningRef.current = true;
 
-          let hasUpdates = false;
-          const updatedPoints = activeGame.points.map(p => {
+          const patches: { pointId: string; patch: any }[] = [];
+
+          activeGame.points.forEach(p => {
               // Skip if already unlocked or completed, or if it's a zone/header
-              if (p.isUnlocked || p.isCompleted || p.isSectionHeader || p.playgroundId) return p;
+              if (p.isUnlocked || p.isCompleted || p.isSectionHeader || p.playgroundId) return;
 
               // Check Radius
               if (p.activationTypes.includes('radius') && isWithinRadius(userLocation, p.location, p.radiusMeters)) {
-                  hasUpdates = true;
-                  // Optional: Trigger sound or vibration here
-                  if (navigator.vibrate) navigator.vibrate(200);
-                  return { ...p, isUnlocked: true };
+                  patches.push({ pointId: p.id, patch: { isUnlocked: true } });
               }
-              return p;
           });
 
           try {
-              if (hasUpdates) {
-                  const updatedGame = { ...activeGame, points: updatedPoints };
-                  await db.saveGame(updatedGame); // Persist unlock state
-                  setActiveGame(updatedGame);
-                  setGames(prev => prev.map(g => g.id === updatedGame.id ? updatedGame : g));
+              if (patches.length > 0) {
+                  // Optional: Trigger sound or vibration here
+                  if (navigator.vibrate) navigator.vibrate(200);
+
+                  const remote = await db.patchGamePoints(activeGame.id, patches, {
+                      user: authUser?.username,
+                      action: 'Geofence Unlock'
+                  });
+
+                  if (remote) {
+                      setActiveGame(remote);
+                      setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+                  }
               }
           } finally {
               geofenceCheckRunningRef.current = false;
@@ -419,8 +424,20 @@ const GameApp: React.FC = () => {
 
   const handleManualUnlock = async (pointId: string) => {
       if (!activeGame) return;
-      const updatedPoints = activeGame.points.map(p => p.id === pointId ? { ...p, isUnlocked: true } : p);
-      await updateActiveGame({ ...activeGame, points: updatedPoints });
+
+      const remote = await db.patchGamePoints(
+          activeGame.id,
+          [{ pointId, patch: { isUnlocked: true } }],
+          { user: authUser?.username, action: 'Manual Unlock' }
+      );
+
+      if (remote) {
+          setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+          setActiveGame(remote);
+      } else {
+          const updatedPoints = activeGame.points.map(p => (p.id === pointId ? { ...p, isUnlocked: true } : p));
+          await updateActiveGame({ ...activeGame, points: updatedPoints });
+      }
   };
 
   // --- TAG MANAGEMENT ---
@@ -588,11 +605,26 @@ const GameApp: React.FC = () => {
                   point={liveTaskModalPoint} // Pass Live Point here!
                   distance={liveTaskModalPoint.playgroundId ? 0 : haversineMeters(userLocation, liveTaskModalPoint.location)}
                   onClose={() => setActiveTaskModalId(null)}
-                  onComplete={(id, pts) => { 
-                      setScore(s => s + (pts || 0)); 
-                      const updatedPoints = activeGame?.points.map(p => p.id === id ? { ...p, isCompleted: true } : p) || [];
-                      if (activeGame) updateActiveGame({ ...activeGame, points: updatedPoints });
-                      setActiveTaskModalId(null); 
+                  onComplete={async (id, pts) => {
+                      setScore(s => s + (pts || 0));
+
+                      if (activeGame) {
+                          const remote = await db.patchGamePoints(
+                              activeGame.id,
+                              [{ pointId: id, patch: { isCompleted: true } }],
+                              { user: authUser?.username, action: 'Task Completed' }
+                          );
+
+                          if (remote) {
+                              setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+                              setActiveGame(remote);
+                          } else {
+                              const updatedPoints = activeGame.points.map(p => (p.id === id ? { ...p, isCompleted: true } : p));
+                              await updateActiveGame({ ...activeGame, points: updatedPoints });
+                          }
+                      }
+
+                      setActiveTaskModalId(null);
                   }}
                   onUnlock={handleManualUnlock} // Pass the unlock handler!
                   mode={mode}
