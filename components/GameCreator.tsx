@@ -1127,12 +1127,12 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <label className="text-[10px] font-bold text-white uppercase">Show score after having played for</label>
                                       <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] uppercase">optional</span>
                                   </div>
-                                  <input 
-                                      type="text" 
-                                      value={showScoreAfter} 
-                                      onChange={(e) => setShowScoreAfter(e.target.value)} 
-                                      placeholder="HH:mm:ss"
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500"
+                                  <input
+                                      type="text"
+                                      value={showScoreAfter}
+                                      onChange={(e) => setShowScoreAfter(e.target.value.toUpperCase())}
+                                      placeholder="HH:MM:SS"
+                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500 uppercase"
                                   />
                               </div>
                               <div>
@@ -1140,12 +1140,12 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <label className="text-[10px] font-bold text-white uppercase">Hide score after having played for</label>
                                       <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] uppercase">optional</span>
                                   </div>
-                                  <input 
-                                      type="text" 
-                                      value={hideScoreAfter} 
-                                      onChange={(e) => setHideScoreAfter(e.target.value)} 
-                                      placeholder="HH:mm:ss"
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500"
+                                  <input
+                                      type="text"
+                                      value={hideScoreAfter}
+                                      onChange={(e) => setHideScoreAfter(e.target.value.toUpperCase())}
+                                      placeholder="HH:MM:SS"
+                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500 uppercase"
                                   />
                               </div>
                           </div>
