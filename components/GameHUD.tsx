@@ -233,6 +233,37 @@ const GameHUD: React.FC<GameHUDProps> = ({
                         className="shadow-xl"
                         locateFeedback={locateFeedback}
                     />
+
+                    {/* View Switcher Toolbox (Editor Mode Only) */}
+                    {mode === GameMode.EDIT && (
+                        <div className="flex gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-2xl shadow-xl p-2">
+                            <button
+                                onClick={() => onSetMode(GameMode.EDIT)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border flex items-center gap-2 whitespace-nowrap ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                title="Editor View"
+                            >
+                                <MapIcon className="w-4 h-4" />
+                                EDITOR
+                            </button>
+                            <button
+                                onClick={() => onSetMode(GameMode.INSTRUCTOR)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border flex items-center gap-2 whitespace-nowrap ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                title="Instructor View"
+                            >
+                                <Shield className="w-4 h-4" />
+                                INSTRUCTOR
+                            </button>
+                            <button
+                                onClick={() => onSetMode(GameMode.PLAY)}
+                                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border flex items-center gap-2 whitespace-nowrap ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                title="Team View"
+                            >
+                                <Users className="w-4 h-4" />
+                                TEAM
+                            </button>
+                        </div>
+                    )}
+
                     {mode !== GameMode.EDIT && renderGameNameButton()}
                     {timeLeft && (
                         <div className={`px-4 py-2 rounded-xl backdrop-blur-md font-mono font-bold text-lg shadow-lg flex items-center gap-2 border ${timerAlert ? 'bg-red-600/90 border-red-500 animate-pulse text-white' : 'bg-black/60 border-white/10 text-white'}`}>
