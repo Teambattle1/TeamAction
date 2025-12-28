@@ -242,7 +242,7 @@ const GameApp: React.FC = () => {
 
           const patches: { pointId: string; patch: any }[] = [];
 
-          activeGame.points.forEach(p => {
+          (activeGame?.points || []).forEach(p => {
               // Skip if already unlocked or completed, or if it's a zone/header
               if (p.isUnlocked || p.isCompleted || p.isSectionHeader || p.playgroundId) return;
 
@@ -282,13 +282,13 @@ const GameApp: React.FC = () => {
   const logicLinks = useMemo(() => {
       if (!activeGame || mode === GameMode.PLAY) return [];
       const links: any[] = [];
-      activeGame.points.forEach(p => {
+      (activeGame?.points || []).forEach(p => {
           if (!p.location) return;
           const addLinks = (trigger: 'onOpen' | 'onCorrect' | 'onIncorrect', color: string) => {
               const actions = p.logic?.[trigger];
               actions?.forEach(action => {
                   if ((action.type === 'unlock' || action.type === 'reveal') && action.targetId) {
-                      const target = activeGame.points.find(tp => tp.id === action.targetId);
+                      const target = activeGame?.points?.find(tp => tp.id === action.targetId);
                       if (target && target.location) {
                           links.push({ from: p.location, to: target.location, color, type: trigger });
                       }
@@ -305,7 +305,7 @@ const GameApp: React.FC = () => {
   // Derived Active Modal Point (Live Data)
   const liveTaskModalPoint = useMemo(() => {
       if (!activeTaskModalId || !activeGame) return null;
-      return activeGame.points.find(p => p.id === activeTaskModalId) || null;
+      return activeGame?.points?.find(p => p.id === activeTaskModalId) || null;
   }, [activeTaskModalId, activeGame]);
 
 
@@ -406,7 +406,7 @@ const GameApp: React.FC = () => {
 
   const handleDeleteItem = async (pointId: string) => {
       if (!activeGame) return;
-      const updatedPoints = activeGame.points.filter(p => p.id !== pointId);
+      const updatedPoints = (activeGame?.points || []).filter(p => p.id !== pointId);
       const updatedZones = (activeGame.dangerZones || []).filter(z => z.id !== pointId);
       await updateActiveGame({ ...activeGame, points: updatedPoints, dangerZones: updatedZones });
       if (activeTask?.id === pointId) setActiveTask(null);
