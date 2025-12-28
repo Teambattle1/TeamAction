@@ -376,14 +376,53 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                 {/* Footer Buttons */}
                 <div className="p-5 border-t border-slate-800 space-y-3">
-                    <button 
-                        onClick={() => {
-                            if (isTemplateMode && onSaveTemplate) onSaveTemplate(game.name);
-                            else onUpdateGame(game); // Trigger save logic in parent
+                    <button
+                        onClick={async () => {
+                            setIsSaving(true);
+                            setSaveStatus('saving');
+                            try {
+                                if (isTemplateMode && onSaveTemplate) {
+                                    await Promise.resolve(onSaveTemplate(game.name));
+                                } else {
+                                    await Promise.resolve(onUpdateGame(game));
+                                }
+                                setSaveStatus('success');
+                                setTimeout(() => {
+                                    setSaveStatus('idle');
+                                }, 2500);
+                            } catch (error) {
+                                console.error('Save failed:', error);
+                                setSaveStatus('idle');
+                            } finally {
+                                setIsSaving(false);
+                            }
                         }}
-                        className="w-full py-4 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg transition-all flex items-center justify-center gap-2"
+                        disabled={isSaving}
+                        className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg transition-all flex items-center justify-center gap-2 ${
+                            saveStatus === 'success'
+                                ? 'bg-green-600 text-white'
+                                : isSaving
+                                ? 'bg-blue-600 text-white opacity-80 cursor-wait'
+                                : 'bg-orange-600 hover:bg-orange-700 text-white'
+                        }`}
                     >
-                        <Save className="w-4 h-4" /> {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
+                        {saveStatus === 'saving' && (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                {isTemplateMode ? 'SAVING TEMPLATE...' : 'SAVING...'}
+                            </>
+                        )}
+                        {saveStatus === 'success' && (
+                            <>
+                                <Check className="w-4 h-4" />
+                                {isTemplateMode ? 'TEMPLATE SAVED!' : 'ZONE SAVED!'}
+                            </>
+                        )}
+                        {saveStatus === 'idle' && (
+                            <>
+                                <Save className="w-4 h-4" /> {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
+                            </>
+                        )}
                     </button>
                     <button 
                         onClick={onHome}
