@@ -1,13 +1,12 @@
-
 import React, { useState } from 'react';
 import { 
   Users, Gamepad2, Library, LayoutList, Shield, Edit2, 
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut
 } from 'lucide-react';
-import { Game } from '../types';
+import { Game, AuthUser } from '../types';
 
 interface InitialLandingProps {
   onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'CREATE_GAME' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR' | 'MANAGE_TEAMS') => void;
@@ -15,9 +14,11 @@ interface InitialLandingProps {
   games: Game[];
   activeGameId: string | null;
   onSelectGame: (id: string) => void;
+  authUser?: AuthUser | null;
+  onLogout?: () => void;
 }
 
-type CategoryView = 'HOME' | 'SETTINGS' | 'CREATE' | 'EDIT_MENU' | 'PLAY_MENU' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
+type CategoryView = 'HOME' | 'SETTINGS' | 'CREATE' | 'EDIT_MENU' | 'PLAY_MENU' | 'PLAY_TEAMS_MENU' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
 
 const NavCard = ({ 
   title, 
@@ -120,7 +121,7 @@ const MapPinButton = ({
     </div>
 );
 
-const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, games, activeGameId, onSelectGame }) => {
+const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, games, activeGameId, onSelectGame, authUser, onLogout }) => {
   const [view, setView] = useState<CategoryView>('HOME');
   const [showGameMenu, setShowGameMenu] = useState(false);
   const activeGame = games.find(g => g.id === activeGameId);
@@ -131,6 +132,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
           case 'CREATE': return { title: 'CREATE CENTER', subtitle: 'NEW RESOURCE SETUP' };
           case 'EDIT_MENU': return { title: 'EDIT CENTER', subtitle: 'MODIFY RESOURCES' };
           case 'PLAY_MENU': return { title: 'PLAY CENTER', subtitle: 'GAME OPERATIONS' };
+          case 'PLAY_TEAMS_MENU': return { title: 'TEAM OPERATIONS', subtitle: 'SQUAD MANAGEMENT' };
           case 'SETTINGS': return { title: 'SYSTEM TOOLS', subtitle: 'GLOBAL CONFIGURATION' };
           case 'PREVIEW_SELECT': return { title: 'SIMULATION', subtitle: 'DEVICE PREVIEW MODE' };
           default: return { title: 'COMMAND CENTER', subtitle: 'TEAMACTION MANAGEMENT' };
@@ -138,6 +140,21 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   };
 
   const { title: pageTitle, subtitle: pageSubtitle } = getHeaderContent();
+
+  // Navigation Logic
+  const handleBack = () => {
+      switch (view) {
+          case 'PLAY_TEAMS_MENU':
+              setView('PLAY_MENU');
+              break;
+          case 'PREVIEW_SELECT':
+              setView('SETTINGS');
+              break;
+          default:
+              setView('HOME');
+              break;
+      }
+  };
 
   const renderHome = () => (
       <div className="flex flex-col md:flex-row gap-12 md:gap-20 items-center justify-center w-full px-4 pb-12 pt-8">
@@ -206,7 +223,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderEditMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 w-full justify-items-center pb-10 max-w-[1400px] mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1400px] mx-auto">
               <MapPinButton 
                   title="EDIT GAME" 
                   icon={Gamepad2} 
@@ -239,21 +256,13 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   delay={300}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="EDIT TEAMS" 
-                  icon={Users} 
-                  gradient="bg-gradient-to-br from-orange-600 to-amber-600" 
-                  onClick={() => onAction('MANAGE_TEAMS')} 
-                  delay={400}
-                  scale={0.75}
-              />
           </div>
       </div>
   );
 
   const renderPlayMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
               <MapPinButton 
                   title="PLAY GAME" 
                   icon={Play} 
@@ -263,19 +272,11 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   scale={0.85}
               />
               <MapPinButton 
-                  title="TEAMLOBBY" 
+                  title="TEAMS" 
                   icon={Users} 
                   gradient="bg-gradient-to-br from-purple-600 to-indigo-600" 
-                  onClick={() => onAction('TEAM_LOBBY')} 
+                  onClick={() => setView('PLAY_TEAMS_MENU')} 
                   delay={100}
-                  scale={0.85}
-              />
-              <MapPinButton 
-                  title="NEW TEAM" 
-                  icon={UserPlus} 
-                  gradient="bg-gradient-to-br from-pink-500 to-rose-500" 
-                  onClick={() => onAction('TEAM_LOBBY')} 
-                  delay={200}
                   scale={0.85}
               />
               <MapPinButton 
@@ -283,7 +284,38 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   icon={MessageSquare} 
                   gradient="bg-gradient-to-br from-blue-600 to-cyan-600" 
                   onClick={() => onAction('CHAT')} 
-                  delay={300}
+                  delay={200}
+                  scale={0.85}
+              />
+          </div>
+      </div>
+  );
+
+  const renderPlayTeamsMenu = () => (
+      <div className="flex flex-col items-center w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+              <MapPinButton 
+                  title="TEAMLOBBY" 
+                  icon={Users} 
+                  gradient="bg-gradient-to-br from-purple-600 to-indigo-600" 
+                  onClick={() => onAction('TEAM_LOBBY')} 
+                  delay={0}
+                  scale={0.85}
+              />
+              <MapPinButton 
+                  title="NEW TEAM" 
+                  icon={UserPlus} 
+                  gradient="bg-gradient-to-br from-pink-500 to-rose-500" 
+                  onClick={() => onAction('TEAM_LOBBY')} 
+                  delay={100}
+                  scale={0.85}
+              />
+              <MapPinButton 
+                  title="EDIT TEAMS" 
+                  icon={Edit2} 
+                  gradient="bg-gradient-to-br from-orange-600 to-amber-600" 
+                  onClick={() => onAction('MANAGE_TEAMS')} 
+                  delay={200}
                   scale={0.85}
               />
           </div>
@@ -298,6 +330,8 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
               return renderEditMenu();
           case 'PLAY_MENU':
               return renderPlayMenu();
+          case 'PLAY_TEAMS_MENU':
+              return renderPlayTeamsMenu();
           case 'SETTINGS':
               return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-right-4">
@@ -356,9 +390,6 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
           case 'PREVIEW_SELECT':
               return (
                   <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-right-4">
-                      <div className="flex items-center gap-2 text-slate-400 font-bold uppercase text-xs tracking-widest cursor-pointer hover:text-white" onClick={() => setView('SETTINGS')}>
-                          <ArrowLeft className="w-4 h-4" /> Back to Settings
-                      </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <NavCard 
                               title="TEAM PREVIEW" 
@@ -412,19 +443,39 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
             {/* Top Left Status / Home Button */}
             <div className="absolute top-0 left-0 flex items-center gap-4 z-30">
                 {view === 'HOME' ? (
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <p className="text-[9px] font-black text-slate-500 tracking-[0.4em] uppercase">
-                          SYSTEM ONLINE &bull; v{version}
-                        </p>
-                    </div>
+                    authUser ? (
+                        <div className="flex items-center gap-4 bg-slate-900/50 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]" />
+                                <div className="flex flex-col">
+                                    <p className="text-[8px] font-black text-slate-500 tracking-[0.2em] uppercase leading-none">OPERATOR ONLINE</p>
+                                    <p className="text-xs font-black text-white tracking-widest uppercase leading-none mt-1">{authUser.name}</p>
+                                </div>
+                            </div>
+                            <div className="h-6 w-px bg-white/10 mx-1"></div>
+                            <button 
+                                onClick={onLogout} 
+                                title="Logout" 
+                                className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                            >
+                                <LogOut className="w-4 h-4" />
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <p className="text-[9px] font-black text-slate-500 tracking-[0.4em] uppercase">
+                              SYSTEM ONLINE &bull; v{version}
+                            </p>
+                        </div>
+                    )
                 ) : (
                     <button 
-                        onClick={() => setView('HOME')}
+                        onClick={handleBack}
                         className="p-3 bg-slate-800 hover:bg-slate-700 text-white font-black rounded-xl uppercase tracking-widest text-xs flex items-center gap-2 transition-all hover:scale-105 active:scale-95 border border-slate-700"
-                        title="Back to Home"
+                        title="Go Back"
                     >
-                        <Home className="w-5 h-5" />
+                        <ArrowLeft className="w-5 h-5" />
                     </button>
                 )}
             </div>
@@ -489,9 +540,13 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
-              {view === 'HOME' || view === 'CREATE' || view === 'EDIT_MENU' || view === 'PLAY_MENU' ? (
+              {view === 'HOME' || view === 'CREATE' || view === 'EDIT_MENU' || view === 'PLAY_MENU' || view === 'PLAY_TEAMS_MENU' ? (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                      {view === 'HOME' ? renderHome() : (view === 'CREATE' ? renderCreateMenu() : (view === 'EDIT_MENU' ? renderEditMenu() : renderPlayMenu()))}
+                      {view === 'HOME' ? renderHome() : 
+                       (view === 'CREATE' ? renderCreateMenu() : 
+                       (view === 'EDIT_MENU' ? renderEditMenu() : 
+                       (view === 'PLAY_MENU' ? renderPlayMenu() : 
+                       renderPlayTeamsMenu())))}
                   </div>
               ) : (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">

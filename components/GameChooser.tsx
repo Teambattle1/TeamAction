@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Game, TaskList, MapStyleId, GameChangeLogEntry } from '../types';
-import { X, Search, Gamepad2, Plus, Calendar, MapPin, RefreshCw, Settings, Layers, Clock, Hourglass, StopCircle, LayoutGrid, Map as MapIcon, List, LayoutList, History, User, FileClock, ChevronDown } from 'lucide-react';
+import { X, Search, Gamepad2, Plus, Calendar, MapPin, RefreshCw, Settings, Layers, Clock, Hourglass, StopCircle, LayoutGrid, Map as MapIcon, List, LayoutList, History, User, FileClock, ChevronDown, PlayCircle } from 'lucide-react';
 import { getFlag } from '../utils/i18n';
 
 interface GameChooserProps {
@@ -14,6 +14,7 @@ interface GameChooserProps {
   onOpenGameCreator: () => void;
   onRefresh: () => void;
   onEditGame: (game: Game) => void;
+  onStartSimulation?: (game: Game) => void;
 }
 
 const MAP_LABELS: Record<MapStyleId, string> = {
@@ -84,7 +85,8 @@ const GameChooser: React.FC<GameChooserProps> = ({
     onSaveAsTemplate,
     onOpenGameCreator,
     onRefresh,
-    onEditGame
+    onEditGame,
+    onStartSimulation
 }) => {
     const [search, setSearch] = useState('');
     const [view, setView] = useState<'GAMES' | 'TEMPLATES'>('GAMES');
@@ -255,6 +257,18 @@ const GameChooser: React.FC<GameChooserProps> = ({
 
                                         {/* Actions */}
                                         <div className="flex items-center gap-2 shrink-0 border-l border-slate-800 pl-4">
+                                            {onStartSimulation && (
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onStartSimulation(game);
+                                                    }}
+                                                    className="p-2 text-slate-500 hover:text-white hover:bg-orange-600 rounded-lg transition-colors"
+                                                    title="Simulate Game"
+                                                >
+                                                    <PlayCircle className="w-4 h-4" />
+                                                </button>
+                                            )}
                                             <button 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -368,6 +382,18 @@ const GameChooser: React.FC<GameChooserProps> = ({
                                             
                                             {/* Action Buttons */}
                                             <div className="flex gap-1">
+                                                {onStartSimulation && (
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onStartSimulation(game);
+                                                        }}
+                                                        className="p-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:bg-orange-600 hover:border-orange-500 rounded-lg transition-all shadow-lg flex-shrink-0"
+                                                        title="Simulate Game"
+                                                    >
+                                                        <PlayCircle className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();

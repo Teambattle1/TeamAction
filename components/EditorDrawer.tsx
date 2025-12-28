@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GamePoint, TaskList, Coordinate, Game, GameMode, GameRoute } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid, Map, Wand2, ToggleLeft, ToggleRight, Radio, FilePlus, RefreshCw, Users, Shield, Route, Upload, EyeOff, Hash } from 'lucide-react';
+import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid, Map, Wand2, ToggleLeft, ToggleRight, Radio, FilePlus, RefreshCw, Users, Shield, Route, Upload, EyeOff, Hash, PlayCircle } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -50,6 +50,7 @@ interface EditorDrawerProps {
   // Score Props
   showScores?: boolean;
   onToggleScores?: () => void;
+  onStartSimulation?: () => void; // New prop
 }
 
 const SortablePointItem: React.FC<{ 
@@ -283,7 +284,8 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onToggleRoute,
   onUpdateRoute,
   showScores,
-  onToggleScores
+  onToggleScores,
+  onStartSimulation
 }) => {
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [isExpanded, setIsExpanded] = useState(initialExpanded); 
@@ -464,13 +466,18 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
           </div>
       ) : (
           <>
-            {onOpenPlaygroundEditor && (
-                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
-                    <button onClick={onOpenPlaygroundEditor} className="w-full py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-bold rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors flex items-center justify-center gap-2 text-xs uppercase tracking-wide border border-orange-200 dark:border-orange-800">
-                        <LayoutGrid className="w-4 h-4" /> PLAYGROUNDS
+            <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex gap-2">
+                {onOpenPlaygroundEditor && (
+                    <button onClick={onOpenPlaygroundEditor} className="flex-1 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-bold rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide border border-orange-200 dark:border-orange-800">
+                        <LayoutGrid className="w-3 h-3" /> ZONES
                     </button>
-                </div>
-            )}
+                )}
+                {onStartSimulation && !isGameTemplateMode && (
+                    <button onClick={onStartSimulation} className="flex-1 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-bold rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide border border-purple-200 dark:border-purple-800">
+                        <PlayCircle className="w-3 h-3" /> SIMULATE
+                    </button>
+                )}
+            </div>
 
             <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-900 flex-shrink-0 z-[60]">
                 <div>

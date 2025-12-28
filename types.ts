@@ -6,7 +6,7 @@ export interface Coordinate {
 
 export type IconId = 'default' | 'star' | 'flag' | 'trophy' | 'camera' | 'question' | 'skull' | 'treasure';
 
-export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown';
+export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown' | 'timeline';
 
 export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'light' | 'ancient' | 'clean' | 'voyager' | 'winter' | 'ski' | 'historic' | 'google_custom' | 'none';
 
@@ -76,6 +76,15 @@ export interface TeamSyncState {
 }
 // -----------------------
 
+export interface TimelineItem {
+  id: string;
+  text: string;        // The main title (e.g. "Minced Beef")
+  description: string; // The reveal text (e.g. "Prices rose 20%...")
+  value: number;       // The sort value (e.g. 20)
+  imageUrl?: string;
+  order?: number;
+}
+
 export interface GameTask {
   question: string;
   type: TaskType;
@@ -100,6 +109,9 @@ export interface GameTask {
     correctValue: number;
     tolerance?: number; 
   };
+
+  // Timeline
+  timelineItems?: TimelineItem[];
 }
 
 export interface TaskFeedback {
@@ -388,7 +400,8 @@ export interface GameState {
 export enum GameMode {
   PLAY = 'PLAY',
   EDIT = 'EDIT',
-  INSTRUCTOR = 'INSTRUCTOR'
+  INSTRUCTOR = 'INSTRUCTOR',
+  SIMULATION = 'SIMULATION'
 }
 
 export type TeamStatus = 'moving' | 'solving' | 'idle';

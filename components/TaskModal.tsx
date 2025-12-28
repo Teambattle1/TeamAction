@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { GamePoint, TaskVote, GameMode } from '../types';
-import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull } from 'lucide-react';
+import { GamePoint, TaskVote, GameMode, TimelineItem } from '../types';
+import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
 import DOMPurify from 'dompurify';
 
@@ -47,8 +47,16 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [showUnlockInput, setShowUnlockInput] = useState(false);
   const [unlockError, setUnlockError] = useState(false);
 
+  // Timeline Task State
+  const [timelinePlayedItems, setTimelinePlayedItems] = useState<TimelineItem[]>([]);
+  const [timelineQueue, setTimelineQueue] = useState<TimelineItem[]>([]);
+  const [timelineScore, setTimelineScore] = useState(0);
+  const [timelineFinished, setTimelineFinished] = useState(false);
+  const [lastPlacedStatus, setLastPlacedStatus] = useState<'correct' | 'incorrect' | null>(null);
+
   const isEditMode = mode === GameMode.EDIT;
   const isInstructor = isInstructorMode || mode === GameMode.INSTRUCTOR;
+  const isSimulation = mode === GameMode.SIMULATION;
   const isPlayground = !!point?.playgroundId;
 
   // Double Trouble Logic
@@ -60,18 +68,31 @@ const TaskModal: React.FC<TaskModalProps> = ({
   useEffect(() => {
       if (point && !isEditMode && !isInstructor) {
           if (onTaskOpen) onTaskOpen();
-          teamSync.updateStatus(true);
+          // Don't update team sync status in simulation mode
+          if (!isSimulation) teamSync.updateStatus(true);
       }
+      // Initialize Timeline Game if applicable
+      if (point?.task.type === 'timeline' && point.task.timelineItems) {
+          const items = [...point.task.timelineItems];
+          // We can shuffle queue or use order. Let's assume order for now, 
+          // or pick the first one as "Anchor".
+          if (items.length > 0) {
+              const first = items.shift(); // First item is anchor
+              if(first) setTimelinePlayedItems([first]);
+              setTimelineQueue(items);
+          }
+      }
+
       return () => {
-          if (!isEditMode && !isInstructor) {
+          if (!isEditMode && !isInstructor && !isSimulation) {
               teamSync.updateStatus(false);
           }
       };
-  }, [point?.id, isEditMode, isInstructor]);
+  }, [point?.id, isEditMode, isInstructor, isSimulation]);
 
   // Subscribe to Realtime Updates
   useEffect(() => {
-      if (!point || isEditMode || isInstructor) return;
+      if (!point || isEditMode || isInstructor || isSimulation) return;
       
       const unsubscribeVotes = teamSync.subscribeToVotes((votes) => {
           setTeamVotes(votes);
@@ -94,11 +115,12 @@ const TaskModal: React.FC<TaskModalProps> = ({
           unsubscribeVotes();
           unsubscribeMembers();
       };
-  }, [point, isEditMode, isInstructor]);
+  }, [point, isEditMode, isInstructor, isSimulation]);
 
   if (!point) return null;
 
-  const isLocked = !point.isUnlocked && !isInstructor && !isEditMode && !isPlayground;
+  // UNLOCK LOGIC: Allow open if Unlocked OR Instructor OR Editor OR Playground OR Simulation
+  const isLocked = !point.isUnlocked && !isInstructor && !isEditMode && !isPlayground && !isSimulation;
 
   const checkConsensus = () => {
       if (teamVotes.length === 0) return false;
@@ -108,6 +130,69 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   const consensusReached = checkConsensus();
 
+  // --- TIMELINE GAME LOGIC ---
+  const handleTimelineDrop = (targetIndex: number) => {
+      if (timelineQueue.length === 0) return;
+      
+      const currentItem = timelineQueue[0];
+      const newPlayed = [...timelinePlayedItems];
+      
+      // Check if position is correct based on value
+      // The item should be inserted at targetIndex.
+      // Logic: Compare value with neighbors.
+      // Left neighbor (if exists) must have value <= current
+      // Right neighbor (if exists) must have value >= current
+      // Assuming sorting Low -> High.
+      
+      const prevItem = targetIndex > 0 ? newPlayed[targetIndex - 1] : null;
+      const nextItem = targetIndex < newPlayed.length ? newPlayed[targetIndex] : null;
+      
+      const isCorrect = 
+          (!prevItem || prevItem.value <= currentItem.value) && 
+          (!nextItem || nextItem.value >= currentItem.value);
+
+      if (isCorrect) {
+          newPlayed.splice(targetIndex, 0, currentItem);
+          setTimelinePlayedItems(newPlayed);
+          setTimelineScore(prev => prev + (point.points / (point.task.timelineItems?.length || 1))); // Distribute points
+          setLastPlacedStatus('correct');
+      } else {
+          // Find correct index
+          let correctIndex = 0;
+          for (let i = 0; i < newPlayed.length; i++) {
+              if (currentItem.value < newPlayed[i].value) {
+                  correctIndex = i;
+                  break;
+              } else {
+                  correctIndex = i + 1;
+              }
+          }
+          newPlayed.splice(correctIndex, 0, currentItem);
+          setTimelinePlayedItems(newPlayed);
+          setLastPlacedStatus('incorrect');
+      }
+
+      const newQueue = [...timelineQueue];
+      newQueue.shift();
+      setTimelineQueue(newQueue);
+
+      setTimeout(() => setLastPlacedStatus(null), 1500);
+
+      if (newQueue.length === 0) {
+          // Game Over
+          setTimelineFinished(true);
+      }
+  };
+
+  const handleTimelineFinish = () => {
+      // Calculate total score based on timelineScore accumulator
+      // For now, assume simplified scoring: if finished, you get points earned.
+      // If we want pass/fail, we check a threshold. Here we give accumulated points.
+      onComplete(point.id, Math.round(timelineScore));
+      onClose();
+  };
+
+  // --- STANDARD TASK LOGIC ---
   const handleSubmitVote = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -119,9 +204,67 @@ const TaskModal: React.FC<TaskModalProps> = ({
         finalAnswer = sliderValue;
     }
 
+    // In simulation mode, bypass team sync voting and go straight to finalize
+    if (isSimulation) {
+        // Simulate a vote object locally just for the logic flow, or refactor
+        // Actually, let's just trigger finalize immediately with local answer
+        // Mock teamVotes for handleFinalize to consume
+        const mockVote: TaskVote = {
+            deviceId: 'sim',
+            userName: 'Simulator',
+            pointId: point.id,
+            answer: finalAnswer,
+            timestamp: Date.now()
+        };
+        // Hack: set state then call finalize immediately won't work due to closure.
+        // Instead, refactor handleFinalize or create a specialized handleSimulateSubmit
+        handleSimulateSubmit(finalAnswer);
+        return;
+    }
+
     teamSync.castVote(point.id, finalAnswer);
     setIsVoting(true);
   };
+
+  const handleSimulateSubmit = (submittedAnswer: any) => {
+      // Direct validation logic for simulation
+      let isCorrect = false;
+
+      if (point.task.type === 'multiple_choice' || point.task.type === 'boolean' || point.task.type === 'dropdown') {
+          isCorrect = submittedAnswer === point.task.answer;
+      } 
+      else if (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') {
+          const correct = point.task.correctAnswers || [];
+          const sortedSelected = [...(submittedAnswer as string[])].sort();
+          const sortedCorrect = [...correct].sort();
+          isCorrect = JSON.stringify(sortedSelected) === JSON.stringify(sortedCorrect);
+      }
+      else if (point.task.type === 'slider') {
+          const val = submittedAnswer as number;
+          const target = point.task.range?.correctValue || 0;
+          const tolerance = point.task.range?.tolerance || 0;
+          isCorrect = Math.abs(val - target) <= tolerance;
+      }
+      else {
+          const val = submittedAnswer as string;
+          const correct = point.task.answer || '';
+          isCorrect = val.toLowerCase().trim() === correct.toLowerCase().trim();
+      }
+
+      if (isCorrect) {
+          const finalScore = isDoubleTrouble ? point.points * 2 : point.points;
+          onComplete(point.id, finalScore);
+          onClose();
+      } else {
+          if (onTaskIncorrect) onTaskIncorrect();
+          if (isDoubleTrouble && onPenalty) {
+              onPenalty(point.points);
+              setErrorMsg(`DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`);
+          } else {
+              setErrorMsg("Incorrect answer in simulation.");
+          }
+      }
+  }
 
   const handleFinalize = () => {
       const agreedAnswer = teamVotes[0].answer;
@@ -174,11 +317,96 @@ const TaskModal: React.FC<TaskModalProps> = ({
       }
   };
 
+  const renderConsensusView = () => {
+      // Group votes by answer to show distribution
+      const voteGroups: Record<string, string[]> = {};
+      teamVotes.forEach(v => {
+          let ansStr = String(v.answer);
+          if (typeof v.answer === 'object') {
+              if (Array.isArray(v.answer)) {
+                  ansStr = JSON.stringify([...v.answer].sort());
+              } else {
+                  ansStr = JSON.stringify(v.answer);
+              }
+          }
+          if (!voteGroups[ansStr]) voteGroups[ansStr] = [];
+          voteGroups[ansStr].push(v.userName);
+      });
+
+      return (
+          <div className="space-y-6 animate-in fade-in">
+              <div className="text-center">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4 animate-pulse">
+                      <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h3 className="text-lg font-black uppercase text-gray-900 dark:text-white">TEAM CONSENSUS</h3>
+                  <p className="text-sm text-gray-500 font-bold">
+                      {teamVotes.length} VOTES CAST
+                  </p>
+              </div>
+
+              <div className="space-y-3">
+                  {Object.entries(voteGroups).map(([ansStr, users], idx) => {
+                      let displayAns = ansStr;
+                      try {
+                          if (ansStr.startsWith('[') || ansStr.startsWith('{')) {
+                              const parsed = JSON.parse(ansStr);
+                              if (Array.isArray(parsed)) displayAns = parsed.join(', ');
+                              else displayAns = JSON.stringify(parsed);
+                          }
+                      } catch {}
+                      
+                      const isConsensus = consensusReached && Object.keys(voteGroups).length === 1;
+
+                      return (
+                          <div key={idx} className={`p-4 rounded-xl border-2 transition-colors ${isConsensus ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-gray-700'}`}>
+                              <div className="flex justify-between items-start mb-2">
+                                  <span className="font-bold text-gray-900 dark:text-white break-all">{displayAns}</span>
+                                  <span className="text-xs font-black bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-300">{users.length} VOTES</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                  {users.map((u, i) => (
+                                      <span key={i} className="text-[10px] uppercase font-bold text-gray-500 bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700">
+                                          {u}
+                                      </span>
+                                  ))}
+                              </div>
+                          </div>
+                      );
+                  })}
+              </div>
+
+              {consensusReached ? (
+                  <button 
+                      onClick={handleFinalize}
+                      className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all"
+                  >
+                      <ThumbsUp className="w-5 h-5" /> SUBMIT FINAL ANSWER
+                  </button>
+              ) : (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl flex items-center gap-3 border border-yellow-200 dark:border-yellow-800">
+                      <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
+                      <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">WAITING FOR TEAM AGREEMENT...</p>
+                  </div>
+              )}
+              
+              <button 
+                  type="button"
+                  onClick={() => setIsVoting(false)}
+                  className="w-full py-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white font-bold uppercase text-xs transition-colors"
+              >
+                  CHANGE MY VOTE
+              </button>
+          </div>
+      );
+  };
+
   const renderInput = () => {
       const { type, options, range } = point.task;
       const isDisabled = isInstructor;
 
       if (isEditMode) {
+          if (type === 'timeline') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm font-mono uppercase">TIMELINE GAME PREVIEW</div>;
           if (type === 'text') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm italic text-gray-500">Text Input Field</div>;
           if (type === 'slider') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center font-mono">SLIDER {range?.min} - {range?.max}</div>;
           if (type === 'boolean') return <div className="flex gap-2 opacity-80 pointer-events-none"><div className="flex-1 p-3 border rounded-xl text-center">True</div><div className="flex-1 p-3 border rounded-xl text-center">False</div></div>;
@@ -229,39 +457,82 @@ const TaskModal: React.FC<TaskModalProps> = ({
       }
   };
 
-  const renderConsensusView = () => {
+  // --- TIMELINE RENDERER ---
+  const renderTimelineGame = () => {
+      const activeItem = timelineQueue[0];
+
       return (
-          <div className="space-y-4 animate-in fade-in">
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
-                  <h3 className="font-black text-blue-800 dark:text-blue-300 uppercase tracking-widest text-xs mb-3 flex items-center gap-2">
-                      <Users className="w-4 h-4" /> Team Consensus ({teamVotes.length} Voted)
-                  </h3>
-                  <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                      {teamVotes.map((vote, idx) => (
-                          <div key={idx} className="flex justify-between items-center bg-white dark:bg-gray-800 p-3 rounded-lg text-sm border border-gray-100 dark:border-gray-700 shadow-sm">
-                              <span className="font-bold text-gray-700 dark:text-gray-200">{vote.userName}</span>
-                              <span className="text-gray-500 dark:text-gray-400 font-mono text-xs bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">
-                                  {JSON.stringify(vote.answer)}
-                              </span>
+          <div className="space-y-6">
+              {/* CURRENT ITEM DECK */}
+              <div className="flex justify-center mb-6 sticky top-0 z-20 bg-white dark:bg-gray-900 py-2 border-b border-gray-100 dark:border-gray-800">
+                  {timelineFinished ? (
+                      <div className="text-center">
+                          <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
+                          <h3 className="text-lg font-black uppercase text-green-500">TIMELINE COMPLETE</h3>
+                          <p className="text-sm font-bold text-gray-500">SCORE: {Math.round(timelineScore)} PTS</p>
+                          <button onClick={handleTimelineFinish} className="mt-4 px-6 py-2 bg-green-600 text-white rounded-xl font-black uppercase">FINISH TASK</button>
+                      </div>
+                  ) : activeItem ? (
+                      <div className="w-full max-w-sm bg-blue-600 text-white p-4 rounded-xl shadow-lg relative overflow-hidden">
+                          <div className="flex gap-4 items-center">
+                              {activeItem.imageUrl && <img src={activeItem.imageUrl} className="w-12 h-12 rounded-lg object-cover bg-white" />}
+                              <div className="flex-1">
+                                  <p className="text-[10px] font-black uppercase opacity-70 mb-1">PLACE THIS ITEM:</p>
+                                  <h3 className="font-bold text-lg leading-tight">{activeItem.text}</h3>
+                              </div>
                           </div>
-                      ))}
-                  </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                  <button 
-                      onClick={() => setIsVoting(false)}
-                      className="flex-1 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold uppercase tracking-wide text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                      Change My Vote
-                  </button>
-                  {consensusReached && (
-                      <button 
-                          onClick={handleFinalize}
-                          className="flex-[2] py-3 bg-green-600 text-white rounded-xl font-bold uppercase tracking-wide text-xs hover:bg-green-700 transition-colors shadow-lg shadow-green-600/20"
-                      >
-                          Finalize & Submit
-                      </button>
+                      </div>
+                  ) : (
+                      <div className="text-gray-400 font-bold uppercase text-xs">Loading...</div>
                   )}
+              </div>
+
+              {/* TIMELINE VISUAL */}
+              <div className="relative pl-8 border-l-4 border-dashed border-gray-300 dark:border-gray-700 ml-4 space-y-4">
+                  {timelinePlayedItems.map((item, idx) => {
+                      // Insert Button BEFORE (only for index 0 or gaps if we allowed arbitrary insertion, but simpler to just show after each item)
+                      // Logic: show drop zones between items
+                      return (
+                          <React.Fragment key={item.id}>
+                              {/* Drop Zone Above (Only for first item) */}
+                              {idx === 0 && !timelineFinished && (
+                                  <button 
+                                      onClick={() => handleTimelineDrop(0)}
+                                      className="absolute -left-[14px] -top-6 w-6 h-6 bg-gray-200 dark:bg-gray-700 rounded-full border-2 border-white dark:border-gray-600 flex items-center justify-center hover:scale-125 transition-transform z-10"
+                                  >
+                                      <ArrowDown className="w-3 h-3 text-gray-500" />
+                                  </button>
+                              )}
+
+                              <div className={`relative p-3 rounded-xl border-2 flex gap-3 items-center bg-white dark:bg-gray-800 ${item.id === activeItem?.id && lastPlacedStatus === 'incorrect' ? 'border-red-500 animate-shake' : (item.id === activeItem?.id && lastPlacedStatus === 'correct' ? 'border-green-500 ring-2 ring-green-500/20' : 'border-gray-200 dark:border-gray-700')}`}>
+                                  {/* Dot on line */}
+                                  <div className="absolute -left-[38px] top-1/2 -translate-y-1/2 w-4 h-4 bg-gray-400 rounded-full border-4 border-white dark:border-gray-900" />
+                                  
+                                  {item.imageUrl && <img src={item.imageUrl} className="w-12 h-12 rounded object-cover" />}
+                                  <div className="flex-1">
+                                      <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200">{item.text}</h4>
+                                      <p className="text-xs text-gray-500">{item.description}</p>
+                                  </div>
+                                  <div className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs font-mono font-bold text-gray-600 dark:text-gray-300">
+                                      {item.value}
+                                  </div>
+                              </div>
+
+                              {/* Drop Zone Below */}
+                              {!timelineFinished && (
+                                  <div className="relative h-8 flex items-center">
+                                      <button 
+                                          onClick={() => handleTimelineDrop(idx + 1)}
+                                          className="absolute -left-[14px] w-6 h-6 bg-blue-500 text-white rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center hover:scale-125 transition-transform z-10 shadow-lg"
+                                      >
+                                          <ArrowDown className="w-3 h-3" />
+                                      </button>
+                                      <div className="w-full border-t border-dashed border-gray-300 dark:border-gray-700 ml-[-20px] opacity-0" />
+                                  </div>
+                              )}
+                          </React.Fragment>
+                      );
+                  })}
               </div>
           </div>
       );
@@ -289,7 +560,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 <p className="text-sm text-gray-600 dark:text-gray-300">
                   {isInstructor || isEditMode
                     ? (isEditMode ? 'Editor View' : 'Instructor View (Read Only)')
-                    : (isPlayground ? 'Virtual Zone Task' : (point.isUnlocked ? 'You are at the location!' : `Distance: ${Math.round(distance)}m`))}
+                    : (isSimulation ? 'SIMULATION MODE (GPS BYPASSED)' : (isPlayground ? 'Virtual Zone Task' : (point.isUnlocked ? 'You are at the location!' : `Distance: ${Math.round(distance)}m`)))}
                 </p>
               </div>
             </div>
@@ -324,7 +595,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                               <label className="text-xs text-gray-500 font-bold">FAIL-SAFE UNLOCK</label>
                               <div className="flex items-center gap-2">
                                 <input 
-                                    type="text"
+                                    type="text" 
                                     maxLength={4}
                                     placeholder="0000"
                                     value={unlockCode}
@@ -367,7 +638,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 )}
               </div>
 
-              {(isInstructor || isEditMode) && (
+              {(isInstructor || isEditMode) && point.task.type !== 'timeline' && (
                 <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-3 animate-in fade-in">
                   <span className="text-xs font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">Solution</span>
                   <p className="text-orange-900 dark:text-orange-200 font-medium mt-1">
@@ -377,32 +648,34 @@ const TaskModal: React.FC<TaskModalProps> = ({
               )}
 
               {!point.isCompleted && !isEditMode ? (
-                isInstructor ? (
-                    <div className="opacity-80 pointer-events-none">
-                        {renderInput()}
-                        <div className="mt-4 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">
-                            Task Preview Mode
-                        </div>
-                    </div>
-                ) : (
-                    isVoting ? renderConsensusView() : (
-                        <form onSubmit={handleSubmitVote} className="space-y-4">
-                        
-                        {renderInput()}
-
-                        {errorMsg && (
-                            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2 animate-in slide-in-from-top-1">
-                                <AlertCircle className="w-4 h-4" /> {errorMsg}
+                point.task.type === 'timeline' ? renderTimelineGame() : (
+                    isInstructor ? (
+                        <div className="opacity-80 pointer-events-none">
+                            {renderInput()}
+                            <div className="mt-4 text-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                Task Preview Mode
                             </div>
-                        )}
+                        </div>
+                    ) : (
+                        isVoting && !isSimulation ? renderConsensusView() : (
+                            <form onSubmit={handleSubmitVote} className="space-y-4">
+                            
+                            {renderInput()}
 
-                        <button 
-                            type="submit"
-                            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-orange-600/20 mt-4"
-                        >
-                            Submit to Team
-                        </button>
-                        </form>
+                            {errorMsg && (
+                                <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm flex items-center gap-2 animate-in slide-in-from-top-1">
+                                    <AlertCircle className="w-4 h-4" /> {errorMsg}
+                                </div>
+                            )}
+
+                            <button 
+                                type="submit"
+                                className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-orange-600/20 mt-4"
+                            >
+                                {isSimulation ? 'SUBMIT (SIMULATION)' : 'Submit to Team'}
+                            </button>
+                            </form>
+                        )
                     )
                 )
               ) : (!isEditMode && (

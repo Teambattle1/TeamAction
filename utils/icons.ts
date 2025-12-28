@@ -1,11 +1,11 @@
 
 import L from 'leaflet';
 import { IconId } from '../types';
-import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem } from 'lucide-react';
+import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem, ListOrdered } from 'lucide-react';
 import React from 'react';
 
 // Mapping for UI components (React)
-export const ICON_COMPONENTS: Record<IconId, React.ElementType> = {
+export const ICON_COMPONENTS: Record<IconId | 'timeline', React.ElementType> = {
   default: MapPin,
   star: Star,
   flag: Flag,
@@ -14,6 +14,7 @@ export const ICON_COMPONENTS: Record<IconId, React.ElementType> = {
   question: HelpCircle,
   skull: Skull,
   treasure: Gem,
+  timeline: ListOrdered // Added fallback mapping just in case
 };
 
 // Colors for the icons

@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage, GameChangeLogEntry, TeamMember, PlaygroundTemplate } from './types';
-import * as db from './services/db';
-import { authService } from './services/auth';
-import { teamSync } from './services/teamSync';
-import { LocationProvider, useLocation } from './contexts/LocationContext';
-import { haversineMeters, isWithinRadius } from './utils/geo';
-import GameMap, { GameMapHandle } from './components/GameMap';
+import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage, GameChangeLogEntry, TeamMember, PlaygroundTemplate, ActionType } from '../types';
+import * as db from '../services/db';
+import { authService } from '../services/auth';
+import { teamSync } from '../services/teamSync';
+import { LocationProvider, useLocation } from '../contexts/LocationContext';
+import { haversineMeters, isWithinRadius } from '../utils/geo';
+import GameMap, { GameMapHandle } from './GameMap';
 import GameHUD from './components/GameHUD';
 import GameManager from './components/GameManager';
 import TaskMaster from './components/TaskMaster';
@@ -28,6 +29,7 @@ import TaskActionModal from './components/TaskActionModal';
 import PlaygroundEditor from './components/PlaygroundEditor';
 import MessagePopup from './components/MessagePopup';
 import Dashboard from './components/Dashboard';
+import { PlayCircle } from 'lucide-react';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
@@ -42,6 +44,11 @@ const GameApp: React.FC = () => {
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
+
+  // --- SIMULATION STATE ---
+  // We keep a clean separation. When in Simulation Mode, 'activeGame' points to this object.
+  const [simulatedGame, setSimulatedGame] = useState<Game | null>(null);
+  const [originalMode, setOriginalMode] = useState<GameMode>(GameMode.EDIT);
 
   // --- UI STATE ---
   const [mode, setMode] = useState<GameMode>(GameMode.PLAY);
@@ -177,6 +184,9 @@ const GameApp: React.FC = () => {
 
   // --- GEOFENCING ENGINE ---
   useEffect(() => {
+      // In Simulation Mode, geofencing is manual (clicking). 
+      // We disable auto-unlock by distance to prevent confusion, unless we want to simulate user movement? 
+      // For now, let's keep radius checks active ONLY in real PLAY mode.
       if (!activeGame || mode !== GameMode.PLAY || !userLocation) return;
 
       const checkGeofences = async () => {
@@ -204,16 +214,18 @@ const GameApp: React.FC = () => {
   }, [userLocation, activeGame, mode]);
 
   // --- MEMOIZED DATA ---
+  const currentGameObj = mode === GameMode.SIMULATION ? simulatedGame : activeGame;
+
   const logicLinks = useMemo(() => {
-      if (!activeGame || mode === GameMode.PLAY) return [];
+      if (!currentGameObj || mode === GameMode.PLAY) return [];
       const links: any[] = [];
-      activeGame.points.forEach(p => {
+      currentGameObj.points.forEach(p => {
           if (!p.location) return;
           const addLinks = (trigger: 'onOpen' | 'onCorrect' | 'onIncorrect', color: string) => {
               const actions = p.logic?.[trigger];
               actions?.forEach(action => {
                   if ((action.type === 'unlock' || action.type === 'reveal') && action.targetId) {
-                      const target = activeGame.points.find(tp => tp.id === action.targetId);
+                      const target = currentGameObj.points.find(tp => tp.id === action.targetId);
                       if (target && target.location) {
                           links.push({ from: p.location, to: target.location, color, type: trigger });
                       }
@@ -225,12 +237,12 @@ const GameApp: React.FC = () => {
           addLinks('onIncorrect', '#ef4444');
       });
       return links;
-  }, [activeGame, mode]);
+  }, [currentGameObj, mode]);
 
   const liveTaskModalPoint = useMemo(() => {
-      if (!activeTaskModalId || !activeGame) return null;
-      return activeGame.points.find(p => p.id === activeTaskModalId) || null;
-  }, [activeTaskModalId, activeGame]);
+      if (!activeTaskModalId || !currentGameObj) return null;
+      return currentGameObj.points.find(p => p.id === activeTaskModalId) || null;
+  }, [activeTaskModalId, currentGameObj]);
 
   const ensureSession = (callback: () => void) => {
       if (!authUser) {
@@ -241,6 +253,12 @@ const GameApp: React.FC = () => {
   };
 
   const updateActiveGame = async (updatedGame: Game, changeDescription: string = "Modified Game") => {
+      // If we are in Simulation Mode, we ONLY update the local state, NOT the DB.
+      if (mode === GameMode.SIMULATION) {
+          setSimulatedGame(updatedGame);
+          return;
+      }
+
       const changeEntry: GameChangeLogEntry = {
           timestamp: Date.now(),
           user: authUser?.name || 'Unknown',
@@ -260,6 +278,43 @@ const GameApp: React.FC = () => {
       }
   };
 
+  // --- SIMULATION LOGIC ---
+  const handleStartSimulation = (game: Game) => {
+      // 1. Create Deep Clone for isolation
+      const simGame: Game = JSON.parse(JSON.stringify(game));
+      
+      // 2. Create Dummy Team
+      const simTeam: Team = {
+          id: 'sim-team-001',
+          gameId: game.id,
+          name: 'SIMULATION AGENT',
+          joinCode: 'SIM000',
+          score: 0,
+          members: [{ name: 'Simulator', deviceId: 'sim-device', photo: '' }],
+          updatedAt: new Date().toISOString(),
+          isStarted: true,
+          completedPointIds: []
+      };
+
+      // 3. Set State
+      setOriginalMode(mode);
+      setSimulatedGame(simGame);
+      setCurrentTeam(simTeam);
+      setMode(GameMode.SIMULATION);
+      setShowLanding(false);
+      setShowGameChooser(false);
+      setScore(0);
+  };
+
+  const handleStopSimulation = () => {
+      setSimulatedGame(null);
+      setCurrentTeam(null);
+      setMode(originalMode);
+      
+      // If we were editing, ensure activeGame is fresh from state (it should be)
+      // No DB rollback needed because we didn't touch it.
+  };
+
   const handleDeleteGame = async (id: string) => {
       await db.deleteGame(id);
       setGames(prev => prev.filter(g => g.id !== id));
@@ -270,18 +325,62 @@ const GameApp: React.FC = () => {
   };
 
   const handleDeleteItem = async (pointId: string) => {
-      if (!activeGame) return;
-      const updatedPoints = activeGame.points.filter(p => p.id !== pointId);
-      const updatedZones = (activeGame.dangerZones || []).filter(z => z.id !== pointId);
-      await updateActiveGame({ ...activeGame, points: updatedPoints, dangerZones: updatedZones }, "Deleted Task/Zone");
+      if (!currentGameObj) return;
+      const updatedPoints = currentGameObj.points.filter(p => p.id !== pointId);
+      const updatedZones = (currentGameObj.dangerZones || []).filter(z => z.id !== pointId);
+      await updateActiveGame({ ...currentGameObj, points: updatedPoints, dangerZones: updatedZones }, "Deleted Task/Zone");
       if (activeTask?.id === pointId) setActiveTask(null);
   };
 
   const handlePointClick = (point: GamePoint) => {
       if (mode === GameMode.EDIT) {
           setActiveTask(point);
-      } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
+      } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR || mode === GameMode.SIMULATION) {
+          // Logic Execution: On Open
+          if (point.logic?.onOpen) {
+              executeGameLogic(point.logic.onOpen);
+          }
           setActiveTaskModalId(point.id);
+      }
+  };
+
+  const executeGameLogic = (actions: any[]) => {
+      if (!currentGameObj || !actions) return;
+      
+      let updatedGame = { ...currentGameObj };
+      let hasChanges = false;
+      let scoreDelta = 0;
+
+      actions.forEach(action => {
+          if (action.type === 'unlock' && action.targetId) {
+              updatedGame.points = updatedGame.points.map(p => p.id === action.targetId ? { ...p, isUnlocked: true } : p);
+              hasChanges = true;
+          }
+          if (action.type === 'reveal' && action.targetId) {
+              updatedGame.points = updatedGame.points.map(p => p.id === action.targetId ? { ...p, isHiddenBeforeScan: false, isUnlocked: true } : p);
+              hasChanges = true;
+          }
+          if (action.type === 'lock' && action.targetId) {
+              updatedGame.points = updatedGame.points.map(p => p.id === action.targetId ? { ...p, isUnlocked: false } : p);
+              hasChanges = true;
+          }
+          if (action.type === 'score' && action.value) {
+              scoreDelta += action.value;
+          }
+          if (action.type === 'open_playground' && action.targetId) {
+              setViewingPlaygroundId(action.targetId);
+          }
+      });
+
+      if (hasChanges) {
+          updateActiveGame(updatedGame, "Logic Execution");
+      }
+      if (scoreDelta !== 0) {
+          setScore(prev => prev + scoreDelta);
+          // In simulation, we update the local dummy team score
+          if (currentTeam) {
+              setCurrentTeam({ ...currentTeam, score: currentTeam.score + scoreDelta });
+          }
       }
   };
 
@@ -322,7 +421,7 @@ const GameApp: React.FC = () => {
   };
 
   const handleAddDangerZone = () => {
-      if (!activeGame || !mapRef.current) return;
+      if (!currentGameObj || !mapRef.current) return;
       const center = mapRef.current.getCenter();
       const newZone: DangerZone = {
           id: `dz-${Date.now()}`,
@@ -333,21 +432,66 @@ const GameApp: React.FC = () => {
           title: 'NEW ZONE',
           penaltyType: 'fixed'
       };
-      updateActiveGame({ ...activeGame, dangerZones: [...(activeGame.dangerZones || []), newZone] }, "Added Danger Zone");
+      updateActiveGame({ ...currentGameObj, dangerZones: [...(currentGameObj.dangerZones || []), newZone] }, "Added Danger Zone");
   };
 
   const handleUpdateRoute = (id: string, updates: Partial<GameRoute>) => {
-      if (!activeGame) return;
-      const updatedRoutes = (activeGame.routes || []).map(r => r.id === id ? { ...r, ...updates } : r);
-      updateActiveGame({ ...activeGame, routes: updatedRoutes }, "Updated Route");
+      if (!currentGameObj) return;
+      const updatedRoutes = (currentGameObj.routes || []).map(r => r.id === id ? { ...r, ...updates } : r);
+      updateActiveGame({ ...currentGameObj, routes: updatedRoutes }, "Updated Route");
   };
 
   const handleManualUnlock = async (pointId: string) => {
-      if (!activeGame) return;
-      const updatedPoints = activeGame.points.map(p => p.id === pointId ? { ...p, isUnlocked: true } : p);
-      await updateActiveGame({ ...activeGame, points: updatedPoints }, "Manual Unlock");
+      if (!currentGameObj) return;
+      const updatedPoints = currentGameObj.points.map(p => p.id === pointId ? { ...p, isUnlocked: true } : p);
+      await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
   };
 
+  const handleTaskComplete = (id: string, pts?: number) => {
+      const pointsToAdd = pts || 0;
+      setScore(s => s + pointsToAdd);
+      
+      const point = currentGameObj?.points.find(p => p.id === id);
+      
+      // Update Team State (Local or DB)
+      if (currentTeam) {
+          const newScore = currentTeam.score + pointsToAdd;
+          const newCompleted = [...(currentTeam.completedPointIds || []), id];
+          
+          if (mode === GameMode.SIMULATION) {
+              // Local update only
+              setCurrentTeam({
+                  ...currentTeam,
+                  score: newScore,
+                  completedPointIds: newCompleted
+              });
+          } else {
+              // DB update (Real Play) - handled implicitly via updateActiveGame usually for points, but explicit team update here:
+              // Note: Ideally team update logic is in updateTeamProgress, but here we sync UI state
+          }
+      }
+
+      // Execute Logic: On Correct
+      if (point?.logic?.onCorrect) {
+          executeGameLogic(point.logic.onCorrect);
+      }
+
+      const updatedPoints = currentGameObj?.points.map(p => p.id === id ? { ...p, isCompleted: true } : p) || [];
+      if (currentGameObj) updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
+      
+      setActiveTaskModalId(null);
+  };
+
+  const handleTaskIncorrect = () => {
+      if (activeTaskModalId && currentGameObj) {
+          const point = currentGameObj.points.find(p => p.id === activeTaskModalId);
+          if (point?.logic?.onIncorrect) {
+              executeGameLogic(point.logic.onIncorrect);
+          }
+      }
+  };
+
+  // ... (Tag handlers remain same) ...
   const handleRenameTagGlobally = async (oldTag: string, newTag: string) => {
       const renameInTasks = (tasks: TaskTemplate[]) => {
           return tasks.map(t => ({
@@ -410,11 +554,11 @@ const GameApp: React.FC = () => {
       setGames(updatedGames);
   };
 
-  const isCaptain = currentTeam?.captainDeviceId === teamSync.getDeviceId();
+  const isCaptain = currentTeam?.captainDeviceId === teamSync.getDeviceId() || mode === GameMode.SIMULATION;
 
   const mapTeams = useMemo(() => {
       const list = [];
-      if (isCaptain) {
+      if (isCaptain && onlineMembers.length > 0) {
           list.push(...onlineMembers.map(m => ({
               team: { id: 'teammates', gameId: activeGameId || '', name: m.userName, score: 0, members: [], updatedAt: '', isStarted: true }, 
               location: m.location!, 
@@ -530,9 +674,10 @@ const GameApp: React.FC = () => {
                   onReorderPoints={() => {}}
                   onCreateTestGame={() => {}}
                   onOpenTaskMaster={() => setShowTaskMaster(true)}
-                  onClearMap={() => updateActiveGame({ ...activeGame!, points: [] }, "Cleared Map")}
+                  onClearMap={() => updateActiveGame({ ...currentGameObj!, points: [] }, "Cleared Map")}
                   mode={mode}
                   onSetMode={setMode}
+                  onStartSimulation={(game) => handleStartSimulation(game)} // Passing simulation handler
               />
           )}
 
@@ -550,14 +695,10 @@ const GameApp: React.FC = () => {
           {liveTaskModalPoint && (
               <TaskModal
                   point={liveTaskModalPoint}
-                  distance={liveTaskModalPoint.playgroundId ? 0 : haversineMeters(userLocation, liveTaskModalPoint.location)}
+                  distance={mode === GameMode.SIMULATION ? 0 : (liveTaskModalPoint.playgroundId ? 0 : haversineMeters(userLocation, liveTaskModalPoint.location))}
                   onClose={() => setActiveTaskModalId(null)}
-                  onComplete={(id, pts) => { 
-                      setScore(s => s + (pts || 0)); 
-                      const updatedPoints = activeGame?.points.map(p => p.id === id ? { ...p, isCompleted: true } : p) || [];
-                      if (activeGame) updateActiveGame({ ...activeGame, points: updatedPoints }, "Task Completed (Live)");
-                      setActiveTaskModalId(null); 
-                  }}
+                  onComplete={handleTaskComplete}
+                  onTaskIncorrect={handleTaskIncorrect}
                   onUnlock={handleManualUnlock}
                   mode={mode}
                   isInstructorMode={mode === GameMode.INSTRUCTOR}
@@ -568,7 +709,7 @@ const GameApp: React.FC = () => {
                   initialTab={taskMasterInitialTab}
                   onClose={() => setShowTaskMaster(false)}
                   onImportTasks={async (tasks) => {
-                      if (activeGame) {
+                      if (currentGameObj) {
                           const newPoints = tasks.map(t => ({
                               ...t,
                               id: `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
@@ -577,9 +718,9 @@ const GameApp: React.FC = () => {
                               activationTypes: ['radius'],
                               isUnlocked: true,
                               isCompleted: false,
-                              order: activeGame.points.length
+                              order: currentGameObj.points.length
                           } as GamePoint));
-                          await updateActiveGame({ ...activeGame, points: [...activeGame.points, ...newPoints] }, `Imported ${tasks.length} Tasks`);
+                          await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported ${tasks.length} Tasks`);
                           setShowTaskMaster(false);
                       }
                   }}
@@ -590,6 +731,7 @@ const GameApp: React.FC = () => {
                   onRenameTagGlobally={handleRenameTagGlobally}
               />
           )}
+          {/* ... Rest of modals ... */}
           {showGameCreator && (
               <GameCreator 
                   onClose={() => setShowGameCreator(false)}
@@ -652,7 +794,7 @@ const GameApp: React.FC = () => {
           {showTeamDashboard && activeGameId && (
               <TeamDashboard 
                   gameId={activeGameId}
-                  totalMapPoints={activeGame?.points.length || 0}
+                  totalMapPoints={currentGameObj?.points.length || 0}
                   onOpenAgents={() => {}}
                   onClose={() => setShowTeamDashboard(false)}
                   chatHistory={chatHistory}
@@ -701,7 +843,7 @@ const GameApp: React.FC = () => {
                       createdAt: Date.now(),
                       points: playgroundTemplateToEdit.tasks,
                       playgrounds: [playgroundTemplateToEdit.playgroundData]
-                  } as Game : (activeGame || { id: 'temp', name: 'Temp', points: [], createdAt: 0 } as any)}
+                  } as Game : (currentGameObj || { id: 'temp', name: 'Temp', points: [], createdAt: 0 } as any)}
                   
                   onUpdateGame={(updatedGame) => {
                       if (playgroundTemplateToEdit) {
@@ -711,7 +853,7 @@ const GameApp: React.FC = () => {
                               playgroundData: updatedGame.playgrounds?.[0]!,
                               tasks: updatedGame.points
                           });
-                      } else if (activeGame) {
+                      } else if (currentGameObj) {
                           updateActiveGame(updatedGame, "Updated Playground");
                       }
                   }}
@@ -724,11 +866,11 @@ const GameApp: React.FC = () => {
                       }
                   }}
                   onEditPoint={(p) => setActiveTask(p)}
-                  onPointClick={(p) => setActiveTask(p)}
+                  onPointClick={(p) => handlePointClick(p)}
                   onAddTask={async (type, playgroundId) => {
                       if (playgroundTemplateToEdit) {
-                          // Handle adding tasks to template logic if needed, simplistically handled by editor currently
-                      } else if (activeGame) {
+                          // Template logic handled by editor
+                      } else if (currentGameObj) {
                           // ...
                       }
                   }}
@@ -762,16 +904,16 @@ const GameApp: React.FC = () => {
                   isInstructor={mode === GameMode.INSTRUCTOR}
               />
           )}
-          {activeTaskActionPoint && activeGame && (
+          {activeTaskActionPoint && currentGameObj && (
               <TaskActionModal 
                   point={activeTaskActionPoint}
-                  allPoints={activeGame.points}
-                  playgrounds={activeGame.playgrounds}
+                  allPoints={currentGameObj.points}
+                  playgrounds={currentGameObj.playgrounds}
                   onClose={() => setActiveTaskActionPoint(null)}
                   onSave={(updatedPoint) => {
-                      if (activeGame) {
-                          const updatedPoints = activeGame.points.map(p => p.id === updatedPoint.id ? updatedPoint : p);
-                          updateActiveGame({ ...activeGame, points: updatedPoints }, "Updated Task Logic");
+                      if (currentGameObj) {
+                          const updatedPoints = currentGameObj.points.map(p => p.id === updatedPoint.id ? updatedPoint : p);
+                          updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Updated Task Logic");
                       }
                   }}
                   onStartDrawMode={() => {}}
@@ -796,6 +938,11 @@ const GameApp: React.FC = () => {
                 games={games}
                 activeGameId={activeGameId}
                 onSelectGame={setActiveGameId}
+                authUser={authUser}
+                onLogout={() => {
+                    authService.logout();
+                    setAuthUser(null);
+                }}
                 onAction={(action) => {
                     if (action === 'PLAY') {
                         if (activeGameId) {
@@ -851,13 +998,30 @@ const GameApp: React.FC = () => {
 
   // Active Game View
   return (
-    <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-900 text-white">
+    <div className={`fixed inset-0 w-full h-full overflow-hidden bg-slate-900 text-white ${mode === GameMode.SIMULATION ? 'border-4 border-orange-500 shadow-[inset_0_0_50px_rgba(249,115,22,0.5)]' : ''}`}>
+        
+        {/* SIMULATION BANNER */}
+        {mode === GameMode.SIMULATION && (
+            <div className="absolute top-0 left-0 right-0 h-12 bg-orange-600/90 backdrop-blur-md flex items-center justify-between px-6 z-[6000] shadow-xl border-b border-orange-400">
+                <div className="flex items-center gap-3">
+                    <PlayCircle className="w-6 h-6 text-white animate-pulse" />
+                    <span className="text-sm font-black uppercase tracking-widest text-white">SIMULATION MODE ACTIVE</span>
+                </div>
+                <button 
+                    onClick={handleStopSimulation}
+                    className="px-6 py-1.5 bg-white text-orange-600 font-black uppercase text-xs rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                >
+                    EXIT SIMULATION
+                </button>
+            </div>
+        )}
+
         <div className="absolute inset-0 z-0">
             <GameMap 
                 ref={mapRef}
-                points={activeGame?.points || []}
-                routes={activeGame?.routes || []}
-                dangerZones={activeGame?.dangerZones || []}
+                points={currentGameObj?.points || []}
+                routes={currentGameObj?.routes || []}
+                dangerZones={currentGameObj?.dangerZones || []}
                 logicLinks={logicLinks}
                 measurePath={measurePath}
                 mode={mode}
@@ -867,17 +1031,17 @@ const GameApp: React.FC = () => {
                 onMapClick={handleMapClick}
                 onDeletePoint={handleDeleteItem}
                 onPointMove={async (id, loc) => {
-                    if (!activeGame) return;
-                    const updatedPoints = activeGame.points.map(p => p.id === id ? { ...p, location: loc } : p);
-                    const updatedPlaygrounds = (activeGame.playgrounds || []).map(pg => pg.id === id ? { ...pg, location: loc } : pg);
-                    const updatedZones = (activeGame.dangerZones || []).map(z => z.id === id ? { ...z, location: loc } : z);
-                    await updateActiveGame({ ...activeGame, points: updatedPoints, playgrounds: updatedPlaygrounds, dangerZones: updatedZones }, "Moved Item");
+                    if (!currentGameObj) return;
+                    const updatedPoints = currentGameObj.points.map(p => p.id === id ? { ...p, location: loc } : p);
+                    const updatedPlaygrounds = (currentGameObj.playgrounds || []).map(pg => pg.id === id ? { ...pg, location: loc } : pg);
+                    const updatedZones = (currentGameObj.dangerZones || []).map(z => z.id === id ? { ...z, location: loc } : z);
+                    await updateActiveGame({ ...currentGameObj, points: updatedPoints, playgrounds: updatedPlaygrounds, dangerZones: updatedZones }, "Moved Item");
                 }}
                 accuracy={gpsAccuracy}
                 isRelocating={isRelocating}
                 showScores={showScores}
                 teams={mapTeams}
-                showUserLocation={activeGame?.showPlayerLocations ?? true}
+                showUserLocation={currentGameObj?.showPlayerLocations ?? true}
             />
         </div>
 
@@ -891,23 +1055,23 @@ const GameApp: React.FC = () => {
             onOpenTeams={() => setShowTeamsHub(true)}
             mapStyle={localMapStyle || 'osm'}
             onSetMapStyle={(s) => setLocalMapStyle(s)}
-            language={activeGame?.language || 'English'}
+            language={currentGameObj?.language || 'English'}
             onBackToHub={() => setShowLanding(true)}
-            activeGameName={activeGame?.name}
+            activeGameName={currentGameObj?.name}
             onOpenInstructorDashboard={() => setShowInstructorDashboard(true)}
             isMeasuring={isMeasuring}
             onToggleMeasure={handleToggleMeasure}
             measuredDistance={measuredDistance}
             measurePointsCount={measurePointsCount}
-            playgrounds={activeGame?.playgrounds}
+            playgrounds={currentGameObj?.playgrounds}
             onOpenPlayground={(id) => setViewingPlaygroundId(id)}
             onOpenTeamDashboard={() => setShowTeamDashboard(true)}
             onRelocateGame={handleRelocateGame}
             isRelocating={isRelocating}
-            timerConfig={activeGame?.timerConfig}
+            timerConfig={currentGameObj?.timerConfig}
             onFitBounds={(coords) => {
                 if (coords && coords.length > 0) mapRef.current?.fitBounds(coords);
-                else mapRef.current?.fitBounds(activeGame?.points || []);
+                else mapRef.current?.fitBounds(currentGameObj?.points || []);
             }}
             onLocateMe={handleLocateMe}
             onSearchLocation={(c) => mapRef.current?.jumpTo(c)}
@@ -921,14 +1085,14 @@ const GameApp: React.FC = () => {
             activeDangerZone={mode === GameMode.PLAY ? currentDangerZone : null}
             onEditGameSettings={() => { setGameToEdit(activeGame || null); setShowGameCreator(true); }}
             onOpenGameChooser={() => setShowGameChooser(true)}
-            routes={activeGame?.routes}
-            onAddRoute={(route) => activeGame && updateActiveGame({ ...activeGame, routes: [...(activeGame.routes || []), route] }, "Added Route")}
+            routes={currentGameObj?.routes}
+            onAddRoute={(route) => currentGameObj && updateActiveGame({ ...currentGameObj, routes: [...(currentGameObj.routes || []), route] }, "Added Route")}
             onToggleRoute={(id) => {
-                if (!activeGame) return;
-                const updated = (activeGame.routes || []).map(r => r.id === id ? { ...r, isVisible: !r.isVisible } : r);
-                updateActiveGame({ ...activeGame, routes: updated }, "Toggled Route");
+                if (!currentGameObj) return;
+                const updated = (currentGameObj.routes || []).map(r => r.id === id ? { ...r, isVisible: !r.isVisible } : r);
+                updateActiveGame({ ...currentGameObj, routes: updated }, "Toggled Route");
             }}
-            allowChatting={activeGame?.allowChatting ?? true}
+            allowChatting={currentGameObj?.allowChatting ?? true}
         />
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
@@ -990,6 +1154,7 @@ const GameApp: React.FC = () => {
                         setShowTaskMaster(true);
                     }
                 }}
+                onStartSimulation={() => activeGame && handleStartSimulation(activeGame)} // Added simulation trigger
             />
         )}
 

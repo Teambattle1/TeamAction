@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GamePoint, IconId, TaskType, PointActivationType, PointCompletionLogic } from '../types';
+import { GamePoint, IconId, TaskType, PointActivationType, PointCompletionLogic, TimelineItem } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { getCroppedImg } from '../utils/image';
 import Cropper from 'react-easy-crop';
@@ -14,7 +14,8 @@ import {
   Copy, KeyRound, ChevronDown, ChevronsUpDown, RotateCw, Type, 
   Palette, Bold, Italic, Underline, MonitorPlay, Speaker, MapPin, 
   Settings, Zap, MessageSquare, Clock, Globe, Lock, Check, Wand2, Hash,
-  Edit2, MousePointerClick, EyeOff, Eye, Maximize, Smartphone, Monitor, QrCode, Download, Map as MapIcon, Info
+  Edit2, MousePointerClick, EyeOff, Eye, Maximize, Smartphone, Monitor, QrCode, Download, Map as MapIcon, Info,
+  ListOrdered
 } from 'lucide-react';
 
 interface TaskEditorProps {
@@ -94,6 +95,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         correctAnswers: [],
         range: { min: 0, max: 100, step: 1, correctValue: 50, tolerance: 0 },
         placeholder: '',
+        timelineItems: [],
         ...point.task
     },
     feedback: {
@@ -133,6 +135,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pinIconInputRef = useRef<HTMLInputElement>(null);
+  const timelineImageInputRef = useRef<HTMLInputElement>(null); // For timeline item images
+  const [editingTimelineItemId, setEditingTimelineItemId] = useState<string | null>(null);
 
   // QR Code State
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
@@ -212,6 +216,139 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     onSave(editedPoint);
   };
 
+  const handleTimelineImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && editingTimelineItemId) {
+          setIsUploading(true);
+          const url = await uploadImage(file);
+          if (url) {
+              setEditedPoint(prev => ({
+                  ...prev,
+                  task: {
+                      ...prev.task,
+                      timelineItems: prev.task.timelineItems?.map(item => 
+                          item.id === editingTimelineItemId ? { ...item, imageUrl: url } : item
+                      )
+                  }
+              }));
+          }
+          setIsUploading(false);
+          setEditingTimelineItemId(null);
+      }
+  };
+
+  const renderTimelineConfig = () => {
+      const items = editedPoint.task.timelineItems || [];
+
+      const addTimelineItem = () => {
+          const newItem: TimelineItem = {
+              id: `ti-${Date.now()}`,
+              text: '',
+              description: '',
+              value: 0,
+              order: items.length
+          };
+          setEditedPoint(prev => ({
+              ...prev,
+              task: {
+                  ...prev.task,
+                  timelineItems: [...(prev.task.timelineItems || []), newItem]
+              }
+          }));
+      };
+
+      const updateTimelineItem = (id: string, updates: Partial<TimelineItem>) => {
+          setEditedPoint(prev => ({
+              ...prev,
+              task: {
+                  ...prev.task,
+                  timelineItems: prev.task.timelineItems?.map(item => 
+                      item.id === id ? { ...item, ...updates } : item
+                  )
+              }
+          }));
+      };
+
+      const removeTimelineItem = (id: string) => {
+          setEditedPoint(prev => ({
+              ...prev,
+              task: {
+                  ...prev.task,
+                  timelineItems: prev.task.timelineItems?.filter(item => item.id !== id)
+              }
+          }));
+      };
+
+      return (
+          <div className="space-y-4">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300">
+                  <p className="font-bold mb-1">HOW IT WORKS:</p>
+                  <p>Players must drag these items into a list sorted by the <strong>Sorting Value</strong> (Low to High). The "Value" is hidden until revealed. The "Description" is the text shown when revealed.</p>
+              </div>
+
+              <div className="space-y-3">
+                  {items.map((item, idx) => (
+                      <div key={item.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex gap-4 items-start shadow-sm">
+                          <div 
+                              className="w-16 h-16 bg-gray-100 dark:bg-gray-900 rounded-lg flex items-center justify-center cursor-pointer border border-gray-200 dark:border-gray-700 overflow-hidden relative group shrink-0"
+                              onClick={() => { setEditingTimelineItemId(item.id); timelineImageInputRef.current?.click(); }}
+                          >
+                              {item.imageUrl ? (
+                                  <img src={item.imageUrl} className="w-full h-full object-cover" />
+                              ) : (
+                                  <ImageIcon className="w-6 h-6 text-gray-400" />
+                              )}
+                              <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Upload className="w-4 h-4 text-white" />
+                              </div>
+                          </div>
+
+                          <div className="flex-1 space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                  <input 
+                                      type="text" 
+                                      placeholder="Title (e.g. Minced Beef)" 
+                                      value={item.text}
+                                      onChange={(e) => updateTimelineItem(item.id, { text: e.target.value })}
+                                      className="p-2 border rounded bg-gray-50 dark:bg-gray-900 dark:border-gray-600 text-sm font-bold"
+                                  />
+                                  <input 
+                                      type="number" 
+                                      placeholder="Sort Value (e.g. 20)" 
+                                      value={item.value}
+                                      onChange={(e) => updateTimelineItem(item.id, { value: parseFloat(e.target.value) })}
+                                      className="p-2 border rounded bg-gray-50 dark:bg-gray-900 dark:border-gray-600 text-sm font-mono"
+                                  />
+                              </div>
+                              <input 
+                                  type="text" 
+                                  placeholder="Reveal Text (e.g. Price rose by 20%...)" 
+                                  value={item.description}
+                                  onChange={(e) => updateTimelineItem(item.id, { description: e.target.value })}
+                                  className="w-full p-2 border rounded bg-gray-50 dark:bg-gray-900 dark:border-gray-600 text-xs"
+                              />
+                          </div>
+
+                          <button onClick={() => removeTimelineItem(item.id)} className="text-red-400 hover:text-red-500 p-1">
+                              <Trash2 className="w-4 h-4" />
+                          </button>
+                      </div>
+                  ))}
+              </div>
+
+              <button 
+                  type="button" 
+                  onClick={addTimelineItem}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-400 dark:hover:border-gray-500 transition-colors flex items-center justify-center gap-2 text-sm font-bold uppercase"
+              >
+                  <Plus className="w-4 h-4" /> ADD CHOICE
+              </button>
+              
+              <input ref={timelineImageInputRef} type="file" className="hidden" accept="image/*" onChange={handleTimelineImageUpload} />
+          </div>
+      );
+  };
+
   const renderTypeConfig = () => {
     // ... (unchanged logic for renderTypeConfig)
     const { type, options, answer } = editedPoint.task;
@@ -258,6 +395,10 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
             setEditedPoint({...editedPoint, task: { ...editedPoint.task, answer: opt }});
         }
     };
+
+    if (type === 'timeline') {
+        return renderTimelineConfig();
+    }
 
     if (type === 'text') {
         return (
@@ -420,6 +561,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                            <option value="slider">SLIDER</option>
                                            <option value="checkbox">CHECKBOXES</option>
                                            <option value="dropdown">DROPDOWN</option>
+                                           <option value="timeline">TIMELINE / ORDER</option>
                                        </select>
                                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                    </div>
