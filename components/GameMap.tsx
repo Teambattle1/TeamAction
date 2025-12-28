@@ -160,16 +160,24 @@ const MapController = ({ handleRef }: { handleRef: React.RefObject<any> }) => {
     useImperativeHandle(handleRef, () => ({
         fitBounds: (pts: GamePoint[] | Coordinate[]) => {
             let latLngs: L.LatLngExpression[] = [];
-            if (pts.length > 0 && 'location' in pts[0]) {
+            if (pts && pts.length > 0 && 'location' in pts[0]) {
                  const validPts = (pts as GamePoint[]).filter(p => isValidCoordinate(p.location));
                  latLngs = validPts.map(p => [p.location.lat, p.location.lng]);
-            } else {
+            } else if (pts && pts.length > 0) {
                  const validCoords = (pts as Coordinate[]).filter(c => isValidCoordinate(c));
                  latLngs = validCoords.map(c => [c.lat, c.lng]);
             }
-            if (latLngs.length === 0) return;
+            if (latLngs.length === 0) {
+                console.warn('[GameMap] fitBounds: No valid coordinates to fit');
+                return;
+            }
             const bounds = L.latLngBounds(latLngs);
-            if (bounds.isValid()) map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+            if (bounds.isValid()) {
+                console.log('[GameMap] Fitting bounds to', latLngs.length, 'points');
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+            } else {
+                console.warn('[GameMap] Invalid bounds calculated');
+            }
         },
         getBounds: () => {
             const b = map.getBounds();
