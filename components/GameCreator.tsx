@@ -127,7 +127,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
 
   // Client Info
   const [clientName, setClientName] = useState(baseGame?.client?.name || '');
-  const [playingDate, setPlayingDate] = useState(baseGame?.client?.playingDate || new Date().toISOString().split('T')[0]);
+  // Default to today's date when creating new game, or use existing date when editing
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const [playingDate, setPlayingDate] = useState(baseGame?.client?.playingDate || getTodayDate());
   const [clientLogo, setClientLogo] = useState(baseGame?.client?.logoUrl || '');
   const [isSearchingLogo, setIsSearchingLogo] = useState(false);
   
