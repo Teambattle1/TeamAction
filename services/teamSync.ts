@@ -26,6 +26,7 @@ type GlobalLocationCallback = (locations: { teamId: string, location: Coordinate
 class TeamSyncService {
   private channel: any = null;
   private globalChannel: any = null;
+  private votesDbChannel: any = null;
   
   private deviceId: string = '';
   private userName: string = 'Anonymous';
@@ -116,6 +117,9 @@ class TeamSyncService {
 
     // 2. Global Game Channel (For Messages from Instructor & Captain Locations)
     this.connectGlobal(gameId);
+
+    // 3. DB-backed votes (authoritative, survives refresh/reconnect)
+    this.connectVotesDb();
   }
 
   public connectGlobal(gameId: string) {
@@ -156,6 +160,10 @@ class TeamSyncService {
         supabase.removeChannel(this.globalChannel);
         this.globalChannel = null;
     }
+    if (this.votesDbChannel) {
+        supabase.removeChannel(this.votesDbChannel);
+        this.votesDbChannel = null;
+    }
     this.votes = {};
     this.members.clear();
     this.otherTeams.clear();
@@ -172,13 +180,18 @@ class TeamSyncService {
       timestamp: Date.now()
     };
 
+    // Update local state immediately for low-latency UI.
     this.handleIncomingVote(vote);
 
+    // Broadcast for ultra-fast peer updates.
     this.channel.send({
       type: 'broadcast',
       event: 'vote',
       payload: vote
     });
+
+    // Persist to DB for durability + authoritative ordering.
+    void this.persistVoteToDb(vote);
   }
 
   public sendChatMessage(gameId: string, message: string, targetTeamId: string | null = null, isUrgent: boolean = false) {
