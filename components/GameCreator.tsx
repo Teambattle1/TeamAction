@@ -33,6 +33,7 @@ const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: 
     // Use OSM tile but apply CSS filter for Winter look
     { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
     { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/12/2177/1258.png', icon: Mountain },
+    { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/12/2177/1258.png', className: 'saturate-115 brightness-108', icon: Snowflake },
     { id: 'google_custom', label: 'Google Custom', preview: '', icon: Settings },
     { id: 'none', label: 'No Map View', preview: '', icon: EyeOff },
 ];
