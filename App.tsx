@@ -734,15 +734,16 @@ const GameApp: React.FC = () => {
                       const targetGame = gameId ? games.find(g => g.id === gameId) : activeGame;
 
                       if (targetGame) {
-                          const newPoints = tasks.map(t => ({
+                          const mapCenter = mapRef.current?.getCenter();
+                          const newPoints = tasks.map((t, idx) => ({
                               ...t,
                               id: `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
-                              location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                              location: mapCenter || null,
                               radiusMeters: 30,
                               activationTypes: ['radius'],
                               isUnlocked: true,
                               isCompleted: false,
-                              order: targetGame.points.length
+                              order: targetGame.points.length + idx
                           } as GamePoint));
 
                           // Update the target game
