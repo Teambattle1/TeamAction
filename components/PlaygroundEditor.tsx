@@ -1299,7 +1299,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <div className="grid grid-cols-2 gap-2">
                                 {/* Add from Library Button */}
                                 <button
-                                    onClick={() => onOpenLibrary(activePlayground.id)}
+                                    onClick={() => {
+                                        setTaskMasterTab('LIBRARY');
+                                        setShowTaskMaster(true);
+                                    }}
                                     className="py-4 px-3 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-300 border border-blue-600/40 hover:border-blue-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all group flex-col"
                                     title="Add tasks from your library"
                                 >
@@ -1319,7 +1322,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                                 {/* Add Tasklist Button */}
                                 <button
-                                    onClick={() => onAddTask('MANUAL', activePlayground.id)}
+                                    onClick={() => {
+                                        setTaskMasterTab('LISTS');
+                                        setShowTaskMaster(true);
+                                    }}
                                     className="py-4 px-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 hover:text-indigo-300 border border-indigo-600/40 hover:border-indigo-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all group flex-col"
                                     title="Add a tasklist with multiple items"
                                 >
