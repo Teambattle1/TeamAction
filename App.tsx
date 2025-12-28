@@ -1167,7 +1167,7 @@ const GameApp: React.FC = () => {
             />
         </div>
 
-        <GameHUD 
+        <GameHUD
             accuracy={gpsAccuracy}
             mode={mode}
             toggleMode={() => {}}
@@ -1217,6 +1217,7 @@ const GameApp: React.FC = () => {
                 const updated = (activeGame.routes || []).map(r => r.id === id ? { ...r, isVisible: !r.isVisible } : r);
                 updateActiveGame({ ...activeGame, routes: updated });
             }}
+            locateFeedback={locateFeedback}
         />
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
