@@ -826,6 +826,10 @@ const GameApp: React.FC = () => {
                   }}
                   onClose={() => {
                       const wasEditingTemplate = !!playgroundTemplateToEdit;
+                      if (wasEditingTemplate && playgroundTemplateToEdit) {
+                          // Save the template to database
+                          db.savePlaygroundTemplate(playgroundTemplateToEdit);
+                      }
                       setPlaygroundTemplateToEdit(null);
                       if (wasEditingTemplate) {
                           setShowPlaygroundManager(true);
