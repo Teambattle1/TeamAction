@@ -229,27 +229,33 @@ const GameHUD: React.FC<GameHUDProps> = ({
                             <div className="flex gap-2 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-2xl shadow-xl p-2">
                                 <button
                                     onClick={() => onSetMode(GameMode.EDIT)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border flex items-center gap-2 whitespace-nowrap ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
                                     title="Editor View"
                                 >
                                     <MapIcon className="w-4 h-4" />
-                                    EDITOR
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
+                                        EDITOR
+                                    </div>
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.INSTRUCTOR)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border flex items-center gap-2 whitespace-nowrap ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
                                     title="Instructor View"
                                 >
                                     <Shield className="w-4 h-4" />
-                                    INSTRUCTOR
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
+                                        INSTRUCTOR
+                                    </div>
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.PLAY)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all border flex items-center gap-2 whitespace-nowrap ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
                                     title="Team View"
                                 >
                                     <Users className="w-4 h-4" />
-                                    TEAM
+                                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
+                                        TEAM
+                                    </div>
                                 </button>
                             </div>
                         )}
