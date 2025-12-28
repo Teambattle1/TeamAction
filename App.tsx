@@ -734,6 +734,7 @@ const GameApp: React.FC = () => {
                   taskLists={taskLists}
                   onUpdateTaskLists={setTaskLists}
                   games={games}
+                  activeGame={activeGame}
                   onDeleteTagGlobally={handleDeleteTagGlobally}
                   onRenameTagGlobally={handleRenameTagGlobally}
               />
