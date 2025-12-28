@@ -68,7 +68,8 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRet
 const fetchInChunks = async <T>(
     query: (offset: number, limit: number) => Promise<{ data: any[] | null; error: any }>,
     context: string,
-    chunkSize: number = CHUNK_SIZE
+    chunkSize: number = CHUNK_SIZE,
+    timeoutMs?: number
 ): Promise<T[]> => {
     const results: T[] = [];
     let offset = 0;
@@ -79,7 +80,8 @@ const fetchInChunks = async <T>(
             const { data, error } = await retryWithBackoff(
                 () => query(offset, chunkSize),
                 `${context}[offset=${offset}]`,
-                3 // Retry each chunk up to 3 times for better resilience
+                2, // Reduced retries for tag fetches with short timeout
+                timeoutMs
             );
 
             if (error) {
