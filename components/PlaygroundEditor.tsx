@@ -582,7 +582,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 ...game,
                 points: game.points.filter(p => p.id !== id)
             });
-            setIsOverDeleteZone(false);
             setSelectedTaskId(null);
         } else {
             // Flush any pending updates immediately on pointer up
@@ -598,6 +597,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         dragTaskRef.current = { id: null, offsetX: 0, offsetY: 0, startClientX: 0, startClientY: 0, moved: false };
         setDraggingTaskId(null);
+        setIsOverDeleteZone(false);
     };
 
     return (
