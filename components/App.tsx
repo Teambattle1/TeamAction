@@ -810,7 +810,44 @@ const GameApp: React.FC = () => {
                       setShowGameChooser(false);
                       setShowLanding(false);
                   }}
-                  onSelectGame={(id) => { setActiveGameId(id); setShowGameChooser(false); }}
+                  onSelectGame={async (id) => {
+                      setActiveGameId(id);
+                      setShowGameChooser(false);
+
+                      // Handle pending import
+                      if (pendingImport) {
+                          const selectedGame = games.find(g => g.id === id);
+                          if (selectedGame) {
+                              if (pendingImport.type === 'tasks') {
+                                  const newPoints = pendingImport.data.map((t: any) => ({
+                                      ...t,
+                                      id: `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                                      location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                                      radiusMeters: 30,
+                                      activationTypes: ['radius'],
+                                      isUnlocked: true,
+                                      isCompleted: false,
+                                      order: selectedGame.points.length
+                                  } as GamePoint));
+                                  await updateActiveGame({ ...selectedGame, points: [...selectedGame.points, ...newPoints] }, `Imported ${pendingImport.data.length} Tasks`);
+                              } else if (pendingImport.type === 'list') {
+                                  const list = pendingImport.data;
+                                  const newPoints = list.tasks.map((t: any, idx: number) => ({
+                                      ...t,
+                                      id: `p-${Date.now()}-${idx}-${Math.random().toString(36).substr(2,9)}`,
+                                      location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                                      radiusMeters: 30,
+                                      activationTypes: ['radius'],
+                                      isUnlocked: true,
+                                      isCompleted: false,
+                                      order: selectedGame.points.length + idx
+                                  } as GamePoint));
+                                  await updateActiveGame({ ...selectedGame, points: [...selectedGame.points, ...newPoints] }, `Imported TaskList "${list.name}" (${list.tasks.length} Tasks)`);
+                              }
+                              setPendingImport(null);
+                          }
+                      }
+                  }}
                   onDeleteGame={handleDeleteGame}
                   onClose={() => setShowGameChooser(false)}
                   onEditGame={(id) => { 
