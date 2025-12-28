@@ -13,6 +13,7 @@ import { generateAiImage } from '../services/ai';
 import * as db from '../services/db';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
+import TaskMaster from './TaskMaster';
 
 interface PlaygroundEditorProps {
   game: Game;
