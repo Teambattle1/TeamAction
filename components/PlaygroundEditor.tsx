@@ -1548,24 +1548,46 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                     CANCEL
                                                 </button>
                                             </div>
-                                            {bulkIconSourceId && (
-                                                <div className="p-2 bg-slate-900 rounded border border-orange-500/30 text-[9px] text-orange-300 font-bold uppercase">
-                                                    {bulkIconTargets.size} target(s) selected
-                                                </div>
-                                            )}
-                                            {bulkIconTargets.size > 0 && (
+                                            <div className="space-y-2">
+                                                {!bulkIconSourceId && (
+                                                    <div className="p-2 bg-blue-900/30 rounded border border-blue-500/50 text-[9px] text-blue-300 font-bold uppercase">
+                                                        ① Click a task to select as source
+                                                    </div>
+                                                )}
+                                                {bulkIconSourceId && bulkIconTargets.size === 0 && (
+                                                    <div className="p-2 bg-orange-900/30 rounded border border-orange-500/50 text-[9px] text-orange-300 font-bold uppercase">
+                                                        ② Select target task(s) below
+                                                    </div>
+                                                )}
+                                                {bulkIconSourceId && bulkIconTargets.size > 0 && (
+                                                    <div className="p-2 bg-orange-900/30 rounded border border-orange-500/30 text-[9px] text-orange-300 font-bold uppercase">
+                                                        {bulkIconTargets.size} target(s) selected
+                                                    </div>
+                                                )}
+                                                {bulkIconTargets.size > 0 && (
+                                                    <button
+                                                        onClick={applyBulkIcon}
+                                                        className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors shadow-lg"
+                                                    >
+                                                        ✓ APPLY ICON TO {bulkIconTargets.size}
+                                                    </button>
+                                                )}
                                                 <button
-                                                    onClick={applyBulkIcon}
-                                                    className="w-full py-2 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors"
+                                                    onClick={() => {
+                                                        setBulkIconMode(false);
+                                                        setBulkIconSourceId(null);
+                                                        setBulkIconTargets(new Set());
+                                                    }}
+                                                    className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-[9px] font-bold uppercase rounded transition-colors"
                                                 >
-                                                    APPLY ICON TO {bulkIconTargets.size}
+                                                    Cancel
                                                 </button>
-                                            )}
+                                            </div>
                                         </>
                                     ) : (
                                         <button
                                             onClick={() => setBulkIconMode(true)}
-                                            className="w-full py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-[10px] font-bold uppercase rounded transition-colors flex items-center justify-center gap-2"
+                                            className="w-full py-2 bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 text-slate-300 hover:text-white text-[10px] font-bold uppercase rounded transition-colors flex items-center justify-center gap-2"
                                         >
                                             <ImageIcon className="w-3 h-3" /> COPY ICON TO MULTIPLE
                                         </button>
