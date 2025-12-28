@@ -385,7 +385,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
             </div>
 
             {/* Toolbox & Measure ... */}
-            {mode === GameMode.EDIT && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
                 <div 
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: toolboxPos.x, top: toolboxPos.y }}
