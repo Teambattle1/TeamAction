@@ -55,7 +55,7 @@ const fetchInChunks = async <T>(
             const { data, error } = await retryWithBackoff(
                 () => query(offset, chunkSize),
                 `${context}[offset=${offset}]`,
-                2 // Fewer retries per chunk
+                3 // Retry each chunk up to 3 times for better resilience
             );
 
             if (error) throw error;
