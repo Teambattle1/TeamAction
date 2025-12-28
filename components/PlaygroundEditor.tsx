@@ -981,7 +981,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             {showActionModal && selectedTask && (
                 <TaskActionModal
                     point={selectedTask}
-                    allPoints={playgroundPoints}
+                    allPoints={uniquePlaygroundPoints}
                     playgrounds={game.playgrounds}
                     onClose={() => setShowActionModal(false)}
                     onSave={(updatedPoint) => {
