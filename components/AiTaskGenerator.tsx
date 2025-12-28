@@ -540,7 +540,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                                 <label className="text-[9px] font-bold text-slate-500 uppercase mb-1 block flex items-center gap-1"><Palette className="w-3 h-3" /> AREA COLOR</label>
                                 <div className="flex flex-wrap gap-1.5">
                                     {BATCH_COLORS.map((c) => (
-                                        <button 
+                                        <button
                                             key={c.name}
                                             onClick={() => setBatchColor(c.value)}
                                             className={`w-5 h-5 rounded-full border-2 transition-all ${batchColor === c.value ? 'border-white scale-110 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'}`}
@@ -550,7 +550,78 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                                     ))}
                                 </div>
                             </div>
+
+                            <div className="mt-4 pt-4 border-t border-slate-600">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase mb-2 block flex items-center gap-1"><Music className="w-3 h-3" /> OPENING SOUND</label>
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={handleGenerateSound}
+                                        disabled={!topic.trim() || isGeneratingSound}
+                                        className={`w-full py-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${
+                                            isGeneratingSound
+                                                ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
+                                                : batchAudioUrl
+                                                ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-600/40 hover:border-indigo-500'
+                                                : 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-600/40 hover:border-indigo-500'
+                                        }`}
+                                        type="button"
+                                    >
+                                        {isGeneratingSound ? (
+                                            <>
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                GENERATING...
+                                            </>
+                                        ) : batchAudioUrl ? (
+                                            <>
+                                                <Check className="w-3 h-3" />
+                                                AUDIO READY
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Music className="w-3 h-3" />
+                                                GENERATE SOUND
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {batchAudioUrl && (
+                                        <div className="flex items-center gap-2 bg-slate-900/50 p-2 rounded-lg border border-indigo-500/30">
+                                            <button
+                                                onClick={handlePlaySound}
+                                                className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors flex-shrink-0"
+                                                type="button"
+                                                title={isPlayingSound ? 'Pause' : 'Play'}
+                                            >
+                                                {isPlayingSound ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                                            </button>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[8px] font-bold text-indigo-400 uppercase truncate">2.5 second vignette</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setBatchAudioUrl(null);
+                                                    if (audioRef.current) audioRef.current.src = '';
+                                                    setIsPlayingSound(false);
+                                                }}
+                                                className="p-1 text-slate-500 hover:text-red-500 transition-colors flex-shrink-0"
+                                                type="button"
+                                                title="Remove sound"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Hidden audio element for preview */}
+                        <audio
+                            ref={audioRef}
+                            src={batchAudioUrl || ''}
+                            onEnded={() => setIsPlayingSound(false)}
+                            className="hidden"
+                        />
 
                         <button 
                             onClick={handleGenerate}
