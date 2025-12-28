@@ -447,9 +447,36 @@ const GameApp: React.FC = () => {
   };
 
   const handleLocateMe = () => {
-      if (userLocation && mapRef.current) {
+      if (!mapRef.current) return;
+
+      setLocateAttempt(true);
+      setLocateFeedback(null);
+
+      // If we have a location, jump to it
+      if (userLocation && Number.isFinite(userLocation.lat) && Number.isFinite(userLocation.lng)) {
           mapRef.current.jumpTo(userLocation);
+          setLocateFeedback('Located!');
+          setTimeout(() => setLocateFeedback(null), 2000);
+          return;
       }
+
+      // Handle various error states
+      if (locationError) {
+          setLocateFeedback(`GPS Error: ${locationError}`);
+          return;
+      }
+
+      // Still waiting for location
+      setLocateFeedback('Getting your location...');
+
+      // Retry after 3 seconds if location still not available
+      const timeout = setTimeout(() => {
+          if (!userLocation) {
+              setLocateFeedback('Location unavailable. Check GPS permissions and try again.');
+          }
+      }, 3000);
+
+      return () => clearTimeout(timeout);
   };
 
   const handleAddDangerZone = () => {
