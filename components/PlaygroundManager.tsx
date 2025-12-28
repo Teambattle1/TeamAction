@@ -29,7 +29,7 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
       e.stopPropagation();
       e.preventDefault();
       
-      if (confirm('Are you sure you want to delete this global playground template?')) {
+      if (confirm('Are you sure you want to delete this global playzone template?')) {
           await db.deletePlaygroundTemplate(id);
           setTemplates(prev => prev.filter(t => t.id !== id));
       }
