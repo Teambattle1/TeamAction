@@ -104,11 +104,12 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
       )}
 
       {onFitBounds && (
-        <ActionButton 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFitBounds(); }} 
-            icon={Maximize} 
-            label="FIT" 
-            colorClass="" 
+        <ActionButton
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onFitBounds(); }}
+            icon={Maximize}
+            label="FIT"
+            colorClass=""
+            title="Fit map to all items"
         />
       )}
 
