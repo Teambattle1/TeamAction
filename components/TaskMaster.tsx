@@ -247,6 +247,117 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         return count;
     };
 
+    const handleSort = (column: 'title' | 'question' | 'language' | 'used' | 'tags') => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
+
+    const getFilteredAndSortedLibrary = () => {
+        let filtered = library.filter(task => {
+            // Apply search query
+            if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase()) && !task.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))) {
+                return false;
+            }
+
+            // Apply column filters
+            if (columnFilters['title'] && !task.title.toLowerCase().includes(columnFilters['title'].toLowerCase())) {
+                return false;
+            }
+            if (columnFilters['question'] && !task.task.question.toLowerCase().includes(columnFilters['question'].toLowerCase())) {
+                return false;
+            }
+            if (columnFilters['language'] && task.settings?.language?.toLowerCase() !== columnFilters['language'].toLowerCase()) {
+                return false;
+            }
+            if (columnFilters['tags'] && !task.tags.some(tag => tag.toLowerCase().includes(columnFilters['tags'].toLowerCase()))) {
+                return false;
+            }
+
+            return true;
+        });
+
+        // Apply sorting
+        return filtered.sort((a, b) => {
+            let aVal: any = '';
+            let bVal: any = '';
+
+            switch (sortColumn) {
+                case 'title':
+                    aVal = a.title.toLowerCase();
+                    bVal = b.title.toLowerCase();
+                    break;
+                case 'question':
+                    aVal = a.task.question.toLowerCase();
+                    bVal = b.task.question.toLowerCase();
+                    break;
+                case 'language':
+                    aVal = a.settings?.language || '';
+                    bVal = b.settings?.language || '';
+                    break;
+                case 'used':
+                    aVal = countTaskUsage(a.id);
+                    bVal = countTaskUsage(b.id);
+                    break;
+                case 'tags':
+                    aVal = a.tags.join(',').toLowerCase();
+                    bVal = b.tags.join(',').toLowerCase();
+                    break;
+            }
+
+            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    };
+
+    const handleBulkDelete = async () => {
+        // Delete selected templates from library
+        const updatedLibrary = library.filter(t => !selectedTemplateIds.includes(t.id));
+        setLibrary(updatedLibrary);
+
+        // Delete from database
+        for (const id of selectedTemplateIds) {
+            await db.deleteTemplate(id);
+        }
+
+        setSelectedTemplateIds([]);
+        setShowBulkDeleteConfirm(false);
+        setBulkSelectionMode(false);
+    };
+
+    const handleBulkAddToGame = async (game: Game) => {
+        const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+
+        // Create GamePoints from selected tasks
+        const newPoints = selectedTasks.map((task, i) => templateToGamePoint({
+            ...task,
+            id: `${task.id}-${Date.now()}-${i}`
+        }));
+
+        const updatedGame = {
+            ...game,
+            points: [...game.points, ...newPoints]
+        };
+
+        onImportTasks(selectedTasks); // This will trigger parent to add to the game
+        setSelectedTemplateIds([]);
+        setBulkSelectionMode(false);
+        setShowGameSelector(false);
+    };
+
+    const handleAddSingleTaskToGame = async (game: Game) => {
+        if (!singleTaskGameSelector) return;
+        const task = library.find(t => t.id === singleTaskGameSelector.taskId);
+        if (task) {
+            onImportTasks([task]);
+        }
+        setSingleTaskGameSelector(null);
+    };
+
     const renderLibraryGrid = (selectionMode = false) => {
         const filtered = library.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
         
