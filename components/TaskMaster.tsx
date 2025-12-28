@@ -117,6 +117,53 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setSelectedTemplateIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
     };
 
+    // Convert TaskTemplate to GamePoint for editing
+    const templateToGamePoint = (template: TaskTemplate): GamePoint => {
+        return {
+            id: template.id,
+            title: template.title,
+            task: template.task,
+            location: { lat: 0, lng: 0 },
+            radiusMeters: 50,
+            activationTypes: ['click'],
+            iconId: template.iconId,
+            points: template.points || 10,
+            isUnlocked: true,
+            isCompleted: false,
+            order: 0,
+            tags: template.tags,
+            feedback: template.feedback,
+            settings: template.settings,
+            logic: template.logic
+        };
+    };
+
+    // Convert GamePoint back to TaskTemplate
+    const gamePointToTemplate = (point: GamePoint): TaskTemplate => {
+        return {
+            id: point.id,
+            title: point.title,
+            task: point.task,
+            tags: point.tags || [],
+            iconId: point.iconId,
+            createdAt: Date.now(),
+            points: point.points,
+            intro: point.shortIntro,
+            feedback: point.feedback,
+            settings: point.settings,
+            logic: point.logic
+        };
+    };
+
+    // Handle saving edited template
+    const handleSaveTemplate = async (editedPoint: GamePoint) => {
+        const updatedTemplate = gamePointToTemplate(editedPoint);
+        await db.saveTemplate(updatedTemplate);
+        const updatedLibrary = library.map(t => t.id === updatedTemplate.id ? updatedTemplate : t);
+        setLibrary(updatedLibrary);
+        setEditingTemplate(null);
+    };
+
     const getLanguagesFromTasks = (tasks: TaskTemplate[]) => {
         const languages = new Set<string>();
         tasks.forEach(task => {
