@@ -881,21 +881,27 @@ const GameApp: React.FC = () => {
                   }}
                   onAddTask={async (type, playgroundId) => {
                       if (!activeGame) return;
-                      const center = mapRef.current?.getCenter() || { lat: 0, lng: 0 };
-                      const newPoint: GamePoint = {
-                          id: `p-${Date.now()}`,
-                          title: 'New Task',
-                          location: playgroundId ? { lat: 0, lng: 0 } : center,
-                          playgroundId: playgroundId,
-                          iconId: 'default',
-                          points: 100,
-                          radiusMeters: 30,
-                          activationTypes: ['radius'],
-                          isUnlocked: true,
-                          isCompleted: false,
-                          color: '#FF6B6B'
-                      };
-                      await updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
+
+                      if (type === 'MANUAL') {
+                          const center = mapRef.current?.getCenter() || { lat: 0, lng: 0 };
+                          const newPoint: GamePoint = {
+                              id: `p-${Date.now()}`,
+                              title: 'New Task',
+                              location: playgroundId ? { lat: 0, lng: 0 } : center,
+                              playgroundId: playgroundId,
+                              iconId: 'default',
+                              points: 100,
+                              radiusMeters: 30,
+                              activationTypes: ['radius'],
+                              isUnlocked: true,
+                              isCompleted: false,
+                              order: activeGame.points.length,
+                              task: { type: 'text', question: 'New Task Question' }
+                          };
+                          await updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
+                      } else if (type === 'LIBRARY' || type === 'AI') {
+                          setShowTaskMaster(true);
+                      }
                   }}
                   onOpenLibrary={() => setShowTaskMaster(true)}
                   showScores={showScores}
