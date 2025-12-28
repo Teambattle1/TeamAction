@@ -377,7 +377,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-10 pointer-events-none">
                     <div className="flex items-center gap-4 pointer-events-auto">
                         <h1 className="text-xl font-black text-white uppercase tracking-widest drop-shadow-md">
-                            {isTemplateMode ? 'TEMPLATE EDITOR' : 'ZONE EDITOR'}
+                            PLAYZONE EDITOR
                         </h1>
                         <div className="bg-orange-600 text-white px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2">
                             <span className="text-[10px] font-bold opacity-70">01</span>
