@@ -87,6 +87,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const activePlayground = game.playgrounds?.find(p => p.id === activePlaygroundId) || game.playgrounds?.[0];
     const playgroundPoints = game.points.filter(p => p.playgroundId === activePlayground?.id);
 
+    // Deduplicate to prevent "same key" errors
+    const uniquePlaygroundPoints = Array.from(new Map(playgroundPoints.map(p => [p.id, p])).values());
+
     // Handlers
     const updatePlayground = (updates: Partial<Playground>) => {
         if (!activePlayground) return;
