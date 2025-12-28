@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { Game, TimerConfig, TimerMode, MapStyleId, Language, DesignConfig, GameTaskConfiguration, MapConfiguration } from '../types';
 import { 
     X, Gamepad2, Calendar, Building2, Upload, Search, Loader2, Clock, Hourglass, 
@@ -85,7 +86,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
         className="p-3 outline-none text-sm text-slate-300 flex-1 overflow-y-auto"
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
         data-placeholder={placeholder}
       />
     </div>
