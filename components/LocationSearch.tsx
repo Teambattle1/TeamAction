@@ -50,11 +50,27 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     setIsSearching(true);
     setShowResults(true);
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`, {
+        headers: {
+          'User-Agent': 'TeamBattle-App/1.0 (+https://teambattle.io)'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Geocoding service error: ${response.status}`);
+      }
+
       const data = await response.json();
-      setResults(data);
+      // Validate that results are an array
+      if (Array.isArray(data)) {
+        setResults(data);
+      } else {
+        console.warn('Unexpected geocoding response format:', data);
+        setResults([]);
+      }
     } catch (err) {
-      console.error("Geocoding error", err);
+      console.error("Geocoding error:", err);
+      setResults([]);
     } finally {
       setIsSearching(false);
     }
