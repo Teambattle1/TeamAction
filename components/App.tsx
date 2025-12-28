@@ -874,6 +874,10 @@ const GameApp: React.FC = () => {
                           } as GamePoint));
                           await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported ${tasks.length} Tasks`);
                           setShowTaskMaster(false);
+                      } else {
+                          setPendingImport({ type: 'tasks', data: tasks });
+                          setShowGameChooser(true);
+                          setShowTaskMaster(false);
                       }
                   }}
                   onImportTaskList={async (list) => {
@@ -889,6 +893,10 @@ const GameApp: React.FC = () => {
                               order: currentGameObj.points.length + idx
                           } as GamePoint));
                           await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported TaskList "${list.name}" (${list.tasks.length} Tasks)`);
+                          setShowTaskMaster(false);
+                      } else {
+                          setPendingImport({ type: 'list', data: list });
+                          setShowGameChooser(true);
                           setShowTaskMaster(false);
                       }
                   }}
