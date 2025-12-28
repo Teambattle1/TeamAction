@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TaskList, TaskTemplate, Game } from '../types';
+import { TaskList, TaskTemplate, Game, GamePoint, Coordinate } from '../types';
 import * as db from '../services/db';
 import { uploadImage } from '../services/storage'; // IMPORTED
-import { 
-    X, Plus, Search, Layers, Library, Edit2, Trash2, ArrowLeft, Save, 
+import {
+    X, Plus, Search, Layers, Library, Edit2, Trash2, ArrowLeft, Save,
     ImageIcon, Upload, Filter, Tag, LayoutList, RefreshCw, Check
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import AiTaskGenerator from './AiTaskGenerator';
 import LoquizImporter from './LoquizImporter';
 import AccountTags from './AccountTags';
-import Dashboard from './Dashboard'; 
+import Dashboard from './Dashboard';
+import TaskEditor from './TaskEditor'; 
 
 interface TaskMasterProps {
     onClose: () => void;
