@@ -242,8 +242,8 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, onClick, onMo
     const isUnlocked = point.isUnlocked || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
     const isCompleted = point.isCompleted;
     
-    // Draggable in Edit & Instructor Mode
-    const draggable = mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
+    // Draggable in Edit & Instructor Mode (only when parent provides onMove handler)
+    const draggable = (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !!onMove;
     
     const eventHandlers = React.useMemo(
         () => ({
