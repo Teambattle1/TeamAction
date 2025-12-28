@@ -465,10 +465,38 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
           </div>
       ) : (
           <>
+            {/* PLAYGROUND SELECTION TILES */}
+            {activeGame?.playgrounds && activeGame.playgrounds.length > 0 && onOpenPlaygroundEditor && (
+                <div className="px-4 py-3 bg-white dark:bg-gray-850 border-b border-gray-100 dark:border-gray-800">
+                    <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">PLAYZONES</div>
+                    <div className="grid grid-cols-2 gap-2">
+                        {activeGame.playgrounds.map((playground) => {
+                            const Icon = ICON_COMPONENTS[playground.iconId];
+                            const playgroundPoints = allPoints.filter(p => p.playgroundId === playground.id);
+                            return (
+                                <button
+                                    key={playground.id}
+                                    onClick={() => onOpenPlaygroundEditor && onOpenPlaygroundEditor(playground.id)}
+                                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-md transition-all active:scale-[0.98] text-left group"
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                                            <Icon className="w-4 h-4" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-xs font-bold text-gray-800 dark:text-gray-100 mb-1 truncate">{playground.title}</h3>
+                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{playgroundPoints.length} task{playgroundPoints.length !== 1 ? 's' : ''}</p>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
             <div className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex gap-2">
                 {onOpenPlaygroundEditor && (
-                    <button onClick={onOpenPlaygroundEditor} className="flex-1 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-bold rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide border border-orange-200 dark:border-orange-800">
-                        <LayoutGrid className="w-3 h-3" /> ZONES
+                    <button onClick={() => onOpenPlaygroundEditor && onOpenPlaygroundEditor()} className="flex-1 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 font-bold rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide border border-orange-200 dark:border-orange-800">
+                        <LayoutGrid className="w-3 h-3" /> ALL ZONES
                     </button>
                 )}
                 {onStartSimulation && !isGameTemplateMode && (
