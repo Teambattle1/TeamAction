@@ -381,10 +381,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             setIsSaving(true);
                             setSaveStatus('saving');
                             try {
+                                // Always update the game state first
+                                await Promise.resolve(onUpdateGame(game));
+                                // Then save to database if in template mode
                                 if (isTemplateMode && onSaveTemplate) {
                                     await Promise.resolve(onSaveTemplate(game.name));
-                                } else {
-                                    await Promise.resolve(onUpdateGame(game));
                                 }
                                 setSaveStatus('success');
                                 setTimeout(() => {
