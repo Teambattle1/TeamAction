@@ -159,7 +159,7 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
                     tools: [{ googleSearch: {} }],
                 }
             }));
-            
+
             const text = response.text || '';
             const domainMatch = text.match(/([a-z0-9][a-z0-9-]{0,61}[a-z0-9]\.)+[a-z]{2,}/i);
             if (domainMatch) {
@@ -183,4 +183,74 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
 
     // 4. Fallback to Google Favicon (Best effort)
     return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+};
+
+// Generate a mood-based audio vignette using Web Audio API
+export const generateMoodAudio = async (topic: string): Promise<string | null> => {
+    try {
+        // Use Gemini to get a brief description of the mood/style
+        const key = getApiKey();
+        if (!key) throw new Error("API key missing");
+
+        const ai = new GoogleGenAI({ apiKey: key });
+        const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `Describe the musical/audio mood for "${topic}" in ONE line. Be specific: instrument (e.g., piano), tempo (e.g., slow/fast), emotional tone (e.g., triumphant, calm, mysterious). Example: "Slow classical piano, calm and peaceful" or "Fast violins, energetic and exciting".`,
+        }));
+
+        const moodDescription = response.text || '';
+
+        // Create audio using Web Audio API
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const duration = 2.5; // 2.5 seconds
+        const sampleRate = audioContext.sampleRate;
+        const samples = duration * sampleRate;
+
+        const audioBuffer = audioContext.createBuffer(1, samples, sampleRate);
+        const data = audioBuffer.getChannelData(0);
+
+        // Generate simple procedural audio based on mood keywords
+        const isCalm = moodDescription.toLowerCase().includes('calm') ||
+                      moodDescription.toLowerCase().includes('slow') ||
+                      moodDescription.toLowerCase().includes('peaceful');
+        const isFast = moodDescription.toLowerCase().includes('fast') ||
+                      moodDescription.toLowerCase().includes('energetic') ||
+                      moodDescription.toLowerCase().includes('exciting');
+        const isClassical = moodDescription.toLowerCase().includes('classical') ||
+                           moodDescription.toLowerCase().includes('piano') ||
+                           moodDescription.toLowerCase().includes('violin');
+
+        // Base frequency and tempo
+        const baseFreq = isClassical ? 261.63 : 440; // C4 or A4
+        const tempo = isFast ? 0.2 : (isCalm ? 0.05 : 0.1);
+
+        // Generate simple melody
+        for (let i = 0; i < samples; i++) {
+            const t = i / sampleRate;
+
+            // Main tone with envelope
+            const envelope = Math.exp(-t * (isCalm ? 0.5 : 1.5));
+
+            // Simple melody: oscillate between base frequency and harmonies
+            const harmonyFactor = Math.sin(t * tempo * Math.PI) * 0.5 + 0.5;
+            const freq = baseFreq + (harmonyFactor * 200);
+
+            const wave = Math.sin(2 * Math.PI * freq * t) * envelope;
+
+            // Add slight chorus/richness with overtones
+            const harmonic = Math.sin(2 * Math.PI * (freq * 1.5) * t) * envelope * 0.3;
+
+            data[i] = (wave + harmonic) * 0.3; // Keep volume reasonable
+        }
+
+        // Create blob and object URL
+        const audioBlob = new Blob([audioBuffer.getChannelData(0)], { type: 'audio/wav' });
+        const url = URL.createObjectURL(audioBlob);
+
+        return url;
+    } catch (error) {
+        console.warn("Failed to generate mood audio:", error);
+        // Return a placeholder or null
+        return null;
+    }
 };
