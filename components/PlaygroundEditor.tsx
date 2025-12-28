@@ -68,6 +68,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [editorOrientation, setEditorOrientation] = useState<'portrait' | 'landscape'>('landscape');
     const [showAiIconPrompt, setShowAiIconPrompt] = useState(false);
     const [aiIconPromptValue, setAiIconPromptValue] = useState('');
+    const [isMarkMode, setIsMarkMode] = useState(false);
+    const [markedTaskIds, setMarkedTaskIds] = useState<Set<string>>(new Set());
     
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
