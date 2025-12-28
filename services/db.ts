@@ -1,4 +1,3 @@
-
 import { supabase } from '../lib/supabase';
 import { Game, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage } from '../types';
 import { DEMO_TASKS, DEMO_LISTS, getDemoGames } from '../utils/demoContent';
@@ -18,7 +17,7 @@ export const fetchGames = async (): Promise<Game[]> => {
         const { data, error } = await supabase.from('games').select('*');
         if (error) throw error;
         if (!data) return [];
-        return data.map((row: any) => ({ ...row.data, id: row.id }));
+        return data.map((row: any) => ({ ...row.data, id: row.id, dbUpdatedAt: row.updated_at }));
     } catch (e) {
         logError('fetchGames', e);
         return []; // Return empty for now, or offline fallback if preferred
@@ -27,13 +26,47 @@ export const fetchGames = async (): Promise<Game[]> => {
 
 export const saveGame = async (game: Game) => {
     try {
-        const { error } = await supabase.from('games').upsert({ 
-            id: game.id, 
+        const { error } = await supabase.from('games').upsert({
+            id: game.id,
             data: game,
             updated_at: new Date().toISOString()
         });
         if (error) throw error;
     } catch (e) { logError('saveGame', e); }
+};
+
+export const fetchGame = async (id: string): Promise<Game | null> => {
+    try {
+        const { data, error } = await supabase.from('games').select('*').eq('id', id).single();
+        if (error) throw error;
+        if (!data) return null;
+        return { ...data.data, id: data.id, dbUpdatedAt: data.updated_at };
+    } catch (e) {
+        logError('fetchGame', e);
+        return null;
+    }
+};
+
+export const updateGameItemLocation = async (gameId: string, itemId: string, location: any): Promise<Game | null> => {
+    try {
+        const game = await fetchGame(gameId);
+        if (!game) return null;
+
+        const updatedAt = new Date().toISOString();
+        const updatedGame: Game = {
+            ...game,
+            dbUpdatedAt: updatedAt,
+            points: game.points.map(p => p.id === itemId ? { ...p, location } : p),
+            playgrounds: (game.playgrounds || []).map(pg => pg.id === itemId ? { ...pg, location } : pg),
+            dangerZones: (game.dangerZones || []).map(z => z.id === itemId ? { ...z, location } : z)
+        };
+
+        await saveGame(updatedGame);
+        return updatedGame;
+    } catch (e) {
+        logError('updateGameItemLocation', e);
+        return null;
+    }
 };
 
 export const deleteGame = async (id: string) => {

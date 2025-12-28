@@ -1,4 +1,3 @@
-
 export interface Coordinate {
   lat: number;
   lng: number;
@@ -381,6 +380,9 @@ export interface Game {
   createdBy?: string;
   lastModifiedBy?: string;
   changeLog?: GameChangeLogEntry[];
+
+  // Client-side mirror of DB updated_at (used for multi-user syncing)
+  dbUpdatedAt?: string;
 }
 
 export interface GameState {
