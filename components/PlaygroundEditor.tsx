@@ -743,7 +743,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             e.stopPropagation();
                                             setShowTaskScores(!showTaskScores);
                                         }}
-                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
                                             showTaskScores
                                                 ? 'bg-orange-600 text-white shadow-lg'
                                                 : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
@@ -762,7 +762,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             e.stopPropagation();
                                             setShowTaskOrder(!showTaskOrder);
                                         }}
-                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
                                             showTaskOrder
                                                 ? 'bg-orange-600 text-white shadow-lg'
                                                 : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
@@ -781,7 +781,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             e.stopPropagation();
                                             setShowTaskActions(!showTaskActions);
                                         }}
-                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
                                             showTaskActions
                                                 ? 'bg-orange-600 text-white shadow-lg'
                                                 : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
@@ -789,7 +789,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         title="Show/Hide Task Actions"
                                         type="button"
                                     >
-                                        <Zap className="w-3 h-3" />
+                                        <Zap className="w-4 h-4" />
                                     </button>
                                     <span className={`text-[8px] font-black uppercase tracking-widest ${showTaskActions ? 'text-orange-300' : 'text-slate-500'}`}>ACTIONS</span>
                                 </div>
