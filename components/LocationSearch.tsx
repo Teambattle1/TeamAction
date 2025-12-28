@@ -61,9 +61,17 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   };
 
   const selectResult = (res: any) => {
-    onSelectLocation({ lat: parseFloat(res.lat), lng: parseFloat(res.lon) });
-    setShowResults(false);
-    setQuery(res.display_name);
+    const lat = parseFloat(res.lat);
+    const lng = parseFloat(res.lon);
+
+    // Validate coordinates before using them
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      onSelectLocation({ lat, lng });
+      setShowResults(false);
+      setQuery(res.display_name);
+    } else {
+      console.error('Invalid coordinates from geocoding result:', res);
+    }
   };
 
   return (
