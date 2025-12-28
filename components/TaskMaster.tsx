@@ -448,10 +448,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                             {!selectionMode && (
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); onImportTasks([task]); }}
+                                    onClick={(e) => { e.stopPropagation(); handleImportTasksWithGameSelect([task]); }}
                                     className="mt-3 w-full py-2 bg-gray-100 dark:bg-gray-700 hover:bg-orange-600 hover:text-white dark:hover:bg-orange-600 text-gray-600 dark:text-gray-300 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-colors opacity-0 group-hover:opacity-100"
                                 >
-                                    USE THIS TASK
+                                    {activeGame ? '➕ ADD TO ' + activeGame.name : 'USE THIS TASK'}
                                 </button>
                             )}
                         </div>
