@@ -1,18 +1,28 @@
 import { Game, TaskTemplate, GamePoint } from '../types';
-import { detectLanguageFromText } from './i18n';
+import { detectLanguageFromText, normalizeLanguage } from './i18n';
 
 /**
  * Migrate all tasks in a game to have proper language detection
  */
 export const migrateGameTasksLanguage = (game: Game): Game => {
-    const updatedPoints = game.points.map(point => ({
-        ...point,
-        settings: {
-            ...point.settings,
-            language: detectLanguageFromText(point.task.question || '')
-        }
-    }));
-    
+    const updatedPoints = game.points.map(point => {
+        // First normalize the current language (remove "global")
+        const currentLang = normalizeLanguage(point.settings?.language);
+
+        // If it's English (default), try to detect from question
+        const newLang = currentLang === 'English'
+            ? detectLanguageFromText(point.task.question || '')
+            : currentLang;
+
+        return {
+            ...point,
+            settings: {
+                ...point.settings,
+                language: newLang
+            }
+        };
+    });
+
     return {
         ...game,
         points: updatedPoints
@@ -23,13 +33,23 @@ export const migrateGameTasksLanguage = (game: Game): Game => {
  * Migrate all tasks in a template library
  */
 export const migrateLibraryTasksLanguage = (templates: TaskTemplate[]): TaskTemplate[] => {
-    return templates.map(template => ({
-        ...template,
-        settings: {
-            ...template.settings,
-            language: detectLanguageFromText(template.task.question || '')
-        }
-    }));
+    return templates.map(template => {
+        // First normalize the current language (remove "global")
+        const currentLang = normalizeLanguage(template.settings?.language);
+
+        // If it's English (default), try to detect from question
+        const newLang = currentLang === 'English'
+            ? detectLanguageFromText(template.task.question || '')
+            : currentLang;
+
+        return {
+            ...template,
+            settings: {
+                ...template.settings,
+                language: newLang
+            }
+        };
+    });
 };
 
 /**
