@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { TaskTemplate, IconId, TaskType } from "../types";
 
@@ -72,7 +71,15 @@ export const generateAiTasks = async (topic: string, count: number = 5, language
       },
     }));
 
-    const rawData = JSON.parse(response.text || "[]");
+    let rawData: any = [];
+    try {
+      rawData = JSON.parse(response.text || "[]");
+    } catch {
+      rawData = [];
+    }
+
+    if (!Array.isArray(rawData)) rawData = [];
+
     return rawData.map((item: any, index: number) => ({
         id: `ai-${Date.now()}-${index}`,
         title: item.title,
