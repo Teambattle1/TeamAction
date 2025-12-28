@@ -223,37 +223,29 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderEditMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1400px] mx-auto">
-              <MapPinButton 
-                  title="EDIT GAME" 
-                  icon={Gamepad2} 
-                  gradient="bg-gradient-to-br from-cyan-600 to-blue-600" 
-                  onClick={() => onAction('GAMES')} 
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+              <MapPinButton
+                  title="EDIT GAME"
+                  icon={Gamepad2}
+                  gradient="bg-gradient-to-br from-cyan-600 to-blue-600"
+                  onClick={() => onAction('GAMES')}
                   delay={0}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="EDIT TASK" 
-                  icon={Edit2} 
-                  gradient="bg-gradient-to-br from-purple-600 to-violet-600" 
-                  onClick={() => onAction('TASKS')} 
+              <MapPinButton
+                  title="EDIT TASK"
+                  icon={Edit2}
+                  gradient="bg-gradient-to-br from-purple-600 to-violet-600"
+                  onClick={() => onAction('TASKS')}
                   delay={100}
-                  scale={0.75}
-              />
-              <MapPinButton 
-                  title="EDIT LIST" 
-                  icon={LayoutList} 
-                  gradient="bg-gradient-to-br from-pink-600 to-rose-600" 
-                  onClick={() => onAction('TASKLIST')} 
-                  delay={200}
                   scale={0.75}
               />
               <MapPinButton
                   title="EDIT PLAYGROUND"
-                  icon={Globe} 
-                  gradient="bg-gradient-to-br from-emerald-600 to-teal-600" 
-                  onClick={() => onAction('PLAYGROUNDS')} 
-                  delay={300}
+                  icon={Globe}
+                  gradient="bg-gradient-to-br from-emerald-600 to-teal-600"
+                  onClick={() => onAction('PLAYGROUNDS')}
+                  delay={200}
                   scale={0.75}
               />
           </div>
