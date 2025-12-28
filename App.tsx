@@ -904,7 +904,8 @@ const GameApp: React.FC = () => {
                 onToggleRoute={(id) => { if (activeGame) { const updated = (activeGame.routes || []).map(r => r.id === id ? { ...r, isVisible: !r.isVisible } : r); updateActiveGame({ ...activeGame, routes: updated }); }}}
                 showScores={showScores}
                 onToggleScores={() => setShowScores(!showScores)}
-                isGameTemplateMode={false}
+                isGameTemplateMode={!!activeGame?.isGameTemplate}
+                onSaveGameTemplate={handleSaveGameTemplate}
                 onAddTask={async (type, playgroundId) => {
                     if (!activeGame) return;
                     const center = mapRef.current?.getCenter() || { lat: 0, lng: 0 };
