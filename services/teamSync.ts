@@ -1,6 +1,23 @@
 import { supabase } from '../lib/supabase';
 import { TaskVote, TeamMember, ChatMessage, Coordinate } from '../types';
 
+const roundCoord = (c: Coordinate, digits = 5): Coordinate => ({
+    lat: Number(c.lat.toFixed(digits)),
+    lng: Number(c.lng.toFixed(digits))
+});
+
+// Cheap distance approximation to avoid pulling in heavier geo helpers.
+const approxDistanceMeters = (a: Coordinate, b: Coordinate) => {
+    const R = 6371000;
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+    const lat1 = (a.lat * Math.PI) / 180;
+    const lat2 = (b.lat * Math.PI) / 180;
+    const x = dLng * Math.cos((lat1 + lat2) / 2);
+    const y = dLat;
+    return Math.sqrt(x * x + y * y) * R;
+};
+
 type VoteCallback = (votes: TaskVote[]) => void;
 type MemberCallback = (members: TeamMember[]) => void;
 type ChatCallback = (message: ChatMessage) => void;
@@ -11,11 +28,18 @@ class TeamSyncService {
   private globalChannel: any = null;
   
   private deviceId: string = '';
-  private userName: string = 'Anonymous'; 
+  private userName: string = 'Anonymous';
   private userLocation: Coordinate | null = null; // Track local location
   private isSolving: boolean = false; // Track solving status locally
-  
-  private votes: Record<string, TaskVote[]> = {}; 
+
+  private gameId: string | null = null;
+  private teamKey: string | null = null;
+
+  private lastLocationSentAt = 0;
+  private lastLocationSent: Coordinate | null = null;
+  private locationDirty = false;
+
+  private votes: Record<string, TaskVote[]> = {};
   private members: Map<string, TeamMember> = new Map();
   
   // Track other team locations (Global view)
@@ -52,9 +76,11 @@ class TeamSyncService {
     if (this.channel) this.disconnect();
 
     this.userName = userName;
+    this.gameId = gameId;
+    this.teamKey = teamName.replace(/[^a-zA-Z0-9]/g, '_');
 
     // 1. Team-Specific Channel (For Voting & Presence)
-    const channelId = `game_${gameId}_team_${teamName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const channelId = `game_${gameId}_team_${this.teamKey}`;
     
     console.log(`[TeamSync] Connecting to ${channelId} as ${userName}`);
 
@@ -66,15 +92,25 @@ class TeamSyncService {
       })
       .on('broadcast', { event: 'presence' }, (payload: any) => {
         const member = payload.payload as TeamMember;
-        this.members.set(member.deviceId, member);
+        const existing = this.members.get(member.deviceId);
+
+        // Presence heartbeats may omit location to reduce bandwidth.
+        const merged: TeamMember = {
+            ...(existing || {}),
+            ...member,
+            location: member.location ?? existing?.location,
+            isSolving: member.isSolving ?? existing?.isSolving
+        } as TeamMember;
+
+        this.members.set(member.deviceId, merged);
         this.notifyMemberListeners();
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
            this.sendPresence();
-           // Send presence periodically
+           // Send presence periodically (lower frequency to reduce battery + bandwidth)
            if (this.presenceIntervalId) window.clearInterval(this.presenceIntervalId);
-           this.presenceIntervalId = window.setInterval(() => this.sendPresence(), 5000); 
+           this.presenceIntervalId = window.setInterval(() => this.sendPresence(), 8000);
         }
       });
 
@@ -105,6 +141,12 @@ class TeamSyncService {
         window.clearInterval(this.presenceIntervalId);
         this.presenceIntervalId = null;
     }
+
+    this.gameId = null;
+    this.teamKey = null;
+    this.lastLocationSentAt = 0;
+    this.lastLocationSent = null;
+    this.locationDirty = false;
 
     if (this.channel) {
       supabase.removeChannel(this.channel);
@@ -166,17 +208,17 @@ class TeamSyncService {
   // --- GLOBAL LOCATION LOGIC (Captain Visibility) ---
   public broadcastGlobalLocation(gameId: string, teamId: string, name: string, location: Coordinate, photoUrl?: string) {
       if (!this.globalChannel) return;
-      
+
       this.globalChannel.send({
           type: 'broadcast',
           event: 'global_location',
-          payload: { teamId, name, location, photoUrl }
+          payload: { teamId, name, location: roundCoord(location), photoUrl, timestamp: Date.now() }
       });
   }
 
   private handleGlobalLocation(data: any) {
       // Store or update other team location
-      this.otherTeams.set(data.teamId, { ...data, timestamp: Date.now() });
+      this.otherTeams.set(data.teamId, { ...data, timestamp: data.timestamp || Date.now() });
       this.notifyGlobalLocationListeners();
   }
 
@@ -210,7 +252,17 @@ class TeamSyncService {
   // Called by App.tsx whenever location updates
   public updateLocation(location: Coordinate) {
       this.userLocation = location;
-      // Optionally trigger immediate presence update if needed, but 5s interval is usually fine for battery
+
+      // Mark as dirty only when the user actually moves meaningfully.
+      if (!this.lastLocationSent) {
+          this.locationDirty = true;
+          return;
+      }
+
+      const moved = approxDistanceMeters(this.lastLocationSent, location);
+      if (moved >= 2) {
+          this.locationDirty = true;
+      }
   }
 
   // Called by TaskModal when opening/closing a task
@@ -220,20 +272,40 @@ class TeamSyncService {
   }
 
   private sendPresence() {
-      if(!this.channel) return;
+      if (!this.channel) return;
+
+      const now = Date.now();
+      const shouldSendLocation =
+          !!this.userLocation &&
+          (this.locationDirty || now - this.lastLocationSentAt > 20000);
+
       const me: TeamMember = {
           deviceId: this.deviceId,
           userName: this.userName,
-          lastSeen: Date.now(),
-          location: this.userLocation || undefined,
+          lastSeen: now,
+          location: shouldSendLocation && this.userLocation ? roundCoord(this.userLocation) : undefined,
           isSolving: this.isSolving
       };
+
       this.channel.send({
           type: 'broadcast',
           event: 'presence',
           payload: me
       });
-      this.members.set(this.deviceId, me);
+
+      if (shouldSendLocation && this.userLocation) {
+          this.lastLocationSent = this.userLocation;
+          this.lastLocationSentAt = now;
+          this.locationDirty = false;
+      }
+
+      const existing = this.members.get(this.deviceId);
+      this.members.set(this.deviceId, {
+          ...(existing || {}),
+          ...me,
+          location: me.location ?? existing?.location
+      } as TeamMember);
+
       this.notifyMemberListeners();
   }
 
