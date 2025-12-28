@@ -696,7 +696,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         )}
 
                         {/* Tasks on Canvas */}
-                        {playgroundPoints.map(point => {
+                        {uniquePlaygroundPoints.map(point => {
                             const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
                             const isSelected = selectedTaskId === point.id;
                             const displaySize = (point.playgroundScale || 1) * 48;
