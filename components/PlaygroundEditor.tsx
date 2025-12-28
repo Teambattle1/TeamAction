@@ -173,6 +173,35 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (audioInputRef.current) audioInputRef.current.value = '';
     };
 
+    const handleGenerateAiBackground = async (keywords: string) => {
+        if (!keywords.trim() || !activePlayground) return;
+
+        setIsGeneratingBackground(true);
+        try {
+            // Create a detailed prompt for background generation
+            const detailedPrompt = `Create a stunning, high-quality background image for a game zone titled "${activePlayground.title}".
+Theme/Keywords: ${keywords}
+Style: Professional, immersive, vibrant, and engaging game background.
+Aspect Ratio: 16:9 widescreen
+Make it suitable as a game environment background.`;
+
+            const imageUrl = await generateAiImage(detailedPrompt, 'photorealistic, game background, stunning');
+
+            if (imageUrl) {
+                updatePlayground({ imageUrl });
+                setShowAiBackgroundPrompt(false);
+                setAiBackgroundPromptValue('');
+            } else {
+                alert('Failed to generate background. Please try again with different keywords.');
+            }
+        } catch (error) {
+            console.error('Error generating background:', error);
+            alert('Error generating background. Please try again.');
+        } finally {
+            setIsGeneratingBackground(false);
+        }
+    };
+
     const selectedTask = game.points.find(p => p.id === selectedTaskId && p.playgroundId === activePlayground?.id);
 
     const updateTask = (updates: Partial<GamePoint>) => {
