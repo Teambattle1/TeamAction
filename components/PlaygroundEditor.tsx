@@ -689,8 +689,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 xmlns="http://www.w3.org/2000/svg"
                             >
                                 <defs>
-                                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 165, 0, 0.2)" strokeWidth="1"/>
+                                    <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+                                        <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 165, 0, 0.6)" strokeWidth="1.5"/>
                                     </pattern>
                                 </defs>
                                 <rect width="100%" height="100%" fill="url(#grid)" />
