@@ -197,8 +197,12 @@ export const deleteGame = async (id: string) => {
 // --- TEAMS ---
 export const fetchTeams = async (gameId: string): Promise<Team[]> => {
     try {
-        const { data, error } = await supabase.from('teams').select('id, game_id, name, join_code, photo_url, members, score, updated_at, captain_device_id, is_started, completed_point_ids').eq('game_id', gameId);
-        if (error) throw error;
+        const rows = await fetchInChunks(
+            (offset, limit) => supabase.from('teams').select('id, game_id, name, join_code, photo_url, members, score, updated_at, captain_device_id, is_started, completed_point_ids').eq('game_id', gameId).range(offset, offset + limit - 1),
+            `fetchTeams(${gameId})`,
+            CHUNK_SIZE
+        );
+        const data = rows;
         if (!data) return [];
         return data.map((row: any) => ({
             id: row.id,
@@ -417,25 +421,28 @@ export const submitClientTask = async (listId: string, task: TaskTemplate): Prom
 // --- TAGS ---
 export const fetchUniqueTags = async (): Promise<string[]> => {
     try {
-        const libraryResult = await retryWithBackoff(
-            () => supabase.from('library').select('data'),
-            'fetchUniqueTags[library]'
-        );
-        const gamesResult = await retryWithBackoff(
-            () => supabase.from('games').select('data'),
-            'fetchUniqueTags[games]'
-        );
-        const { data: libraryData } = libraryResult;
-        const { data: gamesData } = gamesResult;
-        
         const tags = new Set<string>();
-        
-        libraryData?.forEach((row: any) => {
-            row.data.tags?.forEach((tag: string) => tags.add(tag));
+
+        // Fetch library tags in chunks
+        const libraryRows = await fetchInChunks(
+            (offset, limit) => supabase.from('library').select('data').range(offset, offset + limit - 1),
+            'fetchUniqueTags[library]',
+            CHUNK_SIZE
+        );
+
+        // Fetch games tags in chunks
+        const gamesRows = await fetchInChunks(
+            (offset, limit) => supabase.from('games').select('data').range(offset, offset + limit - 1),
+            'fetchUniqueTags[games]',
+            CHUNK_SIZE
+        );
+
+        libraryRows?.forEach((row: any) => {
+            row.data?.tags?.forEach((tag: string) => tags.add(tag));
         });
-        
-        gamesData?.forEach((row: any) => {
-            row.data.tags?.forEach((tag: string) => tags.add(tag));
+
+        gamesRows?.forEach((row: any) => {
+            row.data?.tags?.forEach((tag: string) => tags.add(tag));
         });
 
         return Array.from(tags).sort();
@@ -473,17 +480,16 @@ export const deletePlaygroundTemplate = async (id: string) => {
 // --- USERS ---
 export const fetchAccountUsers = async (): Promise<AccountUser[]> => {
     try {
-        const result = await retryWithBackoff(
-            () => supabase.from('account_users').select('id, data'),
-            'fetchAccountUsers'
+        const rows = await fetchInChunks(
+            (offset, limit) => supabase.from('account_users').select('id, data').range(offset, offset + limit - 1),
+            'fetchAccountUsers',
+            CHUNK_SIZE
         );
-        const { data, error } = result;
-        if (error) throw error;
-        return data ? data.map((row: any) => ({ ...row.data, id: row.id })) : [];
-    } catch (e) { 
-        if ((e as any)?.code === '42P01') throw e; 
-        logError('fetchAccountUsers', e); 
-        return []; 
+        return rows.map((row: any) => ({ ...row.data, id: row.id }));
+    } catch (e) {
+        if ((e as any)?.code === '42P01') throw e;
+        logError('fetchAccountUsers', e);
+        return [];
     }
 };
 
