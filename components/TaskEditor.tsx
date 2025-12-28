@@ -754,13 +754,34 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                               <div>
                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">LANGUAGE</label>
-                                  <select 
-                                       value={editedPoint.settings?.language || 'English'}
-                                       onChange={(e) => setEditedPoint({...editedPoint, settings: {...editedPoint.settings, language: e.target.value }})}
-                                       className="w-full px-4 py-3 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium outline-none focus:border-orange-500 uppercase text-xs"
-                                  >
-                                      {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                                  </select>
+                                  <div className="flex gap-2">
+                                      <select
+                                           value={editedPoint.settings?.language || 'English'}
+                                           onChange={(e) => setEditedPoint({...editedPoint, settings: {...editedPoint.settings, language: e.target.value }})}
+                                           className="flex-1 px-4 py-3 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium outline-none focus:border-orange-500 uppercase text-xs"
+                                      >
+                                          {LANGUAGES.map(l => {
+                                              const langName = l.split(' ').slice(1).join(' ');
+                                              return <option key={l} value={l}>{langName}</option>;
+                                          })}
+                                      </select>
+                                      <button
+                                          type="button"
+                                          onClick={() => {
+                                              if (editedPoint.task.question) {
+                                                  const detected = detectLanguageFromText(editedPoint.task.question);
+                                                  setEditedPoint({
+                                                      ...editedPoint,
+                                                      settings: { ...editedPoint.settings, language: detected }
+                                                  });
+                                              }
+                                          }}
+                                          className="px-4 py-3 border-2 dark:border-gray-700 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 font-bold uppercase text-[10px] transition-colors"
+                                          title="Auto-detect language from question"
+                                      >
+                                          🔍 AUTO
+                                      </button>
+                                  </div>
                               </div>
                            </div>
                        </div>
