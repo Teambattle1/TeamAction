@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { GamePoint, TaskVote, GameMode, TimelineItem } from '../types';
 import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown } from 'lucide-react';
@@ -98,7 +97,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
           setTeamVotes(votes);
       });
       const unsubscribeMembers = teamSync.subscribeToMemberCount((count) => {
-          setMemberCount(Math.max(teamSync.getVotesForTask(point.id).length, 1)); 
+          setMemberCount(Math.max(count, 1));
       });
 
       const existing = teamSync.getVotesForTask(point.id);
@@ -122,10 +121,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
   // UNLOCK LOGIC: Allow open if Unlocked OR Instructor OR Editor OR Playground OR Simulation
   const isLocked = !point.isUnlocked && !isInstructor && !isEditMode && !isPlayground && !isSimulation;
 
+  const normalizeAnswerForConsensus = (a: any) => {
+      if (Array.isArray(a)) return JSON.stringify([...a].sort());
+      if (typeof a === 'string') return a.trim().toLowerCase();
+      if (typeof a === 'number' && Number.isFinite(a)) return String(a);
+      if (a && typeof a === 'object') return JSON.stringify(a);
+      return String(a);
+  };
+
   const checkConsensus = () => {
       if (teamVotes.length === 0) return false;
-      const firstAnswer = JSON.stringify(teamVotes[0].answer);
-      return teamVotes.every(v => JSON.stringify(v.answer) === firstAnswer);
+
+      // Require everyone currently online to have voted.
+      if (teamVotes.length < memberCount) return false;
+
+      const firstAnswer = normalizeAnswerForConsensus(teamVotes[0].answer);
+      return teamVotes.every(v => normalizeAnswerForConsensus(v.answer) === firstAnswer);
   };
 
   const consensusReached = checkConsensus();
@@ -341,7 +352,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   </div>
                   <h3 className="text-lg font-black uppercase text-gray-900 dark:text-white">TEAM CONSENSUS</h3>
                   <p className="text-sm text-gray-500 font-bold">
-                      {teamVotes.length} VOTES CAST
+                      {teamVotes.length} / {memberCount} VOTES CAST
                   </p>
               </div>
 
