@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Game, Playground, GamePoint, IconId } from '../types';
 import { 
@@ -139,7 +138,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[2000] bg-[#0f172a] text-white flex flex-row overflow-hidden font-sans animate-in fade-in">
+        <div className="fixed inset-0 z-[5000] bg-[#0f172a] text-white flex flex-row overflow-hidden font-sans animate-in fade-in">
             
             {/* LEFT SIDEBAR EDITOR */}
             <div className="w-[360px] flex flex-col border-r border-slate-800 bg-[#0f172a] shadow-2xl z-20">
