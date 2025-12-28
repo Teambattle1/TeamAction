@@ -272,6 +272,19 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         });
     };
 
+    const requestScreenOrientation = async (orientation: 'portrait' | 'landscape') => {
+        try {
+            const screenOrientation = (screen as any).orientation || (screen as any).webkitOrientation;
+            if (screenOrientation && screenOrientation.lock) {
+                const target = orientation === 'landscape' ? 'landscape-primary' : 'portrait-primary';
+                await screenOrientation.lock(target);
+                console.log(`Screen orientation locked to ${orientation}`);
+            }
+        } catch (error) {
+            console.warn('Could not lock screen orientation:', error);
+        }
+    };
+
     const handleSnapAllToGrid = () => {
         // Dynamically calculate columns based on number of icons
         const totalIcons = uniquePlaygroundPoints.length;
