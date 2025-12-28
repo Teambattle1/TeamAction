@@ -122,6 +122,48 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (audioInputRef.current) audioInputRef.current.value = '';
     };
 
+    const selectedTask = game.points.find(p => p.id === selectedTaskId && p.playgroundId === activePlayground?.id);
+
+    const updateTask = (updates: Partial<GamePoint>) => {
+        if (!selectedTask) return;
+        onUpdateGame({
+            ...game,
+            points: game.points.map(p => p.id === selectedTask.id ? { ...p, ...updates } : p)
+        });
+    };
+
+    const handleTaskIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && selectedTask) {
+            const url = await uploadImage(file);
+            if (url) updateTask({ iconUrl: url });
+        }
+        if (taskIconInputRef.current) taskIconInputRef.current.value = '';
+    };
+
+    const handleGenerateTaskIcon = async (prompt: string) => {
+        if (!prompt.trim()) {
+            alert('Please enter a description for the icon');
+            return;
+        }
+        if (!selectedTask) return;
+
+        setIsGeneratingIcon(true);
+        try {
+            const iconUrl = await generateAiImage(prompt, 'simple icon style, transparent background');
+            if (iconUrl) {
+                updateTask({ iconUrl });
+            } else {
+                alert('Icon generation failed. Please try again.');
+            }
+        } catch (error) {
+            console.error('Icon generation error:', error);
+            alert('Failed to generate icon. Check your API key or try again.');
+        } finally {
+            setIsGeneratingIcon(false);
+        }
+    };
+
     const handleSnapAllToGrid = () => {
         // Dynamically calculate columns based on number of icons
         const totalIcons = playgroundPoints.length;
