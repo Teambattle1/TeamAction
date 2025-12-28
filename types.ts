@@ -204,13 +204,13 @@ export interface PlaygroundTemplate {
 
 export interface GamePoint {
   id: string;
-  title: string; 
+  title: string;
   shortIntro?: string;
-  
+
   task: GameTask;
-  
+
   // Location & Activation
-  location: Coordinate;
+  location: Coordinate | null; // null for playground-only points without map location
   radiusMeters: number;
   activationTypes: PointActivationType[];
   manualUnlockCode?: string; 
