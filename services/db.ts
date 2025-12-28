@@ -26,7 +26,9 @@ const logError = (context: string, error: any) => {
 
 // Configuration for large table fetches
 const CHUNK_SIZE = 100; // Fetch 100 rows at a time
+const TAGS_CHUNK_SIZE = 20; // Smaller chunks for tag fetching (large data objects)
 const FETCH_TIMEOUT_MS = 30000; // 30 second timeout per chunk
+const TAGS_FETCH_TIMEOUT_MS = 5000; // 5 second timeout for tag fetches (fail fast)
 
 // Retry helper for timeout errors with exponential backoff
 const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRetries = 2): Promise<T> => {
