@@ -237,7 +237,15 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         setActiveTab('GENERAL');
         return;
     }
-    onSave(editedPoint);
+    // Ensure language is normalized before saving
+    const pointToSave = {
+        ...editedPoint,
+        settings: {
+            ...editedPoint.settings,
+            language: normalizeLanguage(editedPoint.settings?.language)
+        }
+    };
+    onSave(pointToSave);
   };
 
   const handleTimelineImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
