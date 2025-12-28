@@ -78,6 +78,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [bulkIconSourceId, setBulkIconSourceId] = useState<string | null>(null);
     const [bulkIconMode, setBulkIconMode] = useState(false);
     const [bulkIconTargets, setBulkIconTargets] = useState<Set<string>>(new Set());
+
+    // AI Background Generation
+    const [showAiBackgroundPrompt, setShowAiBackgroundPrompt] = useState(false);
+    const [aiBackgroundPromptValue, setAiBackgroundPromptValue] = useState('');
+    const [isGeneratingBackground, setIsGeneratingBackground] = useState(false);
     
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
