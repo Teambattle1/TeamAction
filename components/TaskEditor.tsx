@@ -142,6 +142,22 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   // QR Code State
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
+  // Auto-detect language from task question on component mount
+  useEffect(() => {
+      const hasDefaultLanguage = editedPoint.settings?.language === 'English' && point.settings?.language === 'English';
+      const hasQuestion = editedPoint.task.question && editedPoint.task.question.trim().length > 0;
+
+      if (hasDefaultLanguage && hasQuestion) {
+          const detectedLanguage = detectLanguageFromText(editedPoint.task.question);
+          if (detectedLanguage !== 'English') {
+              setEditedPoint(prev => ({
+                  ...prev,
+                  settings: { ...prev.settings, language: detectedLanguage }
+              }));
+          }
+      }
+  }, []); // Run only on mount
+
   // Generate QR Code when relevant fields change or tab opens
   useEffect(() => {
       if (activeTab === 'ACTIONS' && (editedPoint.activationTypes.includes('qr') || editedPoint.activationTypes.includes('click') || editedPoint.isHiddenBeforeScan)) {
