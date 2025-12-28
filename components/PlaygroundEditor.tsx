@@ -996,6 +996,42 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     onStartDrawMode={() => {}}
                 />
             )}
+
+            {/* AI Task Generator Modal */}
+            {showAiTaskModal && (
+                <AiTaskGeneratorModal
+                    onClose={() => setShowAiTaskModal(false)}
+                    playgroundId={activePlayground?.id}
+                    onAddTask={(taskTemplate: TaskTemplate) => {
+                        // Convert TaskTemplate to GamePoint
+                        const newPoint: GamePoint = {
+                            id: `p-${Date.now()}`,
+                            title: taskTemplate.title,
+                            location: { lat: 0, lng: 0 },
+                            playgroundId: activePlayground?.id,
+                            iconId: taskTemplate.iconId || 'default',
+                            points: taskTemplate.points || 100,
+                            radiusMeters: 30,
+                            activationTypes: ['radius'],
+                            isUnlocked: true,
+                            isCompleted: false,
+                            order: uniquePlaygroundPoints.length,
+                            task: taskTemplate.task,
+                            feedback: taskTemplate.feedback,
+                            settings: taskTemplate.settings,
+                            logic: taskTemplate.logic,
+                            playgroundPosition: { x: 50, y: 50 },
+                            playgroundScale: 1
+                        };
+
+                        // Add to game
+                        onUpdateGame({
+                            ...game,
+                            points: [...game.points, newPoint]
+                        });
+                    }}
+                />
+            )}
         </div>
     );
 };
