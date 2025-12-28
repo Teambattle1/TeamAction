@@ -11,6 +11,10 @@ const logError = (context: string, error: any) => {
     console.error(`[DB Service] Error in ${context}:`, errorMsg);
 };
 
+// Configuration for large table fetches
+const CHUNK_SIZE = 100; // Fetch 100 rows at a time
+const FETCH_TIMEOUT_MS = 15000; // 15 second timeout per chunk
+
 // Retry helper for timeout errors with exponential backoff
 const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRetries = 3): Promise<T> => {
     let lastError: any;
@@ -29,17 +33,53 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRet
     throw lastError;
 };
 
+// Fetch large tables in chunks to prevent timeout
+const fetchInChunks = async <T>(
+    query: (offset: number, limit: number) => Promise<{ data: any[] | null; error: any }>,
+    context: string,
+    chunkSize: number = CHUNK_SIZE
+): Promise<T[]> => {
+    const results: T[] = [];
+    let offset = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+        try {
+            const { data, error } = await retryWithBackoff(
+                () => query(offset, chunkSize),
+                `${context}[offset=${offset}]`,
+                2 // Fewer retries per chunk
+            );
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                hasMore = false;
+            } else {
+                results.push(...data);
+                if (data.length < chunkSize) {
+                    hasMore = false;
+                } else {
+                    offset += chunkSize;
+                }
+            }
+        } catch (e) {
+            logError(context, e);
+            hasMore = false; // Stop trying to fetch more chunks if we hit an error
+        }
+    }
+
+    return results;
+};
+
 // --- GAMES ---
 export const fetchGames = async (): Promise<Game[]> => {
     try {
-        const result = await retryWithBackoff(
-            () => supabase.from('games').select('id, data, updated_at'),
-            'fetchGames'
+        const rows = await fetchInChunks(
+            (offset, limit) => supabase.from('games').select('id, data, updated_at').range(offset, offset + limit - 1),
+            'fetchGames',
+            CHUNK_SIZE
         );
-        const { data, error } = result;
-        if (error) throw error;
-        if (!data) return [];
-        return data.map((row: any) => ({ ...row.data, id: row.id, dbUpdatedAt: row.updated_at }));
+        return rows.map((row: any) => ({ ...row.data, id: row.id, dbUpdatedAt: row.updated_at }));
     } catch (e) {
         logError('fetchGames', e);
         return []; // Return empty for now, or offline fallback if preferred
@@ -304,13 +344,12 @@ export const updateMemberPhoto = async (teamId: string, memberDeviceId: string, 
 // --- LIBRARY & LISTS ---
 export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
     try {
-        const result = await retryWithBackoff(
-            () => supabase.from('library').select('id, data'),
-            'fetchLibrary'
+        const rows = await fetchInChunks(
+            (offset, limit) => supabase.from('library').select('id, data').range(offset, offset + limit - 1),
+            'fetchLibrary',
+            CHUNK_SIZE
         );
-        const { data, error } = result;
-        if (error) throw error;
-        return data ? data.map((row: any) => ({ ...row.data, id: row.id })) : [];
+        return rows.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) { logError('fetchLibrary', e); return []; }
 };
 
@@ -327,13 +366,12 @@ export const deleteTemplate = async (id: string) => {
 
 export const fetchTaskLists = async (): Promise<TaskList[]> => {
     try {
-        const result = await retryWithBackoff(
-            () => supabase.from('task_lists').select('id, data'),
-            'fetchTaskLists'
+        const rows = await fetchInChunks(
+            (offset, limit) => supabase.from('task_lists').select('id, data').range(offset, offset + limit - 1),
+            'fetchTaskLists',
+            CHUNK_SIZE
         );
-        const { data, error } = result;
-        if (error) throw error;
-        return data ? data.map((row: any) => ({ ...row.data, id: row.id })) : [];
+        return rows.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) { logError('fetchTaskLists', e); return []; }
 };
 
@@ -410,13 +448,12 @@ export const fetchUniqueTags = async (): Promise<string[]> => {
 // --- PLAYGROUNDS ---
 export const fetchPlaygroundLibrary = async (): Promise<PlaygroundTemplate[]> => {
     try {
-        const result = await retryWithBackoff(
-            () => supabase.from('playground_library').select('id, title, is_global, data'),
-            'fetchPlaygroundLibrary'
+        const rows = await fetchInChunks(
+            (offset, limit) => supabase.from('playground_library').select('id, title, is_global, data').range(offset, offset + limit - 1),
+            'fetchPlaygroundLibrary',
+            CHUNK_SIZE
         );
-        const { data, error } = result;
-        if (error) throw error;
-        return data ? data.map((row: any) => ({ ...row.data, id: row.id, title: row.title, isGlobal: row.is_global })) : [];
+        return rows.map((row: any) => ({ ...row.data, id: row.id, title: row.title, isGlobal: row.is_global }));
     } catch (e) { logError('fetchPlaygroundLibrary', e); return []; }
 };
 
