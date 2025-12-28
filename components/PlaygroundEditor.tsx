@@ -1349,13 +1349,30 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     <div className="space-y-2">
                                         {uniquePlaygroundPoints.map((point, index) => {
                                             const hasActions = point.logic && (point.logic.onOpen?.length || point.logic.onCorrect?.length || point.logic.onIncorrect?.length);
+                                            const isMarked = markedTaskIds.has(point.id);
                                             return (
                                                 <div
                                                     key={point.id}
-                                                    className="p-3 bg-slate-800/50 border border-slate-700 rounded-lg hover:border-orange-500 hover:bg-slate-800 transition-colors cursor-pointer group"
+                                                    className={`p-3 border rounded-lg transition-colors cursor-pointer group ${
+                                                        isMarked
+                                                            ? 'bg-orange-500/20 border-orange-500'
+                                                            : 'bg-slate-800/50 border-slate-700 hover:border-orange-500 hover:bg-slate-800'
+                                                    }`}
                                                     onClick={() => setSelectedTaskId(point.id)}
                                                 >
-                                                    <div className="flex items-start justify-between">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        {isMarkMode && (
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={isMarked}
+                                                                onChange={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleMarkTask(point.id);
+                                                                }}
+                                                                className="mt-1 w-4 h-4 rounded border-2 border-orange-400 bg-slate-900 cursor-pointer accent-orange-500 flex-shrink-0"
+                                                                title="Mark for snapping"
+                                                            />
+                                                        )}
                                                         <div className="flex-1 min-w-0">
                                                             {showTaskOrder && (
                                                                 <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">TASK {String(index + 1).padStart(2, '0')}</p>
