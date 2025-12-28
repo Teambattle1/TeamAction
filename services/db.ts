@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Game, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage, Coordinate } from '../types';
+import { Game, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage, Coordinate, GameChangeLogEntry } from '../types';
 import { DEMO_TASKS, DEMO_LISTS, getDemoGames } from '../utils/demoContent';
 
 const logError = (context: string, error: any) => {
@@ -47,15 +47,29 @@ export const fetchGame = async (id: string): Promise<Game | null> => {
     }
 };
 
-export const updateGameItemLocation = async (gameId: string, itemId: string, location: Coordinate): Promise<Game | null> => {
+export const updateGameItemLocation = async (
+    gameId: string,
+    itemId: string,
+    location: Coordinate,
+    opts?: { user?: string; action?: string }
+): Promise<Game | null> => {
     try {
         const game = await fetchGame(gameId);
         if (!game) return null;
 
         const updatedAt = new Date().toISOString();
+
+        const changeEntry: GameChangeLogEntry = {
+            timestamp: Date.now(),
+            user: opts?.user || 'Unknown',
+            action: opts?.action || 'Moved Item'
+        };
+
         const updatedGame: Game = {
             ...game,
             dbUpdatedAt: updatedAt,
+            lastModifiedBy: opts?.user || game.lastModifiedBy,
+            changeLog: [...(game.changeLog || []), changeEntry],
             points: game.points.map(p => p.id === itemId ? { ...p, location } : p),
             playgrounds: (game.playgrounds || []).map(pg => pg.id === itemId ? { ...pg, location } : pg),
             dangerZones: (game.dangerZones || []).map(z => z.id === itemId ? { ...z, location } : z)

@@ -729,7 +729,10 @@ const GameApp: React.FC = () => {
                     // Location updates are the most common multi-user edit. We re-fetch latest game
                     // before saving to reduce the chance of overwriting another editor's recent change.
                     const plainLoc = { lat: loc.lat, lng: loc.lng };
-                    const updated = await db.updateGameItemLocation(activeGame.id, id, plainLoc);
+                    const updated = await db.updateGameItemLocation(activeGame.id, id, plainLoc, {
+                        user: authUser?.name,
+                        action: 'Moved Item'
+                    });
                     if (!updated) return;
 
                     setGames(prev => prev.map(g => g.id === updated.id ? updated : g));

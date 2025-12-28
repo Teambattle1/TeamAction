@@ -1072,7 +1072,10 @@ const GameApp: React.FC = () => {
                     }
 
                     const plainLoc = { lat: loc.lat, lng: loc.lng };
-                    const updated = await db.updateGameItemLocation(currentGameObj.id, id, plainLoc);
+                    const updated = await db.updateGameItemLocation(currentGameObj.id, id, plainLoc, {
+                        user: authUser?.name,
+                        action: 'Moved Item'
+                    });
                     if (!updated) return;
 
                     setGames(prev => prev.map(g => g.id === updated.id ? updated : g));
