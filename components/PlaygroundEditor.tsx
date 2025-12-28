@@ -209,6 +209,18 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         });
     };
 
+    const toggleMarkTask = (taskId: string) => {
+        setMarkedTaskIds(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(taskId)) {
+                newSet.delete(taskId);
+            } else {
+                newSet.add(taskId);
+            }
+            return newSet;
+        });
+    };
+
     const handleSnapAllToGrid = () => {
         // Dynamically calculate columns based on number of icons
         const totalIcons = uniquePlaygroundPoints.length;
@@ -260,6 +272,80 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 return snapped ? { ...p, playgroundPosition: snapped.playgroundPosition } : p;
             })
         });
+    };
+
+    const handleSnapMarkedToGrid = () => {
+        if (markedTaskIds.size === 0) {
+            alert('Please mark at least one task to snap');
+            return;
+        }
+
+        // Get only marked tasks
+        const markedPoints = uniquePlaygroundPoints.filter(p => markedTaskIds.has(p.id));
+
+        // Group marked tasks by Y position (±10% tolerance = "same row")
+        const rowTolerance = 10;
+        const rows: GamePoint[][] = [];
+
+        const sortedByY = [...markedPoints].sort((a, b) => {
+            const aY = a.playgroundPosition?.y || 50;
+            const bY = b.playgroundPosition?.y || 50;
+            return aY - bY;
+        });
+
+        sortedByY.forEach(point => {
+            const pointY = point.playgroundPosition?.y || 50;
+            let foundRow = false;
+
+            for (const row of rows) {
+                const rowY = row[0]?.playgroundPosition?.y || 50;
+                if (Math.abs(pointY - rowY) <= rowTolerance) {
+                    row.push(point);
+                    foundRow = true;
+                    break;
+                }
+            }
+
+            if (!foundRow) {
+                rows.push([point]);
+            }
+        });
+
+        // Within each row, sort by X and distribute horizontally
+        const PADDING = 5;
+        const snappedMarkedPoints = rows.flatMap((row, rowIndex) => {
+            const baseY = row[0].playgroundPosition?.y || 50;
+            const sortedByX = [...row].sort((a, b) => {
+                const aX = a.playgroundPosition?.x || 50;
+                const bX = b.playgroundPosition?.x || 50;
+                return aX - bX;
+            });
+
+            const colWidth = (100 - (PADDING * 2)) / sortedByX.length;
+            return sortedByX.map((point, colIndex) => {
+                const x = PADDING + (colIndex * colWidth) + (colWidth / 2);
+                return {
+                    ...point,
+                    playgroundPosition: {
+                        x: Math.round(x * 10) / 10,
+                        y: Math.round(baseY * 10) / 10
+                    }
+                };
+            });
+        });
+
+        // Update game with snapped marked points
+        onUpdateGame({
+            ...game,
+            points: game.points.map(p => {
+                const snapped = snappedMarkedPoints.find(sp => sp.id === p.id);
+                return snapped ? { ...p, playgroundPosition: snapped.playgroundPosition } : p;
+            })
+        });
+
+        // Exit mark mode and clear marked tasks
+        setIsMarkMode(false);
+        setMarkedTaskIds(new Set());
     };
 
     // Pan/Zoom, etc.
