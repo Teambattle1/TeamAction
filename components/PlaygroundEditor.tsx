@@ -1553,6 +1553,73 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     }}
                 />
             )}
+
+            {/* TaskMaster Modal for LIBRARY and TASKLIST */}
+            {showTaskMaster && (
+                <TaskMaster
+                    onClose={() => setShowTaskMaster(false)}
+                    onImportTasks={(tasks) => {
+                        // Add selected tasks to the current playground
+                        const baseOrder = uniquePlaygroundPoints.length;
+                        const COLS = 3;
+                        const PADDING = 10;
+                        const ROW_HEIGHT = 18;
+
+                        const newPoints: GamePoint[] = tasks.map((t, i) => {
+                            const row = Math.floor((baseOrder + i) / COLS);
+                            const col = (baseOrder + i) % COLS;
+                            const colWidth = (100 - PADDING * 2) / COLS;
+
+                            const x = PADDING + col * colWidth + colWidth / 2;
+                            const y = PADDING + row * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+                            const templateAny = t as any;
+                            const radiusMeters = typeof templateAny.radiusMeters === 'number' ? templateAny.radiusMeters : 30;
+                            const areaColor = typeof templateAny.areaColor === 'string' ? templateAny.areaColor : undefined;
+                            const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
+
+                            return {
+                                id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                title: t.title,
+                                shortIntro: (t as any).intro,
+                                task: t.task,
+                                location: { lat: 0, lng: 0 },
+                                radiusMeters,
+                                activationTypes: ['radius'],
+                                manualUnlockCode: undefined,
+                                playgroundId: activePlayground?.id,
+                                playgroundPosition: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 },
+                                playgroundScale: 1,
+                                isHiddenBeforeScan: false,
+                                iconId: t.iconId || 'default',
+                                iconUrl: (t as any).iconUrl,
+                                areaColor,
+                                points: t.points || 100,
+                                isUnlocked: true,
+                                isCompleted: false,
+                                order: baseOrder + i,
+                                tags: t.tags,
+                                feedback: t.feedback,
+                                settings: t.settings,
+                                logic: t.logic,
+                                completionLogic: (t as any).completionLogic,
+                                openingAudioUrl
+                            } as GamePoint;
+                        });
+
+                        onUpdateGame({
+                            ...game,
+                            points: [...game.points, ...newPoints]
+                        });
+
+                        setShowTaskMaster(false);
+                    }}
+                    taskLists={[]}
+                    onUpdateTaskLists={() => {}}
+                    games={[game]}
+                    initialTab={taskMasterTab}
+                />
+            )}
         </div>
     );
 };
