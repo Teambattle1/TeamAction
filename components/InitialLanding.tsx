@@ -147,7 +147,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
       }
   };
 
-  const { title: pageTitle, subtitle: pageSubtitle } = getHeaderContent();
+  const headerContent = getHeaderContent();
 
   // Navigation Logic
   const handleBack = () => {
