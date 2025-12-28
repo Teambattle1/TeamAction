@@ -372,6 +372,7 @@ export interface Game {
   enableMeetingPoint?: boolean; // New Flag
 
   // New Template Fields
+  isGameTemplate?: boolean;
   aboutTemplate?: string;
   instructorNotes?: string;
   templateImageUrls?: string[];
