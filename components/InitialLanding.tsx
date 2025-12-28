@@ -184,37 +184,29 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderCreateMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
-              <MapPinButton 
-                  title="GAME" 
-                  icon={Gamepad2} 
-                  gradient="bg-gradient-to-br from-orange-500 to-red-500" 
-                  onClick={() => onAction('CREATE_GAME')} 
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+              <MapPinButton
+                  title="GAME"
+                  icon={Gamepad2}
+                  gradient="bg-gradient-to-br from-orange-500 to-red-500"
+                  onClick={() => onAction('CREATE_GAME')}
                   delay={0}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="TASK" 
-                  icon={FilePlus} 
-                  gradient="bg-gradient-to-br from-blue-500 to-cyan-500" 
-                  onClick={() => onAction('TASKS')} 
+              <MapPinButton
+                  title="TASK"
+                  icon={FilePlus}
+                  gradient="bg-gradient-to-br from-blue-500 to-cyan-500"
+                  onClick={() => onAction('TASKS')}
                   delay={100}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="TASKLIST" 
-                  icon={LayoutList} 
-                  gradient="bg-gradient-to-br from-purple-500 to-indigo-500" 
-                  onClick={() => onAction('TASKLIST')} 
+              <MapPinButton
+                  title="PLAYGROUND"
+                  icon={Globe}
+                  gradient="bg-gradient-to-br from-emerald-500 to-green-500"
+                  onClick={() => onAction('PLAYGROUNDS')}
                   delay={200}
-                  scale={0.75}
-              />
-              <MapPinButton 
-                  title="PLAYGROUND" 
-                  icon={Globe} 
-                  gradient="bg-gradient-to-br from-emerald-500 to-green-500" 
-                  onClick={() => onAction('PLAYGROUNDS')} 
-                  delay={300}
                   scale={0.75}
               />
           </div>
