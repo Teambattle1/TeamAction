@@ -1216,15 +1216,15 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                           {limitHints && (
                               <div className="animate-in fade-in">
                                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Hint number limit</label>
-                                  <input 
-                                      type="number" 
-                                      value={hintLimit} 
+                                  <input
+                                      type="number"
+                                      value={hintLimit}
                                       onChange={(e) => {
                                           const v = parseInt(e.target.value, 10);
                                           setHintLimit(Number.isFinite(v) ? v : 0);
                                       }}
-                                      placeholder="Hint number limit..."
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-bold outline-none focus:border-orange-500 placeholder:text-slate-600"
+                                      placeholder="HINT NUMBER LIMIT..."
+                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-bold outline-none focus:border-orange-500 placeholder:text-slate-600 uppercase"
                                   />
                               </div>
                           )}
