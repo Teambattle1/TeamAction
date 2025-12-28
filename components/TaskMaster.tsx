@@ -151,6 +151,19 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         return count;
     };
 
+    const countTaskUsage = (taskId: string): number => {
+        let count = 0;
+        games.forEach(game => {
+            // Count how many times this task appears in the game's points
+            const taskCount = game.points.filter(p => {
+                // Check if point was created from this template or has the same title/question
+                return p.task.question === library.find(t => t.id === taskId)?.task.question;
+            }).length;
+            count += taskCount;
+        });
+        return count;
+    };
+
     const renderLibraryGrid = (selectionMode = false) => {
         const filtered = library.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
         
