@@ -174,7 +174,8 @@ const MapController = ({ handleRef }: { handleRef: React.RefObject<any> }) => {
             const bounds = L.latLngBounds(latLngs);
             if (bounds.isValid()) {
                 console.log('[GameMap] Fitting bounds to', latLngs.length, 'points');
-                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+                // Use same zoom settings as initial fit: padding: [50, 50], animate: false, maxZoom: 16
+                map.fitBounds(bounds, { padding: [50, 50], animate: false, maxZoom: 16 });
             } else {
                 console.warn('[GameMap] Invalid bounds calculated');
             }
