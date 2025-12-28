@@ -786,7 +786,7 @@ const GameApp: React.FC = () => {
                   onCreate={() => {
                       const newTemplate: PlaygroundTemplate = {
                           id: `tpl-${Date.now()}`,
-                          title: 'New Playground Template',
+                          title: 'New Playzone Template',
                           isGlobal: true,
                           createdAt: Date.now(),
                           playgroundData: {
