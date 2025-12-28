@@ -26,20 +26,20 @@ interface PlaygroundEditorProps {
   onOpenPlayground?: (id: string) => void; // Optional prop for compatibility
 }
 
-const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({ 
-    game, 
-    onUpdateGame, 
-    onClose, 
-    onEditPoint, 
-    onPointClick, 
-    onAddTask, 
-    onOpenLibrary, 
-    showScores, 
-    onToggleScores, 
-    onHome, 
-    onSaveTemplate, 
-    isTemplateMode, 
-    onAddZoneFromLibrary 
+const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
+    game,
+    onUpdateGame,
+    onClose,
+    onEditPoint,
+    onPointClick,
+    onAddTask,
+    onOpenLibrary,
+    showScores,
+    onToggleScores,
+    onHome,
+    onSaveTemplate,
+    isTemplateMode,
+    onAddZoneFromLibrary
 }) => {
     // State
     const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(null);
@@ -47,6 +47,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
     
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
