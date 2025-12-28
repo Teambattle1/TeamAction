@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Game, Playground, GamePoint, IconId } from '../types';
+import { Game, Playground, GamePoint, IconId, TaskTemplate } from '../types';
 import {
     X, Plus, LayoutGrid, Globe, Map as MapIcon, ArrowLeft, Trash2, Edit2,
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut,
@@ -11,6 +11,7 @@ import { ICON_COMPONENTS } from '../utils/icons';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import { generateAiImage } from '../services/ai';
 import TaskActionModal from './TaskActionModal';
+import AiTaskGeneratorModal from './AiTaskGeneratorModal';
 
 interface PlaygroundEditorProps {
   game: Game;
