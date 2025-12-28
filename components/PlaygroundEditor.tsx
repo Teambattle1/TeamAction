@@ -419,6 +419,70 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         </button>
                     </div>
 
+                    {/* Background Audio Section - At Bottom */}
+                    <div>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                <Music className="w-3 h-3" /> BACKGROUND MUSIC
+                            </span>
+                        </div>
+
+                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
+                            {/* Add New Track Button */}
+                            <button
+                                onClick={() => audioInputRef.current?.click()}
+                                className="w-full py-3 border border-dashed border-indigo-600 rounded-lg text-indigo-400 hover:text-indigo-300 hover:border-indigo-400 hover:bg-indigo-500/10 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase">ADD MP3 TRACK</span>
+                            </button>
+                            <input ref={audioInputRef} type="file" className="hidden" accept="audio/mp3,audio/mpeg,audio/wav" onChange={handleAudioUpload} />
+
+                            {/* Active Track Display */}
+                            {activePlayground.audioUrl && (
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between bg-slate-800 p-2 rounded-lg">
+                                        <div className="flex items-center gap-2 text-indigo-400 flex-1 min-w-0">
+                                            <Music className="w-4 h-4 flex-shrink-0" />
+                                            <span className="text-[10px] font-bold uppercase truncate">PLAYING NOW</span>
+                                        </div>
+                                        <button
+                                            onClick={() => updatePlayground({ audioUrl: undefined, audioLoop: true })}
+                                            className="p-1.5 hover:bg-red-500/20 text-slate-500 hover:text-red-500 rounded-lg transition-colors flex-shrink-0"
+                                            title="Remove track"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+
+                                    {/* Playback Mode Controls */}
+                                    <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700 gap-1">
+                                        <button
+                                            onClick={() => updatePlayground({ audioLoop: false })}
+                                            className={`flex-1 py-2 text-[9px] font-bold uppercase rounded flex items-center justify-center gap-1 transition-colors ${activePlayground.audioLoop === false ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                            title="Play once then stop"
+                                        >
+                                            <PlayCircle className="w-3 h-3" /> PLAY ONCE
+                                        </button>
+                                        <button
+                                            onClick={() => updatePlayground({ audioLoop: true })}
+                                            className={`flex-1 py-2 text-[9px] font-bold uppercase rounded flex items-center justify-center gap-1 transition-colors ${activePlayground.audioLoop !== false ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                            title="Loop continuously"
+                                        >
+                                            <Repeat className="w-3 h-3" /> LOOP
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!activePlayground.audioUrl && (
+                                <div className="text-center py-3">
+                                    <p className="text-[10px] text-slate-500 uppercase tracking-wide">No music loaded</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
 
                 {/* Footer Buttons - Fixed at bottom */}
