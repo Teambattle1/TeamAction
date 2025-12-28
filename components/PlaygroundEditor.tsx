@@ -156,6 +156,27 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </button>
                 </div>
 
+                {/* PLAYZONE TABS */}
+                {game.playgrounds && game.playgrounds.length > 1 && (
+                    <div className="px-5 py-3 border-b border-slate-800 bg-slate-900 overflow-x-auto">
+                        <div className="flex gap-2">
+                            {game.playgrounds.map((pg) => (
+                                <button
+                                    key={pg.id}
+                                    onClick={() => setActivePlaygroundId(pg.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 ${
+                                        activePlaygroundId === pg.id
+                                            ? 'bg-orange-600 text-white shadow-lg'
+                                            : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+                                    }`}
+                                >
+                                    {pg.title}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                     
