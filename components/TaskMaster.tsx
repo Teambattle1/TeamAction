@@ -272,8 +272,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">{task.task.question}</p>
 
                             <div className="flex flex-wrap gap-1 mt-auto">
-                                {task.tags.slice(0, 3).map(tag => (
-                                    <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded uppercase font-bold tracking-wider">
+                                {task.tags.slice(0, 3).map((tag, index) => (
+                                    <span key={`${tag}-${index}`} className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded uppercase font-bold tracking-wider">
                                         {tag}
                                     </span>
                                 ))}
@@ -368,8 +368,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1">
-                                            {task.tags.slice(0, 2).map(tag => (
-                                                <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded uppercase font-bold">
+                                            {task.tags.slice(0, 2).map((tag, index) => (
+                                                <span key={`${tag}-${index}`} className="text-[9px] px-1.5 py-0.5 bg-slate-700 text-slate-300 rounded uppercase font-bold">
                                                     {tag}
                                                 </span>
                                             ))}
