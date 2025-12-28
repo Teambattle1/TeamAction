@@ -73,6 +73,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [markedTaskIds, setMarkedTaskIds] = useState<Set<string>>(new Set());
     const [showTaskMaster, setShowTaskMaster] = useState(false);
     const [taskMasterTab, setTaskMasterTab] = useState<'LIBRARY' | 'LISTS'>('LIBRARY');
+    const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+    const [editingTitleValue, setEditingTitleValue] = useState('');
     
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
