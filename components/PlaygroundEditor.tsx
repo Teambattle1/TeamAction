@@ -559,6 +559,21 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </div>
                         )}
 
+                        {/* Grid Overlay */}
+                        {showGrid && (
+                            <svg
+                                className="absolute inset-0 w-full h-full pointer-events-none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <defs>
+                                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255, 165, 0, 0.2)" strokeWidth="1"/>
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" fill="url(#grid)" />
+                            </svg>
+                        )}
+
                         {/* Tasks on Canvas */}
                         {playgroundPoints.map(point => {
                             const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
