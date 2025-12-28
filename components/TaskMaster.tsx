@@ -612,12 +612,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                 {onImportTaskList && (
                                     <button
                                         onClick={() => {
-                                            onImportTaskList(editingList);
+                                            handleImportListWithGameSelect(editingList);
                                             setEditingList(null);
                                         }}
                                         className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg"
                                     >
-                                        ✓ ADD TO GAME
+                                        ✓ {activeGame ? `ADD TO ${activeGame.name}` : 'ADD TO GAME'}
                                     </button>
                                 )}
                                 <button onClick={handleSaveListUpdate} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2">
