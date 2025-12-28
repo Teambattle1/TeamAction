@@ -627,15 +627,15 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="flex items-start gap-4 mb-4">
                                   {/* 1. Auto-complete Input */}
                                   <div className="relative flex-1">
-                                      <input 
-                                          type="text" 
+                                      <input
+                                          type="text"
                                           value={tagInput}
-                                          onChange={(e) => handleTagInputChange(e.target.value)}
+                                          onChange={(e) => handleTagInputChange(e.target.value.toUpperCase())}
                                           onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                                           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                           onFocus={() => tagInput && setShowSuggestions(true)}
-                                          placeholder="Add tag..."
-                                          className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none focus:border-blue-500 h-[48px]"
+                                          placeholder="ADD TAG..."
+                                          className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none focus:border-blue-500 h-[48px] uppercase"
                                       />
                                       {showSuggestions && filteredSuggestions.length > 0 && (
                                           <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden animate-in slide-in-from-top-1">
