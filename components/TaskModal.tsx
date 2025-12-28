@@ -93,7 +93,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
   useEffect(() => {
       if (!point || isEditMode || isInstructor || isSimulation) return;
       
-      const unsubscribeVotes = teamSync.subscribeToVotes((votes) => {
+      const unsubscribeVotes = teamSync.subscribeToVotesForTask(point.id, (votes) => {
           setTeamVotes(votes);
       });
       const unsubscribeMembers = teamSync.subscribeToMemberCount((count) => {
