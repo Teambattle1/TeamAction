@@ -7,8 +7,10 @@ const getApiKey = (): string => {
     const localKey = typeof window !== 'undefined' ? localStorage.getItem('GEMINI_API_KEY') : null;
     if (localKey) return localKey;
     
-    // Fallback to env if available (e.g. during dev), but prefer secure storage
-    const envKey = (typeof window !== 'undefined' && (window as any).process?.env?.API_KEY);
+    // Fallback to build-time env if available.
+    // Vite defines these at build time (see vite.config.ts).
+    // In the built bundle, this becomes a plain string literal (no runtime `process` required).
+    const envKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
     return envKey || '';
 };
 
