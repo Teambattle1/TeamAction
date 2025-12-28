@@ -605,10 +605,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
                     <button
                         onClick={() => setIsTasksDrawerOpen(false)}
-                        className="text-slate-500 hover:text-white transition-colors p-1.5"
+                        className="text-orange-500 hover:text-orange-400 transition-colors p-2 -ml-2"
                         title="Close Tasks"
                     >
-                        <ChevronRight className="w-5 h-5" />
+                        <ChevronRight className="w-6 h-6" />
                     </button>
                 </div>
 
