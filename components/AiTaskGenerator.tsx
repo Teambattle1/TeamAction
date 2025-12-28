@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon, Home, Search, Hash, Save, Library, Gamepad2, Map, LayoutGrid, ArrowRight, LayoutList, Settings2, Target, Circle, Palette, MapPin } from 'lucide-react';
 import { TaskTemplate, Playground, TaskList, IconId } from '../types';
@@ -50,6 +49,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
   const [progress, setProgress] = useState(0);
   const [generatedBuffer, setGeneratedBuffer] = useState<TaskTemplate[]>([]);
   const [approvedTasks, setApprovedTasks] = useState<TaskTemplate[]>([]);
+  const [resultsTab, setResultsTab] = useState<'REVIEW' | 'APPROVED'>('REVIEW');
   const [error, setError] = useState<string | null>(null);
   
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -117,6 +117,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
     setError(null);
     setProgress(0);
     setBatchFinished(false);
+    setResultsTab('REVIEW');
     isActiveRef.current = true;
     
     const interval = setInterval(() => {
@@ -543,13 +544,34 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                     {/* Header for Results */}
                     <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                         <div className="flex gap-4">
-                            <button className="text-xs font-black uppercase text-purple-400 border-b-2 border-purple-500 pb-1">REVIEW ({generatedBuffer.length})</button>
-                            <button className="text-xs font-black uppercase text-slate-500 hover:text-white pb-1">APPROVED ({approvedTasks.length})</button>
+                            <button
+                                onClick={() => setResultsTab('REVIEW')}
+                                className={`text-xs font-black uppercase pb-1 border-b-2 transition-colors ${
+                                    resultsTab === 'REVIEW'
+                                        ? 'text-purple-400 border-purple-500'
+                                        : 'text-slate-500 border-transparent hover:text-white'
+                                }`}
+                                type="button"
+                            >
+                                REVIEW ({generatedBuffer.length})
+                            </button>
+                            <button
+                                onClick={() => setResultsTab('APPROVED')}
+                                className={`text-xs font-black uppercase pb-1 border-b-2 transition-colors ${
+                                    resultsTab === 'APPROVED'
+                                        ? 'text-purple-400 border-purple-500'
+                                        : 'text-slate-500 border-transparent hover:text-white'
+                                }`}
+                                type="button"
+                            >
+                                APPROVED ({approvedTasks.length})
+                            </button>
                         </div>
-                        {generatedBuffer.length > 0 && (
-                            <button 
+                        {resultsTab === 'REVIEW' && generatedBuffer.length > 0 && (
+                            <button
                                 onClick={handleApproveAll}
                                 className="text-[10px] font-bold text-green-500 uppercase tracking-wider hover:text-green-400 flex items-center gap-1"
+                                type="button"
                             >
                                 <Check className="w-3 h-3" /> APPROVE ALL
                             </button>
@@ -557,63 +579,110 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                        {generatedBuffer.length === 0 && approvedTasks.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
-                                <Wand2 className="w-16 h-16 mb-4" />
-                                <p className="text-sm font-black uppercase tracking-widest">READY TO GENERATE</p>
-                            </div>
-                        ) : (
-                            generatedBuffer.map((task, idx) => {
-                                const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
-                                return (
-                                    <div key={task.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 group hover:border-purple-500/50 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards" style={{ animationDelay: `${idx * 50}ms` }}>
-                                        <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
-                                            {task.task.imageUrl ? (
-                                                <img src={task.task.imageUrl} className="w-full h-full object-cover rounded-xl" />
-                                            ) : (
-                                                <Icon className="w-6 h-6 text-slate-400" />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <h4 className="font-bold text-white text-sm uppercase truncate">{task.title}</h4>
-                                                <span className="text-[9px] font-black bg-slate-900 text-slate-400 px-2 py-0.5 rounded uppercase">{task.task.type}</span>
-                                            </div>
-                                            <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-2">{task.task.question}</p>
-                                            
-                                            {/* Answers Preview */}
-                                            {task.task.type === 'multiple_choice' && (
-                                                <div className="flex flex-wrap gap-1 mb-2">
-                                                    {task.task.options?.map(o => (
-                                                        <span key={o} className={`text-[9px] px-1.5 py-0.5 rounded border ${o === task.task.answer ? 'bg-green-900/30 border-green-500/30 text-green-400' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>
-                                                            {o}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-col gap-2 shrink-0">
-                                            <button onClick={() => handleApproveTask(task)} className="p-2 bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white rounded-lg transition-colors" title="Approve">
-                                                <ThumbsUp className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => handleDiscardTask(task.id)} className="p-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-colors" title="Discard">
-                                                <ThumbsDown className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                        {resultsTab === 'REVIEW' && (
+                            <>
+                                {generatedBuffer.length === 0 && approvedTasks.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
+                                        <Wand2 className="w-16 h-16 mb-4" />
+                                        <p className="text-sm font-black uppercase tracking-widest">READY TO GENERATE</p>
                                     </div>
-                                );
-                            })
+                                ) : generatedBuffer.length === 0 ? (
+                                    <div className="text-center py-10">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+                                            <Check className="w-8 h-8 text-green-500" />
+                                        </div>
+                                        <h3 className="text-lg font-black text-white uppercase tracking-widest mb-1">{approvedTasks.length} TASKS APPROVED</h3>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">SWITCH TO APPROVED TAB TO REVIEW</p>
+                                    </div>
+                                ) : (
+                                    generatedBuffer.map((task, idx) => {
+                                        const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
+                                        return (
+                                            <div key={task.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 group hover:border-purple-500/50 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
+                                                    {task.task.imageUrl ? (
+                                                        <img src={task.task.imageUrl} className="w-full h-full object-cover rounded-xl" />
+                                                    ) : (
+                                                        <Icon className="w-6 h-6 text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className="font-bold text-white text-sm uppercase truncate">{task.title}</h4>
+                                                        <span className="text-[9px] font-black bg-slate-900 text-slate-400 px-2 py-0.5 rounded uppercase">{task.task.type}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-2">{task.task.question}</p>
+
+                                                    {/* Answers Preview */}
+                                                    {task.task.type === 'multiple_choice' && (
+                                                        <div className="flex flex-wrap gap-1 mb-2">
+                                                            {task.task.options?.map(o => (
+                                                                <span key={o} className={`text-[9px] px-1.5 py-0.5 rounded border ${o === task.task.answer ? 'bg-green-900/30 border-green-500/30 text-green-400' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>
+                                                                    {o}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-2 shrink-0">
+                                                    <button onClick={() => handleApproveTask(task)} className="p-2 bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white rounded-lg transition-colors" title="Approve" type="button">
+                                                        <ThumbsUp className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDiscardTask(task.id)} className="p-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-colors" title="Discard" type="button">
+                                                        <ThumbsDown className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </>
                         )}
-                        
-                        {/* If buffer empty but we have approved tasks, show them or a message */}
-                        {generatedBuffer.length === 0 && approvedTasks.length > 0 && (
-                            <div className="text-center py-10">
-                                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
-                                    <Check className="w-8 h-8 text-green-500" />
-                                </div>
-                                <h3 className="text-lg font-black text-white uppercase tracking-widest mb-1">{approvedTasks.length} TASKS APPROVED</h3>
-                                <p className="text-xs text-slate-500 uppercase font-bold">READY TO SAVE</p>
-                            </div>
+
+                        {resultsTab === 'APPROVED' && (
+                            <>
+                                {approvedTasks.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
+                                        <Check className="w-16 h-16 mb-4" />
+                                        <p className="text-sm font-black uppercase tracking-widest">NO APPROVED TASKS</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2">APPROVE TASKS IN THE REVIEW TAB</p>
+                                    </div>
+                                ) : (
+                                    approvedTasks.map((task, idx) => {
+                                        const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
+                                        return (
+                                            <div key={task.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 group hover:border-green-500/40 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards" style={{ animationDelay: `${idx * 40}ms` }}>
+                                                <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
+                                                    {task.task.imageUrl ? (
+                                                        <img src={task.task.imageUrl} className="w-full h-full object-cover rounded-xl" />
+                                                    ) : (
+                                                        <Icon className="w-6 h-6 text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className="font-bold text-white text-sm uppercase truncate">{task.title}</h4>
+                                                        <span className="text-[9px] font-black bg-slate-900 text-slate-400 px-2 py-0.5 rounded uppercase">{task.task.type}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{task.task.question}</p>
+                                                </div>
+                                                <div className="flex flex-col gap-2 shrink-0">
+                                                    <button
+                                                        onClick={() => {
+                                                            setApprovedTasks(prev => prev.filter(t => t.id !== task.id));
+                                                        }}
+                                                        className="p-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                                                        title="Remove from approved"
+                                                        type="button"
+                                                    >
+                                                        <ThumbsDown className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </>
                         )}
                     </div>
 
