@@ -112,9 +112,29 @@ const GameApp: React.FC = () => {
       setTaskLists(loadedLists);
       const loadedLib = await db.fetchLibrary();
       setTaskLibrary(loadedLib);
+
+      // Restore last selected game from localStorage
+      const savedGameId = localStorage.getItem('activeGameId');
+      if (savedGameId && loadedGames.some(g => g.id === savedGameId)) {
+        setActiveGameId(savedGameId);
+      }
     };
     init();
   }, []);
+
+  // --- AUTO-OPEN GAME CHOOSER FOR EDIT/PLAY WITHOUT ACTIVE GAME ---
+  useEffect(() => {
+    if ((mode === GameMode.EDIT || mode === GameMode.PLAY) && !activeGameId && showLanding) {
+      setShowGameChooser(true);
+    }
+  }, [mode, activeGameId, showLanding]);
+
+  // --- PERSIST ACTIVE GAME TO LOCALSTORAGE ---
+  useEffect(() => {
+    if (activeGameId) {
+      localStorage.setItem('activeGameId', activeGameId);
+    }
+  }, [activeGameId]);
 
   // --- REALTIME: Games/Templates list updates across editors ---
   useEffect(() => {
