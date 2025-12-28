@@ -1114,7 +1114,13 @@ const GameApp: React.FC = () => {
                     if (coords && coords.length > 0) mapRef.current?.fitBounds(coords);
                     else mapRef.current?.fitBounds(activeGame?.points || []);
                 }}
-                onOpenPlaygroundEditor={() => setViewingPlaygroundId(activeGame?.playgrounds?.[0]?.id || null)}
+                onOpenPlaygroundEditor={(playgroundId?: string) => {
+                    if (playgroundId) {
+                        setViewingPlaygroundId(playgroundId);
+                    } else {
+                        setViewingPlaygroundId(activeGame?.playgrounds?.[0]?.id || null);
+                    }
+                }}
                 initialExpanded={true}
                 onExpandChange={setIsEditorExpanded}
                 routes={activeGame?.routes}
