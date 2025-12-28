@@ -424,6 +424,22 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-slate-800 border-b border-slate-700">
                         <tr>
+                            {bulkSelectionMode && (
+                                <th className="px-4 py-3 text-left w-10">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedTemplateIds.length === filtered.length && filtered.length > 0}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedTemplateIds(filtered.map(t => t.id));
+                                            } else {
+                                                setSelectedTemplateIds([]);
+                                            }
+                                        }}
+                                        className="w-4 h-4 rounded border-indigo-400 accent-indigo-600"
+                                    />
+                                </th>
+                            )}
                             {selectionMode && <th className="px-4 py-3 text-left w-10"></th>}
                             <th className="px-4 py-3 text-left w-10">Icon</th>
                             <th className="px-4 py-3 text-left flex-1">Task Title</th>
