@@ -27,15 +27,16 @@ interface LocationSearchProps {
   locateFeedback?: string | null;
 }
 
-const LocationSearch: React.FC<LocationSearchProps> = ({ 
-    onSelectLocation, 
-    onLocateMe, 
-    onFitBounds, 
-    className = "", 
-    hideSearch = false, 
+const LocationSearch: React.FC<LocationSearchProps> = ({
+    onSelectLocation,
+    onLocateMe,
+    onFitBounds,
+    className = "",
+    hideSearch = false,
     labelButtons = false,
     onToggleScores,
-    showScores
+    showScores,
+    locateFeedback
 }) => {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
