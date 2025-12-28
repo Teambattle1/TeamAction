@@ -49,6 +49,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [showAiGen, setShowAiGen] = useState(false);
     const [showLoquiz, setShowLoquiz] = useState(false);
 
+    // View State
+    const [libraryViewMode, setLibraryViewMode] = useState<'grid' | 'list'>('grid');
+
     // Refs
     const listImageInputRef = useRef<HTMLInputElement>(null);
 
