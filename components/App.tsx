@@ -856,7 +856,7 @@ const GameApp: React.FC = () => {
               />
           )}
           {showTaskMaster && (
-              <TaskMaster 
+              <TaskMaster
                   initialTab={taskMasterInitialTab}
                   onClose={() => setShowTaskMaster(false)}
                   onImportTasks={async (tasks) => {
@@ -872,6 +872,22 @@ const GameApp: React.FC = () => {
                               order: currentGameObj.points.length
                           } as GamePoint));
                           await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported ${tasks.length} Tasks`);
+                          setShowTaskMaster(false);
+                      }
+                  }}
+                  onImportTaskList={async (list) => {
+                      if (currentGameObj) {
+                          const newPoints = list.tasks.map((t, idx) => ({
+                              ...t,
+                              id: `p-${Date.now()}-${idx}-${Math.random().toString(36).substr(2,9)}`,
+                              location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                              radiusMeters: 30,
+                              activationTypes: ['radius'],
+                              isUnlocked: true,
+                              isCompleted: false,
+                              order: currentGameObj.points.length + idx
+                          } as GamePoint));
+                          await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported TaskList "${list.name}" (${list.tasks.length} Tasks)`);
                           setShowTaskMaster(false);
                       }
                   }}
