@@ -396,12 +396,25 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                         </div>
                         
                         {!isSelectingForCurrentList ? (
-                            <button onClick={handleSaveListUpdate} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2">
-                                <Save className="w-4 h-4" /> Save List
-                            </button>
+                            <div className="flex gap-2 items-center">
+                                {onImportTaskList && (
+                                    <button
+                                        onClick={() => {
+                                            onImportTaskList(editingList);
+                                            setEditingList(null);
+                                        }}
+                                        className="px-6 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg"
+                                    >
+                                        ✓ ADD TO GAME
+                                    </button>
+                                )}
+                                <button onClick={handleSaveListUpdate} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2">
+                                    <Save className="w-4 h-4" /> Save List
+                                </button>
+                            </div>
                         ) : (
-                            <button 
-                                onClick={handleAddSelectedToEditingList} 
+                            <button
+                                onClick={handleAddSelectedToEditingList}
                                 disabled={selectedTemplateIds.length === 0}
                                 className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2"
                             >
