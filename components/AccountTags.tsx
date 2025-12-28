@@ -127,18 +127,22 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
     const handleConfirmPurge = async () => {
         if (!purgeTarget || !onDeleteTagGlobally) return;
         setIsPurging(true);
-        const tagToPurge = purgeTarget; 
+        const tagToPurge = purgeTarget;
         try {
+            // Delete from database FIRST (all tasks/games)
+            await onDeleteTagGlobally(tagToPurge);
+
+            // THEN delete from localStorage to complete the operation
             const next = { ...tagColors };
             delete next[tagToPurge];
             saveTags(next);
-            
-            await onDeleteTagGlobally(tagToPurge);
-            
+
             setPurgeTarget(null);
             if (editingOldName === tagToPurge) handleCancelEdit();
         } catch (error) {
             console.error("Tag purge failed:", error);
+            // Restore purge target so user can retry
+            setPurgeTarget(tagToPurge);
         } finally {
             setIsPurging(false);
         }
