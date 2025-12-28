@@ -695,15 +695,29 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         {/* Tasks on Canvas */}
                         {playgroundPoints.map(point => {
                             const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
+                            const isSelected = selectedTaskId === point.id;
+                            const displaySize = (point.playgroundScale || 1) * 48;
                             return (
                                 <div
                                     key={point.id}
                                     className="absolute transform -translate-x-1/2 -translate-y-1/2 group cursor-pointer"
                                     style={{ left: `${point.playgroundPosition?.x || 50}%`, top: `${point.playgroundPosition?.y || 50}%` }}
-                                    onClick={(e) => { e.stopPropagation(); onEditPoint(point); }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedTaskId(point.id);
+                                    }}
                                 >
-                                    <div className={`w-12 h-12 ${point.isCompleted ? 'bg-green-500' : 'bg-white'} rounded-full shadow-xl flex items-center justify-center border-4 border-slate-900 group-hover:scale-110 transition-transform`}>
-                                        <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : 'text-slate-900'}`} />
+                                    <div className={`rounded-full flex items-center justify-center border-4 shadow-xl transition-all ${
+                                        isSelected
+                                            ? 'border-orange-500 shadow-orange-500/50 scale-125'
+                                            : 'border-slate-900 group-hover:scale-110'
+                                    } ${point.isCompleted ? 'bg-green-500' : 'bg-white'}`}
+                                    style={{ width: displaySize, height: displaySize }}>
+                                        {point.iconUrl ? (
+                                            <img src={point.iconUrl} alt={point.title} className="w-2/3 h-2/3 object-contain" />
+                                        ) : (
+                                            <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : 'text-slate-900'}`} />
+                                        )}
                                     </div>
                                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                                         {point.title}
