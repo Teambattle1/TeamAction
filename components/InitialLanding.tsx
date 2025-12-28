@@ -202,7 +202,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   scale={0.75}
               />
               <MapPinButton
-                  title="PLAYGROUND"
+                  title="PLAYZONE"
                   icon={Globe}
                   gradient="bg-gradient-to-br from-emerald-500 to-green-500"
                   onClick={() => onAction('PLAYGROUNDS')}
