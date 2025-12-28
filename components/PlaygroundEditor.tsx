@@ -973,6 +973,21 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     <p className="text-[9px] text-slate-500 uppercase tracking-widest text-center">Zone: <span className="text-orange-400 font-bold">{activePlayground.title}</span></p>
                 </div>
             </div>
+
+            {/* Task Action Modal */}
+            {showActionModal && selectedTask && (
+                <TaskActionModal
+                    point={selectedTask}
+                    allPoints={playgroundPoints}
+                    playgrounds={game.playgrounds}
+                    onClose={() => setShowActionModal(false)}
+                    onSave={(updatedPoint) => {
+                        updateTask(updatedPoint);
+                        setShowActionModal(false);
+                    }}
+                    onStartDrawMode={() => {}}
+                />
+            )}
         </div>
     );
 };
