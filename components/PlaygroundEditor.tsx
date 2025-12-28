@@ -491,6 +491,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
             {/* RIGHT MAIN CANVAS */}
             <div className="flex-1 relative flex flex-col bg-[#050505]">
+                {/* Drawer Toggle Button */}
+                {!isDrawerOpen && (
+                    <button
+                        onClick={() => setIsDrawerOpen(true)}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-30 bg-orange-600 hover:bg-orange-700 text-white p-4 rounded-r-2xl shadow-2xl transition-all active:scale-95"
+                        title="Open Settings"
+                    >
+                        <ChevronRight className="w-6 h-6" />
+                    </button>
+                )}
+
                 {/* Top Overlay Bar */}
                 <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-10 pointer-events-none">
                     <div className="flex items-center gap-4 pointer-events-auto">
