@@ -648,7 +648,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
 
                     {/* Grid Controls */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className={`grid gap-3 ${isMarkMode ? 'grid-cols-2' : 'grid-cols-2'}`}>
                         <button
                             onClick={() => setShowGrid(!showGrid)}
                             className={`py-3 border rounded-xl flex items-center justify-center gap-2 transition-colors ${
@@ -661,14 +661,37 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <span className="text-[10px] font-black uppercase tracking-widest">GRID</span>
                         </button>
                         <button
-                            onClick={handleSnapAllToGrid}
-                            className="py-3 bg-slate-800 border border-slate-700 rounded-xl flex items-center justify-center gap-2 text-white hover:bg-slate-700 active:bg-green-600 transition-colors"
-                            title="Snap all icons to grid and align in rows"
+                            onClick={() => {
+                                if (isMarkMode) {
+                                    setIsMarkMode(false);
+                                    setMarkedTaskIds(new Set());
+                                } else {
+                                    setIsMarkMode(true);
+                                }
+                            }}
+                            className={`py-3 border rounded-xl flex items-center justify-center gap-2 transition-all ${
+                                isMarkMode
+                                    ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-500/50 animate-pulse'
+                                    : 'bg-slate-800 border-slate-700 text-white hover:bg-slate-700'
+                            }`}
+                            title={isMarkMode ? 'Exit mark mode' : 'Select tasks to snap to line-based grid'}
                         >
-                            <Check className="w-4 h-4 text-green-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">SNAP ALL</span>
+                            <MousePointer2 className="w-4 h-4" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">MARK & SNAP</span>
                         </button>
                     </div>
+
+                    {/* Snap Selected Button (only shown in mark mode) */}
+                    {isMarkMode && markedTaskIds.size > 0 && (
+                        <button
+                            onClick={handleSnapMarkedToGrid}
+                            className="w-full py-3 bg-green-600 hover:bg-green-700 border border-green-500 rounded-xl flex items-center justify-center gap-2 text-white transition-all font-black uppercase tracking-widest text-[10px] shadow-lg"
+                            title={`Snap ${markedTaskIds.size} selected task(s) to grid`}
+                        >
+                            <Check className="w-4 h-4" />
+                            <span>SNAP SELECTED ({markedTaskIds.size})</span>
+                        </button>
+                    )}
 
                     {/* Background Audio Section - At Bottom */}
                     <div>
