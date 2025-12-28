@@ -31,10 +31,19 @@ const FETCH_TIMEOUT_MS = 30000; // 30 second timeout per chunk
 const TAGS_FETCH_TIMEOUT_MS = 5000; // 5 second timeout for tag fetches (fail fast)
 
 // Retry helper for timeout errors with exponential backoff
-const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRetries = 2): Promise<T> => {
+const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRetries = 2, timeoutMs?: number): Promise<T> => {
     let lastError: any;
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
+            // Add timeout wrapper if specified
+            if (timeoutMs) {
+                return await Promise.race([
+                    fn(),
+                    new Promise<T>((_, reject) =>
+                        setTimeout(() => reject(new Error(`Query timeout after ${timeoutMs}ms`)), timeoutMs)
+                    )
+                ]);
+            }
             return await fn();
         } catch (e: any) {
             lastError = e;
