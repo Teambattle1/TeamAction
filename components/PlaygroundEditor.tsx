@@ -1168,6 +1168,58 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 </div>
             </div>
 
+            {/* AI Icon Prompt Modal */}
+            {showAiIconPrompt && (
+                <div className="fixed inset-0 z-[6500] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-md bg-[#0f172a] border border-slate-700 rounded-2xl shadow-2xl overflow-hidden">
+                        <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Wand2 className="w-4 h-4 text-purple-400" />
+                                <h3 className="text-xs font-black uppercase tracking-widest text-white">AI ICON PROMPT</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowAiIconPrompt(false)}
+                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                                type="button"
+                                title="Close"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-4 space-y-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Describe the icon you want (e.g. “red flag”, “gold star”, “camera”).</p>
+                            <input
+                                value={aiIconPromptValue}
+                                onChange={(e) => setAiIconPromptValue(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-purple-500"
+                                placeholder="TYPE KEYWORDS..."
+                                autoFocus
+                            />
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowAiIconPrompt(false)}
+                                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors"
+                                    type="button"
+                                >
+                                    CANCEL
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        if (!selectedTask) return;
+                                        setShowAiIconPrompt(false);
+                                        await handleGenerateTaskIcon(aiIconPromptValue);
+                                    }}
+                                    className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors"
+                                    type="button"
+                                >
+                                    GENERATE
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Task Action Modal */}
             {showActionModal && selectedTask && (
                 <TaskActionModal
