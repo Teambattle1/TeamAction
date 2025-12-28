@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents, Polyline, Tooltip, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -243,8 +242,8 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, onClick, onMo
     const isUnlocked = point.isUnlocked || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
     const isCompleted = point.isCompleted;
     
-    // Draggable only in Edit Mode
-    const draggable = mode === GameMode.EDIT;
+    // Draggable in Edit & Instructor Mode
+    const draggable = mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
     
     const eventHandlers = React.useMemo(
         () => ({
