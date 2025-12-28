@@ -754,21 +754,18 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 isTasksDrawerOpen ? 'w-[360px]' : 'w-0'
             } overflow-hidden`}>
                 {/* Header */}
-                <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-[#0f172a]">
-                    <div className="flex items-center gap-3">
-                        <Plus className="w-5 h-5 text-orange-500" />
-                        <div>
-                            <h2 className="text-sm font-black uppercase tracking-widest text-white">TASKS</h2>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{playgroundPoints.length} in zone</p>
-                        </div>
-                    </div>
+                <div className="p-5 border-b border-slate-800 flex items-center justify-center gap-3 bg-[#0f172a] relative">
                     <button
                         onClick={() => setIsTasksDrawerOpen(false)}
-                        className="text-orange-500 hover:text-orange-400 transition-colors p-2 -ml-2"
+                        className="absolute left-5 text-orange-500 hover:text-orange-400 transition-colors p-2"
                         title="Close Tasks"
                     >
-                        <ChevronRight className="w-6 h-6" />
+                        <ChevronLeft className="w-6 h-6" />
                     </button>
+                    <div className="flex flex-col items-center gap-1">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-white">TASKS</h2>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{playgroundPoints.length} in zone</p>
+                    </div>
                 </div>
 
                 {/* Content - Task Creation or Task Editor */}
