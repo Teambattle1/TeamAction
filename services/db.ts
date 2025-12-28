@@ -7,8 +7,21 @@ const logError = (context: string, error: any) => {
         console.warn(`[DB Service] Table missing in ${context} (42P01). Run Database Setup.`);
         return;
     }
+
+    // Enhanced error logging
     const errorMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+    const errorDetails = {
+        message: errorMsg,
+        code: error?.code,
+        status: error?.status,
+        statusText: error?.statusText,
+        name: error?.name
+    };
+
     console.error(`[DB Service] Error in ${context}:`, errorMsg);
+    if (Object.values(errorDetails).some(v => v !== undefined)) {
+        console.error(`[DB Service] Error details:`, errorDetails);
+    }
 };
 
 // Configuration for large table fetches
