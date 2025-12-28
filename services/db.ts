@@ -515,36 +515,72 @@ export const submitClientTask = async (listId: string, task: TaskTemplate): Prom
 };
 
 // --- TAGS ---
+// Cache for unique tags to avoid repeated expensive queries
+let tagsCache: string[] = [];
+let tagsCacheFetchTime = 0;
+const TAGS_CACHE_DURATION_MS = 60000; // Cache tags for 60 seconds
+
 export const fetchUniqueTags = async (): Promise<string[]> => {
+    // Return cached tags if fresh
+    if (tagsCache.length > 0 && Date.now() - tagsCacheFetchTime < TAGS_CACHE_DURATION_MS) {
+        return tagsCache;
+    }
+
     try {
         const tags = new Set<string>();
+        let fetchedAny = false;
 
-        // Fetch library tags in chunks
-        const libraryRows = await fetchInChunks(
-            (offset, limit) => supabase.from('library').select('data').range(offset, offset + limit - 1),
-            'fetchUniqueTags[library]',
-            CHUNK_SIZE
-        );
+        // Fetch library tags in smaller chunks with aggressive timeout
+        try {
+            const libraryRows = await fetchInChunks(
+                (offset, limit) => supabase.from('library').select('data').range(offset, offset + limit - 1),
+                'fetchUniqueTags[library]',
+                TAGS_CHUNK_SIZE,
+                TAGS_FETCH_TIMEOUT_MS
+            );
 
-        // Fetch games tags in chunks
-        const gamesRows = await fetchInChunks(
-            (offset, limit) => supabase.from('games').select('data').range(offset, offset + limit - 1),
-            'fetchUniqueTags[games]',
-            CHUNK_SIZE
-        );
+            libraryRows?.forEach((row: any) => {
+                row.data?.tags?.forEach((tag: string) => tags.add(tag));
+            });
 
-        libraryRows?.forEach((row: any) => {
-            row.data?.tags?.forEach((tag: string) => tags.add(tag));
-        });
+            if (libraryRows.length > 0) fetchedAny = true;
+        } catch (e: any) {
+            console.warn('[DB Service] Skipping library tags (timeout or error)', e?.message || e);
+            // Fail gracefully - library tags are optional
+        }
 
-        gamesRows?.forEach((row: any) => {
-            row.data?.tags?.forEach((tag: string) => tags.add(tag));
-        });
+        // Fetch games tags in smaller chunks with aggressive timeout
+        try {
+            const gamesRows = await fetchInChunks(
+                (offset, limit) => supabase.from('games').select('data').range(offset, offset + limit - 1),
+                'fetchUniqueTags[games]',
+                TAGS_CHUNK_SIZE,
+                TAGS_FETCH_TIMEOUT_MS
+            );
 
-        return Array.from(tags).sort();
+            gamesRows?.forEach((row: any) => {
+                row.data?.tags?.forEach((tag: string) => tags.add(tag));
+            });
+
+            if (gamesRows.length > 0) fetchedAny = true;
+        } catch (e: any) {
+            console.warn('[DB Service] Skipping games tags (timeout or error)', e?.message || e);
+            // Fail gracefully - games tags are optional
+        }
+
+        const result = Array.from(tags).sort();
+
+        // Cache the result if we fetched anything
+        if (fetchedAny) {
+            tagsCache = result;
+            tagsCacheFetchTime = Date.now();
+        }
+
+        return result;
     } catch (e) {
-        console.warn("Error fetching unique tags", e);
-        return [];
+        console.warn('[DB Service] Error fetching unique tags', e);
+        // Return cached tags even if stale, or empty array if no cache
+        return tagsCache;
     }
 };
 
