@@ -2,12 +2,14 @@ import { Coordinate } from '../types';
 
 /**
  * Calculates the distance between two coordinates in meters using the Haversine formula.
+ * Returns 0 if inputs are invalid (null/undefined or non-finite values).
  */
 export const haversineMeters = (a: Coordinate | null | undefined, b: Coordinate | null | undefined): number => {
-  if (!a || !b || a.lat === undefined || a.lng === undefined || b.lat === undefined || b.lng === undefined) {
+  // Validate both coordinates exist and have finite values
+  if (!isValidCoordinate(a) || !isValidCoordinate(b)) {
     return 0;
   }
-  
+
   const R = 6371000; // Radius of the Earth in meters
   const toRad = (d: number) => (d * Math.PI) / 180;
 
