@@ -173,7 +173,7 @@ const SortablePointItem: React.FC<{
                 <div className="min-w-0">
                     <p className={`font-bold text-xs truncate ${isSelected ? 'text-blue-900 dark:text-blue-100' : isMapHovered ? 'text-white' : 'text-gray-800 dark:text-gray-200'}`}>{point.title}</p>
                     {sourceList && (
-                        <p className="text-[8px] text-gray-400 uppercase tracking-wide truncate" style={{ color: sourceList.color }}>
+                        <p className={`text-[8px] uppercase tracking-wide truncate ${isMapHovered ? 'text-orange-100' : 'text-gray-400'}`} style={isMapHovered ? undefined : { color: sourceList.color }}>
                             {sourceList.name}
                         </p>
                     )}
