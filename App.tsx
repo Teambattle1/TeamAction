@@ -1522,11 +1522,34 @@ const GameApp: React.FC = () => {
                     if (coords && coords.length > 0) mapRef.current?.fitBounds(coords);
                     else mapRef.current?.fitBounds(activeGame?.points || []);
                 }}
-                onOpenPlaygroundEditor={(playgroundId?: string) => {
+                onOpenPlaygroundEditor={async (playgroundId?: string) => {
                     if (playgroundId) {
                         setViewingPlaygroundId(playgroundId);
                     } else {
-                        setViewingPlaygroundId(activeGame?.playgrounds?.[0]?.id || null);
+                        // If no playground exists, create one first
+                        if (!activeGame?.playgrounds || activeGame.playgrounds.length === 0) {
+                            if (!activeGame) return;
+
+                            const newPlaygroundId = `pg-${Date.now()}`;
+                            const center = mapRef.current?.getCenter() || { lat: 55.6761, lng: 12.5683 };
+
+                            const newPlayground = {
+                                id: newPlaygroundId,
+                                title: 'New Playzone',
+                                buttonVisible: true,
+                                iconId: 'default',
+                                location: center
+                            };
+
+                            await updateActiveGame({
+                                ...activeGame,
+                                playgrounds: [newPlayground]
+                            });
+
+                            setViewingPlaygroundId(newPlaygroundId);
+                        } else {
+                            setViewingPlaygroundId(activeGame.playgrounds[0].id);
+                        }
                     }
                 }}
                 initialExpanded={true}
