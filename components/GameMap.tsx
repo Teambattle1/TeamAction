@@ -580,15 +580,26 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
 
             {/* Tasks */}
             {mapPoints.map(point => (
-                <MapTaskMarker 
-                    key={point.id} 
-                    point={point} 
-                    mode={mode} 
+                <MapTaskMarker
+                    key={point.id}
+                    point={point}
+                    mode={mode}
                     label={getLabel(point)}
                     showScore={showScores}
                     onClick={onPointClick}
                     onMove={onPointMove}
                     onDelete={onDeletePoint}
+                    onDragStart={(id: string) => setDraggingPointId(id)}
+                    onDragEnd={(id: string) => {
+                        setDraggingPointId(null);
+                        if (isOverTrash && onDeletePoint) {
+                            onDeletePoint(id);
+                            setIsOverTrash(false);
+                            return true; // Signal deletion
+                        }
+                        setIsOverTrash(false);
+                        return false;
+                    }}
                 />
             ))}
 
