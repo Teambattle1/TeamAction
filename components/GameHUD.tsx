@@ -505,6 +505,17 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
     const isNorwegianMode = mapStyle === 'norwegian';
     const sidebarOffset = (mode === GameMode.EDIT && isDrawerExpanded) ? 'sm:translate-x-[320px]' : '';
 
+    // Expose toolbar positions via ref for saving
+    useImperativeHandle(ref, () => ({
+        getToolbarPositions: () => ({
+            locationToolboxPos,
+            topToolbarPos,
+            viewSwitcherPos,
+            pinsToolboxPos,
+            showToolboxPos
+        })
+    }), [locationToolboxPos, topToolbarPos, viewSwitcherPos, pinsToolboxPos, showToolboxPos]);
+
     return (
         <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 sm:p-6 z-[1000]">
             {/* COUNTDOWN OVERLAY */}
