@@ -174,11 +174,32 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-4 gap-2 mb-4 p-4 rounded-lg border border-cyan-600/30 bg-cyan-900/10">
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 font-bold uppercase">Total Distance</p>
+                  <p className="text-lg font-black text-cyan-400">{totals.totalDistance.toFixed(1)}km</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 font-bold uppercase">Correct/Incorrect</p>
+                  <p className="text-lg font-black"><span className="text-green-400">{totals.totalCorrect}</span>/<span className="text-red-400">{totals.totalIncorrect}</span></p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 font-bold uppercase">Teams</p>
+                  <p className="text-lg font-black text-purple-400">{teamStats.length}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-gray-400 font-bold uppercase">Avg Score</p>
+                  <p className="text-lg font-black text-orange-400">{totals.avgScore}</p>
+                </div>
+              </div>
+
               {/* Header Row */}
-              <div className="grid grid-cols-6 gap-2 mb-4 px-4 py-2 bg-gray-800/50 rounded-lg">
+              <div className="grid grid-cols-7 gap-2 mb-4 px-4 py-2 bg-gray-800/50 rounded-lg">
                 <div className="text-xs font-black text-gray-400 uppercase tracking-wider">TEAM</div>
-                <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-center">TASKS</div>
+                <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-center">✓/✗</div>
                 <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-center">TOTAL KM</div>
+                <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-center">PLAYTIME</div>
                 <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-center">TASK/KM</div>
                 <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-center">MEMBERS</div>
                 <div className="text-xs font-black text-gray-400 uppercase tracking-wider text-right">SCORE</div>
