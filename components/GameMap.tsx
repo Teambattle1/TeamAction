@@ -451,9 +451,6 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
 
-      // Hide temporarily trashed points (dragged to bin, not permanently deleted)
-      if (trashedPointIds.has(p.id)) return false;
-
       // If game ended, only show Info points (points == 0) or if explicitly flagged (if we add 'isInfo' later)
       // Assuming 0 points means 'Info'
       if (gameEnded) {
