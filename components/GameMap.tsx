@@ -589,10 +589,15 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                     onClick={onPointClick}
                     onMove={onPointMove}
                     onDelete={onDeletePoint}
-                    onDragStart={(id: string) => setDraggingPointId(id)}
+                    onDragStart={(id: string) => {
+                        console.log('[Drag] Started dragging point:', id);
+                        setDraggingPointId(id);
+                    }}
                     onDragEnd={(id: string) => {
+                        console.log('[Drag] Ended drag for point:', id, 'isOverTrash:', isOverTrash);
                         setDraggingPointId(null);
                         if (isOverTrash && onDeletePoint) {
+                            console.log('[Drag] Calling delete for:', id);
                             onDeletePoint(id);
                             setIsOverTrash(false);
                             return true; // Signal deletion
