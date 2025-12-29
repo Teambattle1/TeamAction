@@ -618,7 +618,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                         {/* Hidden audio element for preview */}
                         <audio
                             ref={audioRef}
-                            src={batchAudioUrl || ''}
+                            src={batchAudioUrl ?? undefined}
                             onEnded={() => setIsPlayingSound(false)}
                             className="hidden"
                         />
