@@ -396,7 +396,8 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
            prev.point.iconId === next.point.iconId &&
            prev.point.iconUrl === next.point.iconUrl &&
            prev.point.radiusMeters === next.point.radiusMeters &&
-           prev.point.areaColor === next.point.areaColor;
+           prev.point.areaColor === next.point.areaColor &&
+           prev.isRelocateSelected === next.isRelocateSelected; // Re-render when relocation selection changes
 });
 
 const DangerZoneMarker = React.memo(({ zone, onClick, mode }: any) => {
