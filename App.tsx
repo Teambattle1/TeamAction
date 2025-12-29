@@ -460,34 +460,40 @@ const GameApp: React.FC = () => {
 
           console.log('[Measure] Task clicked in measure mode:', point.id, 'Location:', point.location);
 
-          // Calculate distance BEFORE updating state
-          const distanceToAdd = measurePath.length > 0
-              ? haversineMeters(measurePath[measurePath.length - 1], point.location)
-              : 0;
+          // CRITICAL FIX: Use state callback to avoid stale closure
+          // We need to calculate distance based on the CURRENT state, not the closed-over value
+          setMeasurePath(prev => {
+              const newPath = [...prev, point.location];
 
-          console.log('[Measure] Distance calculation:', {
-              previousPoint: measurePath[measurePath.length - 1],
-              currentPoint: point.location,
-              distanceToAdd: distanceToAdd.toFixed(2) + 'm'
+              // Calculate distance from previous point (if exists)
+              const distanceToAdd = prev.length > 0
+                  ? haversineMeters(prev[prev.length - 1], point.location)
+                  : 0;
+
+              console.log('[Measure] Distance calculation:', {
+                  previousPoint: prev[prev.length - 1],
+                  currentPoint: point.location,
+                  distanceToAdd: distanceToAdd.toFixed(2) + 'm',
+                  pathLength: prev.length
+              });
+
+              // Update distance
+              setMeasuredDistance(prevDist => {
+                  const newDistance = prevDist + distanceToAdd;
+                  console.log('[Measure] Distance update:', prevDist.toFixed(2) + 'm', '+', distanceToAdd.toFixed(2) + 'm', '=', newDistance.toFixed(2) + 'm');
+                  return newDistance;
+              });
+
+              return newPath;
           });
 
           // Add task ID to selected list (for visual feedback)
           setSelectedMeasurePointIds(prev => [...prev, point.id]);
 
-          // Add task location to measurement path
-          setMeasurePath(prev => [...prev, point.location]);
-
-          // Update distance with the calculated value
-          setMeasuredDistance(prev => {
-              const newDistance = prev + distanceToAdd;
-              console.log('[Measure] Distance update:', prev.toFixed(2) + 'm', '+', distanceToAdd.toFixed(2) + 'm', '=', newDistance.toFixed(2) + 'm');
-              return newDistance;
-          });
-
           // Update point count
           setMeasurePointsCount(prev => prev + 1);
 
-          console.log('[Measure] ✓ Added task to path. Total distance:', (measuredDistance + distanceToAdd).toFixed(2) + 'm');
+          console.log('[Measure] ✓ Added task to path.');
 
           // CRITICAL: Stop execution here - do NOT open task modal
           console.log('[handlePointClick] ✓ EXITING - Measure mode complete, returning early');
