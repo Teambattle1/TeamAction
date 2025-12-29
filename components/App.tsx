@@ -1460,6 +1460,8 @@ const GameApp: React.FC = () => {
                 isRelocating={isRelocating}
                 relocateScopeCenter={relocateScopeCenter}
                 showScores={showScores}
+                showTaskId={showTaskId}
+                showTaskTitle={showTaskTitle}
                 teams={mapTeams}
                 showUserLocation={currentGameObj?.showPlayerLocations ?? true}
             />
