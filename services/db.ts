@@ -24,6 +24,12 @@ const logError = (context: string, error: any) => {
     }
 };
 
+// UUID validation helper
+const isValidUUID = (str: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidRegex.test(str);
+};
+
 // Configuration for large table fetches
 const CHUNK_SIZE = 50; // Fetch 50 rows at a time (reduced to prevent timeouts)
 const LIBRARY_CHUNK_SIZE = 25; // Even smaller for library (data objects are large)
