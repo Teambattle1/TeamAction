@@ -511,24 +511,16 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                     <h2 className="font-bold text-xs text-gray-400 uppercase tracking-wide">Tasks List</h2>
                     <p className="text-[10px] text-gray-500 uppercase">{allPoints.length} points defined</p>
                 </div>
-                <div className="flex items-center gap-1">
-                    <button 
-                        onClick={() => onFitBounds()} 
-                        className="p-2 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-full text-orange-600 dark:text-orange-400 transition-colors"
-                        title="Fit Map to All Tasks"
+                {onOpenPlaygroundEditor && (
+                    <button
+                        onClick={() => onOpenPlaygroundEditor()}
+                        className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2"
+                        title="Open Playzone Editor"
                     >
-                        <Maximize className="w-5 h-5" />
+                        <LayoutGrid className="w-4 h-4" />
+                        ADD PLAYZONE
                     </button>
-                    {onToggleScores && (
-                        <button 
-                            onClick={onToggleScores} 
-                            className={`p-2 rounded-full transition-colors ${showScores ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'hover:bg-gray-200 dark:hover:bg-gray-800 text-gray-500'}`}
-                            title="Toggle Scores on Map"
-                        >
-                            <Hash className="w-5 h-5" />
-                        </button>
-                    )}
-                </div>
+                )}
             </div>
 
             <div className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 relative z-[50]">
