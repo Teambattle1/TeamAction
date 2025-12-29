@@ -1439,11 +1439,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                         {deleteConfirm ? 'CONFIRM DELETE?' : 'DELETE'}
                     </button>
                 )}
-                <button 
+                <button
                     onClick={handleCreate}
                     className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-black uppercase text-xs tracking-widest shadow-lg flex items-center gap-2"
                 >
-                    <Save className="w-4 h-4" /> SAVE
+                    <Save className="w-4 h-4" /> {isEditMode ? 'UPDATE' : 'SAVE'}
                 </button>
                 <div className="h-6 w-px bg-slate-800 mx-2"></div>
                 <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
