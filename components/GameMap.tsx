@@ -341,6 +341,22 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
             >
             </Marker>
 
+            {/* Relocate Selection Glow - Pulsing circle around selected tasks */}
+            {isRelocateSelected && (
+                <Circle
+                    center={[point.location.lat, point.location.lng]}
+                    radius={30}
+                    pathOptions={{
+                        color: '#f97316',
+                        fillColor: '#f97316',
+                        fillOpacity: 0.3,
+                        weight: 3,
+                        className: 'animate-pulse'
+                    }}
+                    interactive={false}
+                />
+            )}
+
             {/* Radius Circle */}
             {(mode === GameMode.EDIT || isUnlocked) && (
                 <Circle
