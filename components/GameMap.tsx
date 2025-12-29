@@ -537,6 +537,35 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 <DangerZoneMarker key={zone.id} zone={zone} onClick={onZoneClick} mode={mode} />
             ))}
 
+            {/* Relocate Scope Center */}
+            {isRelocating && relocateScopeCenter && (
+                <>
+                    <Circle
+                        center={[relocateScopeCenter.lat, relocateScopeCenter.lng]}
+                        radius={200}
+                        pathOptions={{
+                            color: '#22c55e',
+                            fillColor: '#22c55e',
+                            fillOpacity: 0.1,
+                            weight: 3,
+                            dashArray: '5, 10',
+                            className: 'animate-pulse'
+                        }}
+                        interactive={false}
+                    />
+                    <Marker
+                        position={[relocateScopeCenter.lat, relocateScopeCenter.lng]}
+                        icon={L.icon({
+                            iconUrl: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2322c55e" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>',
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 16],
+                            className: 'animate-bounce'
+                        })}
+                        zIndexOffset={1500}
+                    />
+                </>
+            )}
+
             {/* Tasks */}
             {mapPoints.map(point => (
                 <MapTaskMarker 
