@@ -189,15 +189,7 @@ const GameApp: React.FC = () => {
       };
   }, [activeGameId, mode, activeTask]);
 
-  // Measurement logic updates
-  useEffect(() => {
-      if (isMeasuring && userLocation) {
-          setMeasurePath(prev => {
-              if (prev.length === 0) return [userLocation];
-              return [...prev.slice(0, prev.length - 1), userLocation];
-          });
-      }
-  }, [userLocation, isMeasuring]);
+  // Measurement logic: no auto-update with user location, only manual task clicks
 
   useEffect(() => {
       if (activeGameId) {
