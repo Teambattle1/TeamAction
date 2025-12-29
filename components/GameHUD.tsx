@@ -202,7 +202,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setLocationToolboxPos({ x: e.clientX - locationDragOffset.current.x, y: e.clientY - locationDragOffset.current.y });
     };
     const handleLocationBoxPointerUp = (e: React.PointerEvent) => {
-        setIsDraggingLocationBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        setIsDraggingLocationBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId); saveToolbarPositions();
     };
 
     const handleTopToolbarPointerDown = (e: React.PointerEvent) => {
@@ -215,7 +215,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setTopToolbarPos({ x: e.clientX - topToolbarDragOffset.current.x, y: e.clientY - topToolbarDragOffset.current.y });
     };
     const handleTopToolbarPointerUp = (e: React.PointerEvent) => {
-        setIsDraggingTopToolbar(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        setIsDraggingTopToolbar(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId); saveToolbarPositions();
     };
 
     const handleViewSwitcherPointerDown = (e: React.PointerEvent) => {
@@ -228,7 +228,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setViewSwitcherPos({ x: e.clientX - viewSwitcherDragOffset.current.x, y: e.clientY - viewSwitcherDragOffset.current.y });
     };
     const handleViewSwitcherPointerUp = (e: React.PointerEvent) => {
-        setIsDraggingViewSwitcher(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        setIsDraggingViewSwitcher(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId); saveToolbarPositions();
     };
 
     const handlePinsBoxPointerDown = (e: React.PointerEvent) => {
@@ -241,7 +241,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setPinsToolboxPos({ x: e.clientX - pinsDragOffset.current.x, y: e.clientY - pinsDragOffset.current.y });
     };
     const handlePinsBoxPointerUp = (e: React.PointerEvent) => {
-        setIsDraggingPinsBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        setIsDraggingPinsBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId); saveToolbarPositions();
     };
 
     const handleShowBoxPointerDown = (e: React.PointerEvent) => {
@@ -254,7 +254,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setShowToolboxPos({ x: e.clientX - showDragOffset.current.x, y: e.clientY - showDragOffset.current.y });
     };
     const handleShowBoxPointerUp = (e: React.PointerEvent) => {
-        setIsDraggingShowBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        setIsDraggingShowBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId); saveToolbarPositions();
     };
 
     // Countdown Effect
