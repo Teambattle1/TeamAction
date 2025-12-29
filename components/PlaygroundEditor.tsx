@@ -2026,38 +2026,30 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </p>
                             <div>
                                 <label className="text-[9px] font-bold uppercase text-slate-500 mb-1 block">Zone: <span className="text-orange-400">{activePlayground?.title || 'Unknown'}</span></label>
-                                <input
+                                <textarea
                                     value={aiBackgroundPromptValue}
                                     onChange={(e) => setAiBackgroundPromptValue(e.target.value)}
                                     onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && !isGeneratingBackground) {
+                                        if (e.key === 'Enter' && e.ctrlKey && !isGeneratingBackground) {
                                             handleGenerateAiBackground(aiBackgroundPromptValue);
                                         }
                                     }}
                                     disabled={isGeneratingBackground}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-purple-500 disabled:opacity-50"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-3 text-sm font-bold text-white outline-none focus:border-purple-500 disabled:opacity-50 resize-none"
                                     placeholder="ENTER KEYWORDS..."
+                                    rows={4}
                                     autoFocus
                                 />
+                                <p className="text-[8px] text-slate-500 mt-1 uppercase">Tip: Press Ctrl+Enter to generate</p>
                             </div>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => setShowAiBackgroundPrompt(false)}
-                                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors"
-                                    type="button"
-                                    disabled={isGeneratingBackground}
-                                >
-                                    CANCEL
-                                </button>
-                                <button
-                                    onClick={() => handleGenerateAiBackground(aiBackgroundPromptValue)}
-                                    disabled={!aiBackgroundPromptValue.trim() || isGeneratingBackground}
-                                    className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors"
-                                    type="button"
-                                >
-                                    {isGeneratingBackground ? 'GENERATING...' : 'GENERATE'}
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => handleGenerateAiBackground(aiBackgroundPromptValue)}
+                                disabled={!aiBackgroundPromptValue.trim() || isGeneratingBackground}
+                                className="w-full py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-xl font-black uppercase tracking-widest text-[10px] transition-colors"
+                                type="button"
+                            >
+                                {isGeneratingBackground ? 'GENERATING...' : 'GENERATE'}
+                            </button>
                             {activePlayground?.imageUrl && (
                                 <div className="pt-3 border-t border-slate-700 text-[9px] text-slate-400">
                                     <p className="font-bold mb-1">Current Background:</p>
