@@ -1533,6 +1533,8 @@ const GameApp: React.FC = () => {
             }}
             allowChatting={currentGameObj?.allowChatting ?? true}
             authUser={authUser}
+            activeGame={activeGame}
+            onUpdateGame={(game) => updateActiveGame(game, "Updated Toolbar Positions")}
         />
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
