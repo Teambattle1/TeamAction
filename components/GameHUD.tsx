@@ -699,8 +699,8 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                     onPointerMove={handleViewSwitcherPointerMove}
                     onPointerUp={handleViewSwitcherPointerUp}
                 >
-                    <div className="bg-orange-600 border-2 border-orange-500 rounded-xl shadow-2xl p-1 cursor-move group relative">
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-200 opacity-0 group-hover:opacity-100 transition-opacity bg-orange-700 rounded-full px-2 border border-orange-500 pointer-events-none">
+                    <div className="bg-red-600 border-2 border-red-500 rounded-xl shadow-2xl p-1 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-red-200 opacity-0 group-hover:opacity-100 transition-opacity bg-red-700 rounded-full px-2 border border-red-500 pointer-events-none">
                             <GripHorizontal className="w-3 h-3" />
                         </div>
                         <div className="flex flex-col gap-1">
@@ -710,30 +710,30 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                             <div className="flex gap-1">
                                 <button
                                     onClick={() => onSetMode(GameMode.EDIT)}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-red-700 text-red-100 border-red-600 hover:bg-red-800 hover:text-white'}`}
                                     title="Editor View"
                                 >
                                     <MapIcon className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.INSTRUCTOR)}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-red-700 text-red-100 border-red-600 hover:bg-red-800 hover:text-white'}`}
                                     title="Instructor View"
                                 >
                                     <Shield className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.PLAY)}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-red-700 text-red-100 border-red-600 hover:bg-red-800 hover:text-white'}`}
                                     title="Team View"
                                 >
                                     <Users className="w-4 h-4" />
                                 </button>
                             </div>
                             <div className="flex gap-1 text-center">
-                                <div className="flex-1 text-[7px] font-black text-orange-100 uppercase tracking-widest leading-tight">EDITOR</div>
-                                <div className="flex-1 text-[7px] font-black text-orange-100 uppercase tracking-widest leading-tight">INSTRUCTOR</div>
-                                <div className="flex-1 text-[7px] font-black text-orange-100 uppercase tracking-widest leading-tight">TEAM</div>
+                                <div className="flex-1 text-[7px] font-black text-red-100 uppercase tracking-widest leading-tight">EDITOR</div>
+                                <div className="flex-1 text-[7px] font-black text-red-100 uppercase tracking-widest leading-tight">INSTRUCTOR</div>
+                                <div className="flex-1 text-[7px] font-black text-red-100 uppercase tracking-widest leading-tight">TEAM</div>
                             </div>
                         </div>
                     </div>
@@ -770,7 +770,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                 {/* Measure Button */}
                                 <button
                                     onClick={onToggleMeasure}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isMeasuring ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isMeasuring ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
                                     title="Measure"
                                 >
                                     <Ruler className="w-4 h-4" />
@@ -779,7 +779,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                 {/* Relocate Button */}
                                 <button
                                     onClick={onRelocateGame}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isRelocating ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50 animate-pulse' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isRelocating ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50 animate-pulse' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
                                     title="Relocate"
                                 >
                                     <Crosshair className="w-4 h-4" />
@@ -817,7 +817,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {/* Toggle Task Order ID Button */}
                                     <button
                                         onClick={onToggleTaskId}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskId ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskId ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
                                         title="Toggle Task Order ID"
                                     >
                                         <Hash className="w-4 h-4" />
@@ -826,7 +826,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {/* Toggle Task Title Button */}
                                     <button
                                         onClick={onToggleTaskTitle}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskTitle ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskTitle ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
                                         title="Toggle Task Title"
                                     >
                                         <Type className="w-4 h-4" />
@@ -835,7 +835,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {/* Scores Button */}
                                     <button
                                         onClick={onToggleScores}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showScores ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showScores ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
                                         title="Scores"
                                     >
                                         <Trophy className="w-4 h-4" />
