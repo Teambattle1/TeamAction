@@ -483,6 +483,12 @@ const GameApp: React.FC = () => {
           return;
       }
 
+      // CRITICAL: When relocating mode is active, ignore point clicks (users should click map to place)
+      if (isRelocating) {
+          console.log('[Relocate] Point click ignored - click map to relocate tasks');
+          return;
+      }
+
       // Normal mode: Open task modal/editor
       if (mode === GameMode.EDIT) {
           setActiveTask(point);
@@ -501,6 +507,7 @@ const GameApp: React.FC = () => {
 
       // Relocate tool - move all tasks
       if (mode === GameMode.EDIT && isRelocating && relocateScopeCenter && activeGame) {
+          console.log('[Relocate] Executing relocation to:', coord);
           const offsetLat = coord.lat - relocateScopeCenter.lat;
           const offsetLng = coord.lng - relocateScopeCenter.lng;
 
@@ -527,6 +534,7 @@ const GameApp: React.FC = () => {
 
           // Update the scope center to the new location
           setRelocateScopeCenter(coord);
+          console.log('[Relocate] Relocation complete. New center:', coord);
       }
   };
 
@@ -1356,7 +1364,7 @@ const GameApp: React.FC = () => {
                 onZoneClick={(z) => setActiveDangerZone(z)}
                 onMapClick={handleMapClick}
                 onDeletePoint={handleDeleteItem}
-                onPointMove={async (id, loc) => {
+                onPointMove={isMeasuring || isRelocating ? undefined : async (id, loc) => {
                     if (!activeGame) return;
 
                     // Location updates are the most common multi-user edit. We re-fetch latest game
@@ -1371,7 +1379,7 @@ const GameApp: React.FC = () => {
                     setGames(prev => prev.map(g => g.id === updated.id ? updated : g));
                     setActiveGame(updated);
                 }}
-                onDragStart={(pointId) => {
+                onDragStart={isMeasuring || isRelocating ? undefined : (pointId) => {
                     const point = activeGame?.points.find(p => p.id === pointId);
                     if (point) setActiveTask(point);
                 }}
@@ -1396,6 +1404,18 @@ const GameApp: React.FC = () => {
                     </div>
                     <div className="bg-orange-800 px-3 py-1 rounded-full text-xs font-bold">
                         {measurePointsCount} tasks • {Math.round(measuredDistance)}m
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* RELOCATE MODE BANNER */}
+        {isRelocating && (mode === GameMode.EDIT) && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none animate-in fade-in slide-in-from-top">
+                <div className="bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl border-2 border-green-400 flex items-center gap-3">
+                    <Crosshair className="w-5 h-5 animate-spin-slow" />
+                    <div className="font-black uppercase tracking-wider text-sm">
+                        RELOCATE MODE: Click MAP to move all tasks
                     </div>
                 </div>
             </div>
