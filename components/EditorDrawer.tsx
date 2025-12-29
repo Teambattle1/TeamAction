@@ -35,6 +35,7 @@ interface EditorDrawerProps {
   onFitBounds: (coords?: Coordinate[]) => void; // Updated signature
   onHoverPoint?: (point: GamePoint | null) => void;
   onHoverDangerZone?: (zoneId: string | null) => void;
+  mapHoveredPointId?: string | null; // NEW: Point being hovered on map (reverse highlight)
   onOpenPlaygroundEditor?: (playgroundId?: string) => void;
   initialExpanded?: boolean;
   onAddTask?: (type: 'MANUAL' | 'AI' | 'LIBRARY' | 'TASKLIST', playgroundId?: string) => void;
