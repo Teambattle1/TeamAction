@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react';
-import { X, Users, Map, CheckCircle, TrendingUp } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { X, Users, Map, CheckCircle, TrendingUp, Save, Loader2 } from 'lucide-react';
 import { Game, Team } from '../types';
+import * as db from '../services/db';
 
 interface GameStatsModalProps {
   onClose: () => void;
   game: Game | null;
-  teams: { team: Team, location: any }[];
+  teams: { team: Team, location: any, memberCount?: number }[];
 }
 
 const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams }) => {
