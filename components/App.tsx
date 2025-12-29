@@ -1521,6 +1521,10 @@ const GameApp: React.FC = () => {
             isDrawerExpanded={isEditorExpanded}
             showScores={showScores}
             onToggleScores={() => setShowScores(!showScores)}
+            showTaskId={showTaskId}
+            onToggleTaskId={() => setShowTaskId(!showTaskId)}
+            showTaskTitle={showTaskTitle}
+            onToggleTaskTitle={() => setShowTaskTitle(!showTaskTitle)}
             hiddenPlaygroundIds={[]}
             onToggleChat={() => setShowChatDrawer(!showChatDrawer)}
             unreadMessagesCount={0}
