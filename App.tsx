@@ -440,9 +440,19 @@ const GameApp: React.FC = () => {
   };
 
   const handlePointClick = (point: GamePoint) => {
+      console.log('[handlePointClick] ENTRY:', {
+          pointId: point.id,
+          isMeasuring,
+          isRelocating,
+          mode,
+          timestamp: Date.now()
+      });
+
       // CRITICAL: When measuring mode is active, ONLY add to measurement path
       // Do NOT open any modals or task views
       if (isMeasuring) {
+          console.log('[handlePointClick] ✓ MEASURE MODE DETECTED - Entering measurement logic');
+
           if (!point.location || !isValidCoordinate(point.location)) {
               console.warn('[Measure] Cannot measure task without valid location:', point.id);
               return;
