@@ -23,8 +23,6 @@ interface LocationSearchProps {
   className?: string;
   hideSearch?: boolean;
   labelButtons?: boolean;
-  onToggleScores?: () => void;
-  showScores?: boolean;
   locateFeedback?: string | null;
   compact?: boolean;
 }
