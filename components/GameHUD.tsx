@@ -563,6 +563,41 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 </div>
             )}
 
+            {/* Task ID & Title Toggle Buttons (Under PINS) */}
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: pinsToolboxPos.x, top: pinsToolboxPos.y + 120 }}
+                >
+                    <div className="bg-yellow-600 border-2 border-yellow-500 rounded-xl shadow-2xl p-1 group relative">
+                        <div className="flex flex-col gap-1">
+                            <div className="text-center">
+                                <h3 className="text-[9px] font-black uppercase tracking-widest text-white">SHOW</h3>
+                            </div>
+                            <div className="flex gap-1">
+                                {/* Toggle Task ID Button */}
+                                <button
+                                    onClick={() => setShowTaskId(!showTaskId)}
+                                    className={`flex-1 rounded-lg transition-all border flex items-center justify-center group/toolbar relative text-[9px] font-black uppercase tracking-widest py-1.5 px-1 ${showTaskId ? 'bg-white text-yellow-600 border-white shadow-lg' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    title="Toggle Task ID"
+                                >
+                                    ID
+                                </button>
+
+                                {/* Toggle Task Title Button */}
+                                <button
+                                    onClick={() => setShowTaskTitle(!showTaskTitle)}
+                                    className={`flex-1 rounded-lg transition-all border flex items-center justify-center group/toolbar relative text-[9px] font-black uppercase tracking-widest py-1.5 px-1 ${showTaskTitle ? 'bg-white text-yellow-600 border-white shadow-lg' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    title="Toggle Task Title"
+                                >
+                                    TITLE
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Bottom Bar Logic ... */}
             {!isSkiMode && (
                 <div className="flex justify-between items-end pointer-events-none">
