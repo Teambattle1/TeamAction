@@ -398,7 +398,15 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
                         dashArray: isCompleted ? undefined : '5, 10',
                         className: isHovered ? 'task-hover-pulse' : undefined
                     }}
-                    interactive={false}
+                    interactive={true}
+                    eventHandlers={{
+                        mouseover: () => {
+                            if (onHover) onHover(point);
+                        },
+                        mouseout: () => {
+                            if (onHover) onHover(null);
+                        }
+                    }}
                 />
             )}
 
