@@ -26,6 +26,7 @@ interface LocationSearchProps {
   onToggleScores?: () => void;
   showScores?: boolean;
   locateFeedback?: string | null;
+  compact?: boolean;
 }
 
 const LocationSearch: React.FC<LocationSearchProps> = ({
@@ -37,7 +38,8 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
     labelButtons = false,
     onToggleScores,
     showScores,
-    locateFeedback
+    locateFeedback,
+    compact = false
 }) => {
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
