@@ -368,6 +368,109 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 </div>
             )}
 
+            {/* Draggable Top Toolbar (Chat, Measure, Settings) */}
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: topToolbarPos.x, top: topToolbarPos.y }}
+                    onPointerDown={handleTopToolbarPointerDown}
+                    onPointerMove={handleTopToolbarPointerMove}
+                    onPointerUp={handleTopToolbarPointerUp}
+                >
+                    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-2 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-2 border border-slate-700 pointer-events-none">
+                            <GripHorizontal className="w-4 h-4" />
+                        </div>
+                        <div className="flex gap-2">
+                            {/* Chat Button */}
+                            <button
+                                onClick={onToggleChat}
+                                className="w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                title="Chat"
+                            >
+                                <MessageSquare className="w-5 h-5" />
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/toolbar:opacity-100 transition-opacity pointer-events-none">
+                                    CHAT
+                                </div>
+                            </button>
+
+                            {/* Measure Button */}
+                            <button
+                                onClick={onToggleMeasure}
+                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/toolbar relative ${isMeasuring ? 'bg-orange-500 border-orange-400 text-white shadow-lg shadow-orange-500/20' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'}`}
+                                title="Measure"
+                            >
+                                <Ruler className="w-5 h-5" />
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/toolbar:opacity-100 transition-opacity pointer-events-none">
+                                    MEASURE
+                                </div>
+                            </button>
+
+                            {/* Settings Button */}
+                            <button
+                                onClick={onEditGameSettings}
+                                className="w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                title="Settings"
+                            >
+                                <Settings className="w-5 h-5" />
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/toolbar:opacity-100 transition-opacity pointer-events-none">
+                                    SETTINGS
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Draggable View Switcher (Editor, Instructor, Team) */}
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: viewSwitcherPos.x, top: viewSwitcherPos.y }}
+                    onPointerDown={handleViewSwitcherPointerDown}
+                    onPointerMove={handleViewSwitcherPointerMove}
+                    onPointerUp={handleViewSwitcherPointerUp}
+                >
+                    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-2 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-2 border border-slate-700 pointer-events-none">
+                            <GripHorizontal className="w-4 h-4" />
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => onSetMode(GameMode.EDIT)}
+                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                title="Editor View"
+                            >
+                                <MapIcon className="w-4 h-4" />
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
+                                    EDITOR
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => onSetMode(GameMode.INSTRUCTOR)}
+                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                title="Instructor View"
+                            >
+                                <Shield className="w-4 h-4" />
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
+                                    INSTRUCTOR
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => onSetMode(GameMode.PLAY)}
+                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                title="Team View"
+                            >
+                                <Users className="w-4 h-4" />
+                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
+                                    TEAM
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Bottom Bar Logic ... */}
             {!isSkiMode && (
                 <div className="flex justify-between items-end pointer-events-none">
