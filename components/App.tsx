@@ -518,6 +518,34 @@ const GameApp: React.FC = () => {
       if (mode === GameMode.EDIT && isMeasuring) {
           setMeasurePath(prev => [...prev, coord]);
       }
+
+      if (mode === GameMode.EDIT && isRelocating && currentGameObj) {
+          // Calculate offset from current center to new location
+          const points = currentGameObj.points;
+          if (points.length === 0) return;
+
+          // Calculate center of all points
+          const centerLat = points.reduce((sum, p) => sum + p.location.lat, 0) / points.length;
+          const centerLng = points.reduce((sum, p) => sum + p.location.lng, 0) / points.length;
+          const currentCenter = { lat: centerLat, lng: centerLng };
+
+          // Calculate offset
+          const latOffset = coord.lat - currentCenter.lat;
+          const lngOffset = coord.lng - currentCenter.lng;
+
+          // Apply offset to all points
+          const relocatedPoints = points.map(p => ({
+              ...p,
+              location: {
+                  lat: p.location.lat + latOffset,
+                  lng: p.location.lng + lngOffset
+              }
+          }));
+
+          updateActiveGame({ ...currentGameObj, points: relocatedPoints }, "Relocated All Tasks");
+          setIsRelocating(false);
+          console.log('[Relocate] Moved all tasks by offset:', { latOffset, lngOffset });
+      }
   };
 
   const handleStartGame = async (gameId: string, teamName: string, userName: string, teamPhoto: string | null, style: MapStyleId) => {
