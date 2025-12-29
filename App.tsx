@@ -1398,8 +1398,23 @@ const GameApp: React.FC = () => {
                 }}
                 onMapClick={handleMapClick}
                 onDeletePoint={handleDeleteItem}
-                onPointMove={isMeasuring || isRelocating ? undefined : async (id, loc) => {
+                onPointMove={isRelocating ? undefined : async (id, loc) => {
                     if (!activeGame) return;
+
+                    // If in measure mode, update measurePath to reflect new location
+                    if (isMeasuring) {
+                        const point = activeGame.points.find(p => p.id === id);
+                        if (point && point.location) {
+                            const oldLocation = point.location;
+                            setMeasurePath(prev =>
+                                prev.map(coord =>
+                                    (coord.lat === oldLocation.lat && coord.lng === oldLocation.lng)
+                                        ? { lat: loc.lat, lng: loc.lng }
+                                        : coord
+                                )
+                            );
+                        }
+                    }
 
                     // Location updates are the most common multi-user edit. We re-fetch latest game
                     // before saving to reduce the chance of overwriting another editor's recent change.
@@ -1413,9 +1428,12 @@ const GameApp: React.FC = () => {
                     setGames(prev => prev.map(g => g.id === updated.id ? updated : g));
                     setActiveGame(updated);
                 }}
-                onDragStart={isMeasuring || isRelocating ? undefined : (pointId) => {
-                    const point = activeGame?.points.find(p => p.id === pointId);
-                    if (point) setActiveTask(point);
+                onDragStart={isRelocating ? undefined : (pointId) => {
+                    // Don't open task editor when dragging in measure mode
+                    if (!isMeasuring) {
+                        const point = activeGame?.points.find(p => p.id === pointId);
+                        if (point) setActiveTask(point);
+                    }
                 }}
                 accuracy={gpsAccuracy}
                 isRelocating={isRelocating}
