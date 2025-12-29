@@ -1363,6 +1363,7 @@ const GameApp: React.FC = () => {
             onOpenTeamDashboard={() => setShowTeamDashboard(true)}
             onRelocateGame={handleRelocateGame}
             isRelocating={isRelocating}
+            onUpdateGameTime={handleUpdateGameTime}
             timerConfig={activeGame?.timerConfig}
             onFitBounds={(coords) => {
                 if (coords && coords.length > 0) {
