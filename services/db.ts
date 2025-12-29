@@ -642,7 +642,8 @@ export const fetchAccountUsers = async (): Promise<AccountUser[]> => {
         const rows = await fetchInChunks(
             (offset, limit) => supabase.from('account_users').select('id, data').range(offset, offset + limit - 1),
             'fetchAccountUsers',
-            CHUNK_SIZE
+            CHUNK_SIZE,
+            FETCH_TIMEOUT_MS
         );
         return rows.map((row: any) => ({ ...row.data, id: row.id }));
     } catch (e) {
