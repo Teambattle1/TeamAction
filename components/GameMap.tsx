@@ -282,7 +282,7 @@ const MapLayers: React.FC<{ mapStyle: string }> = React.memo(({ mapStyle }) => {
 });
 
 // Task Marker Component
-const MapTaskMarker = React.memo(({ point, mode, label, showScore, onClick, onMove, onDelete, onDragStart, onDragEnd }: any) => {
+const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSelected, onClick, onMove, onDelete, onDragStart, onDragEnd }: any) => {
     const isUnlocked = point.isUnlocked || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
     const isCompleted = point.isCompleted;
 
@@ -314,15 +314,16 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, onClick, onMo
     );
 
     const icon = getLeafletIcon(
-        point.iconId, 
-        isUnlocked, 
-        isCompleted, 
-        label, 
+        point.iconId,
+        isUnlocked,
+        isCompleted,
+        label,
         (point.logic?.onOpen?.length || point.logic?.onCorrect?.length || point.logic?.onIncorrect?.length) && mode === GameMode.EDIT,
         point.areaColor, // New: Override color if zone color set
         mode === GameMode.EDIT && point.isHiddenBeforeScan,
         showScore ? point.points : undefined,
-        point.iconUrl
+        point.iconUrl,
+        isRelocateSelected // Pass relocation selection state
     );
 
     // Only render markers for points with valid map locations (not playground-only points)
