@@ -792,7 +792,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {/* Toggle Task Order ID Button */}
                                     <button
                                         onClick={onToggleTaskId}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskId ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskId ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
                                         title="Toggle Task Order ID"
                                     >
                                         <Hash className="w-4 h-4" />
@@ -801,7 +801,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {/* Toggle Task Title Button */}
                                     <button
                                         onClick={onToggleTaskTitle}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskTitle ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskTitle ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
                                         title="Toggle Task Title"
                                     >
                                         <Type className="w-4 h-4" />
@@ -810,7 +810,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {/* Scores Button */}
                                     <button
                                         onClick={onToggleScores}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showScores ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showScores ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
                                         title="Scores"
                                     >
                                         <Trophy className="w-4 h-4" />
