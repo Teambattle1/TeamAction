@@ -593,10 +593,11 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                     onDragStart={(id: string) => setDraggingPointId(id)}
                     onDragEnd={(id: string) => {
                         setDraggingPointId(null);
-                        if (isOverTrash && onDeletePoint) {
-                            onDeletePoint(id);
+                        if (isOverTrash) {
+                            // Hide the task visually without deleting it
+                            setTrashedPointIds(prev => new Set(prev).add(id));
                             setIsOverTrash(false);
-                            return true; // Signal deletion
+                            return true; // Signal deletion (visually only)
                         }
                         setIsOverTrash(false);
                         return false;
