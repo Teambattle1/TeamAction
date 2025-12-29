@@ -1245,6 +1245,10 @@ const GameApp: React.FC = () => {
                             case 'DELETE_GAMES': setShowDeleteGames(true); break;
                             case 'PLAYGROUNDS': setShowPlaygroundManager(true); break;
                             case 'DATABASE': setShowDatabaseTools(true); break;
+                            case 'GAMESTATS':
+                                // Placeholder for GameStats feature
+                                alert('Game Statistics feature coming soon!');
+                                break;
                             case 'CLIENT_PORTAL':
                                 setDashboardTab('client');
                                 setShowDashboard(true);
