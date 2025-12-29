@@ -1473,7 +1473,8 @@ const GameApp: React.FC = () => {
             />
         </div>
 
-        <GameHUD 
+        <GameHUD
+            ref={gameHudRef}
             accuracy={gpsAccuracy}
             mode={mode}
             toggleMode={() => {}}
