@@ -50,14 +50,22 @@ const isSameLocalDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
 const getGameSessionDate = (game: Game) => {
+  if (!game) {
+    console.error('[getGameSessionDate] Received undefined game');
+    return new Date();
+  }
   if (game.client?.playingDate) {
     const d = new Date(game.client.playingDate);
     if (!Number.isNaN(d.getTime())) return d;
   }
-  return new Date(game.createdAt);
+  return new Date(game.createdAt || Date.now());
 };
 
 const isGameCompleted = (game: Game) => {
+  if (!game) {
+    console.error('[isGameCompleted] Received undefined game');
+    return false;
+  }
   if (game.state === 'ended') return true;
 
   const points = game.points || [];
@@ -68,6 +76,10 @@ const isGameCompleted = (game: Game) => {
 };
 
 const getGameStatusTab = (game: Game, now: Date): GameStatusTab => {
+  if (!game) {
+    console.error('[getGameStatusTab] Received undefined game');
+    return 'TODAY';
+  }
   if (isGameCompleted(game)) return 'COMPLETED';
 
   const date = getGameSessionDate(game);
