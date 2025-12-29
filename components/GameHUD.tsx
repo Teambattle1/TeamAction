@@ -248,7 +248,13 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setToolboxPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
     };
     const handleBoxPointerUp = (e: React.PointerEvent) => {
-        setIsDraggingBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        if (!isDraggingBox) return;
+        setIsDraggingBox(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
     };
 
     const handleLocationBoxPointerDown = (e: React.PointerEvent) => {
