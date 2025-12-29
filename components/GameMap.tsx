@@ -715,6 +715,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                     label={getLabel(point)}
                     showScore={showScores}
                     isRelocateSelected={relocateAllTaskIds.includes(point.id)}
+                    isHovered={hoveredPointId === point.id}
                     isMeasuring={isMeasuring}
                     isRelocating={isRelocating}
                     onClick={onPointClick}
