@@ -616,7 +616,8 @@ export const fetchPlaygroundLibrary = async (): Promise<PlaygroundTemplate[]> =>
         const rows = await fetchInChunks(
             (offset, limit) => supabase.from('playground_library').select('id, title, is_global, data').range(offset, offset + limit - 1),
             'fetchPlaygroundLibrary',
-            CHUNK_SIZE
+            CHUNK_SIZE,
+            FETCH_TIMEOUT_MS
         );
         return rows.map((row: any) => ({ ...row.data, id: row.id, title: row.title, isGlobal: row.is_global }));
     } catch (e) { logError('fetchPlaygroundLibrary', e); return []; }
