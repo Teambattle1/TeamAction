@@ -346,36 +346,6 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
             </div>
 
-            {/* Floating Toolbox & Measure */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
-                <div
-                    className="absolute z-[1100] pointer-events-auto touch-none"
-                    style={{ left: toolboxPos.x, top: toolboxPos.y }}
-                    onPointerDown={handleBoxPointerDown}
-                    onPointerMove={handleBoxPointerMove}
-                    onPointerUp={handleBoxPointerUp}
-                >
-                    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl p-1 cursor-move group relative">
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-2 border border-slate-700 pointer-events-none">
-                            <GripHorizontal className="w-3 h-3" />
-                        </div>
-                        {showLayerMenu && renderLayerMenu()}
-                        <div className="flex flex-col gap-1">
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setShowLayerMenu(!showLayerMenu); }}
-                                    className={`w-10 h-10 rounded-lg flex items-center justify-center border hover:scale-105 transition-transform group/btn relative ${showLayerMenu ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700'}`}
-                                >
-                                    <Layers className="w-5 h-5" />
-                                </button>
-                            </div>
-                            <div className="flex gap-1 text-center">
-                                <div className="flex-1 text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight">LAYERS</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Draggable Location Search Toolbox */}
             {mode === GameMode.EDIT && (
