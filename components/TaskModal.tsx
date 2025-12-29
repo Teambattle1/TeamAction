@@ -18,19 +18,22 @@ interface TaskModalProps {
   onTaskIncorrect?: () => void;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ 
-    point, 
-    onClose, 
-    onComplete, 
-    onPenalty, 
-    onUnlock, 
-    distance, 
-    isInstructorMode = false, 
-    mode, 
+const TaskModal: React.FC<TaskModalProps> = ({
+    point,
+    onClose,
+    onComplete,
+    onPenalty,
+    onUnlock,
+    distance,
+    isInstructorMode = false,
+    mode,
     onOpenActions,
     onTaskOpen,
     onTaskIncorrect
 }) => {
+  // CRITICAL: Check for null point BEFORE any hooks to prevent crashes
+  if (!point) return null;
+
   const [answer, setAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [sliderValue, setSliderValue] = useState<number>(point?.task.range?.min || 0);
