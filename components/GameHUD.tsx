@@ -642,6 +642,17 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     <Settings className="w-4 h-4" />
                                 </button>
 
+                                {/* ADJUST GAMETIME Button (Editor Mode) */}
+                                {mode === GameMode.EDIT && timerConfig && (
+                                    <button
+                                        onClick={() => setShowAdjustGameTime(true)}
+                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-cyan-800 border-cyan-600 text-cyan-300 hover:bg-cyan-700 hover:text-white"
+                                        title="Adjust Game Time"
+                                    >
+                                        <Clock className="w-4 h-4" />
+                                    </button>
+                                )}
+
                                 {/* MAPSTYLE Button */}
                                 <div className="relative">
                                     <button
