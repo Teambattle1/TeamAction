@@ -174,7 +174,8 @@ const GameManager: React.FC<GameManagerProps> = ({
     const planned: Game[] = [];
     const completed: Game[] = [];
 
-    const nonTemplates = games.filter(g => !g.isGameTemplate);
+    // CRITICAL: Filter out any null/undefined games before processing
+    const nonTemplates = games.filter(g => g && !g.isGameTemplate);
 
     for (const g of nonTemplates) {
       const tab = getGameStatusTab(g, now);
@@ -203,7 +204,7 @@ const GameManager: React.FC<GameManagerProps> = ({
       todayGames: today,
       plannedGames: planned,
       completedGames: completed,
-      templateList: games.filter(g => g.isGameTemplate)
+      templateList: games.filter(g => g && g.isGameTemplate)
     };
   }, [games]);
 
@@ -337,7 +338,7 @@ const GameManager: React.FC<GameManagerProps> = ({
                   </div>
                 )}
 
-                {visibleGames.map(game => (
+                {visibleGames.filter(g => g).map(game => (
                   <GameSummaryCard
                     key={game.id}
                     game={game}
