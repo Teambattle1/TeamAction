@@ -1170,11 +1170,19 @@ const GameApp: React.FC = () => {
               />
           )}
           {latestMessage && (
-              <MessagePopup 
-                  message={latestMessage.message} 
-                  sender={latestMessage.sender} 
+              <MessagePopup
+                  message={latestMessage.message}
+                  sender={latestMessage.sender}
                   onClose={() => setLatestMessage(null)}
                   isUrgent={latestMessage.isUrgent}
+              />
+          )}
+          {activeDangerZone && (
+              <DangerZoneModal
+                  zone={activeDangerZone}
+                  onSave={handleSaveDangerZone}
+                  onDelete={handleDeleteDangerZone}
+                  onClose={() => setActiveDangerZone(null)}
               />
           )}
       </>
