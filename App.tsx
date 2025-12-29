@@ -96,6 +96,7 @@ const GameApp: React.FC = () => {
   const geofenceCheckRunningRef = useRef(false);
   const [isRelocating, setIsRelocating] = useState(false);
   const [relocateScopeCenter, setRelocateScopeCenter] = useState<Coordinate | null>(null);
+  const [relocateAllTaskIds, setRelocateAllTaskIds] = useState<string[]>([]);
 
   // --- MEASUREMENT ---
   const [isMeasuring, setIsMeasuring] = useState(false);
