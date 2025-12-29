@@ -856,19 +856,6 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
         </div>
     );
-
-    // Expose toolbar positions via ref
-    useImperativeHandle(ref, () => ({
-        getToolbarPositions: () => ({
-            locationToolboxPos,
-            topToolbarPos,
-            viewSwitcherPos,
-            pinsToolboxPos,
-            showToolboxPos
-        })
-    }), [locationToolboxPos, topToolbarPos, viewSwitcherPos, pinsToolboxPos, showToolboxPos]);
-
-    return null; // The actual component rendering is above
 });
 
 GameHUD.displayName = 'GameHUD';
