@@ -105,19 +105,24 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
           teamId: stat.teamId,
           teamName: stat.teamName,
           score: stat.score,
+          ranking: teamStats.indexOf(stat) + 1,
           completedTasks: stat.completedTasks,
+          correctAnswers: stat.correctAnswers,
+          incorrectAnswers: stat.incorrectAnswers,
           captainDistanceKm: parseFloat(stat.captainDistanceKm),
           totalDistanceKm: parseFloat(stat.totalDistanceKm),
           taskPerKmRatio: parseFloat(stat.taskPerKm),
-          memberCount: stat.memberCount
+          memberCount: stat.memberCount,
+          playtimeMinutes: stat.playtimeMinutes,
+          playtimeString: stat.playtimeString
         })),
         totalStats: {
           teamsCount: teamStats.length,
           totalTasksCompleted: teamStats.reduce((sum, t) => sum + t.completedTasks, 0),
-          averageScore: teamStats.length > 0
-            ? Math.round(teamStats.reduce((sum, t) => sum + t.score, 0) / teamStats.length)
-            : 0,
-          totalDistanceWalked: teamStats.reduce((sum, t) => sum + parseFloat(t.totalDistanceKm), 0)
+          totalCorrectAnswers: totals.totalCorrect,
+          totalIncorrectAnswers: totals.totalIncorrect,
+          averageScore: totals.avgScore,
+          totalDistanceWalked: totals.totalDistance
         }
       };
 
