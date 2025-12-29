@@ -557,33 +557,40 @@ const GameHUD: React.FC<GameHUDProps> = ({
                             <div className="text-center">
                                 <h3 className="text-[9px] font-black uppercase tracking-widest text-white">SHOW</h3>
                             </div>
-                            <div className="flex gap-1">
-                                {/* Toggle Task ID Button */}
-                                <button
-                                    onClick={() => setShowTaskId(!showTaskId)}
-                                    className={`flex-1 rounded-lg transition-all border flex items-center justify-center group/toolbar relative text-[9px] font-black uppercase tracking-widest py-1.5 px-1 ${showTaskId ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
-                                    title="Toggle Task ID"
-                                >
-                                    ID
-                                </button>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex gap-1">
+                                    {/* Toggle Task ID Button */}
+                                    <button
+                                        onClick={() => setShowTaskId(!showTaskId)}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskId ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        title="Toggle Task ID"
+                                    >
+                                        <Hash className="w-4 h-4" />
+                                    </button>
 
-                                {/* Toggle Task Title Button */}
-                                <button
-                                    onClick={() => setShowTaskTitle(!showTaskTitle)}
-                                    className={`flex-1 rounded-lg transition-all border flex items-center justify-center group/toolbar relative text-[9px] font-black uppercase tracking-widest py-1.5 px-1 ${showTaskTitle ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
-                                    title="Toggle Task Title"
-                                >
-                                    TITLE
-                                </button>
+                                    {/* Toggle Task Title Button */}
+                                    <button
+                                        onClick={() => setShowTaskTitle(!showTaskTitle)}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskTitle ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        title="Toggle Task Title"
+                                    >
+                                        <Type className="w-4 h-4" />
+                                    </button>
 
-                                {/* Scores Button */}
-                                <button
-                                    onClick={onToggleScores}
-                                    className={`flex-1 rounded-lg transition-all border flex items-center justify-center group/toolbar relative text-[9px] font-black uppercase tracking-widest py-1.5 px-1 ${showScores ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
-                                    title="Scores"
-                                >
-                                    <Trophy className="w-3 h-3" />
-                                </button>
+                                    {/* Scores Button */}
+                                    <button
+                                        onClick={onToggleScores}
+                                        className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showScores ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                        title="Scores"
+                                    >
+                                        <Trophy className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="flex gap-1 text-center">
+                                    <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">ID</div>
+                                    <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">TITLE</div>
+                                    <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">SCORES</div>
+                                </div>
                             </div>
                         </div>
                     </div>
