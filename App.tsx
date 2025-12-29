@@ -525,8 +525,13 @@ const GameApp: React.FC = () => {
 
   const handleToggleMeasure = () => {
       setIsMeasuring(!isMeasuring);
-      if (!isMeasuring) setMeasurePath(userLocation ? [userLocation] : []);
-      else setMeasurePath([]);
+      if (!isMeasuring) {
+          setMeasurePath(userLocation ? [userLocation] : []);
+          setMeasuredDistance(0);
+      } else {
+          setMeasurePath([]);
+          setMeasuredDistance(0);
+      }
   };
 
   const handleLocateMe = () => {
