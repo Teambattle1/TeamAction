@@ -1540,6 +1540,7 @@ const GameApp: React.FC = () => {
                 }}
                 onHoverPoint={(point) => setHoveredPointId(point?.id || null)}
                 onHoverDangerZone={(zoneId) => setHoveredDangerZoneId(zoneId)}
+                mapHoveredPointId={mapHoveredPointId}
                 onOpenPlaygroundEditor={async (playgroundId?: string) => {
                     if (playgroundId) {
                         setViewingPlaygroundId(playgroundId);
