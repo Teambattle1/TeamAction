@@ -685,21 +685,21 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                             <div className="flex gap-1">
                                 <button
                                     onClick={() => onSetMode(GameMode.EDIT)}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-white text-orange-600 border-white shadow-lg' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
                                     title="Editor View"
                                 >
                                     <MapIcon className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.INSTRUCTOR)}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-white text-orange-600 border-white shadow-lg' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
                                     title="Instructor View"
                                 >
                                     <Shield className="w-4 h-4" />
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.PLAY)}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-white text-orange-600 border-white shadow-lg' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
                                     title="Team View"
                                 >
                                     <Users className="w-4 h-4" />
