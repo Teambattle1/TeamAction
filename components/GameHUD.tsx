@@ -433,37 +433,35 @@ const GameHUD: React.FC<GameHUDProps> = ({
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-2 border border-slate-700 pointer-events-none">
                             <GripHorizontal className="w-4 h-4" />
                         </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => onSetMode(GameMode.EDIT)}
-                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
-                                title="Editor View"
-                            >
-                                <MapIcon className="w-4 h-4" />
-                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
-                                    EDITOR
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => onSetMode(GameMode.INSTRUCTOR)}
-                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
-                                title="Instructor View"
-                            >
-                                <Shield className="w-4 h-4" />
-                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
-                                    INSTRUCTOR
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => onSetMode(GameMode.PLAY)}
-                                className={`w-10 h-10 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
-                                title="Team View"
-                            >
-                                <Users className="w-4 h-4" />
-                                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover/mode:opacity-100 transition-opacity pointer-events-none">
-                                    TEAM
-                                </div>
-                            </button>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => onSetMode(GameMode.EDIT)}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    title="Editor View"
+                                >
+                                    <MapIcon className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => onSetMode(GameMode.INSTRUCTOR)}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    title="Instructor View"
+                                >
+                                    <Shield className="w-5 h-5" />
+                                </button>
+                                <button
+                                    onClick={() => onSetMode(GameMode.PLAY)}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    title="Team View"
+                                >
+                                    <Users className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="flex gap-2 text-center">
+                                <div className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">EDITOR</div>
+                                <div className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">INSTRUCTOR</div>
+                                <div className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">TEAM</div>
+                            </div>
                         </div>
                     </div>
                 </div>
