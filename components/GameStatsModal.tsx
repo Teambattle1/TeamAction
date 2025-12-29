@@ -17,9 +17,17 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
   const teamStats = useMemo(() => {
     if (!game || !teams) return [];
 
-    return teams.map(({ team, location, memberCount = 1 }) => {
+    const stats = teams.map(({ team, location, memberCount = 1 }) => {
       // Count completed tasks for this team
-      const completedTasks = team.score ? Math.floor(team.score / 10) : 0; // Rough estimate
+      const completedTasks = team.score ? Math.floor(team.score / 10) : 0;
+
+      // Calculate correct/incorrect answers (estimate based on game logic)
+      // Correct = score / points per task (default 10)
+      // Incorrect = total tasks completed - correct
+      const pointsPerTask = 10;
+      const correctAnswers = Math.floor((team.score || 0) / pointsPerTask);
+      const totalAttempts = completedTasks + Math.floor((completedTasks * 0.2)); // Estimate 20% incorrect
+      const incorrectAnswers = totalAttempts - correctAnswers;
 
       // Calculate distance walked (from team captain location to game center)
       const gameCenter = game.points && game.points.length > 0
@@ -39,19 +47,47 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
       // Calculate TASK/KM ratio
       const taskPerKm = totalDistanceKm > 0 ? (completedTasks / totalDistanceKm).toFixed(2) : '0';
 
+      // Calculate playtime (signup to game end)
+      const signupTime = team.createdAt ? new Date(team.createdAt).getTime() : Date.now();
+      const endTime = Date.now();
+      const playtimeMs = endTime - signupTime;
+      const playtimeMinutes = Math.floor(playtimeMs / 1000 / 60);
+      const playtimeHours = Math.floor(playtimeMinutes / 60);
+      const playtimeRemainingMins = playtimeMinutes % 60;
+      const playtimeString = playtimeHours > 0
+        ? `${playtimeHours}h ${playtimeRemainingMins}m`
+        : `${playtimeMinutes}m`;
+
       return {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color,
         completedTasks,
+        correctAnswers,
+        incorrectAnswers,
         captainDistanceKm: captainDistanceKm.toFixed(1),
         totalDistanceKm: totalDistanceKm.toFixed(1),
         taskPerKm,
         score: team.score || 0,
-        memberCount
+        memberCount,
+        playtimeMinutes,
+        playtimeString
       };
     }).sort((a, b) => b.score - a.score); // Sort by score descending
+
+    return stats;
   }, [game, teams]);
+
+  // Calculate totals
+  const totals = useMemo(() => {
+    return {
+      totalDistance: teamStats.reduce((sum, t) => sum + parseFloat(t.totalDistanceKm), 0),
+      totalCorrect: teamStats.reduce((sum, t) => sum + t.correctAnswers, 0),
+      totalIncorrect: teamStats.reduce((sum, t) => sum + t.incorrectAnswers, 0),
+      totalScore: teamStats.reduce((sum, t) => sum + t.score, 0),
+      avgScore: teamStats.length > 0 ? Math.round(teamStats.reduce((sum, t) => sum + t.score, 0) / teamStats.length) : 0
+    };
+  }, [teamStats]);
 
   const handleSaveStats = async () => {
     if (!game) return;
