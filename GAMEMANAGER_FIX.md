@@ -18,6 +18,27 @@ Even though there were null guards at the component level, the JSX was still try
 
 ## Solution
 
+### 0. **CRITICAL FIX: JSX Property Access** (Line 155)
+This was the actual source of the crash:
+```typescript
+// BEFORE (CRASHED):
+{sessionDate.toLocaleDateString()} • {game.points.length} Tasks • {mapTaskCount} On map • {zoneCount} Zones
+
+// AFTER (SAFE):
+{sessionDate.toLocaleDateString()} • {(game.points?.length || 0)} Tasks • {mapTaskCount} On map • {zoneCount} Zones
+```
+
+**Key Change**: Used optional chaining (`?.`) and nullish coalescing (`|| 0`) to safely access `game.points.length`
+
+Also added fallback for game name:
+```typescript
+// BEFORE:
+{game.name}
+
+// AFTER:
+{game.name || 'Unnamed Game'}
+```
+
 ### 1. **Defensive Filtering** (Line 177-178)
 Added null checks when filtering games:
 ```typescript
