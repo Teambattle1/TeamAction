@@ -720,6 +720,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
                           (point.task.range?.correctValue !== undefined ? `${point.task.range.correctValue}` : point.task.correctAnswer || "See logic") :
                           point.task.type === 'checkbox' || point.task.type === 'radio' ?
                           point.task.correctAnswers?.join(', ') || point.task.answer || "See logic" :
+                          point.task.type === 'dropdown' ?
+                          point.task.answer || point.task.correctAnswers?.[0] || "See logic" :
                           point.task.answer || point.task.correctAnswers?.join(', ') || (point.task.type === 'boolean' ? 'Check logic for bool answer' : "See logic")}
                     </p>
                   </div>
