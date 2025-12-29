@@ -54,17 +54,18 @@ interface EditorDrawerProps {
   onStartSimulation?: () => void; // New prop
 }
 
-const SortablePointItem: React.FC<{ 
-    point: GamePoint, 
+const SortablePointItem: React.FC<{
+    point: GamePoint,
     index: number,
     isSelected?: boolean,
+    isMapHovered?: boolean,
     isDragDisabled?: boolean,
     onEdit: (p: GamePoint) => void,
     onSelect: (p: GamePoint) => void,
     onDelete: (id: string) => void,
     onHover: (p: GamePoint | null) => void,
-    taskLists: TaskList[] 
-}> = ({ point, index, isSelected, isDragDisabled, onEdit, onSelect, onDelete, onHover, taskLists }) => {
+    taskLists: TaskList[]
+}> = ({ point, index, isSelected, isMapHovered, isDragDisabled, onEdit, onSelect, onDelete, onHover, taskLists }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: point.id, disabled: isDragDisabled });
   
   const [dragOffset, setDragOffset] = useState(0);
