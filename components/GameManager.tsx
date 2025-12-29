@@ -150,9 +150,9 @@ const GameSummaryCard: React.FC<{
         </div>
 
         <div className="min-w-0">
-          <h3 className="font-bold text-gray-800 dark:text-white uppercase truncate">{game.name}</h3>
+          <h3 className="font-bold text-gray-800 dark:text-white uppercase truncate">{game.name || 'Unnamed Game'}</h3>
           <p className="text-xs text-gray-500 truncate">
-            {sessionDate.toLocaleDateString()} • {game.points.length} Tasks • {mapTaskCount} On map • {zoneCount} Zones
+            {sessionDate.toLocaleDateString()} • {(game.points?.length || 0)} Tasks • {mapTaskCount} On map • {zoneCount} Zones
           </p>
         </div>
       </button>
