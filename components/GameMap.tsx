@@ -480,15 +480,20 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
           const taskIndex = points.findIndex(p => p.id === point.id) + 1;
           const taskOrder = taskIndex.toString().padStart(3, '0');
 
-          // Determine what to show based on flags
-          if (showTaskTitle && point.title) {
-              return point.title;
-          }
+          const labelParts = [];
+
+          // Add order ID if enabled
           if (showTaskId) {
-              return taskOrder;
+              labelParts.push(taskOrder);
           }
-          // If both are false, show nothing
-          return undefined;
+
+          // Add title if enabled
+          if (showTaskTitle && point.title) {
+              labelParts.push(point.title);
+          }
+
+          // Return combined label or undefined if both are false
+          return labelParts.length > 0 ? labelParts.join(' - ') : undefined;
       }
 
       return undefined;
