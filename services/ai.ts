@@ -151,7 +151,14 @@ export const generateAiBackground = async (keywords: string, zoneName?: string):
         console.log('[AI Background] Keywords:', keywords);
         console.log('[AI Background] Full prompt:', prompt);
 
-        // Use Gemini 2.5 Flash Image - works with API keys (Imagen requires Vertex AI)
+        // NOTE: Imagen 3 (imagen-3.0-generate-002) is only available through Vertex AI, not the Gemini Developer API
+        // To use Imagen 3, you would need to:
+        // 1. Set up Google Cloud Project with billing
+        // 2. Enable Vertex AI API
+        // 3. Use: new GoogleGenAI({ vertexai: true, project: 'project-id', location: 'us-central1' })
+        // 4. Then call: ai.models.generateImages({ model: 'imagen-3.0-generate-002', ... })
+        //
+        // For now, we use Gemini 2.5 Flash Image which works with API keys
         const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
             contents: prompt,
