@@ -1422,7 +1422,7 @@ const GameApp: React.FC = () => {
         )}
 
         <div className="absolute inset-0 z-0">
-            <GameMap 
+            <GameMap
                 ref={mapRef}
                 points={currentGameObj?.points || []}
                 routes={currentGameObj?.routes || []}
@@ -1430,11 +1430,16 @@ const GameApp: React.FC = () => {
                 logicLinks={logicLinks}
                 measurePath={measurePath}
                 mode={mode}
-                mapStyle={localMapStyle || 'osm'} 
+                mapStyle={localMapStyle || 'osm'}
                 onPointClick={handlePointClick}
                 onZoneClick={(z) => setActiveDangerZone(z)}
                 onMapClick={handleMapClick}
                 onDeletePoint={handleDeleteItem}
+                onDragStart={(pointId: string) => {
+                    if (!currentGameObj) return;
+                    const point = currentGameObj.points.find(p => p.id === pointId);
+                    if (point) setActiveTask(point);
+                }}
                 onPointMove={async (id, loc) => {
                     if (!currentGameObj) return;
 
