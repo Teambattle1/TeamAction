@@ -159,9 +159,21 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setPinsToolboxPos(DEFAULT_POSITIONS.pins);
         setShowToolboxPos(DEFAULT_POSITIONS.show);
 
-        // Then load user's saved positions if admin
+        // Then load positions - prioritize game-specific positions, then user settings
         if (isAdmin && authUser?.id) {
             const loadPositions = async () => {
+                // Priority 1: Load from activeGame if it has saved positions
+                if (activeGame?.toolbarPositions) {
+                    const pos = activeGame.toolbarPositions;
+                    if (pos.locationToolboxPos) setLocationToolboxPos(pos.locationToolboxPos);
+                    if (pos.topToolbarPos) setTopToolbarPos(pos.topToolbarPos);
+                    if (pos.viewSwitcherPos) setViewSwitcherPos(pos.viewSwitcherPos);
+                    if (pos.pinsToolboxPos) setPinsToolboxPos(pos.pinsToolboxPos);
+                    if (pos.showToolboxPos) setShowToolboxPos(pos.showToolboxPos);
+                    return;
+                }
+
+                // Priority 2: Fall back to user settings
                 const settings = await db.fetchUserSettings(authUser.id);
 
                 // If saved positions are from an old layout, migrate to the new universal defaults.
@@ -194,7 +206,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
             };
             loadPositions();
         }
-    }, [authUser?.id, authUser?.role, activeGameName]);
+    }, [authUser?.id, authUser?.role, activeGame?.id, activeGame?.toolbarPositions]);
 
     // Debounced save function for toolbar positions
     const saveToolbarPositions = () => {
