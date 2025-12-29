@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { GameMode, MapStyleId, Language, Coordinate, TimerConfig, Playground, GameRoute } from '../types';
+import { GameMode, MapStyleId, Language, Coordinate, TimerConfig, Playground, GameRoute, AuthUser } from '../types';
 import {
     Map as MapIcon, Layers, Crosshair, ChevronLeft, Ruler, Settings,
     MessageSquare, Shield, Globe, Skull, Clock,
@@ -10,6 +10,7 @@ import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { parseGPX } from '../utils/gpx';
 import { timeService } from '../services/time';
+import * as db from '../services/db';
 
 // ... Imports ...
 
