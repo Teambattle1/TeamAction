@@ -225,18 +225,21 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         setIsGeneratingBackground(true);
         try {
+            console.log('[PlaygroundEditor] Generating AI background for:', { keywords, zone: activePlayground.title });
             const imageUrl = await generateAiBackground(keywords, activePlayground.title);
 
             if (imageUrl) {
+                console.log('[PlaygroundEditor] Background generated successfully');
                 updatePlayground({ imageUrl });
                 setShowAiBackgroundPrompt(false);
                 setAiBackgroundPromptValue('');
             } else {
-                alert('Failed to generate background. Please try again with different keywords.');
+                console.warn('[PlaygroundEditor] AI returned null - check console for details');
+                alert('Failed to generate background. The AI may have blocked this content. Try:\n\n• Simpler keywords (e.g., "forest", "castle", "ocean")\n• Avoid complex phrases\n• Check browser console for details');
             }
         } catch (error) {
-            console.error('Error generating background:', error);
-            alert('Error generating background. Please try again.');
+            console.error('[PlaygroundEditor] Error generating background:', error);
+            alert('Error generating background. Please check your API key and try again.');
         } finally {
             setIsGeneratingBackground(false);
         }
