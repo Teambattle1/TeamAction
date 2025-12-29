@@ -1451,7 +1451,7 @@ const GameApp: React.FC = () => {
                 }}
                 accuracy={gpsAccuracy}
                 isRelocating={isRelocating}
-                relocateScopeCenter={relocateScapeCenter}
+                relocateScopeCenter={relocateScopeCenter}
                 showScores={showScores}
                 teams={mapTeams}
                 showUserLocation={currentGameObj?.showPlayerLocations ?? true}
