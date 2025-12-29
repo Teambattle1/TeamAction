@@ -89,9 +89,18 @@ const GameSummaryCard: React.FC<{
   onPrimaryAction: () => void;
   onDelete: () => void;
 }> = ({ game, isActive, onPrimaryAction, onDelete }) => {
-  // Guard against undefined game data
+  // CRITICAL: Guard against undefined game data
   if (!game) {
+    console.error('[GameSummaryCard] Received undefined game - this should never happen');
     return null;
+  }
+
+  // Additional safety checks
+  if (!game.points) {
+    console.warn('[GameSummaryCard] Game missing points array:', game.id);
+  }
+  if (!game.playgrounds) {
+    console.warn('[GameSummaryCard] Game missing playgrounds array:', game.id);
   }
 
   const sessionDate = getGameSessionDate(game);
