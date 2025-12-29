@@ -739,3 +739,33 @@ export const saveUserSettings = async (userId: string, settings: any): Promise<b
         return false;
     }
 };
+
+// --- GAME STATISTICS ---
+export const saveGameStats = async (statsData: any): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('game_statistics')
+            .insert({
+                game_id: statsData.gameId,
+                game_name: statsData.gameName,
+                timestamp: statsData.timestamp,
+                teams_data: statsData.teams,
+                total_stats: statsData.totalStats
+            });
+
+        if (error) {
+            // If table doesn't exist, log a warning and continue
+            if (error.code === '42P01') {
+                console.warn('[DB Service] game_statistics table not found. Stats will be saved locally only.');
+                return true;
+            }
+            throw error;
+        }
+
+        console.log('[DB Service] Game statistics saved successfully');
+        return true;
+    } catch (e) {
+        logError('saveGameStats', e);
+        return false;
+    }
+};
