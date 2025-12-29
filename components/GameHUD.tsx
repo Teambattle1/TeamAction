@@ -96,8 +96,7 @@ const MAP_STYLES_LIST: { id: MapStyleId; label: string; icon: any }[] = [
     { id: 'clean', label: 'Clean', icon: MapIcon },
 ];
 
-const GameHUD: React.FC<GameHUDProps> = ({
-    accuracy, mode, toggleMode, onSetMode, onOpenGameManager, onOpenTaskMaster, onOpenTeams,
+const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, toggleMode, onSetMode, onOpenGameManager, onOpenTaskMaster, onOpenTeams,
     mapStyle, onSetMapStyle, language, onBackToHub, activeGameName, onOpenInstructorDashboard,
     isMeasuring, onToggleMeasure, measuredDistance, measurePointsCount = 0, playgrounds, onOpenPlayground, onOpenTeamDashboard,
     onRelocateGame, isRelocating, timerConfig, onFitBounds, onLocateMe, onSearchLocation,
@@ -105,7 +104,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
     targetPlaygroundId, onAddDangerZone, activeDangerZone, onEditGameSettings, onOpenGameChooser,
     routes, onToggleRoute, onAddRoute, endingAt, gameEnded, onReturnToStart, allowChatting = true, locateFeedback,
     authUser, activeGame, onUpdateGame
-}) => {
+}, ref) => {
     const [timeLeft, setTimeLeft] = useState<string>('');
     const [timerAlert, setTimerAlert] = useState(false);
     const [showLayerMenu, setShowLayerMenu] = useState(false);
@@ -857,6 +856,20 @@ const GameHUD: React.FC<GameHUDProps> = ({
             )}
         </div>
     );
-};
 
+    // Expose toolbar positions via ref
+    useImperativeHandle(ref, () => ({
+        getToolbarPositions: () => ({
+            locationToolboxPos,
+            topToolbarPos,
+            viewSwitcherPos,
+            pinsToolboxPos,
+            showToolboxPos
+        })
+    }), [locationToolboxPos, topToolbarPos, viewSwitcherPos, pinsToolboxPos, showToolboxPos]);
+
+    return null; // The actual component rendering is above
+});
+
+GameHUD.displayName = 'GameHUD';
 export default GameHUD;
