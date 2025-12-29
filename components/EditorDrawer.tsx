@@ -128,16 +128,11 @@ const SortablePointItem: React.FC<{
   };
 
   const handleMouseEnter = () => {
-    hoverTimeoutRef.current = window.setTimeout(() => {
-      onHover(point);
-    }, 1000);
+    // Immediate hover like DANGER ZONES (no delay)
+    onHover(point);
   };
 
   const handleMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
     onHover(null);
   };
 
