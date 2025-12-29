@@ -114,7 +114,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     settings: {
         timeLimitSeconds: undefined,
         scoreDependsOnSpeed: false,
-        language: normalizedIncomingLanguage,
         showAnswerStatus: true,
         showCorrectAnswerOnMiss: false,
         ...point.settings,
