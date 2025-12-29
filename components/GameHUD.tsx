@@ -745,7 +745,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                 {/* Measure Button */}
                                 <button
                                     onClick={onToggleMeasure}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isMeasuring ? 'bg-white text-yellow-600 border-white shadow-lg' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isMeasuring ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
                                     title="Measure"
                                 >
                                     <Ruler className="w-4 h-4" />
@@ -754,7 +754,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                 {/* Relocate Button */}
                                 <button
                                     onClick={onRelocateGame}
-                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isRelocating ? 'bg-white text-yellow-600 border-white shadow-lg animate-pulse' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${isRelocating ? 'bg-orange-600 text-white border-orange-600 shadow-lg shadow-orange-600/50 animate-pulse' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
                                     title="Relocate"
                                 >
                                     <Crosshair className="w-4 h-4" />
