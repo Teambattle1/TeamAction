@@ -346,11 +346,14 @@ const GameHUD: React.FC<GameHUDProps> = ({
                     onPointerMove={handleLocationBoxPointerMove}
                     onPointerUp={handleLocationBoxPointerUp}
                 >
-                    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-3 cursor-move group relative">
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-2 border border-slate-700 pointer-events-none">
+                    <div className="bg-green-900 border-2 border-green-700 rounded-2xl shadow-2xl p-3 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-green-200 opacity-0 group-hover:opacity-100 transition-opacity bg-green-800 rounded-full px-2 border border-green-600 pointer-events-none">
                             <GripHorizontal className="w-4 h-4" />
                         </div>
-                        <div className="flex flex-col gap-3 min-w-[260px]">
+                        <div className="flex flex-col gap-2 min-w-[260px]">
+                            <div className="text-center">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-green-100 mb-2">Location</h3>
+                            </div>
                             <LocationSearch
                                 onSelectLocation={onSearchLocation}
                                 onLocateMe={onLocateMe}
@@ -427,38 +430,41 @@ const GameHUD: React.FC<GameHUDProps> = ({
                     onPointerMove={handleViewSwitcherPointerMove}
                     onPointerUp={handleViewSwitcherPointerUp}
                 >
-                    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-2 cursor-move group relative">
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 rounded-full px-2 border border-slate-700 pointer-events-none">
+                    <div className="bg-orange-600 border-2 border-orange-500 rounded-2xl shadow-2xl p-2 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-200 opacity-0 group-hover:opacity-100 transition-opacity bg-orange-700 rounded-full px-2 border border-orange-500 pointer-events-none">
                             <GripHorizontal className="w-4 h-4" />
                         </div>
                         <div className="flex flex-col gap-2">
+                            <div className="text-center mb-1">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-white">MAPMODE</h3>
+                            </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => onSetMode(GameMode.EDIT)}
-                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.EDIT ? 'bg-white text-orange-600 border-white shadow-lg' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
                                     title="Editor View"
                                 >
                                     <MapIcon className="w-5 h-5" />
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.INSTRUCTOR)}
-                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.INSTRUCTOR ? 'bg-white text-orange-600 border-white shadow-lg' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
                                     title="Instructor View"
                                 >
                                     <Shield className="w-5 h-5" />
                                 </button>
                                 <button
                                     onClick={() => onSetMode(GameMode.PLAY)}
-                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'}`}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex items-center justify-center group/mode relative ${mode === GameMode.PLAY ? 'bg-white text-orange-600 border-white shadow-lg' : 'bg-orange-700 text-orange-100 border-orange-600 hover:bg-orange-800 hover:text-white'}`}
                                     title="Team View"
                                 >
                                     <Users className="w-5 h-5" />
                                 </button>
                             </div>
                             <div className="flex gap-2 text-center">
-                                <div className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">EDITOR</div>
-                                <div className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">INSTRUCTOR</div>
-                                <div className="flex-1 text-[9px] font-black text-slate-400 uppercase tracking-widest leading-tight">TEAM</div>
+                                <div className="flex-1 text-[9px] font-black text-orange-100 uppercase tracking-widest leading-tight">EDITOR</div>
+                                <div className="flex-1 text-[9px] font-black text-orange-100 uppercase tracking-widest leading-tight">INSTRUCTOR</div>
+                                <div className="flex-1 text-[9px] font-black text-orange-100 uppercase tracking-widest leading-tight">TEAM</div>
                             </div>
                         </div>
                     </div>
