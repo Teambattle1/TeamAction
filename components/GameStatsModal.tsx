@@ -207,13 +207,41 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-700 bg-gray-800/50">
-          <button
-            onClick={onClose}
-            className="w-full py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors uppercase text-sm tracking-wider"
-          >
-            Close
-          </button>
+        <div className="p-4 border-t border-gray-700 bg-gray-800/50 space-y-2">
+          {saveMessage && (
+            <div className={`p-3 rounded-lg text-sm font-bold text-center ${
+              saveMessage.type === 'success'
+                ? 'bg-green-900/30 border border-green-600 text-green-300'
+                : 'bg-red-900/30 border border-red-600 text-red-300'
+            }`}>
+              {saveMessage.text}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSaveStats}
+              disabled={isSaving}
+              className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold rounded-lg transition-colors uppercase text-sm tracking-wider flex items-center justify-center gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  SAVING...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  SAVE STATS
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-lg transition-colors uppercase text-sm tracking-wider"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
     </div>
