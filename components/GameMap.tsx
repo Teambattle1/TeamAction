@@ -663,8 +663,16 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
             <div
                 id="map-trash-bin"
                 className="absolute bottom-6 right-6 z-[1000] pointer-events-auto"
-                onMouseEnter={() => draggingPointId && setIsOverTrash(true)}
-                onMouseLeave={() => setIsOverTrash(false)}
+                onMouseEnter={() => {
+                    if (draggingPointId) {
+                        console.log('[Trash] Entered trash zone with point:', draggingPointId);
+                        setIsOverTrash(true);
+                    }
+                }}
+                onMouseLeave={() => {
+                    console.log('[Trash] Left trash zone');
+                    setIsOverTrash(false);
+                }}
             >
                 <div className={`border-2 p-4 rounded-2xl shadow-xl transition-all ${
                     isOverTrash
