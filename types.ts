@@ -334,6 +334,20 @@ export interface GameChangeLogEntry {
     user: string;
     action: string;
 }
+
+export interface ToolbarPosition {
+  x: number;
+  y: number;
+}
+
+export interface ToolbarPositions {
+  locationToolboxPos?: ToolbarPosition;
+  topToolbarPos?: ToolbarPosition;
+  viewSwitcherPos?: ToolbarPosition;
+  pinsToolboxPos?: ToolbarPosition;
+  showToolboxPos?: ToolbarPosition;
+}
+
 // ------------------------
 
 export interface Game {
