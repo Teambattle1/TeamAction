@@ -433,18 +433,36 @@ const GameApp: React.FC = () => {
   };
 
   const handlePointClick = (point: GamePoint) => {
-      // In MEASURE mode, add task to measure path instead of opening modal
-      if (isMeasuring && point.location) {
-          setMeasurePath(prev => [...prev, point.location]);
-          // Calculate distance from previous point if exists
-          if (measurePath.length > 0) {
-              const lastPoint = measurePath[measurePath.length - 1];
-              const distance = haversineMeters(lastPoint, point.location);
-              setMeasuredDistance(prev => prev + distance);
+      // CRITICAL: When measuring mode is active, ONLY add to measurement path
+      // Do NOT open any modals or task views
+      if (isMeasuring) {
+          if (!point.location) {
+              console.warn('[Measure] Cannot measure task without location:', point.id);
+              return;
           }
-          return; // Don't open task view when measuring
+
+          // Add task location to measurement path
+          setMeasurePath(prev => {
+              const newPath = [...prev, point.location];
+
+              // Calculate cumulative distance
+              if (prev.length > 0) {
+                  const distance = haversineMeters(prev[prev.length - 1], point.location);
+                  setMeasuredDistance(prevDist => prevDist + distance);
+              }
+
+              // Update point count
+              setMeasurePointsCount(newPath.length);
+
+              console.log('[Measure] Added task to path. Total tasks:', newPath.length, 'Total distance:', measuredDistance + (prev.length > 0 ? haversineMeters(prev[prev.length - 1], point.location) : 0), 'm');
+              return newPath;
+          });
+
+          // CRITICAL: Stop execution here - do NOT open task modal
+          return;
       }
 
+      // Normal mode: Open task modal/editor
       if (mode === GameMode.EDIT) {
           setActiveTask(point);
       } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
