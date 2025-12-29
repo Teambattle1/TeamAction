@@ -209,9 +209,9 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
               {teamStats.map((stat, idx) => (
                 <div
                   key={stat.teamId}
-                  className="grid grid-cols-6 gap-2 p-4 rounded-xl border border-gray-700 bg-gray-800/50 hover:bg-gray-800 transition-colors"
+                  className="grid grid-cols-7 gap-2 p-4 rounded-xl border border-gray-700 bg-gray-800/50 hover:bg-gray-800 transition-colors"
                 >
-                  {/* Team Name */}
+                  {/* Team Name & Ranking */}
                   <div className="flex items-center gap-2">
                     <div
                       className="w-3 h-3 rounded-full flex-shrink-0"
@@ -219,15 +219,15 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
                     />
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-white truncate">{stat.teamName}</p>
-                      <p className="text-[9px] text-gray-500">#{idx + 1}</p>
+                      <p className="text-[9px] text-yellow-500 font-black">#{idx + 1}</p>
                     </div>
                   </div>
 
-                  {/* Tasks Completed */}
+                  {/* Correct/Incorrect Answers */}
                   <div className="flex items-center justify-center">
                     <div className="text-center">
-                      <p className="text-lg font-black text-cyan-400">{stat.completedTasks}</p>
-                      <p className="text-[8px] text-gray-500 font-bold">TASKS</p>
+                      <p className="text-sm font-black"><span className="text-green-400">{stat.correctAnswers}</span>/<span className="text-red-400">{stat.incorrectAnswers}</span></p>
+                      <p className="text-[8px] text-gray-500 font-bold">✓/✗</p>
                     </div>
                   </div>
 
@@ -236,6 +236,14 @@ const GameStatsModal: React.FC<GameStatsModalProps> = ({ onClose, game, teams })
                     <div className="text-center">
                       <p className="text-lg font-black text-orange-400">{stat.totalDistanceKm}</p>
                       <p className="text-[8px] text-gray-500 font-bold">KM</p>
+                    </div>
+                  </div>
+
+                  {/* Playtime */}
+                  <div className="flex items-center justify-center">
+                    <div className="text-center">
+                      <p className="text-sm font-black text-blue-400">{stat.playtimeString}</p>
+                      <p className="text-[8px] text-gray-500 font-bold">TIME</p>
                     </div>
                   </div>
 
