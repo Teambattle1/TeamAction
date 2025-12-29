@@ -90,7 +90,9 @@ const GameHUD: React.FC<GameHUDProps> = ({
     const [showLayerMenu, setShowLayerMenu] = useState(false);
     const [showMapStylesMenu, setShowMapStylesMenu] = useState(false);
     const [showLocationMapStyles, setShowLocationMapStyles] = useState(false);
-    
+    const [showTaskId, setShowTaskId] = useState(false);
+    const [showTaskTitle, setShowTaskTitle] = useState(false);
+
     // Countdown State
     const [countdownSeconds, setCountdownSeconds] = useState<number | null>(null);
 
