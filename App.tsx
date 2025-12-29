@@ -5,7 +5,7 @@ import { supabase } from './lib/supabase';
 import { authService } from './services/auth';
 import { teamSync } from './services/teamSync';
 import { LocationProvider, useLocation } from './contexts/LocationContext';
-import { haversineMeters, isWithinRadius } from './utils/geo';
+import { haversineMeters, isWithinRadius, isValidCoordinate } from './utils/geo';
 import GameMap, { GameMapHandle } from './components/GameMap';
 import GameHUD from './components/GameHUD';
 import GameManager from './components/GameManager';
