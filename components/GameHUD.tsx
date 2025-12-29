@@ -472,7 +472,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                                 <div className="flex-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight">SETTINGS</div>
                             </div>
                             {/* MAPSTYLE Button */}
-                            <div className="relative flex flex-col items-center">
+                            <div className="flex flex-col items-center gap-0.5">
                                 <button
                                     onClick={() => setShowLocationMapStyles(!showLocationMapStyles)}
                                     className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
@@ -481,6 +481,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                                     <Layers className="w-4 h-4" />
                                     {showLocationMapStyles && <div className="absolute top-0 right-0 w-2 h-2 bg-slate-300 rounded-full animate-pulse"></div>}
                                 </button>
+                                <span className="text-[7px] font-black uppercase tracking-widest text-slate-400 leading-tight">MAP</span>
                                 {showLocationMapStyles && (
                                     <div className="absolute top-full mt-1 bg-slate-900 border-2 border-slate-700 rounded-xl p-2 shadow-xl animate-in slide-in-from-top-2 pointer-events-auto z-[3001] flex gap-2 flex-wrap max-w-[300px]">
                                         {MAP_STYLES_LIST.map((style) => (
