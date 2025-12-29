@@ -91,16 +91,6 @@ const SortablePointItem: React.FC<{
       }
   }, [isSelected]);
 
-  // CRITICAL: Cleanup timeout on unmount to prevent memory leak
-  useEffect(() => {
-      return () => {
-          if (hoverTimeoutRef.current) {
-              clearTimeout(hoverTimeoutRef.current);
-              hoverTimeoutRef.current = null;
-          }
-      };
-  }, []);
-
   const handleTouchStart = (e: React.TouchEvent) => {
       if (isDragging) return;
       startX.current = e.touches[0].clientX;
