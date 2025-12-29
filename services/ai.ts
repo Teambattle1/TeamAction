@@ -147,47 +147,42 @@ export const generateAiBackground = async (keywords: string, zoneName?: string):
     const prompt = `Create a vibrant widescreen game background image${zoneContext}. Theme and elements: ${keywords}. 16:9 landscape format. Bright, colorful, engaging scene suitable for adventure game.`;
 
     try {
-        console.log('[AI Background] Generating with Imagen 3');
+        console.log('[AI Background] Generating with Gemini 2.5 Flash Image');
         console.log('[AI Background] Keywords:', keywords);
         console.log('[AI Background] Full prompt:', prompt);
 
-        // Use Imagen 3 - Google's dedicated image generation model
-        const response = await makeRequestWithRetry(() => ai.models.generateImages({
-            model: 'imagen-3.0-generate-002',
-            prompt: prompt,
-            config: {
-                numberOfImages: 1,
-                aspectRatio: '16:9', // Landscape for game backgrounds
-            }
+        // Use Gemini 2.5 Flash Image - works with API keys (Imagen requires Vertex AI)
+        const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: prompt,
         }));
 
         console.log('[AI Background] Response received:', {
-            hasGeneratedImages: !!response.generatedImages,
-            imageCount: response.generatedImages?.length || 0
+            hasCandidates: !!response.candidates,
+            candidateCount: response.candidates?.length,
+            finishReason: response.candidates?.[0]?.finishReason
         });
 
-        // Extract image from Imagen 3 response
-        if (response.generatedImages && response.generatedImages.length > 0) {
-            const generatedImage = response.generatedImages[0];
+        const candidate = response.candidates?.[0];
 
-            // The image data is in image.data as base64-encoded string
-            if (generatedImage.image?.data) {
-                console.log('[AI Background] Successfully generated image with Imagen 3');
-                const base64Data = generatedImage.image.data;
-                const mimeType = generatedImage.image.mimeType || 'image/png';
-
-                return `data:${mimeType};base64,${base64Data}`;
-            }
+        // Extract image from Gemini response (inlineData format)
+        if (candidate?.content?.parts?.[0]?.inlineData) {
+            const inlineData = candidate.content.parts[0].inlineData;
+            console.log('[AI Background] Successfully generated image');
+            return `data:${inlineData.mimeType};base64,${inlineData.data}`;
         }
 
-        console.warn('[AI Background] No image data in Imagen 3 response');
-        console.log('[AI Background] Full response structure:', {
-            hasGeneratedImages: !!response.generatedImages,
-            firstImage: response.generatedImages?.[0] ? {
-                hasImage: !!response.generatedImages[0].image,
-                hasData: !!response.generatedImages[0].image?.data,
-                keys: Object.keys(response.generatedImages[0].image || {})
-            } : null
+        // Log detailed info if no image
+        console.warn('[AI Background] No image data in response');
+        console.log('[AI Background] Response structure:', {
+            finishReason: candidate?.finishReason,
+            hasSafetyRatings: !!candidate?.safetyRatings,
+            safetyRatings: candidate?.safetyRatings,
+            contentParts: candidate?.content?.parts?.map(p => ({
+                hasText: !!p.text,
+                hasInlineData: !!p.inlineData,
+                text: p.text?.substring(0, 100)
+            }))
         });
 
         return null;
