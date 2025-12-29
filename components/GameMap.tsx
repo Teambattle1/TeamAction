@@ -434,6 +434,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     onMapClick,
     onPointMove,
     onDeletePoint,
+    onDragStart,
     onPointHover,
     showScores,
     showTaskId,
