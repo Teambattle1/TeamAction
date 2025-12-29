@@ -32,6 +32,8 @@ import GameStatsModal from './components/GameStatsModal';
 import MessagePopup from './components/MessagePopup';
 import Dashboard from './components/Dashboard';
 import DangerZoneModal from './components/DangerZoneModal';
+import ErrorBoundary from './components/ErrorBoundary';
+import OfflineIndicator from './components/OfflineIndicator';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
