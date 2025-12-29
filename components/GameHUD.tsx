@@ -109,23 +109,23 @@ const GameHUD: React.FC<GameHUDProps> = ({
     const [isDraggingMeasure, setIsDraggingMeasure] = useState(false);
     const measureDragOffset = useRef({ x: 0, y: 0 });
     // LOCATION toolbar - top left
-    const [locationToolboxPos, setLocationToolboxPos] = useState({ x: 20, y: 10 });
+    const [locationToolboxPos, setLocationToolboxPos] = useState({ x: 50, y: 10 });
     const [isDraggingLocationBox, setIsDraggingLocationBox] = useState(false);
     const locationDragOffset = useRef({ x: 0, y: 0 });
     // TOOLS toolbar - top center-left
-    const [topToolbarPos, setTopToolbarPos] = useState({ x: 520, y: 10 });
+    const [topToolbarPos, setTopToolbarPos] = useState({ x: 280, y: 10 });
     const [isDraggingTopToolbar, setIsDraggingTopToolbar] = useState(false);
     const topToolbarDragOffset = useRef({ x: 0, y: 0 });
     // MAPMODE toolbar - top center-right
-    const [viewSwitcherPos, setViewSwitcherPos] = useState({ x: window.innerWidth - 210, y: 10 });
+    const [viewSwitcherPos, setViewSwitcherPos] = useState({ x: window.innerWidth - 220, y: 10 });
     const [isDraggingViewSwitcher, setIsDraggingViewSwitcher] = useState(false);
     const viewSwitcherDragOffset = useRef({ x: 0, y: 0 });
     // PINS toolbar - right side, middle
-    const [pinsToolboxPos, setPinsToolboxPos] = useState({ x: window.innerWidth - 180, y: 170 });
+    const [pinsToolboxPos, setPinsToolboxPos] = useState({ x: window.innerWidth - 180, y: 120 });
     const [isDraggingPinsBox, setIsDraggingPinsBox] = useState(false);
     const pinsDragOffset = useRef({ x: 0, y: 0 });
     // SHOW toolbar - right side, lower
-    const [showToolboxPos, setShowToolboxPos] = useState({ x: window.innerWidth - 180, y: 360 });
+    const [showToolboxPos, setShowToolboxPos] = useState({ x: window.innerWidth - 180, y: 280 });
     const [isDraggingShowBox, setIsDraggingShowBox] = useState(false);
     const showDragOffset = useRef({ x: 0, y: 0 });
 
