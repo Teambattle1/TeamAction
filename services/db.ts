@@ -668,12 +668,54 @@ export const sendAccountUserMessage = async (targetUserId: string, messageText: 
     try {
         const { data } = await supabase.from('account_users').select('data').eq('id', targetUserId).single();
         if (!data) return false;
-        
+
         const userData = data.data as AccountUser;
         const newMessage: AdminMessage = { id: `msg-${Date.now()}`, text: messageText, sender: senderName, timestamp: Date.now(), read: false };
         const updatedUser = { ...userData, messages: [...(userData.messages || []), newMessage] };
-        
+
         await supabase.from('account_users').update({ data: updatedUser, updated_at: new Date().toISOString() }).eq('id', targetUserId);
         return true;
     } catch (e) { logError('sendAccountUserMessage', e); return false; }
+};
+
+// --- USER SETTINGS ---
+export const fetchUserSettings = async (userId: string): Promise<any | null> => {
+    try {
+        const { data, error } = await supabase
+            .from('user_settings')
+            .select('data')
+            .eq('user_id', userId)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') {
+                // No row found, return null (not an error)
+                return null;
+            }
+            throw error;
+        }
+
+        return data?.data || null;
+    } catch (e) {
+        logError('fetchUserSettings', e);
+        return null;
+    }
+};
+
+export const saveUserSettings = async (userId: string, settings: any): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('user_settings')
+            .upsert({
+                user_id: userId,
+                data: settings,
+                updated_at: new Date().toISOString()
+            });
+
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        logError('saveUserSettings', e);
+        return false;
+    }
 };
