@@ -76,7 +76,8 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
           setOnlineMembers(members);
           updateLocationHistory(members);
       });
-      const interval = setInterval(loadTeams, 10000);
+      // PERFORMANCE: Increased from 10s to 15s to reduce server load
+      const interval = setInterval(loadTeams, 15000);
       return () => {
           clearInterval(interval);
           unsubscribe();
