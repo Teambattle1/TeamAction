@@ -1274,6 +1274,50 @@ const GameApp: React.FC = () => {
                   onClose={() => setActiveDangerZone(null)}
               />
           )}
+          {showMeasureResult && (
+              <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+                  <div className="bg-slate-900 border-2 border-orange-500 rounded-2xl shadow-[0_0_50px_rgba(249,115,22,0.5)] overflow-hidden flex flex-col max-w-sm w-full">
+                      <div className="p-6 bg-orange-950/50 border-b border-orange-900/50 flex items-center gap-3">
+                          <div className="p-2 bg-orange-600 rounded-lg">
+                              <Ruler className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                              <h2 className="text-lg font-black text-white uppercase tracking-widest">MEASUREMENT RESULT</h2>
+                              <p className="text-[10px] text-orange-400 font-bold uppercase tracking-wide">Task Distance Analysis</p>
+                          </div>
+                      </div>
+                      <div className="p-6 space-y-6">
+                          <div className="space-y-2">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TASKS SELECTED</div>
+                              <div className="text-4xl font-black text-orange-500">{measurePointsCount}</div>
+                              <p className="text-[10px] text-slate-400 mt-2">point{measurePointsCount !== 1 ? 's' : ''} in measurement line</p>
+                          </div>
+                          <div className="space-y-2">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TOTAL DISTANCE</div>
+                              <div className="text-3xl font-black text-green-500">{measuredDistance.toFixed(0)}<span className="text-lg ml-2">M</span></div>
+                              <p className="text-[10px] text-slate-400 mt-2">between selected tasks</p>
+                          </div>
+                      </div>
+                      <div className="p-4 bg-slate-800/50 border-t border-slate-700 flex gap-3">
+                          <button
+                              onClick={() => {
+                                  setShowMeasureResult(false);
+                                  setSelectedMeasurePointIds([]);
+                              }}
+                              className="flex-1 py-2 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-colors text-sm uppercase"
+                          >
+                              Clear Selection
+                          </button>
+                          <button
+                              onClick={() => setShowMeasureResult(false)}
+                              className="flex-1 py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg transition-colors text-sm uppercase shadow-lg"
+                          >
+                              Close
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          )}
       </>
   );
 
