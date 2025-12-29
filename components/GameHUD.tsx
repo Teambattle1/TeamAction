@@ -570,11 +570,14 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 </div>
             )}
 
-            {/* SHOW Toolbar (Task ID, Title, Scores) */}
+            {/* SHOW Toolbar (Task ID, Title, Scores) - Independent */}
             {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
-                    style={{ left: pinsToolboxPos.x, top: pinsToolboxPos.y + 120 }}
+                    style={{ left: showToolboxPos.x, top: showToolboxPos.y }}
+                    onPointerDown={handleShowBoxPointerDown}
+                    onPointerMove={handleShowBoxPointerMove}
+                    onPointerUp={handleShowBoxPointerUp}
                 >
                     <div className="bg-purple-600 border-2 border-purple-500 rounded-xl shadow-2xl p-1 group relative">
                         <div className="flex flex-col gap-1">
