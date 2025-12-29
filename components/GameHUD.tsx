@@ -773,7 +773,7 @@ const GameHUD: React.FC<GameHUDProps> = ({
                                     <button
                                         onClick={onToggleTaskId}
                                         className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTaskId ? 'bg-white text-purple-600 border-white shadow-lg' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
-                                        title="Toggle Task ID"
+                                        title="Toggle Task Order ID"
                                     >
                                         <Hash className="w-4 h-4" />
                                     </button>
