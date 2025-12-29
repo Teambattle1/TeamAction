@@ -1549,9 +1549,12 @@ const GameApp: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <LocationProvider>
-      <GameApp />
-    </LocationProvider>
+    <ErrorBoundary componentName="TeamChallenge App">
+      <OfflineIndicator />
+      <LocationProvider>
+        <GameApp />
+      </LocationProvider>
+    </ErrorBoundary>
   );
 };
 
