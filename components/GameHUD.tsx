@@ -280,19 +280,16 @@ const GameHUD: React.FC<GameHUDProps> = ({
     );
 
     const renderLocationMapStylesMenu = () => (
-        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-green-700 rounded-xl p-3 grid grid-cols-3 gap-2 shadow-xl animate-in slide-in-from-bottom-2 pointer-events-auto z-[3000] min-w-[240px]">
-            <div className="col-span-3 text-center">
-                <p className="text-[10px] font-black text-green-400 uppercase tracking-widest">MAP STYLES</p>
-            </div>
+        <div className="absolute top-full mt-2 left-0 bg-slate-900 border-2 border-green-700 rounded-xl p-2 shadow-xl animate-in slide-in-from-top-2 pointer-events-auto z-[3000] flex gap-2 flex-wrap max-w-[400px]">
             {MAP_STYLES_LIST.map((style) => (
                 <button
                     key={style.id}
                     onClick={(e) => { e.stopPropagation(); onSetMapStyle(style.id); setShowLocationMapStyles(false); }}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all border-2 ${mapStyle === style.id ? 'bg-green-600 border-green-400 shadow-lg shadow-green-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600'}`}
+                    className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all border-2 ${mapStyle === style.id ? 'bg-green-600 border-green-400 shadow-lg shadow-green-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600'}`}
                     title={style.label}
                 >
-                    <style.icon className={`w-6 h-6 ${mapStyle === style.id ? 'text-white' : 'text-slate-300'}`} />
-                    <span className={`text-[8px] font-black uppercase tracking-widest ${mapStyle === style.id ? 'text-white' : 'text-slate-400'}`}>{style.label}</span>
+                    <style.icon className={`w-4 h-4 ${mapStyle === style.id ? 'text-white' : 'text-slate-300'}`} />
+                    <span className={`text-[7px] font-black uppercase tracking-widest ${mapStyle === style.id ? 'text-white' : 'text-slate-400'}`}>{style.label}</span>
                 </button>
             ))}
         </div>
