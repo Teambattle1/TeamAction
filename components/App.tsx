@@ -1455,6 +1455,21 @@ const GameApp: React.FC = () => {
             />
         </div>
 
+        {/* MEASURE MODE BANNER */}
+        {isMeasuring && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none animate-in fade-in slide-in-from-top">
+                <div className="bg-orange-600 text-white px-6 py-3 rounded-full shadow-2xl border-2 border-orange-400 flex items-center gap-3">
+                    <Ruler className="w-5 h-5 animate-pulse" />
+                    <div className="font-black uppercase tracking-wider text-sm">
+                        MEASURE MODE: Click tasks to calculate distance
+                    </div>
+                    <div className="bg-orange-800 px-3 py-1 rounded-full text-xs font-bold">
+                        {measurePointsCount} tasks • {Math.round(measuredDistance)}m
+                    </div>
+                </div>
+            </div>
+        )}
+
         <GameHUD
             ref={gameHudRef}
             accuracy={gpsAccuracy}
