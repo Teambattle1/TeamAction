@@ -90,6 +90,7 @@ interface GameMapProps {
   onMapClick?: (coord: Coordinate) => void;
   onPointMove?: (pointId: string, newLoc: Coordinate) => void;
   onDeletePoint?: (pointId: string) => void;
+  onDragStart?: (pointId: string) => void;
   onPointHover?: (point: GamePoint | null) => void;
   showScores?: boolean;
   showTaskId?: boolean;
