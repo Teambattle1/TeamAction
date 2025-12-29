@@ -124,6 +124,60 @@ const GameHUD: React.FC<GameHUDProps> = ({
     const [isDraggingShowBox, setIsDraggingShowBox] = useState(false);
     const showDragOffset = useRef({ x: 0, y: 0 });
 
+    // Toolbar Position Persistence
+    const saveDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isAdminRef = useRef(false);
+
+    // Load toolbar positions on mount (admin users only)
+    useEffect(() => {
+        const isAdmin = authUser?.role === 'Admin' || authUser?.role === 'Owner';
+        isAdminRef.current = isAdmin;
+
+        if (isAdmin && authUser?.id) {
+            const loadPositions = async () => {
+                const settings = await db.fetchUserSettings(authUser.id);
+                if (settings?.toolbarPositions) {
+                    const pos = settings.toolbarPositions;
+                    if (pos.locationToolboxPos) setLocationToolboxPos(pos.locationToolboxPos);
+                    if (pos.topToolbarPos) setTopToolbarPos(pos.topToolbarPos);
+                    if (pos.viewSwitcherPos) setViewSwitcherPos(pos.viewSwitcherPos);
+                    if (pos.pinsToolboxPos) setPinsToolboxPos(pos.pinsToolboxPos);
+                    if (pos.showToolboxPos) setShowToolboxPos(pos.showToolboxPos);
+                }
+            };
+            loadPositions();
+        }
+    }, [authUser?.id, authUser?.role]);
+
+    // Debounced save function for toolbar positions
+    const saveToolbarPositions = () => {
+        if (!isAdminRef.current || !authUser?.id) return;
+
+        // Clear existing timeout
+        if (saveDebounceTimerRef.current) {
+            clearTimeout(saveDebounceTimerRef.current);
+        }
+
+        // Set new timeout (save after 500ms of inactivity)
+        saveDebounceTimerRef.current = setTimeout(async () => {
+            const toolbarPositions = {
+                locationToolboxPos,
+                topToolbarPos,
+                viewSwitcherPos,
+                pinsToolboxPos,
+                showToolboxPos
+            };
+
+            const success = await db.saveUserSettings(authUser.id, {
+                toolbarPositions
+            });
+
+            if (success) {
+                console.log('[GameHUD] Toolbar positions saved');
+            }
+        }, 500);
+    };
+
     // ... Drag handlers (omitted for brevity, assume unchanged) ...
     const handleBoxPointerDown = (e: React.PointerEvent) => {
         e.stopPropagation(); e.preventDefault();
