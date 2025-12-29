@@ -635,60 +635,9 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 />
             ))}
 
-            {/* Measure Path with Orange Line and Popup */}
-            {measurePath.length > 0 && (
-                <>
-                    {measurePath.length > 1 && (
-                        <Polyline positions={measurePath} pathOptions={{ color: '#f97316', dashArray: '10, 10', weight: 4 }} />
-                    )}
-
-                    {/* Measure Popup - Shows count, distance, and time estimation */}
-                    {measurePath.length > 0 && (() => {
-                        // Calculate time estimation
-                        const taskCount = measurePath.length;
-                        const distanceKm = measuredDistance / 1000;
-                        const walkingSpeedKmPerHour = 3; // UPDATED: 3 km/h walking speed
-                        const timePerTaskMinutes = 1;
-
-                        // Walking time in minutes
-                        const walkingTimeMinutes = (distanceKm / walkingSpeedKmPerHour) * 60;
-
-                        // Task solving time in minutes
-                        const taskTimeMinutes = taskCount * timePerTaskMinutes;
-
-                        // Total time in minutes
-                        const totalTimeMinutes = walkingTimeMinutes + taskTimeMinutes;
-
-                        // Format time nicely
-                        const hours = Math.floor(totalTimeMinutes / 60);
-                        const minutes = Math.round(totalTimeMinutes % 60);
-                        const timeString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-
-                        return (
-                            <Popup position={measurePath[measurePath.length - 1]} closeButton={false} className="measure-popup">
-                                <div className="bg-orange-600 text-white rounded-lg p-3 shadow-lg text-center">
-                                    <div className="text-xs font-black uppercase tracking-wider mb-3">COMBINED TASKS</div>
-                                    <div className="flex items-center gap-3 justify-center mb-3">
-                                        <div>
-                                            <p className="text-[10px] text-orange-100 font-bold uppercase">Tasks</p>
-                                            <p className="text-2xl font-black">{taskCount}</p>
-                                        </div>
-                                        <div className="w-px h-10 bg-orange-400"></div>
-                                        <div>
-                                            <p className="text-[10px] text-orange-100 font-bold uppercase">Distance</p>
-                                            <p className="text-lg font-black">{Math.round(measuredDistance)}m</p>
-                                        </div>
-                                    </div>
-                                    <div className="border-t border-orange-500 pt-2 mt-2">
-                                        <p className="text-[9px] text-orange-100 font-bold uppercase tracking-wider mb-1">Est. Time</p>
-                                        <p className="text-lg font-black">{timeString}</p>
-                                        <p className="text-[8px] text-orange-100 mt-1">3km/h + 1min/task</p>
-                                    </div>
-                                </div>
-                            </Popup>
-                        );
-                    })()}
-                </>
+            {/* Measure Path with Orange Line - Box is now draggable in App.tsx */}
+            {measurePath.length > 1 && (
+                <Polyline positions={measurePath} pathOptions={{ color: '#f97316', dashArray: '10, 10', weight: 4 }} />
             )}
 
             {/* Danger Zones */}
