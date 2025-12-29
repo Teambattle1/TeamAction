@@ -1198,7 +1198,7 @@ const GameApp: React.FC = () => {
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-900 text-white">
         <div className="absolute inset-0 z-0">
-            <GameMap 
+            <GameMap
                 ref={mapRef}
                 points={activeGame?.points || []}
                 routes={activeGame?.routes || []}
@@ -1206,7 +1206,7 @@ const GameApp: React.FC = () => {
                 logicLinks={logicLinks} // Pass Logic Links!
                 measurePath={measurePath}
                 mode={mode}
-                mapStyle={localMapStyle || 'osm'} 
+                mapStyle={localMapStyle || 'osm'}
                 onPointClick={handlePointClick}
                 onZoneClick={(z) => setActiveDangerZone(z)}
                 onMapClick={handleMapClick}
@@ -1228,6 +1228,7 @@ const GameApp: React.FC = () => {
                 }}
                 accuracy={gpsAccuracy}
                 isRelocating={isRelocating}
+                relocateScopeCenter={relocateScopeCenter}
                 showScores={showScores}
             />
         </div>
