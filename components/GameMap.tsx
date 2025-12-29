@@ -693,7 +693,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
 
             {/* Danger Zones */}
             {dangerZones.map(zone => (
-                <DangerZoneMarker key={zone.id} zone={zone} onClick={onZoneClick} mode={mode} />
+                <DangerZoneMarker key={zone.id} zone={zone} onClick={onZoneClick} onMove={onZoneMove} mode={mode} />
             ))}
 
             {/* Relocate Scope Center */}
