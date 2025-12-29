@@ -163,16 +163,16 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
           </form>
 
           {showResults && (results.length > 0 || (!isSearching && query)) && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-white/10 shadow-2xl rounded-2xl overflow-hidden z-[3000] animate-in slide-in-from-top-2">
+            <div className={`absolute top-full left-0 right-0 ${compact ? 'mt-1' : 'mt-2'} bg-slate-900 border border-white/10 shadow-2xl rounded-2xl overflow-hidden z-[3000] animate-in slide-in-from-top-2`}>
               {results.length > 0 ? (
                 results.map((res, idx) => (
-                  <button key={idx} onClick={() => selectResult(res)} className="w-full p-3 text-left hover:bg-white/5 border-b last:border-0 border-white/5 flex items-start gap-3 transition-colors">
-                    <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0 mt-0.5" />
-                    <span className="text-[10px] font-bold leading-tight text-slate-200 line-clamp-2 uppercase">{res.display_name}</span>
+                  <button key={idx} onClick={() => selectResult(res)} className={`w-full text-left hover:bg-white/5 border-b last:border-0 border-white/5 flex items-start gap-2 transition-colors ${compact ? 'p-2' : 'p-3'}`}>
+                    <MapPin className={`text-orange-500 shrink-0 ${compact ? 'w-3 h-3 mt-0.5' : 'w-3.5 h-3.5 mt-0.5'}`} />
+                    <span className={`font-bold leading-tight text-slate-200 line-clamp-2 uppercase ${compact ? 'text-[9px]' : 'text-[10px]'}`}>{res.display_name}</span>
                   </button>
                 ))
               ) : !isSearching && (
-                <div className="p-4 text-center text-slate-500 text-[10px] font-black uppercase tracking-widest">No results</div>
+                <div className={`text-center text-slate-500 font-black uppercase tracking-widest ${compact ? 'p-2 text-[9px]' : 'p-4 text-[10px]'}`}>No results</div>
               )}
             </div>
           )}
