@@ -438,9 +438,41 @@ const GameApp: React.FC = () => {
       }
   };
 
-  const handleMapClick = (coord: Coordinate) => {
+  const handleMapClick = async (coord: Coordinate) => {
+      // Measure tool
       if (mode === GameMode.EDIT && isMeasuring) {
           setMeasurePath(prev => [...prev, coord]);
+          return;
+      }
+
+      // Relocate tool - move all tasks
+      if (mode === GameMode.EDIT && isRelocating && relocateScopeCenter && activeGame) {
+          const offsetLat = coord.lat - relocateScopeCenter.lat;
+          const offsetLng = coord.lng - relocateScopeCenter.lng;
+
+          const updatedPoints = activeGame.points.map(p => {
+              if (!p.location || p.playgroundId) return p; // Skip playground-only points
+              return {
+                  ...p,
+                  location: {
+                      lat: p.location.lat + offsetLat,
+                      lng: p.location.lng + offsetLng
+                  }
+              };
+          });
+
+          const updatedZones = (activeGame.dangerZones || []).map(z => ({
+              ...z,
+              location: {
+                  lat: z.location.lat + offsetLat,
+                  lng: z.location.lng + offsetLng
+              }
+          }));
+
+          await updateActiveGame({ ...activeGame, points: updatedPoints, dangerZones: updatedZones });
+
+          // Update the scope center to the new location
+          setRelocateScopeCenter(coord);
       }
   };
 
@@ -453,6 +485,21 @@ const GameApp: React.FC = () => {
   };
 
   const handleRelocateGame = () => {
+      if (!isRelocating && activeGame) {
+          // Calculate center of all tasks
+          const validPoints = activeGame.points.filter(p => p.location && !p.playgroundId && isValidCoordinate(p.location));
+
+          if (validPoints.length > 0) {
+              const avgLat = validPoints.reduce((sum, p) => sum + p.location.lat, 0) / validPoints.length;
+              const avgLng = validPoints.reduce((sum, p) => sum + p.location.lng, 0) / validPoints.length;
+              setRelocateScopeCenter({ lat: avgLat, lng: avgLng });
+          } else if (mapRef.current) {
+              // If no valid points, use map center
+              setRelocateScopeCenter(mapRef.current.getCenter());
+          }
+      } else {
+          setRelocateScopeCenter(null);
+      }
       setIsRelocating(!isRelocating);
   };
 
