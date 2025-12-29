@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { 
-  Users, Gamepad2, Library, LayoutList, Shield, Edit2, 
+import {
+  Users, Gamepad2, Library, LayoutList, Shield, Edit2,
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3
 } from 'lucide-react';
 import { Game, AuthUser } from '../types';
 
