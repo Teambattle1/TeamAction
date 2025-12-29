@@ -228,22 +228,26 @@ const GameHUD: React.FC<GameHUDProps> = ({
             };
 
             // Save to activeGame if available, otherwise save to user settings
-            if (activeGame && onUpdateGame) {
-                const updatedGame = {
-                    ...activeGame,
-                    toolbarPositions
-                };
-                await onUpdateGame(updatedGame);
-                console.log('[GameHUD] Toolbar positions saved to game');
-            } else {
-                const success = await db.saveUserSettings(authUser.id, {
-                    toolbarPositions,
-                    toolbarPositionsVersion: DEFAULT_POSITIONS_VERSION
-                });
+            try {
+                if (activeGame && onUpdateGame) {
+                    const updatedGame = {
+                        ...activeGame,
+                        toolbarPositions
+                    };
+                    await onUpdateGame(updatedGame);
+                    console.log('[GameHUD] Toolbar positions saved to game');
+                } else {
+                    const success = await db.saveUserSettings(authUser.id, {
+                        toolbarPositions,
+                        toolbarPositionsVersion: DEFAULT_POSITIONS_VERSION
+                    });
 
-                if (success) {
-                    console.log('[GameHUD] Toolbar positions saved to user settings');
+                    if (success) {
+                        console.log('[GameHUD] Toolbar positions saved to user settings');
+                    }
                 }
+            } catch (error) {
+                console.error('[GameHUD] Error saving toolbar positions:', error);
             }
         }, 500);
     };
