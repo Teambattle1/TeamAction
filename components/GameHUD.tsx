@@ -109,11 +109,11 @@ const GameHUD: React.FC<GameHUDProps> = ({
     const [isDraggingMeasure, setIsDraggingMeasure] = useState(false);
     const measureDragOffset = useRef({ x: 0, y: 0 });
     // LOCATION toolbar - top center-right (to the right of TOOLS)
-    const [locationToolboxPos, setLocationToolboxPos] = useState({ x: 520, y: 10 });
+    const [locationToolboxPos, setLocationToolboxPos] = useState({ x: 470, y: 10 });
     const [isDraggingLocationBox, setIsDraggingLocationBox] = useState(false);
     const locationDragOffset = useRef({ x: 0, y: 0 });
     // TOOLS toolbar - top left
-    const [topToolbarPos, setTopToolbarPos] = useState({ x: 420, y: 10 });
+    const [topToolbarPos, setTopToolbarPos] = useState({ x: 330, y: 10 });
     const [isDraggingTopToolbar, setIsDraggingTopToolbar] = useState(false);
     const topToolbarDragOffset = useRef({ x: 0, y: 0 });
     // MAPMODE toolbar - top center-right
@@ -133,10 +133,12 @@ const GameHUD: React.FC<GameHUDProps> = ({
     const saveDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isAdminRef = useRef(false);
 
+    const DEFAULT_POSITIONS_VERSION = 2;
+
     // Default positions (universal) - Updated to match PICTURE 2 editor screen layout
     const DEFAULT_POSITIONS = {
-        tools: { x: 420, y: 10 },
-        location: { x: 520, y: 10 },
+        tools: { x: 330, y: 10 },
+        location: { x: 470, y: 10 },
         mapmode: { x: window.innerWidth - 220, y: 10 },
         pins: { x: window.innerWidth - 180, y: 75 },
         show: { x: window.innerWidth - 180, y: 140 }
@@ -158,6 +160,26 @@ const GameHUD: React.FC<GameHUDProps> = ({
         if (isAdmin && authUser?.id) {
             const loadPositions = async () => {
                 const settings = await db.fetchUserSettings(authUser.id);
+
+                // If saved positions are from an old layout, migrate to the new universal defaults.
+                const savedVersion = settings?.toolbarPositionsVersion;
+                if (savedVersion !== DEFAULT_POSITIONS_VERSION) {
+                    const nextSettings = {
+                        ...(settings || {}),
+                        toolbarPositions: {
+                            locationToolboxPos: DEFAULT_POSITIONS.location,
+                            topToolbarPos: DEFAULT_POSITIONS.tools,
+                            viewSwitcherPos: DEFAULT_POSITIONS.mapmode,
+                            pinsToolboxPos: DEFAULT_POSITIONS.pins,
+                            showToolboxPos: DEFAULT_POSITIONS.show
+                        },
+                        toolbarPositionsVersion: DEFAULT_POSITIONS_VERSION
+                    };
+
+                    await db.saveUserSettings(authUser.id, nextSettings);
+                    return;
+                }
+
                 if (settings?.toolbarPositions) {
                     const pos = settings.toolbarPositions;
                     if (pos.locationToolboxPos) setLocationToolboxPos(pos.locationToolboxPos);
@@ -191,7 +213,8 @@ const GameHUD: React.FC<GameHUDProps> = ({
             };
 
             const success = await db.saveUserSettings(authUser.id, {
-                toolbarPositions
+                toolbarPositions,
+                toolbarPositionsVersion: DEFAULT_POSITIONS_VERSION
             });
 
             if (success) {

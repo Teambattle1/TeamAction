@@ -425,6 +425,10 @@ const GameApp: React.FC = () => {
 
   const handleDeleteItem = async (pointId: string) => {
       if (!activeGame) return;
+      if (!pointId) {
+          console.warn('[Delete] Ignored delete request with empty pointId');
+          return;
+      }
       const updatedPoints = (activeGame?.points || []).filter(p => p.id !== pointId);
       const updatedZones = (activeGame.dangerZones || []).filter(z => z.id !== pointId);
       await updateActiveGame({ ...activeGame, points: updatedPoints, dangerZones: updatedZones });
