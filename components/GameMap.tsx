@@ -629,6 +629,26 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
             ))}
 
         </MapContainer>
+
+        {/* Visual Trash Bin - Editor Mode Only */}
+        {mode === GameMode.EDIT && (
+            <div className="absolute bottom-6 right-6 z-[1000] pointer-events-auto">
+                <div className="bg-slate-900 border-2 border-slate-700 text-slate-400 p-4 rounded-2xl shadow-xl hover:border-red-600 hover:text-red-500 hover:bg-slate-800 transition-all group">
+                    <div className="flex flex-col items-center gap-2">
+                        <Trash2 className="w-8 h-8 group-hover:animate-bounce" />
+                        <div className="text-[10px] font-black uppercase tracking-wider text-center">
+                            Drag<br/>Tasks<br/>Here
+                        </div>
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center text-white text-[10px] font-black shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                        ✕
+                    </div>
+                </div>
+                <div className="mt-2 text-center text-[9px] text-slate-500 font-bold max-w-[120px]">
+                    Use popup menu to delete tasks
+                </div>
+            </div>
+        )}
     </div>
   );
 }));
