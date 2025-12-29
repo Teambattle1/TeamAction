@@ -305,17 +305,29 @@ const GameApp: React.FC = () => {
       if (!activeGame || mode !== GameMode.PLAY || !userLocation) return;
 
       const checkGeofences = async () => {
+          // Prevent overlapping checks
           if (geofenceCheckRunningRef.current) return;
           geofenceCheckRunningRef.current = true;
 
           const patches: { pointId: string; patch: any }[] = [];
 
-          (activeGame?.points || []).forEach(p => {
-              if (p.isUnlocked || p.isCompleted || p.isSectionHeader || p.playgroundId) return;
-              if (p.activationTypes.includes('radius') && isWithinRadius(userLocation, p.location, p.radiusMeters)) {
+          // OPTIMIZATION: Filter once instead of checking each iteration
+          const radiusActivatedPoints = (activeGame?.points || []).filter(
+              p => !p.isUnlocked && !p.isCompleted && !p.isSectionHeader && !p.playgroundId && p.activationTypes.includes('radius')
+          );
+
+          // Early exit if no radius-activated tasks
+          if (radiusActivatedPoints.length === 0) {
+              geofenceCheckRunningRef.current = false;
+              return;
+          }
+
+          // Check only relevant points
+          for (const p of radiusActivatedPoints) {
+              if (isWithinRadius(userLocation, p.location, p.radiusMeters)) {
                   patches.push({ pointId: p.id, patch: { isUnlocked: true } });
               }
-          });
+          }
 
           try {
               if (patches.length > 0) {
@@ -336,7 +348,8 @@ const GameApp: React.FC = () => {
           }
       };
 
-      const interval = setInterval(checkGeofences, 2000);
+      // PERFORMANCE: Reduced from 2s to 5s to minimize main thread blocking
+      const interval = setInterval(checkGeofences, 5000);
       return () => clearInterval(interval);
   }, [userLocation, activeGame, mode]);
 
