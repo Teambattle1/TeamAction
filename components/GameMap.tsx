@@ -451,14 +451,17 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
   // Filter logic for Game Ended state
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
-      
+
+      // Hide temporarily trashed points (dragged to bin, not permanently deleted)
+      if (trashedPointIds.has(p.id)) return false;
+
       // If game ended, only show Info points (points == 0) or if explicitly flagged (if we add 'isInfo' later)
       // Assuming 0 points means 'Info'
       if (gameEnded) {
-          // Keep info points (0 pts) or Completed tasks? Prompt says "all info points should be visible", 
-          // "all remaining tasks hidden". Let's assume info points are visible. 
-          // Completed tasks might be useful to see what you did, but "hidden" implies gone. 
-          // Let's hide everything > 0 points unless completed? 
+          // Keep info points (0 pts) or Completed tasks? Prompt says "all info points should be visible",
+          // "all remaining tasks hidden". Let's assume info points are visible.
+          // Completed tasks might be useful to see what you did, but "hidden" implies gone.
+          // Let's hide everything > 0 points unless completed?
           // The prompt says "all remaning tasks are hidden". This implies uncompleted tasks are hidden.
           if (!p.isCompleted && p.points > 0) return false;
       }
