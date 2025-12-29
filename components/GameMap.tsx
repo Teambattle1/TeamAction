@@ -491,7 +491,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
             <MapController handleRef={ref as any} />
             <MapLayers key={mapStyle} mapStyle={mapStyle} />
             <RecenterMap center={propLocation} points={mapPoints} mode={mode} />
-            {(mode === GameMode.EDIT) && <MapClickParams onClick={onMapClick} />}
+            {onMapClick && <MapClickParams onClick={onMapClick} />}
             
             {/* Routes */}
             {routes.map(route => {
