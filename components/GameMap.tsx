@@ -140,7 +140,7 @@ const RecenterMap = ({ center, points, mode }: { center: Coordinate | null, poin
             const latLngs = validPoints.map(p => [p.location.lat, p.location.lng] as [number, number]);
             const bounds = L.latLngBounds(latLngs);
             if (bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [50, 50], animate: false, maxZoom: 16 });
+                map.fitBounds(bounds, { padding: [50, 50], animate: false, maxZoom: 17 });
                 initializedRef.current = true;
                 return;
             }
@@ -189,7 +189,7 @@ const MapController = ({ handleRef }: { handleRef: React.RefObject<any> }) => {
             if (bounds.isValid()) {
                 console.log('[GameMap] Fitting bounds to', latLngs.length, 'points with maxZoom 16');
                 // Use same zoom settings as initial fit: padding: [50, 50], animate: false, maxZoom: 16
-                map.fitBounds(bounds, { padding: [50, 50], animate: false, maxZoom: 16 });
+                map.fitBounds(bounds, { padding: [50, 50], animate: false, maxZoom: 17 });
             } else {
                 console.warn('[GameMap] Invalid bounds calculated');
             }
