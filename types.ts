@@ -364,6 +364,7 @@ export interface Game {
   createdAt: number;
   defaultMapStyle?: MapStyleId;
   googleMapStyleJson?: string; // New: Custom Google Maps Style
+  toolbarPositions?: ToolbarPositions; // Per-game toolbar positions
   
   // Team & Permission Settings
   showOtherTeams?: boolean;
