@@ -31,6 +31,8 @@ import PlaygroundEditor from './components/PlaygroundEditor';
 import MessagePopup from './components/MessagePopup';
 import Dashboard from './components/Dashboard';
 import DangerZoneModal from './components/DangerZoneModal';
+import ErrorBoundary from './ErrorBoundary';
+import OfflineIndicator from './OfflineIndicator';
 import { PlayCircle, Ruler } from 'lucide-react';
 
 // Inner App Component that consumes LocationContext
@@ -1668,9 +1670,12 @@ const GameApp: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <LocationProvider>
-      <GameApp />
-    </LocationProvider>
+    <ErrorBoundary componentName="TeamChallenge App">
+      <OfflineIndicator />
+      <LocationProvider>
+        <GameApp />
+      </LocationProvider>
+    </ErrorBoundary>
   );
 };
 
