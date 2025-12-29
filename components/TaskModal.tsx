@@ -716,8 +716,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-4 animate-in fade-in">
                     <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider block mb-2">Solution / Correct Answer</span>
                     <p className="text-orange-900 dark:text-orange-200 font-medium">
-                        {point.task.type === 'slider' && point.task.correctAnswer ?
-                          `${point.task.correctAnswer}` :
+                        {point.task.type === 'slider' ?
+                          (point.task.range?.correctValue !== undefined ? `${point.task.range.correctValue}` : point.task.correctAnswer || "See logic") :
+                          point.task.type === 'checkbox' || point.task.type === 'radio' ?
+                          point.task.correctAnswers?.join(', ') || point.task.answer || "See logic" :
                           point.task.answer || point.task.correctAnswers?.join(', ') || (point.task.type === 'boolean' ? 'Check logic for bool answer' : "See logic")}
                     </p>
                   </div>
