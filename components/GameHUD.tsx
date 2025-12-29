@@ -234,8 +234,13 @@ const GameHUD: React.FC<GameHUDProps> = ({
 
     // ... Drag handlers (omitted for brevity, assume unchanged) ...
     const handleBoxPointerDown = (e: React.PointerEvent) => {
-        e.stopPropagation(); e.preventDefault();
-        setIsDraggingBox(true); dragOffset.current = { x: e.clientX - toolboxPos.x, y: e.clientY - toolboxPos.y };
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
+
+        e.stopPropagation();
+        e.preventDefault();
+        setIsDraggingBox(true);
+        dragOffset.current = { x: e.clientX - toolboxPos.x, y: e.clientY - toolboxPos.y };
         (e.currentTarget as Element).setPointerCapture(e.pointerId);
     };
     const handleBoxPointerMove = (e: React.PointerEvent) => {
