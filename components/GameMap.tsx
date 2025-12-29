@@ -338,16 +338,6 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, onClick, onMo
                 draggable={draggable}
                 zIndexOffset={isCompleted ? 0 : 100}
             >
-                {mode === GameMode.EDIT && (
-                    <Popup>
-                        <div className="flex flex-col gap-2">
-                            <span className="font-bold">{point.title}</span>
-                            <button onClick={() => onDelete(point.id)} className="text-red-500 text-xs font-bold uppercase flex items-center gap-1">
-                                <Trash2 className="w-3 h-3" /> Delete
-                            </button>
-                        </div>
-                    </Popup>
-                )}
             </Marker>
 
             {/* Radius Circle */}
