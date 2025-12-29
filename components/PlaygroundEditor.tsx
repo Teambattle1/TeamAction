@@ -2021,9 +2021,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                     Describe the background you want. Examples: "forest at sunset", "futuristic city", "underwater temple", "medieval castle"
                                 </p>
-                                <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-2">
-                                    <p className="text-[9px] text-yellow-200 uppercase font-bold">⚠️ Troubleshooting</p>
-                                    <p className="text-[8px] text-yellow-300/80 mt-1">If generation fails, press F12 to open console and check logs. Image generation uses Imagen 3 and requires a Gemini API key with Imagen access enabled.</p>
+                                <div className="bg-blue-900/20 border border-blue-600/30 rounded-lg p-2">
+                                    <p className="text-[9px] text-blue-200 uppercase font-bold flex items-center gap-1">
+                                        <Wand2 className="w-3 h-3" /> Powered by Gemini 2.5 Flash
+                                    </p>
+                                    <p className="text-[8px] text-blue-300/80 mt-1">Uses Gemini's built-in image generation. Note: Imagen 3 (higher quality) requires Vertex AI and is not available with API keys.</p>
                                 </div>
                             </div>
                             <div>
