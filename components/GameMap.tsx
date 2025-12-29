@@ -612,7 +612,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                         // Calculate time estimation
                         const taskCount = measurePath.length;
                         const distanceKm = measuredDistance / 1000;
-                        const walkingSpeedKmPerHour = 4;
+                        const walkingSpeedKmPerHour = 3; // UPDATED: 3 km/h walking speed
                         const timePerTaskMinutes = 1;
 
                         // Walking time in minutes
@@ -647,7 +647,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                                     <div className="border-t border-orange-500 pt-2 mt-2">
                                         <p className="text-[9px] text-orange-100 font-bold uppercase tracking-wider mb-1">Est. Time</p>
                                         <p className="text-lg font-black">{timeString}</p>
-                                        <p className="text-[8px] text-orange-100 mt-1">4km/h + 1min/task</p>
+                                        <p className="text-[8px] text-orange-100 mt-1">3km/h + 1min/task</p>
                                     </div>
                                 </div>
                             </Popup>
