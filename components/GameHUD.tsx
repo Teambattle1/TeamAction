@@ -579,7 +579,10 @@ const GameHUD: React.FC<GameHUDProps> = ({
                     onPointerMove={handleShowBoxPointerMove}
                     onPointerUp={handleShowBoxPointerUp}
                 >
-                    <div className="bg-purple-600 border-2 border-purple-500 rounded-xl shadow-2xl p-1 group relative">
+                    <div className="bg-purple-600 border-2 border-purple-500 rounded-xl shadow-2xl p-1 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-purple-200 opacity-0 group-hover:opacity-100 transition-opacity bg-purple-700 rounded-full px-2 border border-purple-500 pointer-events-none">
+                            <GripHorizontal className="w-3 h-3" />
+                        </div>
                         <div className="flex flex-col gap-1">
                             <div className="text-center">
                                 <h3 className="text-[9px] font-black uppercase tracking-widest text-white">SHOW</h3>
