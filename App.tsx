@@ -1304,6 +1304,7 @@ const GameApp: React.FC = () => {
                 showScores={showScores}
                 showTaskId={showTaskId}
                 showTaskTitle={showTaskTitle}
+                measuredDistance={measuredDistance}
             />
         </div>
 
