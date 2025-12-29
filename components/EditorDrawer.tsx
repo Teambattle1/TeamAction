@@ -34,6 +34,7 @@ interface EditorDrawerProps {
   userLocation?: Coordinate | null;
   onFitBounds: (coords?: Coordinate[]) => void; // Updated signature
   onHoverPoint?: (point: GamePoint | null) => void;
+  onHoverDangerZone?: (zoneId: string | null) => void;
   onOpenPlaygroundEditor?: (playgroundId?: string) => void;
   initialExpanded?: boolean;
   onAddTask?: (type: 'MANUAL' | 'AI' | 'LIBRARY' | 'TASKLIST', playgroundId?: string) => void;
@@ -280,6 +281,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onFitBounds,
   onSearchLocation,
   onHoverPoint,
+  onHoverDangerZone,
   onOpenPlaygroundEditor,
   initialExpanded = false,
   onAddTask,
@@ -677,7 +679,12 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                                 )}
 
                                 {(activeGame?.dangerZones || []).map(zone => (
-                                    <div key={zone.id} className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-between group hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors cursor-pointer">
+                                    <div
+                                        key={zone.id}
+                                        className="bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 flex items-center justify-between group hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors cursor-pointer"
+                                        onMouseEnter={() => onHoverDangerZone && onHoverDangerZone(zone.id)}
+                                        onMouseLeave={() => onHoverDangerZone && onHoverDangerZone(null)}
+                                    >
                                         <div className="flex items-center gap-2 overflow-hidden flex-1">
                                             <div className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-black flex-shrink-0">⚠</div>
                                             <div className="flex-1 min-w-0">
