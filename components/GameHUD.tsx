@@ -44,6 +44,10 @@ interface GameHUDProps {
     isDrawerExpanded: boolean;
     showScores: boolean;
     onToggleScores: () => void;
+    showTaskId: boolean;
+    onToggleTaskId: () => void;
+    showTaskTitle: boolean;
+    onToggleTaskTitle: () => void;
     hiddenPlaygroundIds: string[];
     onToggleChat: () => void;
     unreadMessagesCount: number;
