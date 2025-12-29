@@ -20,9 +20,9 @@ const MeasureBox: React.FC<MeasureBoxProps> = ({ taskCount, distance, onClose })
                 // If parsing fails, use default
             }
         }
-        // Default position: bottom-left of screen
+        // Default position: center bottom of screen
         return {
-            x: 20,
+            x: (window.innerWidth - 200) / 2, // 200px is approximate width, center it
             y: window.innerHeight - 280 // 280px is approximate height of measure box
         };
     };
