@@ -797,9 +797,13 @@ const GameApp: React.FC = () => {
               />
           )}
           {showTaskMaster && (
-              <TaskMaster 
+              <TaskMaster
                   initialTab={taskMasterInitialTab}
-                  onClose={() => setShowTaskMaster(false)}
+                  initialModal={taskMasterInitialModal}
+                  onClose={() => {
+                      setShowTaskMaster(false);
+                      setTaskMasterInitialModal(null);
+                  }}
                   onImportTasks={async (tasks, gameId) => {
                       // Find the target game by ID or use activeGame
                       const targetGame = gameId ? games.find(g => g.id === gameId) : activeGame;
@@ -1037,7 +1041,17 @@ const GameApp: React.FC = () => {
                               ...playgroundTemplateToEdit,
                               tasks: [...(playgroundTemplateToEdit.tasks || []), newPoint]
                           });
-                      } else if (type === 'LIBRARY' || type === 'AI') {
+                      } else if (type === 'AI') {
+                          setTaskMasterInitialTab('LIBRARY');
+                          setTaskMasterInitialModal('AI');
+                          setShowTaskMaster(true);
+                      } else if (type === 'TASKLIST') {
+                          setTaskMasterInitialTab('LISTS');
+                          setTaskMasterInitialModal(null);
+                          setShowTaskMaster(true);
+                      } else if (type === 'LIBRARY') {
+                          setTaskMasterInitialTab('LIBRARY');
+                          setTaskMasterInitialModal(null);
                           setShowTaskMaster(true);
                       }
                   }}
@@ -1085,7 +1099,17 @@ const GameApp: React.FC = () => {
                               task: { type: 'text', question: 'New Task Question' }
                           };
                           await updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
-                      } else if (type === 'LIBRARY' || type === 'AI') {
+                      } else if (type === 'AI') {
+                          setTaskMasterInitialTab('LIBRARY');
+                          setTaskMasterInitialModal('AI');
+                          setShowTaskMaster(true);
+                      } else if (type === 'TASKLIST') {
+                          setTaskMasterInitialTab('LISTS');
+                          setTaskMasterInitialModal(null);
+                          setShowTaskMaster(true);
+                      } else if (type === 'LIBRARY') {
+                          setTaskMasterInitialTab('LIBRARY');
+                          setTaskMasterInitialModal(null);
                           setShowTaskMaster(true);
                       }
                   }}
@@ -1380,7 +1404,17 @@ const GameApp: React.FC = () => {
                         };
                         await updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
                         setActiveTask(newPoint);
-                    } else if (type === 'LIBRARY' || type === 'AI') {
+                    } else if (type === 'AI') {
+                        setTaskMasterInitialTab('LIBRARY');
+                        setTaskMasterInitialModal('AI');
+                        setShowTaskMaster(true);
+                    } else if (type === 'TASKLIST') {
+                        setTaskMasterInitialTab('LISTS');
+                        setTaskMasterInitialModal(null);
+                        setShowTaskMaster(true);
+                    } else if (type === 'LIBRARY') {
+                        setTaskMasterInitialTab('LIBRARY');
+                        setTaskMasterInitialModal(null);
                         setShowTaskMaster(true);
                     }
                 }}
