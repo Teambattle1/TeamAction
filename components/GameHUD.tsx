@@ -434,6 +434,9 @@ const GameHUD: React.FC<GameHUDProps> = ({
                             <GripHorizontal className="w-3 h-3" />
                         </div>
                         <div className="flex flex-col gap-1">
+                            <div className="text-center">
+                                <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-300">TOOLS</h3>
+                            </div>
                             <div className="flex gap-1">
                                 {/* Chat Button */}
                                 <button
