@@ -690,7 +690,8 @@ export const fetchUserSettings = async (userId: string): Promise<any | null> => 
         // Skip database query if userId is not a valid UUID
         // (hardcoded admin users like 'admin-thomas-permanent' are not UUIDs)
         if (!isValidUUID(userId)) {
-            console.log(`[DB Service] Skipping fetchUserSettings for non-UUID user: ${userId}`);
+            // Use debug instead of log to reduce console noise
+            console.debug(`[DB Service] Skipping fetchUserSettings for non-UUID user: ${userId}`);
             return null;
         }
 
@@ -720,7 +721,8 @@ export const saveUserSettings = async (userId: string, settings: any): Promise<b
         // Skip database operation if userId is not a valid UUID
         // (hardcoded admin users like 'admin-thomas-permanent' are not UUIDs)
         if (!isValidUUID(userId)) {
-            console.log(`[DB Service] Skipping saveUserSettings for non-UUID user: ${userId}`);
+            // Use debug instead of log to reduce console noise
+            console.debug(`[DB Service] Skipping saveUserSettings for non-UUID user: ${userId}`);
             return true; // Return true to prevent error cascading
         }
 
