@@ -4,7 +4,7 @@ import {
     Map as MapIcon, Layers, Crosshair, ChevronLeft, Ruler, Settings,
     MessageSquare, Shield, Globe, Skull, Clock,
     Route as RouteIcon, Eye, EyeOff, Snowflake, GripHorizontal, Mountain, Sun, Navigation, Upload, Users,
-    MapPin, Play, LogOut, Navigation as NavigationIcon, ExternalLink
+    MapPin, Play, LogOut, Navigation as NavigationIcon, ExternalLink, Trophy
 } from 'lucide-react';
 import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
