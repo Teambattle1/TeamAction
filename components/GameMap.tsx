@@ -474,7 +474,23 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
   
   const getLabel = (point: GamePoint) => {
       if (pointLabels && pointLabels[point.id]) return pointLabels[point.id];
-      if (mode === GameMode.EDIT) return (points.findIndex(p => p.id === point.id) + 1).toString().padStart(3, '0');
+
+      // In EDIT mode, build label based on showTaskId and showTaskTitle flags
+      if (mode === GameMode.EDIT) {
+          const taskIndex = points.findIndex(p => p.id === point.id) + 1;
+          const taskOrder = taskIndex.toString().padStart(3, '0');
+
+          // Determine what to show based on flags
+          if (showTaskTitle && point.title) {
+              return point.title;
+          }
+          if (showTaskId) {
+              return taskOrder;
+          }
+          // If both are false, show nothing
+          return undefined;
+      }
+
       return undefined;
   };
 
