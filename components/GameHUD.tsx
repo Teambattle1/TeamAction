@@ -470,6 +470,61 @@ const GameHUD: React.FC<GameHUDProps> = ({
                 </div>
             )}
 
+            {/* Draggable PINS Toolbar (Measure, Scores, Relocate) */}
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: pinsToolboxPos.x, top: pinsToolboxPos.y }}
+                    onPointerDown={handlePinsBoxPointerDown}
+                    onPointerMove={handlePinsBoxPointerMove}
+                    onPointerUp={handlePinsBoxPointerUp}
+                >
+                    <div className="bg-yellow-600 border-2 border-yellow-500 rounded-2xl shadow-2xl p-2 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity bg-yellow-700 rounded-full px-2 border border-yellow-500 pointer-events-none">
+                            <GripHorizontal className="w-4 h-4" />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <div className="text-center mb-1">
+                                <h3 className="text-sm font-black uppercase tracking-widest text-white">PINS</h3>
+                            </div>
+                            <div className="flex gap-2">
+                                {/* Measure Button */}
+                                <button
+                                    onClick={onToggleMeasure}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex flex-col items-center justify-center group/toolbar relative ${isMeasuring ? 'bg-white text-yellow-600 border-white shadow-lg' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    title="Measure"
+                                >
+                                    <Ruler className="w-5 h-5" />
+                                </button>
+
+                                {/* Scores Button */}
+                                <button
+                                    onClick={onToggleScores}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex flex-col items-center justify-center group/toolbar relative ${showScores ? 'bg-white text-yellow-600 border-white shadow-lg' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    title="Scores"
+                                >
+                                    <Trophy className="w-5 h-5" />
+                                </button>
+
+                                {/* Relocate Button */}
+                                <button
+                                    onClick={onRelocateGame}
+                                    className={`w-12 h-12 rounded-xl transition-all border flex flex-col items-center justify-center group/toolbar relative ${isRelocating ? 'bg-white text-yellow-600 border-white shadow-lg animate-pulse' : 'bg-yellow-700 text-yellow-100 border-yellow-600 hover:bg-yellow-800 hover:text-white'}`}
+                                    title="Relocate"
+                                >
+                                    <Crosshair className="w-5 h-5" />
+                                </button>
+                            </div>
+                            <div className="flex gap-2 text-center">
+                                <div className="flex-1 text-[9px] font-black text-yellow-100 uppercase tracking-widest leading-tight">MEASURE</div>
+                                <div className="flex-1 text-[9px] font-black text-yellow-100 uppercase tracking-widest leading-tight">SCORES</div>
+                                <div className="flex-1 text-[9px] font-black text-yellow-100 uppercase tracking-widest leading-tight">RELOCATE</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Bottom Bar Logic ... */}
             {!isSkiMode && (
                 <div className="flex justify-between items-end pointer-events-none">
