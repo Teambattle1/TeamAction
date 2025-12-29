@@ -459,6 +459,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     mapStyle,
     selectedPointId,
     isRelocating,
+    isMeasuring,
     relocateScopeCenter,
     relocateAllTaskIds = [],
     onPointClick,
