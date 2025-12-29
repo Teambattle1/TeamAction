@@ -879,6 +879,15 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                     </div>
                 </div>
             )}
+
+            {/* Adjust Game Time Modal */}
+            {showAdjustGameTime && (
+                <AdjustGameTimeModal
+                    onClose={() => setShowAdjustGameTime(false)}
+                    timerConfig={timerConfig}
+                    onUpdateGameTime={onUpdateGameTime || (async () => {})}
+                />
+            )}
         </div>
     );
 });
