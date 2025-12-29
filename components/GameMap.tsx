@@ -734,6 +734,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                     onClick={onPointClick}
                     onMove={onPointMove}
                     onDelete={onDeletePoint}
+                    onHover={onPointHover}
                     onDragStart={(id: string) => {
                         console.log('[Drag] Started dragging point:', id);
                         setDraggingPointId(id);
