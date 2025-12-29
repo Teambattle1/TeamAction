@@ -490,19 +490,24 @@ const GameApp: React.FC = () => {
           console.log('[Measure] ✓ Added task to path. Total distance:', (measuredDistance + distanceToAdd).toFixed(2) + 'm');
 
           // CRITICAL: Stop execution here - do NOT open task modal
+          console.log('[handlePointClick] ✓ EXITING - Measure mode complete, returning early');
           return;
       }
 
       // CRITICAL: When relocating mode is active, ignore point clicks (users should click map to place)
       if (isRelocating) {
           console.log('[Relocate] Point click ignored - click map to relocate tasks');
+          console.log('[handlePointClick] ✓ EXITING - Relocate mode, returning early');
           return;
       }
 
       // Normal mode: Open task modal/editor
+      console.log('[handlePointClick] ⚠️ NORMAL MODE - Opening task modal/editor');
       if (mode === GameMode.EDIT) {
+          console.log('[handlePointClick] Setting activeTask:', point.id);
           setActiveTask(point);
       } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
+          console.log('[handlePointClick] Setting activeTaskModalId:', point.id);
           setActiveTaskModalId(point.id);
       }
   };
