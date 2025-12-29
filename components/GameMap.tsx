@@ -441,6 +441,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     showScores,
     showTaskId,
     showTaskTitle,
+    measuredDistance = 0,
     onZoneClick,
     gameEnded = false, // Destructure new prop
     returnPath,
