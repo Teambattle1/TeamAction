@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Team, Game, ChatMessage } from '../types';
 import * as db from '../services/db';
@@ -40,7 +39,8 @@ const TeamDashboard: React.FC<TeamDashboardProps> = ({ teamId, gameId, totalMapP
         }
     };
     fetchData();
-    const interval = setInterval(fetchData, 10000); // Poll every 10s
+    // PERFORMANCE: Increased from 10s to 15s to reduce main thread blocking
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, [teamId, gameId]);
 
