@@ -594,8 +594,43 @@ const GameApp: React.FC = () => {
 
   const handleToggleMeasure = () => {
       setIsMeasuring(!isMeasuring);
-      if (!isMeasuring) setMeasurePath(userLocation ? [userLocation] : []);
-      else setMeasurePath([]);
+      if (!isMeasuring) {
+          setMeasurePath(userLocation ? [userLocation] : []);
+          setSelectedMeasurePointIds([]);
+          setShowMeasureResult(false);
+      } else {
+          setMeasurePath([]);
+          setSelectedMeasurePointIds([]);
+      }
+  };
+
+  const handleCompleteMeasurement = () => {
+      if (selectedMeasurePointIds.length === 0 || !currentGameObj) {
+          console.warn('[Measure] No points selected');
+          return;
+      }
+
+      // Get selected points in the order they were selected
+      const selectedPoints = selectedMeasurePointIds
+          .map(id => currentGameObj.points.find(p => p.id === id))
+          .filter(Boolean) as GamePoint[];
+
+      if (selectedPoints.length === 0) return;
+
+      // Calculate total distance between consecutive points
+      let totalDistance = 0;
+      const measurementPath = selectedPoints.map(p => p.location);
+
+      for (let i = 0; i < measurementPath.length - 1; i++) {
+          const distance = haversineMeters(measurementPath[i], measurementPath[i + 1]);
+          totalDistance += distance;
+      }
+
+      setMeasurePath(measurementPath);
+      setMeasuredDistance(totalDistance);
+      setMeasurePointsCount(selectedPoints.length);
+      setShowMeasureResult(true);
+      console.log('[Measure] Completed measurement:', { taskCount: selectedPoints.length, totalDistance: totalDistance.toFixed(2) + 'm' });
   };
 
   const handleLocateMe = () => {
