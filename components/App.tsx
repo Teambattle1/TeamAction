@@ -564,8 +564,11 @@ const GameApp: React.FC = () => {
   };
 
   const handleMapClick = (coord: Coordinate) => {
+      // DISABLED: Measure tool should ONLY work with tasks, not random map points
+      // Users should click tasks to measure between them
       if (mode === GameMode.EDIT && isMeasuring) {
-          setMeasurePath(prev => [...prev, coord]);
+          console.log('[Measure] Map click ignored - please click tasks to measure between them');
+          return;
       }
 
       if (mode === GameMode.EDIT && isRelocating && currentGameObj) {
@@ -635,13 +638,15 @@ const GameApp: React.FC = () => {
           setMeasurePath([]);
           setMeasuredDistance(0);
           setMeasurePointsCount(0);
+          setSelectedMeasurePointIds([]);
       } else {
           // Enter measuring mode - start fresh
-          console.log('[Measure] Entering measure mode');
+          console.log('[Measure] Entering measure mode - Click tasks to measure distances');
           setIsMeasuring(true);
           setMeasurePath([]);
           setMeasuredDistance(0);
           setMeasurePointsCount(0);
+          setSelectedMeasurePointIds([]);
       }
   };
 
