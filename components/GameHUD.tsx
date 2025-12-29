@@ -138,6 +138,32 @@ const GameHUD: React.FC<GameHUDProps> = ({
         setIsDraggingLocationBox(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
     };
 
+    const handleTopToolbarPointerDown = (e: React.PointerEvent) => {
+        e.stopPropagation(); e.preventDefault();
+        setIsDraggingTopToolbar(true); topToolbarDragOffset.current = { x: e.clientX - topToolbarPos.x, y: e.clientY - topToolbarPos.y };
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+    const handleTopToolbarPointerMove = (e: React.PointerEvent) => {
+        if (!isDraggingTopToolbar) return; e.stopPropagation(); e.preventDefault();
+        setTopToolbarPos({ x: e.clientX - topToolbarDragOffset.current.x, y: e.clientY - topToolbarDragOffset.current.y });
+    };
+    const handleTopToolbarPointerUp = (e: React.PointerEvent) => {
+        setIsDraggingTopToolbar(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+    };
+
+    const handleViewSwitcherPointerDown = (e: React.PointerEvent) => {
+        e.stopPropagation(); e.preventDefault();
+        setIsDraggingViewSwitcher(true); viewSwitcherDragOffset.current = { x: e.clientX - viewSwitcherPos.x, y: e.clientY - viewSwitcherPos.y };
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+    const handleViewSwitcherPointerMove = (e: React.PointerEvent) => {
+        if (!isDraggingViewSwitcher) return; e.stopPropagation(); e.preventDefault();
+        setViewSwitcherPos({ x: e.clientX - viewSwitcherDragOffset.current.x, y: e.clientY - viewSwitcherDragOffset.current.y });
+    };
+    const handleViewSwitcherPointerUp = (e: React.PointerEvent) => {
+        setIsDraggingViewSwitcher(false); (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+    };
+
     // Countdown Effect
     useEffect(() => {
         if (endingAt && !gameEnded) {
