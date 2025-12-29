@@ -1259,11 +1259,18 @@ const GameApp: React.FC = () => {
                 }}
             />
             {showDatabaseTools && (
-                <AdminModal 
+                <AdminModal
                     games={games}
                     onClose={() => setShowDatabaseTools(false)}
                     onDeleteGame={handleDeleteGame}
                     initialShowSql={true}
+                />
+            )}
+            {showGameStats && (
+                <GameStatsModal
+                    onClose={() => setShowGameStats(false)}
+                    game={activeGame}
+                    teams={[]} // In real implementation, get teams from game state
                 />
             )}
             {renderModals()}
