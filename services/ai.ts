@@ -162,57 +162,31 @@ export const generateAiBackground = async (keywords: string, zoneName?: string):
             }
         }));
 
-        // Log raw response for debugging
-        console.log('[AI Background] Raw API response:', JSON.stringify(response, null, 2));
-
-        const finishReason = response.candidates?.[0]?.finishReason;
-        const candidate = response.candidates?.[0];
-
+        // Imagen 3 returns a different response format
         console.log('[AI Background] Response received:', {
-            hasCandidates: !!response.candidates,
-            candidateCount: response.candidates?.length,
-            hasInlineData: !!candidate?.content?.parts?.[0]?.inlineData,
-            finishReason
+            hasGeneratedImages: !!(response as any).generatedImages,
+            imageCount: (response as any).generatedImages?.length || 0
         });
 
-        // Log the full response structure for debugging
-        console.log('[AI Background] Full response structure:', {
-            candidate: candidate ? {
-                finishReason: candidate.finishReason,
-                safetyRatings: candidate.safetyRatings,
-                content: candidate.content ? {
-                    role: candidate.content.role,
-                    parts: candidate.content.parts?.map(part => ({
-                        hasText: !!part.text,
-                        hasInlineData: !!part.inlineData,
-                        keys: Object.keys(part)
-                    }))
-                } : null
-            } : null,
-            responseKeys: Object.keys(response)
-        });
+        // Extract image from Imagen 3 response format
+        const imagenResponse = response as any;
+        if (imagenResponse.generatedImages && imagenResponse.generatedImages.length > 0) {
+            const generatedImage = imagenResponse.generatedImages[0];
 
-        // STOP means successful completion - extract the image
-        if (candidate?.content?.parts?.[0]?.inlineData) {
-            const inlineData = candidate.content.parts[0].inlineData;
-            console.log('[AI Background] Successfully generated image');
-            return `data:${inlineData.mimeType};base64,${inlineData.data}`;
-        }
+            // The image data is in the image.imageBytes property as a Buffer or Uint8Array
+            if (generatedImage.image?.imageBytes) {
+                console.log('[AI Background] Successfully generated image with Imagen 3');
 
-        // Check if there's text instead of image
-        if (candidate?.content?.parts?.[0]?.text) {
-            console.warn('[AI Background] Received text instead of image:', candidate.content.parts[0].text);
-        }
+                // Convert bytes to base64
+                const bytes = generatedImage.image.imageBytes;
+                const base64 = typeof bytes === 'string' ? bytes : btoa(String.fromCharCode(...new Uint8Array(bytes)));
 
-        // Only warn if it's actually blocked (not STOP)
-        if (finishReason && finishReason !== 'STOP') {
-            console.warn('[AI Background] Generation blocked. Reason:', finishReason);
-            if (candidate?.safetyRatings) {
-                console.warn('[AI Background] Safety ratings:', candidate.safetyRatings);
+                return `data:image/png;base64,${base64}`;
             }
-        } else if (finishReason === 'STOP' && !candidate?.content?.parts?.[0]?.inlineData) {
-            console.warn('[AI Background] Completed but no image data received - API may not support image generation or prompt was interpreted as text');
         }
+
+        console.warn('[AI Background] No image data in Imagen 3 response');
+        console.log('[AI Background] Full response:', JSON.stringify(response, null, 2));
 
         return null;
     } catch (e: any) {
