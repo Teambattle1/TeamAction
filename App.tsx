@@ -505,12 +505,16 @@ const GameApp: React.FC = () => {
               const avgLat = validPoints.reduce((sum, p) => sum + p.location.lat, 0) / validPoints.length;
               const avgLng = validPoints.reduce((sum, p) => sum + p.location.lng, 0) / validPoints.length;
               setRelocateScopeCenter({ lat: avgLat, lng: avgLng });
+              // Mark ALL valid points for relocation
+              setRelocateAllTaskIds(validPoints.map(p => p.id));
           } else if (mapRef.current) {
               // If no valid points, use map center
               setRelocateScopeCenter(mapRef.current.getCenter());
           }
       } else {
+          // Exit relocate mode - clear selections
           setRelocateScopeCenter(null);
+          setRelocateAllTaskIds([]);
       }
       setIsRelocating(!isRelocating);
   };
