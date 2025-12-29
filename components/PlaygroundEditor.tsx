@@ -981,79 +981,75 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 </div>
 
                 {/* Footer Buttons - Fixed at bottom */}
-                <div className="p-5 border-t border-slate-800 space-y-3 flex-shrink-0">
-                    <button
-                        onClick={async () => {
-                            setIsSaving(true);
-                            setSaveStatus('saving');
-                            try {
-                                // Always update the game state first
-                                await Promise.resolve(onUpdateGame(game));
-                                // Then save to database if in template mode
-                                if (isTemplateMode && onSaveTemplate) {
-                                    await Promise.resolve(onSaveTemplate(game.name));
-                                }
-                                setSaveStatus('success');
-                                setTimeout(() => {
-                                    setSaveStatus('idle');
-                                }, 2500);
-                            } catch (error) {
-                                console.error('Save failed:', error);
-                                setSaveStatus('idle');
-                            } finally {
-                                setIsSaving(false);
-                            }
-                        }}
-                        disabled={isSaving}
-                        className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg transition-all flex items-center justify-center gap-2 ${
-                            saveStatus === 'success'
-                                ? 'bg-green-600 text-white'
-                                : isSaving
-                                ? 'bg-blue-600 text-white opacity-80 cursor-wait'
-                                : 'bg-orange-600 hover:bg-orange-700 text-white'
-                        }`}
-                    >
-                        {saveStatus === 'saving' && (
-                            <>
-                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                {isTemplateMode ? 'SAVING TEMPLATE...' : 'SAVING...'}
-                            </>
-                        )}
-                        {saveStatus === 'success' && (
-                            <>
-                                <Check className="w-4 h-4" />
-                                {isTemplateMode ? 'TEMPLATE SAVED!' : 'ZONE SAVED!'}
-                            </>
-                        )}
-                        {saveStatus === 'idle' && (
-                            <>
-                                <Save className="w-4 h-4" /> {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
-                            </>
-                        )}
-                    </button>
-                    <button
-                        onClick={onHome}
-                        className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2"
-                    >
-                        <ArrowLeft className="w-4 h-4" /> RETURN TO HOME
-                    </button>
-
-                    {activePlayground && (
+                <div className="p-5 border-t border-slate-800 flex-shrink-0">
+                    <div className="flex gap-3">
                         <button
-                            onClick={() => {
-                                if(window.confirm(`Delete zone "${activePlayground.title}"? This cannot be undone.`)) {
-                                    const remaining = game.playgrounds?.filter(p => p.id !== activePlayground.id) || [];
-                                    onUpdateGame({ ...game, playgrounds: remaining });
-                                    if (remaining.length > 0) setActivePlaygroundId(remaining[0].id);
-                                    else setActivePlaygroundId(null);
+                            onClick={async () => {
+                                setIsSaving(true);
+                                setSaveStatus('saving');
+                                try {
+                                    // Always update the game state first
+                                    await Promise.resolve(onUpdateGame(game));
+                                    // Then save to database if in template mode
+                                    if (isTemplateMode && onSaveTemplate) {
+                                        await Promise.resolve(onSaveTemplate(game.name));
+                                    }
+                                    setSaveStatus('success');
+                                    setTimeout(() => {
+                                        setSaveStatus('idle');
+                                    }, 2500);
+                                } catch (error) {
+                                    console.error('Save failed:', error);
+                                    setSaveStatus('idle');
+                                } finally {
+                                    setIsSaving(false);
                                 }
                             }}
-                            className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border border-red-500"
-                            title="Delete this zone permanently"
+                            disabled={isSaving}
+                            className={`flex-1 py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg transition-all flex items-center justify-center gap-2 ${
+                                saveStatus === 'success'
+                                    ? 'bg-green-600 text-white'
+                                    : isSaving
+                                    ? 'bg-blue-600 text-white opacity-80 cursor-wait'
+                                    : 'bg-orange-600 hover:bg-orange-700 text-white'
+                            }`}
                         >
-                            <Trash2 className="w-4 h-4" /> DELETE ZONE
+                            {saveStatus === 'saving' && (
+                                <>
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    {isTemplateMode ? 'SAVING TEMPLATE...' : 'SAVING...'}
+                                </>
+                            )}
+                            {saveStatus === 'success' && (
+                                <>
+                                    <Check className="w-4 h-4" />
+                                    {isTemplateMode ? 'TEMPLATE SAVED!' : 'ZONE SAVED!'}
+                                </>
+                            )}
+                            {saveStatus === 'idle' && (
+                                <>
+                                    <Save className="w-4 h-4" /> {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
+                                </>
+                            )}
                         </button>
-                    )}
+
+                        {activePlayground && (
+                            <button
+                                onClick={() => {
+                                    if(window.confirm(`Delete zone "${activePlayground.title}"? This cannot be undone.`)) {
+                                        const remaining = game.playgrounds?.filter(p => p.id !== activePlayground.id) || [];
+                                        onUpdateGame({ ...game, playgrounds: remaining });
+                                        if (remaining.length > 0) setActivePlaygroundId(remaining[0].id);
+                                        else setActivePlaygroundId(null);
+                                    }
+                                }}
+                                className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border border-red-500"
+                                title="Delete this zone permanently"
+                            >
+                                <Trash2 className="w-4 h-4" /> DELETE ZONE
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
