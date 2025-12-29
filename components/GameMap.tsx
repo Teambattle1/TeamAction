@@ -568,8 +568,36 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
             ))}
 
             {/* Measure Path */}
-            {measurePath.length > 1 && (
-                <Polyline positions={measurePath} pathOptions={{ color: '#f97316', dashArray: '10, 10', weight: 4 }} />
+            {measurePath.length > 0 && (
+                <>
+                    {measurePath.length > 1 && (
+                        <Polyline positions={measurePath} pathOptions={{ color: '#f97316', dashArray: '10, 10', weight: 4 }} />
+                    )}
+
+                    {/* Measure Popup */}
+                    {measurePath.length > 0 && (
+                        <Popup position={measurePath[measurePath.length - 1]} closeButton={false} className="measure-popup">
+                            <div className="bg-orange-600 text-white rounded-lg p-3 shadow-lg text-center">
+                                <div className="text-xs font-black uppercase tracking-wider mb-2">MEASURING</div>
+                                <div className="flex items-center gap-4 justify-center">
+                                    <div>
+                                        <p className="text-[10px] text-orange-100 font-bold uppercase">Points</p>
+                                        <p className="text-xl font-black">{measurePath.length}</p>
+                                    </div>
+                                    <div className="w-px h-8 bg-orange-400"></div>
+                                    <div>
+                                        <p className="text-[10px] text-orange-100 font-bold uppercase">Distance</p>
+                                        <p className="text-xl font-black">{Math.round(showScores ? measurePath.reduce((total, coord, idx) => {
+                                            if (idx === 0) return total;
+                                            const prev = measurePath[idx - 1];
+                                            return total + Math.sqrt(Math.pow(coord.lat - prev.lat, 2) + Math.pow(coord.lng - prev.lng, 2)) * 111000; // Rough meters conversion
+                                        }, 0) : 0)}m</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Popup>
+                    )}
+                </>
             )}
 
             {/* Danger Zones */}
