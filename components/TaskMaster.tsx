@@ -946,11 +946,21 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                 {/* Task List Filter */}
                                 <div className="w-full sm:w-auto">
                                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Filter by Task List:</p>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Filter by Task List:</p>
+                                            {taskListFilter && (
+                                                <button
+                                                    onClick={() => setTaskListFilter('')}
+                                                    className="text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase"
+                                                >
+                                                    Clear
+                                                </button>
+                                            )}
+                                        </div>
                                         <select
                                             value={taskListFilter}
                                             onChange={(e) => setTaskListFilter(e.target.value)}
-                                            className="w-full sm:w-48 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-purple-500 transition-all"
+                                            className={`w-full sm:w-48 bg-slate-800 border rounded-lg px-3 py-2 text-xs font-bold text-white outline-none transition-all ${taskListFilter ? 'border-purple-500' : 'border-slate-700 focus:border-purple-500'}`}
                                         >
                                             <option value="">All Tasks</option>
                                             {taskLists.map(list => (
