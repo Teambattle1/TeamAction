@@ -597,21 +597,54 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                <RichTextEditor value={editedPoint.task.question} onChange={(html) => setEditedPoint({ ...editedPoint, task: { ...editedPoint.task, question: html } })} />
                            </div>
                            <div className="grid grid-cols-2 gap-4">
-                               <div>
-                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">TYPE</label>
-                                   <div className="relative">
-                                       <select value={editedPoint.task.type} onChange={(e) => setEditedPoint({ ...editedPoint, task: { ...editedPoint.task, type: e.target.value as any } })} className="w-full px-4 py-2.5 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none appearance-none cursor-pointer text-sm">
-                                           <option value="text">TEXT INPUT</option>
-                                           <option value="multiple_choice">QUIZ (MC)</option>
-                                           <option value="boolean">YES / NO</option>
-                                           <option value="slider">SLIDER</option>
-                                           <option value="checkbox">CHECKBOXES</option>
-                                           <option value="dropdown">DROPDOWN</option>
-                                           <option value="timeline">TIMELINE / ORDER</option>
-                                       </select>
-                                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                   </div>
-                               </div>
+                              <div>
+                                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em] flex items-center gap-1">
+                                      TYPE <Info className="w-3 h-3 text-blue-500" title="Hover over type for info" />
+                                  </label>
+                                  <div className="relative group">
+                                      <select
+                                          value={editedPoint.task.type}
+                                          onChange={(e) => setEditedPoint({ ...editedPoint, task: { ...editedPoint.task, type: e.target.value as any } })}
+                                          onMouseEnter={() => setShowTaskTypeTooltip(true)}
+                                          onMouseLeave={() => setShowTaskTypeTooltip(false)}
+                                          className="w-full px-4 py-2.5 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none appearance-none cursor-pointer text-sm"
+                                      >
+                                          <option value="text">TEXT INPUT</option>
+                                          <option value="multiple_choice">QUIZ (MC)</option>
+                                          <option value="boolean">YES / NO</option>
+                                          <option value="slider">SLIDER</option>
+                                          <option value="checkbox">CHECKBOXES</option>
+                                          <option value="dropdown">DROPDOWN</option>
+                                          <option value="timeline">TIMELINE / ORDER</option>
+                                      </select>
+                                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                      {showTaskTypeTooltip && (
+                                          <div className="absolute left-0 top-full mt-2 w-72 bg-blue-900 border-2 border-blue-500 rounded-xl p-3 shadow-2xl z-50 text-xs text-blue-100 space-y-2">
+                                              {editedPoint.task.type === 'text' && (
+                                                  <><p className="font-bold text-blue-200">📝 TEXT INPUT</p><p className="text-blue-300/80">Players type their answer</p><p className="italic text-blue-400">Ex: "Capital of Denmark?"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'multiple_choice' && (
+                                                  <><p className="font-bold text-blue-200">✅ QUIZ (MC)</p><p className="text-blue-300/80">Select from options</p><p className="italic text-blue-400">Ex: A) Paris B) Copenhagen</p></>
+                                              )}
+                                              {editedPoint.task.type === 'boolean' && (
+                                                  <><p className="font-bold text-blue-200">✔️ YES / NO</p><p className="text-blue-300/80">True or false question</p><p className="italic text-blue-400">Ex: "Is this correct?"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'slider' && (
+                                                  <><p className="font-bold text-blue-200">🎚️ SLIDER</p><p className="text-blue-300/80">Select number on scale</p><p className="italic text-blue-400">Ex: "How tall? (1-100m)"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'checkbox' && (
+                                                  <><p className="font-bold text-blue-200">☑️ CHECKBOXES</p><p className="text-blue-300/80">Multiple correct answers</p><p className="italic text-blue-400">Ex: "Nordic countries?"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'dropdown' && (
+                                                  <><p className="font-bold text-blue-200">📋 DROPDOWN</p><p className="text-blue-300/80">Pick from menu</p><p className="italic text-blue-400">Ex: "Select the year"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'timeline' && (
+                                                  <><p className="font-bold text-blue-200">📅 TIMELINE</p><p className="text-blue-300/80">Arrange in order</p><p className="italic text-blue-400">Ex: "Sort by date"</p></>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
                                <div>
                                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">POINTS</label>
                                    <input type="number" value={editedPoint.points} onChange={(e) => setEditedPoint({ ...editedPoint, points: parseInt(e.target.value) || 0 })} className="w-full px-4 py-2 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none transition-all text-sm"/>
