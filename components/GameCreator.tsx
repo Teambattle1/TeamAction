@@ -779,7 +779,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                   const customPreview = mapStylePreviews[style.id];
                                   const previewUrl = customPreview || style.preview;
                                   const isCustom = !!customPreview;
-                                  
+                                  const [imageError, setImageError] = useState(false);
+                                  const [imageLoaded, setImageLoaded] = useState(false);
+
                                   return (
                                       <div key={style.id} className="relative group">
                                           <button
@@ -787,15 +789,28 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                               className={`relative w-full rounded-xl overflow-hidden border-2 transition-all ${selectedMapStyle === style.id ? 'border-orange-500 ring-2 ring-orange-500/30' : 'border-slate-700 hover:border-white'}`}
                                           >
                                               <div className="aspect-square bg-slate-800 relative flex items-center justify-center">
-                                                  {previewUrl ? (
-                                                      <img 
-                                                          src={previewUrl} 
-                                                          alt={style.label} 
-                                                          className={`w-full h-full object-cover ${!isCustom && style.className ? style.className : ''} opacity-80 group-hover:opacity-100 transition-opacity`} 
-                                                      />
+                                                  {previewUrl && !imageError ? (
+                                                      <>
+                                                          {!imageLoaded && (
+                                                              <div className="absolute inset-0 flex items-center justify-center">
+                                                                  <Loader2 className="w-6 h-6 text-slate-600 animate-spin" />
+                                                              </div>
+                                                          )}
+                                                          <img
+                                                              src={previewUrl}
+                                                              alt={style.label}
+                                                              className={`w-full h-full object-cover ${!isCustom && style.className ? style.className : ''} transition-opacity ${imageLoaded ? 'opacity-80 group-hover:opacity-100' : 'opacity-0'}`}
+                                                              onLoad={() => setImageLoaded(true)}
+                                                              onError={() => setImageError(true)}
+                                                              crossOrigin="anonymous"
+                                                          />
+                                                      </>
                                                   ) : (
-                                                      <div className="text-slate-500 group-hover:text-white transition-colors">
+                                                      <div className="text-slate-500 group-hover:text-white transition-colors flex flex-col items-center gap-2">
                                                           {Icon ? <Icon className="w-10 h-10" /> : <MapIcon className="w-10 h-10" />}
+                                                          {imageError && previewUrl && (
+                                                              <span className="text-[8px] text-slate-600">Preview unavailable</span>
+                                                          )}
                                                       </div>
                                                   )}
                                               </div>
@@ -808,9 +823,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                                   </div>
                                               )}
                                           </button>
-                                          
+
                                           {/* Edit Thumbnail Button */}
-                                          <button 
+                                          <button
                                               onClick={(e) => { e.stopPropagation(); setEditingStyleId(style.id); mapPreviewInputRef.current?.click(); }}
                                               className="absolute top-2 left-2 p-1.5 bg-slate-800/80 hover:bg-white text-white hover:text-black rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
                                               title="Upload Custom Thumbnail"
