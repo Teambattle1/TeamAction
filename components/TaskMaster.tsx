@@ -167,14 +167,16 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     };
 
     const handleCreateList = () => {
-        setEditingList({
+        const newList = {
             id: `list-${Date.now()}`,
             name: 'New Task List',
             description: '',
             tasks: [],
             color: '#3b82f6',
             createdAt: Date.now()
-        });
+        };
+        console.log('Creating new task list:', newList);
+        setEditingList(newList);
     };
 
     const handleSaveListUpdate = async () => {
