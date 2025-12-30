@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { migrateAllTasksInSystem } from '../utils/languageMigration';
 import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage, GameChangeLogEntry, TeamMember, PlaygroundTemplate, ActionType } from '../types';
 import * as db from '../services/db';
+import { logGameChange } from '../utils/gameLog';
 import { supabase } from '../lib/supabase';
 import { authService } from '../services/auth';
 import { teamSync } from '../services/teamSync';
