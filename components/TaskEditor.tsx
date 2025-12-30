@@ -848,6 +848,85 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
+                   {activeTab === 'ANSWER' && (
+                       <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                           {/* HINT SECTION */}
+                           <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 p-5 rounded-2xl border-2 border-yellow-200 dark:border-yellow-700">
+                               <div className="flex items-center gap-2 mb-3">
+                                   <MessageSquare className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                                   <label className="text-[10px] font-black text-yellow-700 dark:text-yellow-300 uppercase tracking-[0.2em]">HINT System</label>
+                               </div>
+
+                               <div className="space-y-4">
+                                   <div>
+                                       <label className="block text-[9px] font-bold text-yellow-700/80 dark:text-yellow-400/80 mb-1.5 uppercase">Hint Text</label>
+                                       <textarea
+                                           value={editedPoint.feedback?.hint || ''}
+                                           onChange={(e) => setEditedPoint({
+                                               ...editedPoint,
+                                               feedback: {...editedPoint.feedback, hint: e.target.value}
+                                           })}
+                                           placeholder="Enter a helpful hint for players..."
+                                           className="w-full px-4 py-3 border-2 border-yellow-200 dark:border-yellow-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500 resize-none"
+                                           rows={3}
+                                       />
+                                       <p className="text-[9px] text-yellow-600 dark:text-yellow-400 mt-1 italic">Leave empty to hide hint button from players</p>
+                                   </div>
+
+                                   <div>
+                                       <label className="block text-[9px] font-bold text-yellow-700/80 dark:text-yellow-400/80 mb-1.5 uppercase">Points Deduction for Using Hint</label>
+                                       <div className="flex items-center gap-3">
+                                           <input
+                                               type="number"
+                                               value={editedPoint.feedback?.hintCost || 0}
+                                               onChange={(e) => setEditedPoint({
+                                                   ...editedPoint,
+                                                   feedback: {...editedPoint.feedback, hintCost: parseInt(e.target.value) || 0}
+                                               })}
+                                               className="w-32 px-4 py-2 border-2 border-yellow-200 dark:border-yellow-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold outline-none focus:border-yellow-500"
+                                           />
+                                           <span className="text-sm text-yellow-700 dark:text-yellow-300 font-bold">points</span>
+                                       </div>
+                                       <p className="text-[9px] text-yellow-600 dark:text-yellow-400 mt-1">Default: -50 points (use negative for deduction)</p>
+                                   </div>
+                               </div>
+                           </div>
+
+                           {/* FEEDBACK MESSAGES */}
+                           <div className="grid grid-cols-1 gap-4">
+                               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
+                                   <label className="block text-[9px] font-bold text-green-700 dark:text-green-300 mb-2 uppercase flex items-center gap-1">
+                                       <CheckCircle className="w-3 h-3" /> Correct Answer Message
+                                   </label>
+                                   <textarea
+                                       value={editedPoint.feedback?.correctMessage || ''}
+                                       onChange={(e) => setEditedPoint({
+                                           ...editedPoint,
+                                           feedback: {...editedPoint.feedback, correctMessage: e.target.value}
+                                       })}
+                                       className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
+                                       rows={2}
+                                   />
+                               </div>
+
+                               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-200 dark:border-red-700">
+                                   <label className="block text-[9px] font-bold text-red-700 dark:text-red-300 mb-2 uppercase flex items-center gap-1">
+                                       <AlertCircle className="w-3 h-3" /> Incorrect Answer Message
+                                   </label>
+                                   <textarea
+                                       value={editedPoint.feedback?.incorrectMessage || ''}
+                                       onChange={(e) => setEditedPoint({
+                                           ...editedPoint,
+                                           feedback: {...editedPoint.feedback, incorrectMessage: e.target.value}
+                                       })}
+                                       className="w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
+                                       rows={2}
+                                   />
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
                    {activeTab === 'ACTIONS' && (
                        <div className="space-y-6">
                            <div className="space-y-3">
