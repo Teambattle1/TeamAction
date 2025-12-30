@@ -136,7 +136,8 @@ const MapStyleCard: React.FC<MapStyleCardProps> = ({
     isSelected,
     onSelect,
     onEditThumbnail,
-    onPreview
+    onPreview,
+    usageCount
 }) => {
     const [imageError, setImageError] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
@@ -147,6 +148,13 @@ const MapStyleCard: React.FC<MapStyleCardProps> = ({
                 onClick={onSelect}
                 className={`relative w-full rounded-xl overflow-hidden border-2 transition-all ${isSelected ? 'border-orange-500 ring-2 ring-orange-500/30' : 'border-slate-700 hover:border-white'}`}
             >
+                {/* Usage Count Badge */}
+                {usageCount !== undefined && (
+                    <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase z-10 shadow-lg">
+                        {usageCount === 0 ? 'Not used' : `Used in ${usageCount} game${usageCount > 1 ? 's' : ''}`}
+                    </div>
+                )}
+
                 <div className="aspect-square bg-slate-800 relative flex items-center justify-center">
                     {previewUrl && !imageError ? (
                         <>
