@@ -441,6 +441,57 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setShowGameSelectorForImport(false);
     };
 
+    // Show ADD TO modal for bulk or single task
+    const handleShowAddToModal = (tasks: TaskTemplate[]) => {
+        setAddToTasksSelection(tasks);
+        setShowAddToModal(true);
+    };
+
+    // Handle destination selection from ADD TO modal
+    const handleAddToDestination = (type: 'GAME' | 'PLAYZONE' | 'TASKLIST') => {
+        setAddToDestinationType(type);
+
+        if (type === 'GAME') {
+            // Show game selector for import
+            setShowDestinationSelector(true);
+        } else if (type === 'PLAYZONE') {
+            // Save/link to playzone in library (keep in global library)
+            handleAddToPlayzone();
+        } else if (type === 'TASKLIST') {
+            // Show tasklist selector
+            setShowDestinationSelector(true);
+        }
+    };
+
+    const handleAddToPlayzone = () => {
+        // For PLAYZONE: these tasks already exist in the library
+        // Just close the modal - they're already available globally
+        alert(`✓ Selected ${addToTasksSelection.length} task(s) are available in Global Playzone Library`);
+        setShowAddToModal(false);
+        setAddToTasksSelection([]);
+        setAddToDestinationType(null);
+    };
+
+    const handleConfirmAddTo = (destination: Game | TaskList) => {
+        if (addToDestinationType === 'GAME' && 'points' in destination) {
+            // Add to game
+            onImportTasks(addToTasksSelection, (destination as Game).id);
+        } else if (addToDestinationType === 'TASKLIST' && 'tasks' in destination) {
+            // Add to tasklist
+            const updatedList = {
+                ...(destination as TaskList),
+                tasks: [...(destination as TaskList).tasks, ...addToTasksSelection]
+            };
+            onUpdateTaskLists(taskLists.map(t => t.id === updatedList.id ? updatedList : t));
+        }
+
+        // Reset state
+        setShowAddToModal(false);
+        setAddToTasksSelection([]);
+        setAddToDestinationType(null);
+        setShowDestinationSelector(false);
+    };
+
     const renderLibraryGrid = (selectionMode = false) => {
         const filtered = library.filter(t => t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())));
         
