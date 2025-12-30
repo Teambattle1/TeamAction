@@ -705,7 +705,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           limitHints,
           hintLimit,
           showAnswerCorrectnessMode,
-          showAfterAnswerComment
+          showAfterAnswerComment,
+          teamVotingMode
       };
 
       const mapConfig: MapConfiguration = {
