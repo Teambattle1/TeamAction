@@ -548,13 +548,17 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
 
 export const saveTemplate = async (template: TaskTemplate) => {
     try {
-        // Auto-detect language from task question before saving
-        const detectedLanguage = detectLanguageFromText(template.task.question || '');
+        // Only auto-detect language if not already set by user
+        const currentLanguage = normalizeLanguage(template.settings?.language);
+        const finalLanguage = currentLanguage && currentLanguage !== 'English'
+            ? currentLanguage
+            : detectLanguageFromText(template.task.question || '');
+
         const normalizedTemplate = {
             ...template,
             settings: {
                 ...template.settings,
-                language: detectedLanguage
+                language: finalLanguage
             }
         };
 
