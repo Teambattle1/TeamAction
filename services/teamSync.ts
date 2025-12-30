@@ -475,23 +475,35 @@ class TeamSyncService {
   }
 
   private notifyMemberListeners() {
-      const now = Date.now();
-      const active: TeamMember[] = [];
-      const deadKeys: string[] = [];
+      // Debounce notifications to reduce re-renders
+      if (this.memberNotifyTimeout) {
+          window.clearTimeout(this.memberNotifyTimeout);
+      }
 
-      this.members.forEach((m, key) => {
-          // Strict Zombie Filtering: 60 seconds (1 minute)
-          if (now - m.lastSeen < 60000) {
-              active.push(m);
-          } else {
-              deadKeys.push(key);
+      this.memberNotifyTimeout = window.setTimeout(() => {
+          const now = Date.now();
+          const active: TeamMember[] = [];
+          const deadKeys: string[] = [];
+
+          this.members.forEach((m, key) => {
+              // Strict Zombie Filtering: 60 seconds (1 minute)
+              if (now - m.lastSeen < 60000) {
+                  active.push(m);
+              } else {
+                  deadKeys.push(key);
+              }
+          });
+
+          // Cleanup dead members from map to keep memory clean
+          deadKeys.forEach(k => this.members.delete(k));
+
+          // Only notify if members actually changed (check hash)
+          const currentHash = active.map(m => `${m.deviceId}:${m.lastSeen}:${m.isSolving}:${m.isRetired}`).sort().join('|');
+          if (currentHash !== this.lastMemberListHash) {
+              this.lastMemberListHash = currentHash;
+              this.memberListeners.forEach(cb => cb(active));
           }
-      });
-      
-      // Cleanup dead members from map to keep memory clean
-      deadKeys.forEach(k => this.members.delete(k));
-      
-      this.memberListeners.forEach(cb => cb(active));
+      }, 100); // Debounce for 100ms
   }
 
   public subscribeToVotesForTask(pointId: string, callback: VoteCallback) {
