@@ -253,11 +253,18 @@ class TeamSyncService {
         this.presenceIntervalId = null;
     }
 
+    if (this.memberNotifyTimeout) {
+        window.clearTimeout(this.memberNotifyTimeout);
+        this.memberNotifyTimeout = null;
+    }
+
     this.gameId = null;
     this.teamKey = null;
     this.lastLocationSentAt = 0;
     this.lastLocationSent = null;
     this.locationDirty = false;
+    this.lastMemberListHash = '';
+    this.lastPresenceSent = null;
 
     if (this.channel) {
       supabase.removeChannel(this.channel);
