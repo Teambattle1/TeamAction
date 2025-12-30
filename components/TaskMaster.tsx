@@ -1499,6 +1499,99 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Language Migration Modal */}
+            {showMigrationModal && (
+                <div className="fixed inset-0 z-[7500] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-black text-white uppercase">Language Migration</h3>
+                                <p className="text-xs text-slate-400 mt-1">Auto-detect and fix all task languages</p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowMigrationModal(false);
+                                    setMigrationLog([]);
+                                    setMigrationResults(null);
+                                }}
+                                className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+                            {!migrationRunning && !migrationResults && (
+                                <div className="space-y-4">
+                                    <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-xl p-4">
+                                        <p className="text-sm text-yellow-200 font-bold mb-2">⚠️ This will analyze all tasks</p>
+                                        <p className="text-xs text-yellow-300/80">
+                                            This migration will:
+                                        </p>
+                                        <ul className="text-xs text-yellow-300/80 list-disc list-inside mt-2 space-y-1">
+                                            <li>Scan all tasks in the library and task lists</li>
+                                            <li>Detect language from question text</li>
+                                            <li>Remove all "GLOBAL" language values</li>
+                                            <li>Update tasks with correct language</li>
+                                        </ul>
+                                    </div>
+
+                                    <button
+                                        onClick={handleRunMigration}
+                                        className="w-full px-6 py-4 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl text-sm font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <RefreshCw className="w-5 h-5" />
+                                        Start Migration
+                                    </button>
+                                </div>
+                            )}
+
+                            {migrationRunning && (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <Loader2 className="w-12 h-12 text-yellow-500 animate-spin mb-4" />
+                                    <p className="text-white font-bold">Running migration...</p>
+                                    <p className="text-sm text-slate-400 mt-2">This may take a moment</p>
+                                </div>
+                            )}
+
+                            {migrationLog.length > 0 && (
+                                <div className="space-y-4">
+                                    <div className="bg-slate-950 border border-slate-700 rounded-xl p-4 max-h-96 overflow-y-auto custom-scrollbar font-mono text-xs">
+                                        {migrationLog.map((line, index) => (
+                                            <div
+                                                key={index}
+                                                className={`${
+                                                    line.includes('✓') ? 'text-green-400' :
+                                                    line.includes('❌') ? 'text-red-400' :
+                                                    line.includes('===') ? 'text-yellow-400 font-bold' :
+                                                    line.includes('📚') || line.includes('📋') ? 'text-blue-400 font-bold' :
+                                                    'text-slate-400'
+                                                }`}
+                                            >
+                                                {line}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {migrationResults && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-green-900/30 border border-green-500/50 rounded-xl p-4 text-center">
+                                                <p className="text-3xl font-black text-green-400">{migrationResults.totalUpdated}</p>
+                                                <p className="text-xs text-green-300 uppercase font-bold mt-1">Tasks Fixed</p>
+                                            </div>
+                                            <div className="bg-red-900/30 border border-red-500/50 rounded-xl p-4 text-center">
+                                                <p className="text-3xl font-black text-red-400">{migrationResults.totalErrors}</p>
+                                                <p className="text-xs text-red-300 uppercase font-bold mt-1">Errors</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
