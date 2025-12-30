@@ -1617,8 +1617,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     const sourceY = (source.playgroundPosition?.y || 50);
                                     const sourcePx = { x: (sourceX / 100) * rect.width, y: (sourceY / 100) * rect.height };
 
+                                    // Extract target IDs from GameAction objects
+                                    const getTargetIds = (actions: any[] | undefined) => {
+                                        if (!actions) return [];
+                                        return actions
+                                            .map(action => action.targetId || action)
+                                            .filter(id => typeof id === 'string' && id.length > 0);
+                                    };
+
                                     return [
-                                        ...(source.logic?.onCorrect || []).map((targetId) => {
+                                        ...getTargetIds(source.logic?.onCorrect).map((targetId) => {
                                             const target = game.points.find(p => p.id === targetId);
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
@@ -1638,7 +1646,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                 />
                                             );
                                         }),
-                                        ...(source.logic?.onIncorrect || []).map((targetId) => {
+                                        ...getTargetIds(source.logic?.onIncorrect).map((targetId) => {
                                             const target = game.points.find(p => p.id === targetId);
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
@@ -1658,7 +1666,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                 />
                                             );
                                         }),
-                                        ...(source.logic?.onOpen || []).map((targetId) => {
+                                        ...getTargetIds(source.logic?.onOpen).map((targetId) => {
                                             const target = game.points.find(p => p.id === targetId);
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
