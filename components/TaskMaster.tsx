@@ -472,24 +472,29 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setAddToDestinationType(null);
     };
 
-    const handleConfirmAddTo = (destination: Game | TaskList) => {
+    const handleConfirmAddTo = async (destination: Game | TaskList) => {
         if (addToDestinationType === 'GAME' && 'points' in destination) {
             // Add to game
             onImportTasks(addToTasksSelection, (destination as Game).id);
+            alert(`✓ Successfully added ${addToTasksSelection.length} task${addToTasksSelection.length !== 1 ? 's' : ''} to "${(destination as Game).name}"`);
         } else if (addToDestinationType === 'TASKLIST' && 'tasks' in destination) {
             // Add to tasklist
             const updatedList = {
                 ...(destination as TaskList),
                 tasks: [...(destination as TaskList).tasks, ...addToTasksSelection]
             };
+            await db.saveTaskList(updatedList);
             onUpdateTaskLists(taskLists.map(t => t.id === updatedList.id ? updatedList : t));
+            alert(`✓ Successfully added ${addToTasksSelection.length} task${addToTasksSelection.length !== 1 ? 's' : ''} to "${(destination as TaskList).name}"`);
         }
 
-        // Reset state
+        // Reset all states including bulk selection
         setShowAddToModal(false);
         setAddToTasksSelection([]);
         setAddToDestinationType(null);
         setShowDestinationSelector(false);
+        setSelectedTemplateIds([]);
+        setBulkSelectionMode(false);
     };
 
     const renderLibraryGrid = (selectionMode = false) => {
