@@ -134,7 +134,8 @@ const MapStyleCard: React.FC<MapStyleCardProps> = ({
     Icon,
     isSelected,
     onSelect,
-    onEditThumbnail
+    onEditThumbnail,
+    onPreview
 }) => {
     const [imageError, setImageError] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
