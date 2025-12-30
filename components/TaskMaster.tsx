@@ -664,12 +664,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        {!selectionMode && (
+                                        {!selectionMode && !bulkSelectionMode && (
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); handleImportTasksWithGameSelect([task]); }}
+                                                onClick={(e) => { e.stopPropagation(); handleShowAddToModal([task]); }}
                                                 className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors"
                                             >
-                                                {activeGame ? 'ADD' : 'USE'}
+                                                USE
                                             </button>
                                         )}
                                     </td>
