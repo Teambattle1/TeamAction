@@ -32,6 +32,7 @@ import PlaygroundEditor from './components/PlaygroundEditor';
 import MessagePopup from './components/MessagePopup';
 import Dashboard from './components/Dashboard';
 import DangerZoneModal from './components/DangerZoneModal';
+import TeamLobbyPanel from './components/TeamLobbyPanel';
 import ErrorBoundary from './ErrorBoundary';
 import OfflineIndicator from './OfflineIndicator';
 import ConnectionStatus from './ConnectionStatus';
