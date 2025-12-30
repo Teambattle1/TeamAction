@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { uploadImage } from '../services/storage'; // IMPORTED
-import { generateAiImage, generateAiBackground } from '../services/ai';
+import { generateAiImage, generateAiBackground, searchLogoUrl } from '../services/ai';
 import * as db from '../services/db';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
@@ -72,6 +72,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [editorOrientation, setEditorOrientation] = useState<'portrait' | 'landscape'>('landscape');
     const [showAiIconPrompt, setShowAiIconPrompt] = useState(false);
     const [aiIconPromptValue, setAiIconPromptValue] = useState('');
+    const [showLogoPrompt, setShowLogoPrompt] = useState(false);
+    const [logoCompanyName, setLogoCompanyName] = useState('');
+    const [isSearchingLogo, setIsSearchingLogo] = useState(false);
     const [isMarkMode, setIsMarkMode] = useState(false);
     const [markedTaskIds, setMarkedTaskIds] = useState<Set<string>>(new Set());
     const [showTaskMaster, setShowTaskMaster] = useState(false);
