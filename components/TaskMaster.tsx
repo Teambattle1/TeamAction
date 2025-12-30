@@ -47,7 +47,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     onRenameTagGlobally
 }) => {
     const [tab, setTab] = useState<'LIBRARY' | 'LISTS' | 'TAGS' | 'CLIENT'>(initialTab);
-    const [library, setLibrary] = useState<TaskTemplate[]>(cachedLibrary); // Initialize with cache
+    const [library, setLibrary] = useState<TaskTemplate[]>(cachedLibrary || []); // Initialize with cache or empty array
     const [loading, setLoading] = useState(false); // No loading needed on mount
     const [searchQuery, setSearchQuery] = useState('');
 
@@ -270,11 +270,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     // Get all languages actually used in the library
     const getUsedLanguagesInLibrary = (): string[] => {
         const used = new Set<string>();
-        library.forEach(task => {
-            if (task.settings?.language) {
-                used.add(task.settings.language);
-            }
-        });
+        if (library && Array.isArray(library)) {
+            library.forEach(task => {
+                if (task.settings?.language) {
+                    used.add(task.settings.language);
+                }
+            });
+        }
         return Array.from(used).sort();
     };
 
