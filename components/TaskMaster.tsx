@@ -13,6 +13,7 @@ import LoquizImporter from './LoquizImporter';
 import AccountTags from './AccountTags';
 import Dashboard from './Dashboard';
 import TaskEditor from './TaskEditor';
+import TaskModal from './TaskModal';
 import { runCompleteLanguageMigration } from '../services/languageMigrationScript'; 
 
 interface TaskMasterProps {
@@ -95,6 +96,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     // Refs
     const listImageInputRef = useRef<HTMLInputElement>(null);
+    const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Hover Preview State
+    const [hoveredTask, setHoveredTask] = useState<TaskTemplate | null>(null);
+    const [showPreview, setShowPreview] = useState(false);
 
     // Language Migration State
     const [showMigrationModal, setShowMigrationModal] = useState(false);
