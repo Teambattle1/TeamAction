@@ -309,6 +309,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     };
 
     const countTaskUsage = (taskId: string): number => {
+        if (!library || !Array.isArray(library)) return 0;
+
         let count = 0;
         const sourceTask = library.find(t => t.id === taskId);
         if (!sourceTask) return 0;
