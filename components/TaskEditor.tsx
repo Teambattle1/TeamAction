@@ -51,7 +51,7 @@ const LANGUAGES = [
   '🇮🇱 Hebrew (Ivrit)'
 ];
 
-// --- RICH TEXT EDITOR COMPONENT ---
+// --- ENHANCED RICH TEXT EDITOR COMPONENT ---
 const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder?: string }) => {
   const handleCommand = (command: string, val?: string) => {
     document.execCommand(command, false, val || '');
@@ -59,20 +59,29 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
 
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500 transition-shadow bg-white dark:bg-gray-700">
-      <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">
-        <button type="button" onClick={() => handleCommand('bold')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"><Bold className="w-4 h-4" /></button>
-        <button type="button" onClick={() => handleCommand('italic')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"><Italic className="w-4 h-4" /></button>
-        <button type="button" onClick={() => handleCommand('underline')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"><Underline className="w-4 h-4" /></button>
+      <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">
+        <button type="button" onClick={() => handleCommand('bold')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Bold"><Bold className="w-4 h-4" /></button>
+        <button type="button" onClick={() => handleCommand('italic')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Italic"><Italic className="w-4 h-4" /></button>
+        <button type="button" onClick={() => handleCommand('underline')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Underline"><Underline className="w-4 h-4" /></button>
         <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-        <button type="button" onClick={() => handleCommand('foreColor', '#ef4444')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-red-500 font-bold">A</button>
-        <button type="button" onClick={() => handleCommand('foreColor', '#3b82f6')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-blue-500 font-bold">A</button>
+        <button type="button" onClick={() => handleCommand('insertUnorderedList')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Bullet List">●</button>
+        <button type="button" onClick={() => handleCommand('insertOrderedList')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Numbered List">1.</button>
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button type="button" onClick={() => handleCommand('formatBlock', 'h2')} className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300 font-bold text-xs" title="Heading">H</button>
+        <button type="button" onClick={() => handleCommand('formatBlock', 'p')} className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300 text-xs" title="Paragraph">P</button>
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button type="button" onClick={() => handleCommand('foreColor', '#ef4444')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-red-500 font-bold" title="Red Color">A</button>
+        <button type="button" onClick={() => handleCommand('foreColor', '#3b82f6')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-blue-500 font-bold" title="Blue Color">A</button>
+        <button type="button" onClick={() => handleCommand('foreColor', '#10b981')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-green-500 font-bold" title="Green Color">A</button>
+        <button type="button" onClick={() => handleCommand('foreColor', '#f59e0b')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-amber-500 font-bold" title="Amber Color">A</button>
       </div>
-      <div 
-        className="p-3 min-h-[100px] outline-none text-sm text-gray-900 dark:text-white prose dark:prose-invert max-w-none"
+      <div
+        className="p-3 min-h-[120px] outline-none text-sm text-gray-900 dark:text-white prose dark:prose-invert max-w-none"
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
         style={{ whiteSpace: 'pre-wrap' }}
+        data-placeholder={placeholder}
       />
     </div>
   );
@@ -549,12 +558,15 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                <input type="text" value={editedPoint.title} onChange={(e) => setEditedPoint({ ...editedPoint, title: e.target.value })} className="w-full px-4 py-2 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none transition-all" placeholder="e.g. Statue Quiz"/>
                            </div>
                            
-                           {/* MANDATORY TAGS SECTION */}
-                           <div>
-                               <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2 ${tagError ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
-                                   TAGS <span className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-[8px] px-1 rounded">REQUIRED</span>
-                                   {tagError && <AlertCircle className="w-3 h-3 text-red-500" />}
-                               </label>
+                           {/* TAGS SECTION */}
+                          <div>
+                              <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2 ${tagError ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  TAGS
+                                  {(!editedPoint.tags || editedPoint.tags.length === 0) && (
+                                      <span className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-[8px] px-1 rounded">REQUIRED</span>
+                                  )}
+                                  {tagError && <AlertCircle className="w-3 h-3 text-red-500" />}
+                              </label>
                                <div className="flex flex-wrap gap-2 mb-2">
                                    {editedPoint.tags?.map((tag, index) => (
                                        <span key={`${tag}-${index}`} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
