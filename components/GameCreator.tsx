@@ -361,6 +361,24 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       if (mapPreviewInputRef.current) mapPreviewInputRef.current.value = '';
   };
 
+  const handleCustomStylePreviewUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && editingCustomStyleId) {
+          const url = await uploadImage(file);
+          if (url) {
+              const updatedStyles = customStyles.map(style =>
+                  style.id === editingCustomStyleId
+                      ? { ...style, previewUrl: url }
+                      : style
+              );
+              setCustomStyles(updatedStyles);
+              localStorage.setItem('geohunt_custom_styles', JSON.stringify(updatedStyles));
+          }
+      }
+      setEditingCustomStyleId(null);
+      if (customStylePreviewInputRef.current) customStylePreviewInputRef.current.value = '';
+  };
+
   const handleLogoSearch = async () => {
       if (!clientName.trim()) return;
       setIsSearchingLogo(true);
