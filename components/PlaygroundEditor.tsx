@@ -152,6 +152,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (game.toolbarPositions?.editorShowPos) {
             setShowToolbarPos(game.toolbarPositions.editorShowPos);
         }
+        if (game.toolbarPositions?.editorToolsPos) {
+            setToolsToolbarPos(game.toolbarPositions.editorToolsPos);
+        }
     }, [game.id]);
 
     // Save toolbar positions to game
