@@ -1752,10 +1752,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             {/* Task Preview Modal on Hover */}
             {showPreview && hoveredTask && (
                 <div
-                    className="fixed inset-0 z-[9000] pointer-events-none flex items-center justify-center p-4"
-                    onMouseEnter={handleClosePreview}
+                    className="fixed inset-0 z-[9000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+                    onClick={handleClosePreview}
                 >
-                    <div className="pointer-events-auto max-w-2xl w-full">
+                    <div
+                        className="max-w-2xl w-full"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <TaskModal
                             point={templateToGamePoint(hoveredTask)}
                             onClose={handleClosePreview}
