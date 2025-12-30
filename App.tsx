@@ -916,6 +916,8 @@ const GameApp: React.FC = () => {
               <TaskMaster
                   initialTab={taskMasterInitialTab}
                   initialModal={taskMasterInitialModal}
+                  taskLibrary={taskLibrary}
+                  onUpdateTaskLibrary={setTaskLibrary}
                   onClose={() => {
                       setShowTaskMaster(false);
                       setTaskMasterInitialModal(null);
