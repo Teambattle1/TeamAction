@@ -34,6 +34,7 @@ import Dashboard from './components/Dashboard';
 import DangerZoneModal from './components/DangerZoneModal';
 import ErrorBoundary from './ErrorBoundary';
 import OfflineIndicator from './OfflineIndicator';
+import ConnectionStatus from './ConnectionStatus';
 import { PlayCircle, Ruler } from 'lucide-react';
 
 // Inner App Component that consumes LocationContext
