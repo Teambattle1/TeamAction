@@ -913,14 +913,22 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="mt-6 bg-slate-950 border border-slate-700 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 relative">
                                   <div className="flex justify-between items-start mb-2">
                                       <label className="block text-[10px] font-bold text-slate-400 uppercase">Google Maps Custom Style JSON</label>
-                                      <button 
+                                      <button
                                           onClick={() => setShowJsonHelp(true)}
                                           className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase flex items-center gap-1"
                                       >
                                           <Info className="w-3 h-3" /> HOW TO GET JSON?
                                       </button>
                                   </div>
-                                  <textarea 
+
+                                  {jsonValidationStatus === 'VALID' && customMapJson.trim() && (
+                                      <div className="mb-3 bg-green-900/30 border border-green-600 rounded-lg p-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                                          <Check className="w-4 h-4 text-green-400" />
+                                          <span className="text-xs font-bold text-green-300 uppercase">Custom map style applied! This style will be used in your game.</span>
+                                      </div>
+                                  )}
+
+                                  <textarea
                                       value={customMapJson}
                                       onChange={(e) => { setCustomMapJson(e.target.value); setJsonValidationStatus('IDLE'); }}
                                       placeholder='Paste JSON array here (e.g. [{"featureType": "all", ...}])'
