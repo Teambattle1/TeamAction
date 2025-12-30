@@ -74,7 +74,10 @@ export const getLeafletIcon = (
         camera: `<rect x="2" y="6" width="20" height="12" rx="2" fill="${color}" stroke="white" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>`,
         question: `<circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="2"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="white" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="3"/>`,
         skull: `<circle cx="9" cy="12" r="1" fill="white"/><circle cx="15" cy="12" r="1" fill="white"/><path d="M12 2a8 8 0 0 0-8 8c0 4.5 3.5 7.5 5 9h6c1.5-1.5 5-4.5 5-9a8 8 0 0 0-8-8z" fill="${color}" stroke="white" stroke-width="2"/>`,
-        treasure: `<path d="M6 3h12l4 6-10 13L2 9z" fill="${color}" stroke="white" stroke-width="2"/><path d="M11 3l-5 6h12l-5-6" fill="white" fill-opacity="0.3"/>`
+        treasure: `<path d="M6 3h12l4 6-10 13L2 9z" fill="${color}" stroke="white" stroke-width="2"/><path d="M11 3l-5 6h12l-5-6" fill="white" fill-opacity="0.3"/>`,
+        music: `<path d="M9 18V5l12-2v13A4 4 0 1 1 15 15a4 4 0 0 0 4-4V3" fill="none" stroke="${color}" stroke-width="2"/><circle cx="6" cy="18" r="3" fill="${color}" stroke="white" stroke-width="2"/>`,
+        nature: `<path d="M12 2c1 1 2 2 3 4 1-2 2-3 3-4M9 7c0 2 1 4 3 6-2 2-3 4-3 6M15 7c0 2-1 4-3 6 2 2 3 4 3 6M12 22c-3-2-5-5-5-8 0-4 2-7 5-9 3 2 5 5 5 9 0 3-2 6-5 8z" fill="${color}" stroke="white" stroke-width="1.5"/>`,
+        world: `<circle cx="12" cy="12" r="10" fill="none" stroke="${color}" stroke-width="2"/><path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20z" fill="none" stroke="${color}" stroke-width="2"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" fill="none" stroke="${color}" stroke-width="2"/>`
       };
 
       const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svgs[iconId] || svgs.default}</svg>`;
