@@ -670,15 +670,19 @@ export const saveTaskList = async (list: TaskList) => {
             })
         };
 
-        const { error } = await supabase.from('task_lists').upsert({
-            id: normalizedList.id,
-            data: normalizedList,
-            updated_at: new Date().toISOString()
-        });
-        if (error) {
-            logError('saveTaskList', error);
-            throw error;
-        }
+        await retryWithBackoff(
+            () => supabase.from('task_lists').upsert({
+                id: normalizedList.id,
+                data: normalizedList,
+                updated_at: new Date().toISOString()
+            }).then(result => {
+                if (result.error) {
+                    throw result.error;
+                }
+                return result;
+            }),
+            'saveTaskList'
+        );
     } catch (e) {
         logError('saveTaskList', e);
         throw e; // Re-throw so caller can handle it
