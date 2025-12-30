@@ -48,7 +48,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     onSaveTemplate,
     isTemplateMode,
     onAddZoneFromLibrary,
-    isAdmin = false
+    isAdmin = false,
+    onStartSimulation
 }) => {
     // State
     const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(null);
