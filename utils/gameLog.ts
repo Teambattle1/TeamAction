@@ -4,7 +4,8 @@
  * Explicit handling of null, undefined, and empty states
  */
 
-import { Game, GameChangeLogEntry } from '../types';
+import { Game, GameChangeLogEntry, Language } from '../types';
+import { formatDate, formatTime } from './date';
 
 /**
  * Create a new game change log entry
