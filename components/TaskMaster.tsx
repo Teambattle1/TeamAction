@@ -1987,6 +1987,17 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Notification Modal */}
+            {notification && (
+                <NotificationModal
+                    message={notification.message}
+                    type={notification.type}
+                    onClose={() => setNotification(null)}
+                    autoClose={true}
+                    duration={3000}
+                />
+            )}
         </div>
     );
 };
