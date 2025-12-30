@@ -478,10 +478,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
                       <ThumbsUp className="w-5 h-5" /> SUBMIT FINAL ANSWER
                   </button>
               ) : (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl flex items-center gap-3 border border-yellow-200 dark:border-yellow-800">
-                      <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
-                      <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">WAITING FOR TEAM AGREEMENT...</p>
-                  </div>
+                  <>
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl flex items-center gap-3 border border-yellow-200 dark:border-yellow-800">
+                          <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
+                          <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">WAITING FOR TEAM AGREEMENT...</p>
+                      </div>
+
+                      {/* Captain can submit without consensus if voting mode allows */}
+                      {isCaptain && game?.taskConfig?.teamVotingMode === 'captain_submit' && teamVotes.length > 0 && (
+                          <button
+                              onClick={handleFinalize}
+                              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold uppercase flex items-center justify-center gap-2 transition-all"
+                          >
+                              <Shield className="w-4 h-4" /> CAPTAIN SUBMIT (Override)
+                          </button>
+                      )}
+                  </>
               )}
 
               <button
