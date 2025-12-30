@@ -31,6 +31,7 @@ interface PlaygroundEditorProps {
   onAddZoneFromLibrary: () => void;
   onOpenPlayground?: (id: string) => void; // Optional prop for compatibility
   isAdmin?: boolean; // Admin privilege for task status marking
+  onStartSimulation?: () => void; // Start simulation mode from editor
 }
 
 const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
