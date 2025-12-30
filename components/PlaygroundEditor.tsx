@@ -115,7 +115,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     // Delete Zone State
     const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
-    
+
+    // Snap to Road State
+    const [snapToRoadMode, setSnapToRoadMode] = useState(false);
+    const [selectionBox, setSelectionBox] = useState<{ start: { x: number; y: number } | null; current: { x: number; y: number } | null }>({ start: null, current: null });
+
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
     const iconInputRef = useRef<HTMLInputElement>(null);
