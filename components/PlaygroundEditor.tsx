@@ -331,6 +331,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         onUpdateGame({ ...game, playgrounds: updated });
     };
 
+    const addNewZone = () => {
+        const existingZones = game.playgrounds || [];
+        const zoneNumber = existingZones.length + 1;
+
+        const newZone: Playground = {
+            id: `pg-${Date.now()}`,
+            title: `Global ${zoneNumber}`,
+            buttonVisible: true,
+            iconId: 'default',
+            location: { lat: 0, lng: 0 },
+            orientationLock: 'landscape'
+        };
+
+        const updatedPlaygrounds = [...existingZones, newZone];
+        onUpdateGame({ ...game, playgrounds: updatedPlaygrounds });
+        setActivePlaygroundId(newZone.id);
+    };
+
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
