@@ -1183,6 +1183,10 @@ const GameApp: React.FC = () => {
                   isTemplateMode={true}
                   onAddZoneFromLibrary={() => {}}
                   isAdmin={authUser?.role === 'Owner' || authUser?.role === 'Admin'}
+                  taskLists={taskLists}
+                  onUpdateTaskLists={setTaskLists}
+                  taskLibrary={taskLibrary}
+                  onUpdateTaskLibrary={setTaskLibrary}
               />
           )}
           {viewingPlaygroundId && activeGame && (
