@@ -469,13 +469,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             alert('Please enter a description for the icon');
             return;
         }
-        if (!selectedTask) return;
 
         setIsGeneratingIcon(true);
         try {
             const iconUrl = await generateAiImage(prompt, 'simple icon style, transparent background');
             if (iconUrl) {
-                updateTask({ iconUrl });
+                // If a task is selected, update task icon; otherwise update zone icon
+                if (selectedTask) {
+                    updateTask({ iconUrl });
+                } else {
+                    updatePlayground({ iconUrl });
+                }
             } else {
                 alert('Icon generation failed. Please try again.');
             }
