@@ -1070,7 +1070,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 )}
 
                 {/* Top Overlay Bar */}
-                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-10 pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 pointer-events-none">
                     <div className="flex items-center gap-4 pointer-events-auto">
                         <h1 className="text-xl font-black text-white uppercase tracking-widest drop-shadow-md">
                             PLAYZONE EDITOR
