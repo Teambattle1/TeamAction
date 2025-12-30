@@ -1596,6 +1596,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         {showTaskActions && (
                             <svg
                                 className="absolute inset-0 w-full h-full pointer-events-none"
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
                                 xmlns="http://www.w3.org/2000/svg"
                             >
                                 <defs>
@@ -1610,12 +1612,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     </pattern>
                                 </defs>
                                 {uniquePlaygroundPoints.flatMap((source) => {
-                                    const rect = backgroundRef.current?.getBoundingClientRect();
-                                    if (!rect) return [];
-
                                     const sourceX = (source.playgroundPosition?.x || 50);
                                     const sourceY = (source.playgroundPosition?.y || 50);
-                                    const sourcePx = { x: (sourceX / 100) * rect.width, y: (sourceY / 100) * rect.height };
 
                                     // Extract target IDs from GameAction objects
                                     const getTargetIds = (actions: any[] | undefined) => {
@@ -1631,18 +1629,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
                                             const targetY = (target.playgroundPosition?.y || 50);
-                                            const targetPx = { x: (targetX / 100) * rect.width, y: (targetY / 100) * rect.height };
                                             return (
                                                 <line
                                                     key={`correct-${source.id}-${targetId}`}
-                                                    x1={sourcePx.x}
-                                                    y1={sourcePx.y}
-                                                    x2={targetPx.x}
-                                                    y2={targetPx.y}
-                                                    stroke="url(#correct-dots)"
-                                                    strokeWidth="2"
-                                                    strokeDasharray="4,4"
-                                                    opacity="0.6"
+                                                    x1={sourceX}
+                                                    y1={sourceY}
+                                                    x2={targetX}
+                                                    y2={targetY}
+                                                    stroke="#10b981"
+                                                    strokeWidth="0.3"
+                                                    strokeDasharray="1,1"
+                                                    opacity="0.8"
                                                 />
                                             );
                                         }),
@@ -1651,18 +1648,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
                                             const targetY = (target.playgroundPosition?.y || 50);
-                                            const targetPx = { x: (targetX / 100) * rect.width, y: (targetY / 100) * rect.height };
                                             return (
                                                 <line
                                                     key={`incorrect-${source.id}-${targetId}`}
-                                                    x1={sourcePx.x}
-                                                    y1={sourcePx.y}
-                                                    x2={targetPx.x}
-                                                    y2={targetPx.y}
-                                                    stroke="url(#incorrect-dots)"
-                                                    strokeWidth="2"
-                                                    strokeDasharray="4,4"
-                                                    opacity="0.6"
+                                                    x1={sourceX}
+                                                    y1={sourceY}
+                                                    x2={targetX}
+                                                    y2={targetY}
+                                                    stroke="#ef4444"
+                                                    strokeWidth="0.3"
+                                                    strokeDasharray="1,1"
+                                                    opacity="0.8"
                                                 />
                                             );
                                         }),
@@ -1671,18 +1667,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
                                             const targetY = (target.playgroundPosition?.y || 50);
-                                            const targetPx = { x: (targetX / 100) * rect.width, y: (targetY / 100) * rect.height };
                                             return (
                                                 <line
                                                     key={`open-${source.id}-${targetId}`}
-                                                    x1={sourcePx.x}
-                                                    y1={sourcePx.y}
-                                                    x2={targetPx.x}
-                                                    y2={targetPx.y}
-                                                    stroke="url(#action-dots)"
-                                                    strokeWidth="2"
-                                                    strokeDasharray="4,4"
-                                                    opacity="0.6"
+                                                    x1={sourceX}
+                                                    y1={sourceY}
+                                                    x2={targetX}
+                                                    y2={targetY}
+                                                    stroke="#f59e0b"
+                                                    strokeWidth="0.3"
+                                                    strokeDasharray="1,1"
+                                                    opacity="0.8"
                                                 />
                                             );
                                         })
