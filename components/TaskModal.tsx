@@ -277,6 +277,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
           } else {
               setErrorMsg("Incorrect answer in simulation.");
           }
+          // Show correct answer if configured
+          if (point.settings?.showCorrectAnswerOnMiss) {
+              setShowCorrectAnswer(true);
+          }
       }
   }
 
