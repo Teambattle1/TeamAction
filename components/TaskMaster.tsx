@@ -334,6 +334,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     };
 
     const getFilteredAndSortedLibrary = () => {
+        // Safety check
+        if (!library || !Array.isArray(library)) {
+            return [];
+        }
+
         // Get selected languages (if any selected, only show those)
         const selectedLanguages = Object.keys(languageFilters).filter(lang => languageFilters[lang]);
 
