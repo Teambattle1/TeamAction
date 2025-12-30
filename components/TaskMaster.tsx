@@ -1739,6 +1739,25 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Task Preview Modal on Hover */}
+            {showPreview && hoveredTask && (
+                <div
+                    className="fixed inset-0 z-[9000] pointer-events-none flex items-center justify-center p-4"
+                    onMouseEnter={handleClosePreview}
+                >
+                    <div className="pointer-events-auto max-w-2xl w-full">
+                        <TaskModal
+                            point={templateToGamePoint(hoveredTask)}
+                            onClose={handleClosePreview}
+                            onComplete={() => {}}
+                            distance={0}
+                            isInstructorMode={true}
+                            mode={undefined}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
