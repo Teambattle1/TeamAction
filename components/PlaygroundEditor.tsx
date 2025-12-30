@@ -1730,12 +1730,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             : isSelected
                                             ? 'border-orange-500 shadow-orange-500/50 scale-125'
                                             : 'border-slate-900 group-hover:scale-110'
-                                    } ${point.isCompleted ? 'bg-green-500' : 'bg-white'}`}
+                                    } ${point.isCompleted ? 'bg-green-500' : isActionTarget ? 'bg-slate-400/40' : 'bg-white'} ${isActionTarget ? 'opacity-50' : ''}`}
                                     style={{ width: displaySize, height: displaySize }}>
                                         {point.iconUrl ? (
-                                            <img src={point.iconUrl} alt={point.title} className="w-2/3 h-2/3 object-contain" />
+                                            <img src={point.iconUrl} alt={point.title} className={`w-2/3 h-2/3 object-contain ${isActionTarget ? 'opacity-50' : ''}`} />
                                         ) : (
-                                            <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : 'text-slate-900'}`} />
+                                            <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : isActionTarget ? 'text-slate-400' : 'text-slate-900'}`} />
                                         )}
 
                                         {/* Mark Indicator Badge */}
