@@ -331,6 +331,14 @@ const TaskModal: React.FC<TaskModalProps> = ({
       }
   };
 
+  const handleRevealHint = () => {
+      if (!hintRevealed && point.feedback?.hint) {
+          const cost = point.feedback.hintCost || -50;
+          if (onPenalty) onPenalty(Math.abs(cost)); // Ensure positive value for penalty
+          setHintRevealed(true);
+      }
+  };
+
   const renderConsensusView = () => {
       // Group votes by answer to show distribution
       const voteGroups: Record<string, string[]> = {};
