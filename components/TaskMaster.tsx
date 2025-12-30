@@ -422,13 +422,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         // Delete selected templates from library
         const updatedLibrary = library.filter(t => !selectedTemplateIds.includes(t.id));
         setLibrary(updatedLibrary);
+        onUpdateTaskLibrary(updatedLibrary); // Update cache
 
         // Delete from database
         for (const id of selectedTemplateIds) {
             await db.deleteTemplate(id);
         }
-        const updatedLibrary = library.filter(t => !selectedTemplateIds.includes(t.id));
-        onUpdateTaskLibrary(updatedLibrary); // Update cache
 
         setSelectedTemplateIds([]);
         setShowBulkDeleteConfirm(false);
