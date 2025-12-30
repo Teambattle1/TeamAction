@@ -34,6 +34,7 @@ class TeamSyncService {
   private userLocation: Coordinate | null = null; // Track local location
   private isSolving: boolean = false; // Track solving status locally
   private isRetired: boolean = false; // Track if user has retired from the team
+  private lastPresenceSent: { isSolving: boolean; isRetired: boolean } | null = null;
 
   private gameId: string | null = null;
   private teamKey: string | null = null;
@@ -124,10 +125,10 @@ class TeamSyncService {
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
-           this.sendPresence();
+           this.sendPresence(true); // Force initial send
            // Send presence periodically (lower frequency to reduce battery + bandwidth)
            if (this.presenceIntervalId) window.clearInterval(this.presenceIntervalId);
-           this.presenceIntervalId = window.setInterval(() => this.sendPresence(), 8000);
+           this.presenceIntervalId = window.setInterval(() => this.sendPresence(false), 12000); // Reduced to 12s
         }
       });
 
@@ -390,13 +391,22 @@ class TeamSyncService {
       this.sendPresence();
   }
 
-  private sendPresence() {
+  private sendPresence(force: boolean = false) {
       if (!this.channel) return;
 
       const now = Date.now();
       const shouldSendLocation =
           !!this.userLocation &&
           (this.locationDirty || now - this.lastLocationSentAt > 20000);
+
+      // Only send if something changed or forced (initial connection)
+      const statusChanged = !this.lastPresenceSent ||
+          this.lastPresenceSent.isSolving !== this.isSolving ||
+          this.lastPresenceSent.isRetired !== this.isRetired;
+
+      if (!force && !shouldSendLocation && !statusChanged) {
+          return; // Skip sending if nothing changed
+      }
 
       const me: TeamMember = {
           deviceId: this.deviceId,
@@ -412,6 +422,12 @@ class TeamSyncService {
           event: 'presence',
           payload: me
       });
+
+      // Track what we sent
+      this.lastPresenceSent = {
+          isSolving: this.isSolving,
+          isRetired: this.isRetired
+      };
 
       if (shouldSendLocation && this.userLocation) {
           this.lastLocationSent = this.userLocation;
