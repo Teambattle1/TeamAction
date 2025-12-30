@@ -234,6 +234,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         const updatedTemplate = gamePointToTemplate(editedPoint);
         await db.saveTemplate(updatedTemplate);
         const updatedLibrary = library.map(t => t.id === updatedTemplate.id ? updatedTemplate : t);
+        onUpdateTaskLibrary(updatedLibrary); // Update cache
         setLibrary(updatedLibrary);
         setEditingTemplate(null);
     };
@@ -426,6 +427,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         for (const id of selectedTemplateIds) {
             await db.deleteTemplate(id);
         }
+        const updatedLibrary = library.filter(t => !selectedTemplateIds.includes(t.id));
+        onUpdateTaskLibrary(updatedLibrary); // Update cache
 
         setSelectedTemplateIds([]);
         setShowBulkDeleteConfirm(false);
@@ -1264,7 +1267,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     onAddTasks={(tasks) => {}}
                     onAddToLibrary={async (tasks) => {
                         for (const t of tasks) await db.saveTemplate(t);
-                        loadLibrary();
+                        await loadLibrary(true); // Force refresh cache
                         setShowAiGen(false);
                     }}
                     targetMode='LIBRARY'
@@ -1277,7 +1280,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     onClose={() => setShowLoquiz(false)}
                     onImportTasks={async (tasks) => {
                         for (const t of tasks) await db.saveTemplate(t);
-                        loadLibrary();
+                        await loadLibrary(true); // Force refresh cache
                         setShowLoquiz(false);
                     }}
                 />
@@ -1291,6 +1294,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     onDelete={async (pointId) => {
                         await db.deleteTemplate(pointId);
                         const updatedLibrary = library.filter(t => t.id !== pointId);
+                        onUpdateTaskLibrary(updatedLibrary); // Update cache
                         setLibrary(updatedLibrary);
                         setEditingTemplate(null);
                     }}
