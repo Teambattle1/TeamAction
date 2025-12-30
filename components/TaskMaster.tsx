@@ -622,9 +622,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     const isSelected = selectedTemplateIds.includes(task.id);
                     
                     return (
-                        <div 
-                            key={task.id} 
+                        <div
+                            key={task.id}
                             onClick={() => selectionMode ? toggleSelection(task.id) : null}
+                            onMouseEnter={() => handleTaskMouseEnter(task)}
+                            onMouseLeave={handleTaskMouseLeave}
                             className={`bg-white dark:bg-gray-800 rounded-xl p-4 border transition-all cursor-pointer relative group flex flex-col h-full ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'}`}
                         >
                             <div className="flex justify-between items-start mb-2">
