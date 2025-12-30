@@ -406,8 +406,35 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   })}
               </div>
 
+              {/* Hint Button in Consensus View */}
+              {point.feedback?.hint && !hintRevealed && (
+                  <button
+                      type="button"
+                      onClick={handleRevealHint}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2"
+                  >
+                      <Lightbulb className="w-5 h-5" />
+                      HINT ({point.feedback.hintCost || -50} points)
+                  </button>
+              )}
+
+              {/* Show Revealed Hint in Consensus View */}
+              {hintRevealed && point.feedback?.hint && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 animate-in slide-in-from-top-2">
+                      <div className="flex items-center gap-2 mb-2">
+                          <Lightbulb className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                          <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">
+                              Hint:
+                          </p>
+                      </div>
+                      <p className="text-yellow-900 dark:text-yellow-200 font-medium">
+                          {point.feedback.hint}
+                      </p>
+                  </div>
+              )}
+
               {consensusReached ? (
-                  <button 
+                  <button
                       onClick={handleFinalize}
                       className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all"
                   >
@@ -419,8 +446,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
                       <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">WAITING FOR TEAM AGREEMENT...</p>
                   </div>
               )}
-              
-              <button 
+
+              <button
                   type="button"
                   onClick={() => setIsVoting(false)}
                   className="w-full py-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white font-bold uppercase text-xs transition-colors"
