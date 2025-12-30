@@ -228,12 +228,17 @@ export const fetchGames = async (): Promise<Game[]> => {
 
 export const saveGame = async (game: Game) => {
     try {
-        const { error } = await supabase.from('games').upsert({
-            id: game.id,
-            data: game,
-            updated_at: new Date().toISOString()
-        });
-        if (error) throw error;
+        await retryWithBackoff(
+            () => supabase.from('games').upsert({
+                id: game.id,
+                data: game,
+                updated_at: new Date().toISOString()
+            }).then(result => {
+                if (result.error) throw result.error;
+                return result;
+            }),
+            'saveGame'
+        );
     } catch (e) { logError('saveGame', e); }
 };
 
