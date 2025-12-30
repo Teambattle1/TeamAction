@@ -31,6 +31,7 @@ interface GameCreatorProps {
 // Map Styles with working preview logic
 // We use CSS classes to simulate the look for Historic/Winter to match the actual map implementation
 const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: string; icon?: React.ElementType }[] = [
+    { id: 'none', label: 'No Map View', preview: '', icon: EyeOff },
     { id: 'osm', label: 'Standard', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png' },
     { id: 'satellite', label: 'Satellite', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/13/2722/4285' },
     { id: 'dark', label: 'Dark Mode', preview: 'https://a.basemaps.cartocdn.com/dark_all/13/4285/2722.png' },
@@ -41,8 +42,7 @@ const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: 
     { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
     { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', icon: Mountain },
     { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', className: 'saturate-115 brightness-108', icon: Snowflake },
-    { id: 'google_custom', label: 'Google Custom', preview: '', icon: Settings },
-    { id: 'none', label: 'No Map View', preview: '', icon: EyeOff },
+    { id: 'google_custom', label: 'Snazzy & Custom', preview: '', icon: Settings },
 ];
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
