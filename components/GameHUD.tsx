@@ -934,6 +934,31 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                     onUpdateGameTime={onUpdateGameTime || (async () => {})}
                 />
             )}
+
+            {/* Fixed Map Style Preview - Square Thumbnail */}
+            {hoveredMapStyle && MAP_STYLES_LIST.find(s => s.id === hoveredMapStyle)?.preview && (
+                <div
+                    className="fixed pointer-events-none z-[9999] animate-in fade-in zoom-in-95 duration-200"
+                    style={{
+                        left: '50%',
+                        top: '50%',
+                        transform: 'translate(-50%, -50%)'
+                    }}
+                >
+                    <div className="bg-slate-950/95 backdrop-blur-md border-4 border-slate-700 rounded-2xl shadow-2xl p-3">
+                        <img
+                            src={MAP_STYLES_LIST.find(s => s.id === hoveredMapStyle)!.preview}
+                            alt={MAP_STYLES_LIST.find(s => s.id === hoveredMapStyle)!.label}
+                            className={`w-64 h-64 object-cover rounded-lg ${MAP_STYLES_LIST.find(s => s.id === hoveredMapStyle)?.className || ''}`}
+                            loading="eager"
+                            crossOrigin="anonymous"
+                        />
+                        <div className="mt-2 text-center text-sm font-black text-white uppercase tracking-widest">
+                            {MAP_STYLES_LIST.find(s => s.id === hoveredMapStyle)!.label}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 });
