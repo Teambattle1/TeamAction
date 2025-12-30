@@ -346,6 +346,8 @@ export interface ToolbarPositions {
   viewSwitcherPos?: ToolbarPosition;
   pinsToolboxPos?: ToolbarPosition;
   showToolboxPos?: ToolbarPosition;
+  editorOrientationPos?: ToolbarPosition;
+  editorShowPos?: ToolbarPosition;
 }
 
 // ------------------------
