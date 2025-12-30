@@ -1188,7 +1188,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </button>
                 )}
 
-                {/* Top Overlay Bar */}
+                {/* Top Overlay Bar - Title and Home Only */}
                 <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 pointer-events-none">
                     <div className="flex items-center gap-4 pointer-events-auto">
                         <h1 className="text-xl font-black text-white uppercase tracking-widest drop-shadow-md">
@@ -1201,10 +1201,31 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
 
                     <div className="flex items-center gap-3 pointer-events-auto">
-                        {/* Orientation Selector */}
-                        <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-orange-500/30 shadow-lg pointer-events-auto">
+                        <button
+                            onClick={onHome}
+                            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full shadow-lg transition-all"
+                            title="Return Home"
+                        >
+                            <Home className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Draggable ORIENTATION Toolbar */}
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: orientationToolbarPos.x, top: orientationToolbarPos.y }}
+                    onPointerDown={handleOrientationPointerDown}
+                    onPointerMove={handleOrientationPointerMove}
+                    onPointerUp={handleOrientationPointerUp}
+                >
+                    <div className="bg-black/40 backdrop-blur-sm border border-orange-500/30 rounded-lg shadow-2xl p-2 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-2 border border-orange-500/30 pointer-events-none">
+                            <GripHorizontal className="w-3 h-3" />
+                        </div>
+                        <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">ORIENTATION</span>
-                            <div className="flex gap-3 pointer-events-auto">
+                            <div className="flex gap-3">
                                 <div className="flex flex-col items-center gap-0.5">
                                     <button
                                         onClick={(e) => {
@@ -1270,18 +1291,31 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        {/* Orientation Lock Warning */}
-                        {isOrientationLocked && (
-                            <div className="absolute top-24 left-6 bg-orange-900/80 border border-orange-500 rounded-lg p-3 text-[9px] text-orange-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
-                                ⚠️ Orientation is LOCKED to {activePlayground?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'} when playing
-                            </div>
-                        )}
+                {/* Orientation Lock Warning */}
+                {isOrientationLocked && (
+                    <div className="absolute top-24 left-6 bg-orange-900/80 border border-orange-500 rounded-lg p-3 text-[9px] text-orange-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
+                        ⚠️ Orientation is LOCKED to {activePlayground?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'} when playing
+                    </div>
+                )}
 
-                        {/* Show Box */}
-                        <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-2 py-1.5 rounded-lg border border-orange-500/30 shadow-lg pointer-events-auto">
+                {/* Draggable SHOW Toolbar */}
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: showToolbarPos.x, top: showToolbarPos.y }}
+                    onPointerDown={handleShowPointerDown}
+                    onPointerMove={handleShowPointerMove}
+                    onPointerUp={handleShowPointerUp}
+                >
+                    <div className="bg-black/40 backdrop-blur-sm border border-orange-500/30 rounded-lg shadow-2xl p-2 cursor-move group relative">
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-2 border border-orange-500/30 pointer-events-none">
+                            <GripHorizontal className="w-3 h-3" />
+                        </div>
+                        <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">SHOW</span>
-                            <div className="flex gap-3 pointer-events-auto">
+                            <div className="flex gap-3">
                                 <div className="flex flex-col items-center gap-0.5">
                                     <button
                                         onClick={(e) => {
@@ -1360,13 +1394,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             </div>
                         </div>
-                        <button
-                            onClick={onHome}
-                            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full shadow-lg transition-all"
-                            title="Return Home"
-                        >
-                            <Home className="w-5 h-5" />
-                        </button>
                     </div>
                 </div>
 
