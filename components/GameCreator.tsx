@@ -31,16 +31,16 @@ interface GameCreatorProps {
 // Map Styles with working preview logic
 // We use CSS classes to simulate the look for Historic/Winter to match the actual map implementation
 const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: string; icon?: React.ElementType }[] = [
-    { id: 'osm', label: 'Standard', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png' },
-    { id: 'satellite', label: 'Satellite', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1258/2177' },
-    { id: 'dark', label: 'Dark Mode', preview: 'https://a.basemaps.cartocdn.com/dark_all/12/2177/1258.png' },
-    { id: 'light', label: 'Light Mode', preview: 'https://a.basemaps.cartocdn.com/light_all/12/2177/1258.png' },
+    { id: 'osm', label: 'Standard', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png' },
+    { id: 'satellite', label: 'Satellite', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/13/2722/4285' },
+    { id: 'dark', label: 'Dark Mode', preview: 'https://a.basemaps.cartocdn.com/dark_all/13/4285/2722.png' },
+    { id: 'light', label: 'Light Mode', preview: 'https://a.basemaps.cartocdn.com/light_all/13/4285/2722.png' },
     // Use OSM tile but apply CSS sepia filter in the UI to match the map behavior
-    { id: 'historic', label: 'Historic', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png', className: 'sepia-[.7] contrast-125 brightness-90', icon: ScrollText },
+    { id: 'historic', label: 'Historic', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.7] contrast-125 brightness-90', icon: ScrollText },
     // Use OSM tile but apply CSS filter for Winter look
-    { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
-    { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/12/2177/1258.png', icon: Mountain },
-    { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/12/2177/1258.png', className: 'saturate-115 brightness-108', icon: Snowflake },
+    { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
+    { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', icon: Mountain },
+    { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', className: 'saturate-115 brightness-108', icon: Snowflake },
     { id: 'google_custom', label: 'Google Custom', preview: '', icon: Settings },
     { id: 'none', label: 'No Map View', preview: '', icon: EyeOff },
 ];
