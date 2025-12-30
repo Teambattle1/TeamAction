@@ -203,7 +203,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             setNotification({ message: '✓ Task list saved successfully!', type: 'success' });
         } catch (error) {
             console.error('Error saving task list:', error);
-            alert('❌ Failed to save task list. Check console for details.');
+            setNotification({ message: '❌ Failed to save task list. Check console for details.', type: 'error' });
         }
     };
 
@@ -239,7 +239,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             const message = duplicates.length === 1
                 ? `⚠️ The task ${duplicateNames} is already in this list and was skipped.`
                 : `⚠️ ${duplicates.length} tasks are already in this list and were skipped: ${duplicateNames}`;
-            alert(message);
+            setNotification({ message, type: 'warning' });
         }
 
         // Only add new tasks
@@ -580,7 +580,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             setPendingImportTasks(tasks);
             setShowGameSelectorForImport(true);
         } else {
-            alert('No games available. Please create a game first.');
+            setNotification({ message: 'No games available. Please create a game first.', type: 'warning' });
         }
     };
 
@@ -593,7 +593,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             setPendingImportList(list);
             setShowGameSelectorForImport(true);
         } else {
-            alert('No games available. Please create a game first.');
+            setNotification({ message: 'No games available. Please create a game first.', type: 'warning' });
         }
     };
 
@@ -645,7 +645,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         if (addToDestinationType === 'GAME' && 'points' in destination) {
             // Add to game
             onImportTasks(addToTasksSelection, (destination as Game).id);
-            alert(`✓ Successfully added ${addToTasksSelection.length} task${addToTasksSelection.length !== 1 ? 's' : ''} to "${(destination as Game).name}"`);
+            setNotification({ message: `✓ Successfully added ${addToTasksSelection.length} task${addToTasksSelection.length !== 1 ? 's' : ''} to "${(destination as Game).name}"`, type: 'success' });
         } else if (addToDestinationType === 'TASKLIST' && 'tasks' in destination) {
             // Add to tasklist
             const destinationList = destination as TaskList;
@@ -667,7 +667,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 const message = duplicateTasks.length === 1
                     ? `⚠️ The task ${duplicateNames} is already in this list and was skipped.`
                     : `⚠️ ${duplicateTasks.length} tasks are already in this list and were skipped: ${duplicateNames}`;
-                alert(message);
+                setNotification({ message, type: 'warning' });
             }
 
             // Only proceed if there are new tasks to add
@@ -678,7 +678,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 };
                 await db.saveTaskList(updatedList);
                 onUpdateTaskLists(taskLists.map(t => t.id === updatedList.id ? updatedList : t));
-                alert(`✓ Successfully added ${newTasks.length} task${newTasks.length !== 1 ? 's' : ''} to "${destinationList.name}"`);
+                setNotification({ message: `✓ Successfully added ${newTasks.length} task${newTasks.length !== 1 ? 's' : ''} to "${destinationList.name}"`, type: 'success' });
             }
         }
 
