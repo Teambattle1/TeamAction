@@ -1434,6 +1434,43 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
                 </div>
 
+                {/* Draggable TOOLS Toolbar */}
+                {onStartSimulation && !isTemplateMode && (
+                    <div
+                        className="absolute z-[1100] pointer-events-auto touch-none"
+                        style={{ left: toolsToolbarPos.x, top: toolsToolbarPos.y }}
+                        onPointerDown={handleToolsPointerDown}
+                        onPointerMove={handleToolsPointerMove}
+                        onPointerUp={handleToolsPointerUp}
+                    >
+                        <div className="bg-black/40 backdrop-blur-sm border border-orange-500/30 rounded-lg shadow-2xl p-2 cursor-move group relative">
+                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-2 border border-orange-500/30 pointer-events-none">
+                                <GripHorizontal className="w-3 h-3" />
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">TOOLS</span>
+                                <div className="flex gap-3">
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onStartSimulation();
+                                            }}
+                                            className="px-3 py-2 rounded transition-all cursor-pointer pointer-events-auto bg-purple-600 text-white shadow-lg hover:bg-purple-700 hover:shadow-xl active:scale-95 flex items-center gap-2"
+                                            title="Start Simulation Mode - Play the game with all tasks and rules enabled"
+                                            type="button"
+                                        >
+                                            <PlayCircle className="w-4 h-4" />
+                                            <span className="text-xs font-black uppercase tracking-wider">SIMULATOR</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Canvas Area */}
                 <div
                     ref={canvasRef}
