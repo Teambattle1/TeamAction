@@ -336,22 +336,26 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
 
   // Load Tag Colors & Fetch Unique Tags on mount
   useEffect(() => {
-      try {
-          const stored = localStorage.getItem('geohunt_tag_colors');
-          if (stored) setTagColors(JSON.parse(stored));
+      const loadSettings = async () => {
+          try {
+              const stored = localStorage.getItem('geohunt_tag_colors');
+              if (stored) setTagColors(JSON.parse(stored));
 
-          // Load map previews
-          const storedPreviews = localStorage.getItem('geohunt_map_previews');
-          if (storedPreviews) setMapStylePreviews(JSON.parse(storedPreviews));
+              // Load map previews (kept in localStorage for standard styles)
+              const storedPreviews = localStorage.getItem('geohunt_map_previews');
+              if (storedPreviews) setMapStylePreviews(JSON.parse(storedPreviews));
 
-          // Load custom styles
-          const storedCustomStyles = localStorage.getItem('geohunt_custom_styles');
-          if (storedCustomStyles) setCustomStyles(JSON.parse(storedCustomStyles));
-      } catch (e) {
-          console.error("Failed to load local settings", e);
-      }
+              // Load custom styles from Supabase
+              const supabaseStyles = await fetchCustomMapStyles();
+              setCustomStyles(supabaseStyles);
+          } catch (e) {
+              console.error("Failed to load settings", e);
+          }
 
-      fetchUniqueTags().then(tags => setExistingTags(tags));
+          fetchUniqueTags().then(tags => setExistingTags(tags));
+      };
+
+      loadSettings();
   }, []);
 
   // Load map style usage counts
