@@ -11,6 +11,7 @@ import { ICON_COMPONENTS } from '../utils/icons';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import { generateAiImage, generateAiBackground, searchLogoUrl } from '../services/ai';
 import * as db from '../services/db';
+import { snapPointsToRoad, isPointInBox } from '../utils/mapbox';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
 import TaskMaster from './TaskMaster';
