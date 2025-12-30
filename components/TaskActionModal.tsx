@@ -122,14 +122,14 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
               {/* Action specific inputs */}
               <div className="flex flex-col gap-2">
                   {(action.type === 'unlock' || action.type === 'lock' || action.type === 'reveal') && (
-                      <select 
+                      <select
                           className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm focus:border-indigo-500 outline-none"
                           value={action.targetId || ''}
                           onChange={(e) => handleUpdateAction(action.id, { targetId: e.target.value })}
                       >
                           <option value="" disabled>Select Target Task...</option>
-                          {allPoints.filter(p => p.id !== point.id && !p.isSectionHeader).map(p => (
-                              <option key={p.id} value={p.id}>{p.title}</option>
+                          {allPoints.filter(p => p.id !== point.id && !p.isSectionHeader).map((p, idx) => (
+                              <option key={p.id} value={p.id}>#{String(idx + 1).padStart(2, '0')} {p.title}</option>
                           ))}
                       </select>
                   )}
