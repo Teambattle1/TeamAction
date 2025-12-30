@@ -2691,8 +2691,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                         setShowTaskMaster(false);
                     }}
-                    taskLists={[]}
-                    onUpdateTaskLists={() => {}}
+                    taskLists={taskLists}
+                    onUpdateTaskLists={onUpdateTaskLists}
+                    taskLibrary={taskLibrary}
+                    onUpdateTaskLibrary={onUpdateTaskLibrary}
                     games={[game]}
                     initialTab={taskMasterTab}
                 />
