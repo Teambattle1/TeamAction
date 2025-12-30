@@ -1870,7 +1870,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         <h2 className="text-sm font-black uppercase tracking-widest text-white">TASKS</h2>
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{uniquePlaygroundPoints.length} in zone</p>
 
-                        {/* Status Markers Toggle */}
+                        {/* Status Markers Toggle - Editor Preview Only */}
                         <button
                             onClick={() => setShowTaskStatus(!showTaskStatus)}
                             className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border-2 flex items-center gap-2 ${
@@ -1878,10 +1878,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     ? 'bg-green-600 border-green-500 text-white shadow-lg'
                                     : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
                             }`}
-                            title="Show/Hide task status markers"
+                            title="Toggle visibility in editor (per-task control in settings)"
                         >
                             <CheckCircle className="w-4 h-4" />
-                            <span>Show Status Markers</span>
+                            <span>Preview Markers</span>
                         </button>
                     </div>
                 </div>
