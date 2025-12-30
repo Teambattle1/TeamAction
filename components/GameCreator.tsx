@@ -911,7 +911,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                           {selectedMapStyle === 'google_custom' && (
                               <div className="mt-6 bg-slate-950 border border-slate-700 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 relative">
                                   <div className="flex justify-between items-start mb-2">
-                                      <label className="block text-[10px] font-bold text-slate-400 uppercase">Google Maps Custom Style JSON</label>
+                                      <label className="block text-[10px] font-bold text-slate-400 uppercase">Snazzy Maps / Custom Style JSON</label>
                                       <button
                                           onClick={() => setShowJsonHelp(true)}
                                           className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase flex items-center gap-1"
