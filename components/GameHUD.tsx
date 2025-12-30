@@ -542,7 +542,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
 
                 <div className={`flex flex-col items-center gap-2 pointer-events-auto transition-transform duration-300 ease-in-out ${sidebarOffset}`}>
                     {mode !== GameMode.EDIT && renderGameNameButton()}
-                    {timeLeft && (
+                    {timeLeft && (activeGame?.designConfig?.enableGameTime !== false) && (
                         <div className="flex flex-col gap-2">
                             <div className={`px-4 py-2 rounded-xl backdrop-blur-md font-mono font-bold text-lg shadow-lg flex items-center gap-2 border ${timerAlert ? 'bg-red-600/90 border-red-500 animate-pulse text-white' : 'bg-black/60 border-white/10 text-white'}`}>
                                 <Clock className="w-4 h-4" />
