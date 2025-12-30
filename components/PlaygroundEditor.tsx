@@ -1526,17 +1526,31 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 isTasksDrawerOpen ? 'w-[360px]' : 'w-0'
             } overflow-hidden`}>
                 {/* Header */}
-                <div className="p-5 border-b border-slate-800 flex items-center justify-center gap-3 bg-[#0f172a] relative">
+                <div className="p-5 border-b border-slate-800 bg-[#0f172a] relative">
                     <button
                         onClick={() => setIsTasksDrawerOpen(false)}
-                        className="absolute left-5 text-orange-500 hover:text-orange-400 transition-colors p-2"
+                        className="absolute left-5 top-1/2 -translate-y-1/2 text-orange-500 hover:text-orange-400 transition-colors p-2"
                         title="Close Tasks"
                     >
                         <ChevronRight className="w-6 h-6" />
                     </button>
-                    <div className="flex flex-col items-center gap-1">
+                    <div className="flex flex-col items-center gap-2">
                         <h2 className="text-sm font-black uppercase tracking-widest text-white">TASKS</h2>
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{uniquePlaygroundPoints.length} in zone</p>
+
+                        {/* Status Markers Toggle */}
+                        <button
+                            onClick={() => setShowTaskStatus(!showTaskStatus)}
+                            className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border-2 flex items-center gap-2 ${
+                                showTaskStatus
+                                    ? 'bg-green-600 border-green-500 text-white shadow-lg'
+                                    : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
+                            }`}
+                            title="Show/Hide task status markers"
+                        >
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Show Status Markers</span>
+                        </button>
                     </div>
                 </div>
 
