@@ -548,10 +548,12 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
 
 export const saveTemplate = async (template: TaskTemplate) => {
     try {
-        // Only auto-detect language if not already set by user
-        const currentLanguage = normalizeLanguage(template.settings?.language);
-        const finalLanguage = currentLanguage && currentLanguage !== 'English'
-            ? currentLanguage
+        // Respect user's language choice if explicitly set, otherwise auto-detect
+        const validLanguages = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
+        const hasValidLanguage = template.settings?.language && validLanguages.includes(template.settings.language);
+
+        const finalLanguage = hasValidLanguage
+            ? template.settings.language
             : detectLanguageFromText(template.task.question || '');
 
         const normalizedTemplate = {
