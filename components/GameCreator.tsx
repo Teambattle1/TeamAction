@@ -1864,14 +1864,34 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Large Preview</p>
-                                                    <div className="aspect-square rounded-lg border border-slate-700 overflow-hidden">
-                                                        <img
-                                                            src={previewUrl}
-                                                            alt={style?.label}
-                                                            className={`w-full h-full object-cover ${style?.className || ''}`}
-                                                            crossOrigin="anonymous"
-                                                        />
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Zoomed Out Preview (2x2 Tiles)</p>
+                                                    <div className="aspect-square rounded-lg border border-slate-700 overflow-hidden bg-slate-900">
+                                                        <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 1`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 2`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 3`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 4`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
