@@ -1989,8 +1989,15 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                         </button>
                                         <button
                                             onClick={() => {
-                                                setSelectedMapStyle(previewMapStyle);
+                                                if (previewCustomStyle) {
+                                                    setSelectedMapStyle('google_custom');
+                                                    setCustomMapJson(previewCustomStyle.json);
+                                                    setJsonValidationStatus('VALID');
+                                                } else if (previewMapStyle) {
+                                                    setSelectedMapStyle(previewMapStyle);
+                                                }
                                                 setShowMapStylePreview(false);
+                                                setPreviewCustomStyle(null);
                                             }}
                                             className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center gap-2"
                                         >
