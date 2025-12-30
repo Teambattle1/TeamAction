@@ -14,6 +14,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, initialShowSql = false
   const [showSql, setShowSql] = useState(initialShowSql);
   const [copied, setCopied] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const [geminiKey, setGeminiKey] = useState('');
   const [showGeminiKey, setShowGeminiKey] = useState(false);
