@@ -79,6 +79,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showTaskActions, setShowTaskActions] = useState(true);
     const [showTaskStatus, setShowTaskStatus] = useState(true);
     const [showTaskNames, setShowTaskNames] = useState(true);
+    const [showBackground, setShowBackground] = useState(true);
 
     // Toolbar positions (draggable)
     const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 420, y: 24 });
@@ -735,7 +736,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     if (!activePlayground) return null;
 
     const bgStyle: React.CSSProperties = {
-        backgroundImage: activePlayground.imageUrl ? `url(${activePlayground.imageUrl})` : 'none',
+        backgroundImage: showBackground && activePlayground.imageUrl ? `url(${activePlayground.imageUrl})` : 'none',
         backgroundSize: activePlayground.backgroundStyle === 'stretch' ? '100% 100%' : (activePlayground.backgroundStyle === 'cover' ? 'cover' : 'contain'),
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -1489,6 +1490,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <Type className="w-4 h-4" />
                                     </button>
                                     <span className={`text-[8px] font-black uppercase tracking-widest ${showTaskNames ? 'text-orange-300' : 'text-slate-500'}`}>NAME</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setShowBackground(!showBackground);
+                                        }}
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                            showBackground
+                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Show/Hide Background"
+                                        type="button"
+                                    >
+                                        <ImageIcon className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${showBackground ? 'text-orange-300' : 'text-slate-500'}`}>BACKGROUND</span>
                                 </div>
                             </div>
                         </div>
