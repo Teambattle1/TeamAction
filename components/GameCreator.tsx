@@ -891,6 +891,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                               setEditingStyleId(style.id);
                                               mapPreviewInputRef.current?.click();
                                           }}
+                                          onPreview={(e) => {
+                                              e.stopPropagation();
+                                              setPreviewMapStyle(style.id);
+                                              setShowMapStylePreview(true);
+                                          }}
                                       />
                                   );
                               })}
