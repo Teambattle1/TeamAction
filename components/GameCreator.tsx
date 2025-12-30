@@ -885,7 +885,10 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                           isCustom={isCustom}
                                           Icon={Icon}
                                           isSelected={selectedMapStyle === style.id}
-                                          onSelect={() => setSelectedMapStyle(style.id)}
+                                          onSelect={() => {
+                                              setSelectedMapStyle(style.id);
+                                              setShowMapStylePreview(false);
+                                          }}
                                           onEditThumbnail={(e) => {
                                               e.stopPropagation();
                                               setEditingStyleId(style.id);
