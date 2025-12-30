@@ -427,9 +427,22 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       if (!clientName.trim()) return;
       setIsSearchingLogo(true);
       const url = await searchLogoUrl(clientName);
-      if (url) setClientLogo(url);
-      else alert("No logo found for this name. Try uploading one.");
+      if (url) {
+          setClientLogo(url);
+      } else {
+          alert("No logo found for this name. Try uploading one.");
+      }
       setIsSearchingLogo(false);
+  };
+
+  const handleLogoError = () => {
+      // If Clearbit fails, try fallback to Google favicon
+      if (clientLogo && clientLogo.includes('clearbit')) {
+          const domain = clientLogo.split('/').pop();
+          const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+          console.log('[Logo] Clearbit failed, trying Google favicon:', fallbackUrl);
+          setClientLogo(fallbackUrl);
+      }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -852,7 +865,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
                                   ) : clientLogo ? (
                                       <div className="relative w-full h-full p-2 flex items-center justify-center">
-                                          <img src={clientLogo} className="max-w-full max-h-full object-contain" />
+                                          <img
+                                              src={clientLogo}
+                                              onError={handleLogoError}
+                                              className="max-w-full max-h-full object-contain"
+                                          />
                                           <button 
                                               onClick={() => setClientLogo('')}
                                               className="absolute top-1 right-1 p-1 bg-red-600 rounded-full text-white hover:bg-red-700 transition-colors"
