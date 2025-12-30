@@ -558,7 +558,32 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       }
   };
 
-  const handleDeleteCustomStyle = (styleId: string) => {
+  const handleDeleteCustomStyle = async (styleId: string) => {
+      const style = customStyles.find(s => s.id === styleId);
+      if (!style) return;
+
+      // Check if google_custom is in use (all custom styles use this ID)
+      const usageCount = mapStyleUsage['google_custom'] || 0;
+
+      let confirmMessage = `Delete custom style "${style.name}"?`;
+      if (usageCount > 0) {
+          confirmMessage = `This style is currently used in ${usageCount} game${usageCount > 1 ? 's' : ''}.\n\nDeleting it will replace it with "Standard" map style in all affected games.\n\nContinue?`;
+      }
+
+      if (!confirm(confirmMessage)) return;
+
+      // If in use, replace with standard in all games
+      if (usageCount > 0) {
+          const replaced = await replaceMapStyleInGames('google_custom', 'osm');
+          if (replaced > 0) {
+              alert(`Replaced custom map style with "Standard" in ${replaced} game${replaced > 1 ? 's' : ''}.`);
+              // Reload usage counts
+              const newUsage = { ...mapStyleUsage, 'google_custom': 0 };
+              setMapStyleUsage(newUsage);
+          }
+      }
+
+      // Remove from custom styles
       const updatedStyles = customStyles.filter(s => s.id !== styleId);
       setCustomStyles(updatedStyles);
       localStorage.setItem('geohunt_custom_styles', JSON.stringify(updatedStyles));
