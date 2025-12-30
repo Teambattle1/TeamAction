@@ -628,16 +628,21 @@ export const fetchTaskListByToken = async (token: string): Promise<TaskList | nu
 
 export const saveTaskList = async (list: TaskList) => {
     try {
-        // Auto-detect language for all tasks in the list before saving
+        // Respect user's language choice for each task, otherwise auto-detect
+        const validLanguages = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
         const normalizedList = {
             ...list,
             tasks: list.tasks.map(task => {
-                const detectedLanguage = detectLanguageFromText(task.task.question || '');
+                const hasValidLanguage = task.settings?.language && validLanguages.includes(task.settings.language);
+                const finalLanguage = hasValidLanguage
+                    ? task.settings.language
+                    : detectLanguageFromText(task.task.question || '');
+
                 return {
                     ...task,
                     settings: {
                         ...task.settings,
-                        language: detectedLanguage
+                        language: finalLanguage
                     }
                 };
             })
