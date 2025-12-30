@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { GamePoint, TaskVote, GameMode, TimelineItem } from '../types';
+import { GamePoint, TaskVote, GameMode, TimelineItem, Game } from '../types';
 import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown, Lightbulb } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
 import DOMPurify from 'dompurify';
@@ -16,6 +16,8 @@ interface TaskModalProps {
   onOpenActions?: () => void;
   onTaskOpen?: () => void;
   onTaskIncorrect?: () => void;
+  game?: Game | null;
+  isCaptain?: boolean;
 }
 
 const TaskModal: React.FC<TaskModalProps> = ({
