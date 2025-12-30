@@ -1754,7 +1754,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             </div>
                                         )}
 
-                                        {/* Task Status Marker - Correct (Green Check) or Incorrect (Red X) */}
+                                        {/* OK/Wrong Answer Marker - Green Check (correct) or Red X (wrong) */}
                                         {(point.showStatusMarkers ?? true) && (point.isCompleted || (point as any).answeredIncorrectly) && (
                                             <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${
                                                 (point as any).answeredIncorrectly ? 'opacity-90' : 'opacity-80'
