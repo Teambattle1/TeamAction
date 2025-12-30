@@ -683,15 +683,31 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {showLocationMapStyles && (
                                         <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-slate-700 rounded-xl p-2 shadow-xl animate-in slide-in-from-top-2 pointer-events-auto z-[3001] flex gap-2 flex-wrap max-w-[300px]">
                                             {MAP_STYLES_LIST.map((style) => (
-                                                <button
-                                                    key={style.id}
-                                                    onClick={(e) => { e.stopPropagation(); onSetMapStyle(style.id); setShowLocationMapStyles(false); }}
-                                                    className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all border-2 ${mapStyle === style.id ? 'bg-slate-700 border-slate-500 shadow-lg shadow-slate-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600'}`}
-                                                    title={style.label}
-                                                >
-                                                    <style.icon className={`w-4 h-4 ${mapStyle === style.id ? 'text-white' : 'text-slate-300'}`} />
-                                                    <span className={`text-[7px] font-black uppercase tracking-widest ${mapStyle === style.id ? 'text-white' : 'text-slate-400'}`}>{style.label}</span>
-                                                </button>
+                                                <div key={style.id} className="relative">
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onSetMapStyle(style.id); setShowLocationMapStyles(false); }}
+                                                        onMouseEnter={() => setHoveredMapStyle(style.id)}
+                                                        onMouseLeave={() => setHoveredMapStyle(null)}
+                                                        className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all border-2 ${mapStyle === style.id ? 'bg-slate-700 border-slate-500 shadow-lg shadow-slate-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600'}`}
+                                                        title={style.label}
+                                                    >
+                                                        <style.icon className={`w-4 h-4 ${mapStyle === style.id ? 'text-white' : 'text-slate-300'}`} />
+                                                        <span className={`text-[7px] font-black uppercase tracking-widest ${mapStyle === style.id ? 'text-white' : 'text-slate-400'}`}>{style.label}</span>
+                                                    </button>
+
+                                                    {/* Hover Preview Thumbnail */}
+                                                    {hoveredMapStyle === style.id && style.preview && (
+                                                        <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-slate-950 border-2 border-slate-700 rounded-lg shadow-2xl p-2 animate-in fade-in slide-in-from-top-2 pointer-events-none z-[3002]">
+                                                            <img
+                                                                src={style.preview}
+                                                                alt={style.label}
+                                                                className={`w-40 h-40 object-cover rounded ${style.className || ''}`}
+                                                                loading="lazy"
+                                                            />
+                                                            <div className="mt-1 text-center text-[9px] font-black text-slate-400 uppercase">{style.label}</div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             ))}
                                         </div>
                                     )}
