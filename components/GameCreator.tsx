@@ -311,6 +311,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [showMapStylePreview, setShowMapStylePreview] = useState(false);
   const [previewMapStyle, setPreviewMapStyle] = useState<MapStyleId | null>(null);
   const [showSnazzyMapsBrowser, setShowSnazzyMapsBrowser] = useState(false);
+  const [showCreateStyleModal, setShowCreateStyleModal] = useState(false);
+  const [customStyleName, setCustomStyleName] = useState('');
+  const [customStyles, setCustomStyles] = useState<Array<{id: string; name: string; json: string}>>([]);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const templateImgInputRef = useRef<HTMLInputElement>(null);
