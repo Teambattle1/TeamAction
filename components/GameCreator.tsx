@@ -13,6 +13,7 @@ import { searchLogoUrl } from '../services/ai';
 import { uploadImage } from '../services/storage';
 import { fetchUniqueTags } from '../services/db';
 import { resizeImage } from '../utils/image';
+import GameLogViewer from './GameLogViewer';
 
 interface GameCreatorProps {
   onClose: () => void;
