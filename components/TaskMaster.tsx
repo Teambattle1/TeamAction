@@ -638,18 +638,19 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     const renderLibraryGrid = (selectionMode = false) => {
         const filtered = getFilteredAndSortedLibrary();
-        
+
         return (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-1">
                 {filtered.map(task => {
                     const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
                     const isSelected = selectedTemplateIds.includes(task.id);
-                    
+                    const isAlreadyInList = editingList && editingList.tasks.some(t => t.id === task.id);
+
                     return (
                         <div
                             key={task.id}
-                            onClick={() => selectionMode ? toggleSelection(task.id) : null}
-                            className={`bg-white dark:bg-gray-800 rounded-xl p-4 border transition-all cursor-pointer relative group flex flex-col h-full ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'}`}
+                            onClick={() => selectionMode && !isAlreadyInList ? toggleSelection(task.id) : null}
+                            className={`bg-white dark:bg-gray-800 rounded-xl p-4 border transition-all cursor-pointer relative group flex flex-col h-full ${isAlreadyInList ? 'opacity-50 filter blur-[0.5px] pointer-events-none' : ''} ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'}`}
                         >
                             <div className="flex justify-between items-start mb-2">
                                 <div className={`p-2 rounded-lg ${isSelected ? 'bg-indigo-200 dark:bg-indigo-800 text-indigo-700 dark:text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'}`}>
