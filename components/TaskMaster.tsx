@@ -5,7 +5,7 @@ import { uploadImage } from '../services/storage'; // IMPORTED
 import {
     X, Plus, Search, Layers, Library, Edit2, Trash2, ArrowLeft, Save,
     ImageIcon, Upload, Filter, Tag, LayoutList, RefreshCw, Check, Copy,
-    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2
+    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import AiTaskGenerator from './AiTaskGenerator';
@@ -71,6 +71,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
     const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
     const [languageFilters, setLanguageFilters] = useState<Record<string, boolean>>({});
+    const [taskListFilter, setTaskListFilter] = useState<string>(''); // Filter by task list ID
+    const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [showGameSelector, setShowGameSelector] = useState(false);
     const [gameForBulkAdd, setGameForBulkAdd] = useState<Game | null>(null);
     const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
