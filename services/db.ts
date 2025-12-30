@@ -48,6 +48,33 @@ const isValidUUID = (str: string): boolean => {
     return uuidRegex.test(str);
 };
 
+// Connection test utility
+export const testDatabaseConnection = async (): Promise<{ success: boolean; error?: string; latency?: number }> => {
+    const startTime = Date.now();
+    try {
+        // Simple query to test connection
+        const { data, error } = await Promise.race([
+            supabase.from('games').select('id').limit(1),
+            new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Connection timeout after 5s')), 5000)
+            )
+        ]);
+
+        const latency = Date.now() - startTime;
+
+        if (error) {
+            return { success: false, error: error.message, latency };
+        }
+
+        console.log(`[DB Service] ✅ Connection test passed (${latency}ms)`);
+        return { success: true, latency };
+    } catch (e: any) {
+        const latency = Date.now() - startTime;
+        console.error(`[DB Service] ❌ Connection test failed (${latency}ms):`, e.message);
+        return { success: false, error: e.message, latency };
+    }
+};
+
 // Configuration for large table fetches
 const CHUNK_SIZE = 50; // Fetch 50 rows at a time (reduced to prevent timeouts)
 const LIBRARY_CHUNK_SIZE = 25; // Even smaller for library (data objects are large)
