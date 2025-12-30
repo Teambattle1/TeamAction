@@ -2444,7 +2444,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </button>
                                 <button
                                     onClick={async () => {
-                                        if (!selectedTask) return;
                                         setShowAiIconPrompt(false);
                                         await handleGenerateTaskIcon(aiIconPromptValue);
                                     }}
