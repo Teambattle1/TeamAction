@@ -50,6 +50,22 @@ const MapRecenter: React.FC<{ center: LatLng }> = ({ center }) => {
     return null;
 };
 
+// Component to handle map ready state
+const MapReadyHandler: React.FC<{ onReady: () => void }> = ({ onReady }) => {
+    const map = useMap();
+    useEffect(() => {
+        // Ensure map is fully loaded
+        map.whenReady(() => {
+            // Force invalidate size to ensure tiles load properly
+            setTimeout(() => {
+                map.invalidateSize();
+                onReady();
+            }, 100);
+        });
+    }, [map, onReady]);
+    return null;
+};
+
 const MeetingPointMapPicker: React.FC<MeetingPointMapPickerProps> = ({
     initialLat = 55.6761,
     initialLng = 12.5683,
