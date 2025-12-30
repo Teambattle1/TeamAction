@@ -195,6 +195,14 @@ const MeetingPointMapPicker: React.FC<MeetingPointMapPickerProps> = ({
 
                 {/* Map Container */}
                 <div className="flex-1 relative overflow-hidden">
+                    {!mapReady && (
+                        <div className="absolute inset-0 z-10 bg-slate-950 flex items-center justify-center">
+                            <div className="flex flex-col items-center gap-3">
+                                <Loader className="w-8 h-8 text-orange-500 animate-spin" />
+                                <p className="text-sm font-bold text-slate-400 uppercase">Loading map...</p>
+                            </div>
+                        </div>
+                    )}
                     <MapContainer
                         center={mapCenter}
                         zoom={13}
@@ -207,6 +215,7 @@ const MeetingPointMapPicker: React.FC<MeetingPointMapPickerProps> = ({
                         />
                         <MapClickHandler onLocationSelect={handleMapClick} />
                         <MapRecenter center={mapCenter} />
+                        <MapReadyHandler onReady={() => setMapReady(true)} />
                         {selectedPosition && <Marker position={selectedPosition} />}
                     </MapContainer>
                 </div>
