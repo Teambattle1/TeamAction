@@ -6,7 +6,7 @@ import {
     StopCircle, CheckCircle, Image as ImageIcon, Save, Edit, Map as MapIcon,
     Layers, Globe, Trash2, Bold, Italic, Underline, Link as LinkIcon, Info,
     Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2,
-    Settings, Play, Target, List, Palette, EyeOff, ScrollText, Check, AlertTriangle,
+    Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
     Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus
 } from 'lucide-react';
 import { searchLogoUrl } from '../services/ai';
