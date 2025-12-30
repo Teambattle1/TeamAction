@@ -77,6 +77,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
     const [languageFilters, setLanguageFilters] = useState<Record<string, boolean>>({});
     const [taskListFilter, setTaskListFilter] = useState<string>(''); // Filter by task list ID
+    const [taskListViewMode, setTaskListViewMode] = useState<'grid' | 'list'>('list'); // List view as default
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [showGameSelector, setShowGameSelector] = useState(false);
     const [gameForBulkAdd, setGameForBulkAdd] = useState<Game | null>(null);
@@ -1225,15 +1226,35 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                 console.log('TaskMaster LISTS tab - taskLists count:', taskLists.length);
                                 return null;
                             })()}
-                            <button
-                                onClick={handleCreateList}
-                                className="w-full py-4 border-2 border-dashed border-slate-700 rounded-2xl flex items-center justify-center gap-2 text-slate-500 hover:text-white hover:border-slate-500 transition-all group"
-                            >
-                                <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                <span className="font-bold uppercase tracking-widest text-xs">CREATE NEW LIST</span>
-                            </button>
+                            <div className="flex justify-between items-center mb-4">
+                                <button
+                                    onClick={handleCreateList}
+                                    className="px-4 py-2 border-2 border-dashed border-slate-700 rounded-xl flex items-center gap-2 text-slate-500 hover:text-white hover:border-slate-500 transition-all group"
+                                >
+                                    <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                    <span className="font-bold uppercase tracking-widest text-xs">CREATE NEW LIST</span>
+                                </button>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[200px]">
+                                {/* View Mode Toggle */}
+                                <div className="flex gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
+                                    <button
+                                        onClick={() => setTaskListViewMode('list')}
+                                        className={`px-3 py-2 rounded text-[10px] font-bold uppercase transition-colors ${taskListViewMode === 'list' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                        title="List view"
+                                    >
+                                        ≡ LIST
+                                    </button>
+                                    <button
+                                        onClick={() => setTaskListViewMode('grid')}
+                                        className={`px-3 py-2 rounded text-[10px] font-bold uppercase transition-colors ${taskListViewMode === 'grid' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                                        title="Grid view"
+                                    >
+                                        ⊞ GRID
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className={taskListViewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-h-[200px]' : 'space-y-3 min-h-[200px]'}>
                                 {taskLists.length === 0 && (
                                     <div className="col-span-full py-16 text-center">
                                         <LayoutList className="w-16 h-16 text-slate-700 mx-auto mb-4" />
