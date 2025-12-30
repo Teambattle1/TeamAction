@@ -740,12 +740,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
                             const isSelected = selectedTemplateIds.includes(task.id);
                             const usageCount = countTaskUsage(task.id);
+                            const isAlreadyInList = editingList && editingList.tasks.some(t => t.id === task.id);
 
                             return (
                                 <tr
                                     key={task.id}
-                                    onClick={() => (selectionMode || bulkSelectionMode) ? toggleSelection(task.id) : null}
-                                    className={`hover:bg-slate-800/50 transition-colors cursor-pointer ${isSelected ? 'bg-indigo-900/30 border-l-4 border-indigo-600' : ''}`}
+                                    onClick={() => (selectionMode || bulkSelectionMode) && !isAlreadyInList ? toggleSelection(task.id) : null}
+                                    className={`hover:bg-slate-800/50 transition-colors cursor-pointer ${isAlreadyInList ? 'opacity-50 filter blur-[0.5px] pointer-events-none' : ''} ${isSelected ? 'bg-indigo-900/30 border-l-4 border-indigo-600' : ''}`}
                                 >
                                     {bulkSelectionMode && (
                                         <td className="px-4 py-3">
