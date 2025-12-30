@@ -102,7 +102,8 @@ class TeamSyncService {
             ...(existing || {}),
             ...member,
             location: member.location ?? existing?.location,
-            isSolving: member.isSolving ?? existing?.isSolving
+            isSolving: member.isSolving ?? existing?.isSolving,
+            isRetired: member.isRetired ?? existing?.isRetired
         } as TeamMember;
 
         this.members.set(member.deviceId, merged);
