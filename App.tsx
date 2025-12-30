@@ -1180,6 +1180,7 @@ const GameApp: React.FC = () => {
                   }}
                   isTemplateMode={true}
                   onAddZoneFromLibrary={() => {}}
+                  isAdmin={authUser?.role === 'Owner' || authUser?.role === 'Admin'}
               />
           )}
           {viewingPlaygroundId && activeGame && (
@@ -1235,6 +1236,7 @@ const GameApp: React.FC = () => {
                   onHome={() => setViewingPlaygroundId(null)}
                   isTemplateMode={false}
                   onAddZoneFromLibrary={() => setShowTaskMaster(true)}
+                  isAdmin={authUser?.role === 'Owner' || authUser?.role === 'Admin'}
               />
           )}
           {showChatDrawer && activeGameId && (
