@@ -61,6 +61,7 @@ const MeetingPointMapPicker: React.FC<MeetingPointMapPickerProps> = ({
     const [isSearching, setIsSearching] = useState(false);
     const [selectedPosition, setSelectedPosition] = useState<LatLng>(new LatLng(initialLat, initialLng));
     const [mapCenter, setMapCenter] = useState<LatLng>(new LatLng(initialLat, initialLng));
+    const [mapReady, setMapReady] = useState(false);
 
     // Search locations using Nominatim (OpenStreetMap)
     const handleSearch = async () => {
