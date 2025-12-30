@@ -634,8 +634,6 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                         <div
                             key={task.id}
                             onClick={() => selectionMode ? toggleSelection(task.id) : null}
-                            onMouseEnter={() => handleTaskMouseEnter(task)}
-                            onMouseLeave={handleTaskMouseLeave}
                             className={`bg-white dark:bg-gray-800 rounded-xl p-4 border transition-all cursor-pointer relative group flex flex-col h-full ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500'}`}
                         >
                             <div className="flex justify-between items-start mb-2">
@@ -656,7 +654,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             >
                                 {task.title}
                             </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1">{task.task.question}</p>
+                            <p
+                                className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1"
+                                onMouseEnter={() => handleTaskMouseEnter(task)}
+                                onMouseLeave={handleTaskMouseLeave}
+                            >
+                                {task.task.question}
+                            </p>
 
                             <div className="flex flex-wrap gap-1 mt-auto">
                                 {task.tags.slice(0, 3).map((tag, index) => (
