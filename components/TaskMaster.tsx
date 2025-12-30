@@ -179,13 +179,25 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     const handleSaveListUpdate = async () => {
         if (!editingList) return;
-        await db.saveTaskList(editingList);
-        const updatedLists = taskLists.map(l => l.id === editingList.id ? editingList : l);
-        if (!taskLists.find(l => l.id === editingList.id)) {
-            updatedLists.push(editingList);
+
+        try {
+            console.log('Saving task list:', editingList);
+            await db.saveTaskList(editingList);
+
+            const updatedLists = taskLists.map(l => l.id === editingList.id ? editingList : l);
+            if (!taskLists.find(l => l.id === editingList.id)) {
+                updatedLists.push(editingList);
+            }
+
+            console.log('Updated lists:', updatedLists);
+            onUpdateTaskLists(updatedLists);
+            setEditingList(null);
+
+            alert('✓ Task list saved successfully!');
+        } catch (error) {
+            console.error('Error saving task list:', error);
+            alert('❌ Failed to save task list. Check console for details.');
         }
-        onUpdateTaskLists(updatedLists);
-        setEditingList(null);
     };
 
     const handleListImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
