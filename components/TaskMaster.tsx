@@ -123,7 +123,14 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         }
     };
 
-    // Sync with cached library from App
+    // Initial load: fetch library if both cache and local state are empty
+    useEffect(() => {
+        if (library.length === 0 && (!cachedLibrary || cachedLibrary.length === 0)) {
+            loadLibrary();
+        }
+    }, []); // Run only on mount
+
+    // Sync with cached library from App when it updates
     useEffect(() => {
         if (cachedLibrary && Array.isArray(cachedLibrary) && cachedLibrary.length > 0 && library.length === 0) {
             setLibrary(cachedLibrary);
