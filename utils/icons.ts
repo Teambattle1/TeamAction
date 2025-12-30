@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import { IconId } from '../types';
-import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem, ListOrdered } from 'lucide-react';
+import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem, ListOrdered, Music, Leaf, Globe } from 'lucide-react';
 import React from 'react';
 
 // Mapping for UI components (React)
