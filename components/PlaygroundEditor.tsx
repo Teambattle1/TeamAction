@@ -71,8 +71,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showTaskNames, setShowTaskNames] = useState(true);
 
     // Toolbar positions (draggable)
-    const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 100, y: 24 });
-    const [showToolbarPos, setShowToolbarPos] = useState({ x: 500, y: 24 });
+    const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 420, y: 24 });
+    const [showToolbarPos, setShowToolbarPos] = useState({ x: 750, y: 24 });
     const [isDraggingOrientation, setIsDraggingOrientation] = useState(false);
     const [isDraggingShow, setIsDraggingShow] = useState(false);
     const orientationDragOffset = useRef({ x: 0, y: 0 });
