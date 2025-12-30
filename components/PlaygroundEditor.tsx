@@ -842,6 +842,94 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setIsOverDeleteZone(false);
     };
 
+    // Handle snap-to-road selection box
+    const handleSnapToRoadStart = (e: React.MouseEvent) => {
+        if (!snapToRoadMode) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectionBox({
+            start: { x: e.clientX, y: e.clientY },
+            current: { x: e.clientX, y: e.clientY }
+        });
+    };
+
+    const handleSnapToRoadMove = (e: React.MouseEvent) => {
+        if (!snapToRoadMode || !selectionBox.start) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectionBox({
+            start: selectionBox.start,
+            current: { x: e.clientX, y: e.clientY }
+        });
+    };
+
+    const handleSnapToRoadEnd = async (e: React.MouseEvent) => {
+        if (!snapToRoadMode || !selectionBox.start || !selectionBox.current || !activePlayground) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Get canvas bounds to convert screen coords to map coords
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+
+        // Convert screen coordinates to canvas relative coordinates
+        const startX = (selectionBox.start.x - rect.left) / zoom + pan.x;
+        const startY = (selectionBox.start.y - rect.top) / zoom + pan.y;
+        const endX = (selectionBox.current.x - rect.left) / zoom + pan.x;
+        const endY = (selectionBox.current.y - rect.top) / zoom + pan.y;
+
+        // Find tasks within the selection box
+        const tasksToSnap = game.points.filter(point => {
+            const pos = point.playgroundPosition;
+            if (!pos) return false;
+
+            const minX = Math.min(startX, endX);
+            const maxX = Math.max(startX, endX);
+            const minY = Math.min(startY, endY);
+            const maxY = Math.max(startY, endY);
+
+            return pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY;
+        });
+
+        if (tasksToSnap.length === 0) {
+            alert('No tasks selected. Please draw a larger selection box.');
+            setSelectionBox({ start: null, current: null });
+            return;
+        }
+
+        // Show loading state
+        const originalPoints = tasksToSnap.map(p => p.location);
+
+        try {
+            // Snap tasks to road
+            const snappedLocations = await snapPointsToRoad(originalPoints);
+
+            // Update the game with snapped locations
+            const updatedPoints = game.points.map(point => {
+                const taskIndex = tasksToSnap.findIndex(t => t.id === point.id);
+                if (taskIndex >= 0) {
+                    return {
+                        ...point,
+                        location: snappedLocations[taskIndex] || point.location
+                    };
+                }
+                return point;
+            });
+
+            await updateActiveGame({ ...game, points: updatedPoints }, `Snapped ${tasksToSnap.length} tasks to road`);
+            alert(`✓ Successfully snapped ${tasksToSnap.length} task${tasksToSnap.length !== 1 ? 's' : ''} to road`);
+        } catch (error) {
+            console.error('Error snapping to road:', error);
+            alert('Failed to snap tasks to road. Please check the console for details.');
+        }
+
+        // Reset selection box and mode
+        setSelectionBox({ start: null, current: null });
+        setSnapToRoadMode(false);
+    };
+
     // CRITICAL NULL CHECK: Prevent crashes if no playground exists
     if (!activePlayground) {
         return (
