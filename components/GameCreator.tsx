@@ -2003,6 +2003,69 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                 </div>
             </div>
         )}
+
+        {/* Create Custom Style Modal */}
+        {showCreateStyleModal && (
+            <div
+                className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in"
+                onClick={() => setShowCreateStyleModal(false)}
+            >
+                <div
+                    className="bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="bg-gradient-to-r from-orange-600 to-orange-700 p-4 border-b-2 border-orange-500 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-lg font-black text-white uppercase">Create Custom Style</h3>
+                            <p className="text-xs text-orange-100 uppercase font-bold mt-1">Save this style to your library</p>
+                        </div>
+                        <button
+                            onClick={() => setShowCreateStyleModal(false)}
+                            className="p-2 hover:bg-white/20 rounded-full text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <div className="bg-slate-950 border border-slate-700 rounded-xl p-4 mb-4">
+                            <p className="text-xs text-slate-400 mb-3">
+                                <span className="font-bold text-white">Note:</span> This will save your current custom JSON style
+                                to your library so you can easily reuse it in other games.
+                            </p>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Style Name</label>
+                            <input
+                                type="text"
+                                value={customStyleName}
+                                onChange={(e) => setCustomStyleName(e.target.value)}
+                                placeholder="e.g., Dark Blue Theme, Vintage Map, etc."
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 outline-none focus:border-orange-500 transition-colors"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleCreateCustomStyle();
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowCreateStyleModal(false)}
+                                className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase text-xs transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreateCustomStyle}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center justify-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Create Style
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };
