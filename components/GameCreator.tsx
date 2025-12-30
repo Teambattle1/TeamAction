@@ -739,7 +739,21 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="space-y-4 animate-in fade-in">
                                   <div>
                                       <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Ends At (Local Time)</label>
-                                      <input type="datetime-local" value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-red-500 outline-none" />
+                                      <button
+                                          onClick={() => setShowDateTimePicker(true)}
+                                          className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold hover:border-red-500 transition-colors text-left flex items-center justify-between group"
+                                      >
+                                          <span className={endDateTime ? 'text-white' : 'text-slate-500'}>
+                                              {endDateTime ? new Date(endDateTime).toLocaleString('en-GB', {
+                                                  day: '2-digit',
+                                                  month: 'short',
+                                                  year: 'numeric',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit'
+                                              }) : 'Click to select date & time'}
+                                          </span>
+                                          <Calendar className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
+                                      </button>
                                   </div>
                                   <div>
                                       <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Timer Title</label>
