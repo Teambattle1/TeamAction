@@ -1693,6 +1693,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             const isMarked = markedTaskIds.has(point.id);
                             const displaySize = (point.playgroundScale || 1) * 48;
                             const isDraggingThis = draggingTaskId === point.id;
+
+                            // Check if this task is a target of any action from other tasks
+                            const isActionTarget = uniquePlaygroundPoints.some(source =>
+                                source.id !== point.id && source.logic && (
+                                    (source.logic.onCorrect?.some((a: any) => a.targetId === point.id || a === point.id)) ||
+                                    (source.logic.onIncorrect?.some((a: any) => a.targetId === point.id || a === point.id)) ||
+                                    (source.logic.onOpen?.some((a: any) => a.targetId === point.id || a === point.id))
+                                )
+                            );
                             return (
                                 <div
                                     key={point.id}
