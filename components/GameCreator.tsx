@@ -162,6 +162,7 @@ const MapStyleCard: React.FC<MapStyleCardProps> = ({
                                     setImageError(true);
                                 }}
                                 loading="lazy"
+                                crossOrigin="anonymous"
                             />
                         </>
                     ) : (
