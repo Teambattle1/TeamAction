@@ -204,6 +204,37 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setSelectedTemplateIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
     };
 
+    // Hover preview handlers
+    const handleTaskMouseEnter = (task: TaskTemplate) => {
+        // Clear any existing timer
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+        }
+
+        // Set a 2-second timer to show the preview
+        hoverTimerRef.current = setTimeout(() => {
+            setHoveredTask(task);
+            setShowPreview(true);
+        }, 2000);
+    };
+
+    const handleTaskMouseLeave = () => {
+        // Clear the timer if mouse leaves before 2 seconds
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = null;
+        }
+    };
+
+    const handleClosePreview = () => {
+        setShowPreview(false);
+        setHoveredTask(null);
+        if (hoverTimerRef.current) {
+            clearTimeout(hoverTimerRef.current);
+            hoverTimerRef.current = null;
+        }
+    };
+
     // Convert TaskTemplate to GamePoint for editing
     const templateToGamePoint = (template: TaskTemplate): GamePoint => {
         return {
