@@ -1232,87 +1232,6 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                           )}
                       </div>
 
-                      {/* Map Configuration Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          
-                          {/* Pin Settings */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Pin settings</label>
-                              <div className="space-y-3">
-                                  <RadioOption 
-                                      label="Display task order on pin"
-                                      selected={pinDisplayMode === 'order'}
-                                      onClick={() => setPinDisplayMode('order')}
-                                  />
-                                  <RadioOption 
-                                      label="Display task score on map"
-                                      selected={pinDisplayMode === 'score'}
-                                      onClick={() => setPinDisplayMode('score')}
-                                  />
-                                  <RadioOption 
-                                      label="Display nothing on pin"
-                                      selected={pinDisplayMode === 'none'}
-                                      onClick={() => setPinDisplayMode('none')}
-                                  />
-                                  <div className="pt-2 border-t border-slate-800">
-                                      <CheckboxOption 
-                                          label="Display task short intro under pin"
-                                          checked={showShortIntroUnderPin}
-                                          onChange={setShowShortIntroUnderPin}
-                                      />
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Map Interaction Settings */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Map interaction settings</label>
-                              <div className="space-y-3">
-                                  <RadioOption 
-                                      label="Disable opening tasks on the map by click"
-                                      selected={mapInteraction === 'disable_click'}
-                                      onClick={() => setMapInteraction('disable_click')}
-                                  />
-                                  <RadioOption 
-                                      label="Allow opening all tasks on the map by click"
-                                      selected={mapInteraction === 'allow_all'}
-                                      onClick={() => setMapInteraction('allow_all')}
-                                  />
-                                  <RadioOption 
-                                      label="Allow opening specific tasks on map"
-                                      selected={mapInteraction === 'allow_specific'}
-                                      onClick={() => setMapInteraction('allow_specific')}
-                                  />
-                              </div>
-                          </div>
-
-                          {/* Additional Map Settings */}
-                          <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Additional map settings</label>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <CheckboxOption 
-                                      label="Hide my location"
-                                      checked={hideMyLocation}
-                                      onChange={setHideMyLocation}
-                                  />
-                                  <CheckboxOption 
-                                      label="Show my track"
-                                      checked={showMyTrack}
-                                      onChange={setShowMyTrack}
-                                  />
-                                  <CheckboxOption 
-                                      label="Allow navigation"
-                                      checked={allowNavigation}
-                                      onChange={setAllowNavigation}
-                                  />
-                                  <CheckboxOption 
-                                      label="Allow opening tasks if GPS signal weak (beta)"
-                                      checked={allowWeakGps}
-                                      onChange={setAllowWeakGps}
-                                  />
-                              </div>
-                          </div>
-                      </div>
                   </div>
               );
           case 'PLAY': // NEW TAB
@@ -1460,6 +1379,88 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       onChange={(e) => setHideScoreAfter(e.target.value.toUpperCase())}
                                       placeholder="HH:MM:SS"
                                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500 uppercase"
+                                  />
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Map Configuration Settings */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                          {/* Pin Settings */}
+                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Pin settings</label>
+                              <div className="space-y-3">
+                                  <RadioOption
+                                      label="Display task order on pin"
+                                      selected={pinDisplayMode === 'order'}
+                                      onClick={() => setPinDisplayMode('order')}
+                                  />
+                                  <RadioOption
+                                      label="Display task score on map"
+                                      selected={pinDisplayMode === 'score'}
+                                      onClick={() => setPinDisplayMode('score')}
+                                  />
+                                  <RadioOption
+                                      label="Display nothing on pin"
+                                      selected={pinDisplayMode === 'none'}
+                                      onClick={() => setPinDisplayMode('none')}
+                                  />
+                                  <div className="pt-2 border-t border-slate-800">
+                                      <CheckboxOption
+                                          label="Display task short intro under pin"
+                                          checked={showShortIntroUnderPin}
+                                          onChange={setShowShortIntroUnderPin}
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Map Interaction Settings */}
+                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Map interaction settings</label>
+                              <div className="space-y-3">
+                                  <RadioOption
+                                      label="Disable opening tasks on the map by click"
+                                      selected={mapInteraction === 'disable_click'}
+                                      onClick={() => setMapInteraction('disable_click')}
+                                  />
+                                  <RadioOption
+                                      label="Allow opening all tasks on the map by click"
+                                      selected={mapInteraction === 'allow_all'}
+                                      onClick={() => setMapInteraction('allow_all')}
+                                  />
+                                  <RadioOption
+                                      label="Allow opening specific tasks on map"
+                                      selected={mapInteraction === 'allow_specific'}
+                                      onClick={() => setMapInteraction('allow_specific')}
+                                  />
+                              </div>
+                          </div>
+
+                          {/* Additional Map Settings */}
+                          <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Additional map settings</label>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <CheckboxOption
+                                      label="Hide my location"
+                                      checked={hideMyLocation}
+                                      onChange={setHideMyLocation}
+                                  />
+                                  <CheckboxOption
+                                      label="Show my track"
+                                      checked={showMyTrack}
+                                      onChange={setShowMyTrack}
+                                  />
+                                  <CheckboxOption
+                                      label="Allow navigation"
+                                      checked={allowNavigation}
+                                      onChange={setAllowNavigation}
+                                  />
+                                  <CheckboxOption
+                                      label="Allow opening tasks if GPS signal weak (beta)"
+                                      checked={allowWeakGps}
+                                      onChange={setAllowWeakGps}
                                   />
                               </div>
                           </div>
