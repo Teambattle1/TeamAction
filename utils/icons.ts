@@ -13,6 +13,9 @@ export const ICON_COMPONENTS: Record<IconId | 'timeline', React.ElementType> = {
   question: HelpCircle,
   skull: Skull,
   treasure: Gem,
+  music: Music,
+  nature: Leaf,
+  world: Globe,
   timeline: ListOrdered // Added fallback mapping just in case
 };
 
