@@ -338,6 +338,20 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 }
             }
 
+            // Apply task list filter
+            if (taskListFilter) {
+                const selectedList = taskLists.find(list => list.id === taskListFilter);
+                if (selectedList) {
+                    // Check if this task is in the selected list
+                    const taskInList = selectedList.tasks.some(listTask =>
+                        listTask.task.question === task.task.question && listTask.title === task.title
+                    );
+                    if (!taskInList) {
+                        return false;
+                    }
+                }
+            }
+
             // Apply column filters
             if (columnFilters['title'] && !task.title.toLowerCase().includes(columnFilters['title'].toLowerCase())) {
                 return false;
