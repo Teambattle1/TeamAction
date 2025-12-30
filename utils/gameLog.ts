@@ -160,7 +160,8 @@ export const logGameChange = (
  */
 export const getFormattedLogs = (
   game: Game | null | undefined,
-  limit?: number
+  limit?: number,
+  language?: Language
 ): Array<{
   timestamp: number;
   date: string;
@@ -172,6 +173,9 @@ export const getFormattedLogs = (
   if (!game || typeof game !== 'object') {
     return [];
   }
+
+  // Use game's language if not explicitly provided
+  const displayLanguage = language || game.language || 'English';
 
   // Get changelog, default to empty array
   const changeLog = Array.isArray(game.changeLog) ? game.changeLog : [];
@@ -185,8 +189,8 @@ export const getFormattedLogs = (
   let entries = changeLog
     .filter((entry: any): entry is GameChangeLogEntry => {
       // Defensive filter: ensure entry is valid
-      return entry !== null && 
-             entry !== undefined && 
+      return entry !== null &&
+             entry !== undefined &&
              typeof entry === 'object' &&
              typeof entry.timestamp === 'number' &&
              typeof entry.action === 'string';
@@ -205,17 +209,18 @@ export const getFormattedLogs = (
         dateObj = new Date();
       }
 
-      // Format date and time
-      const date = dateObj.toLocaleDateString('en-US', {
+      // Format date and time using language-aware utilities
+      const date = formatDate(dateObj, displayLanguage, {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
 
-      const time = dateObj.toLocaleTimeString('en-US', {
+      const time = formatTime(dateObj, displayLanguage, {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit'
+        second: '2-digit',
+        hour12: false
       });
 
       // Safely get user string
