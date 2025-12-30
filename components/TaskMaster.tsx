@@ -943,15 +943,24 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     />
                                 </div>
 
-                                {/* Migration Button */}
-                                <button
-                                    onClick={() => setShowMigrationModal(true)}
-                                    className="px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center gap-2 shadow-lg"
-                                    title="Fix all 'GLOBAL' languages and auto-detect from text"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    Fix Languages
-                                </button>
+                                {/* Task List Filter */}
+                                <div className="w-full sm:w-auto">
+                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
+                                        <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Filter by Task List:</p>
+                                        <select
+                                            value={taskListFilter}
+                                            onChange={(e) => setTaskListFilter(e.target.value)}
+                                            className="w-full sm:w-48 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none focus:border-purple-500 transition-all"
+                                        >
+                                            <option value="">All Tasks</option>
+                                            {taskLists.map(list => (
+                                                <option key={list.id} value={list.id}>
+                                                    {list.name} ({list.tasks.length})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
 
                                 {/* Language Filter */}
                                 <div className="w-full sm:w-auto">
@@ -982,6 +991,47 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             )}
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Settings Button with Dropdown */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                                        className="px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center gap-2 shadow-lg"
+                                        title="Settings & Tools"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        Settings
+                                    </button>
+
+                                    {/* Settings Dropdown */}
+                                    {showSettingsMenu && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowSettingsMenu(false)} />
+                                            <div className="absolute right-0 top-full mt-2 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setShowLoquiz(true);
+                                                        setShowSettingsMenu(false);
+                                                    }}
+                                                    className="w-full px-4 py-3 text-left hover:bg-slate-800 transition-colors flex items-center gap-3 text-blue-400 font-bold text-xs uppercase border-b border-slate-800"
+                                                >
+                                                    <Library className="w-4 h-4" />
+                                                    Import from Loquiz
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowMigrationModal(true);
+                                                        setShowSettingsMenu(false);
+                                                    }}
+                                                    className="w-full px-4 py-3 text-left hover:bg-slate-800 transition-colors flex items-center gap-3 text-yellow-400 font-bold text-xs uppercase"
+                                                >
+                                                    <RefreshCw className="w-4 h-4" />
+                                                    Fix All Languages
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
