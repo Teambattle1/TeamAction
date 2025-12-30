@@ -207,6 +207,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [isUploadingTaskBg, setIsUploadingTaskBg] = useState(false);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const templateImgInputRef = useRef<HTMLInputElement>(null);
