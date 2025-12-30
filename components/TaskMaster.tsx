@@ -927,6 +927,16 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     />
                                 </div>
 
+                                {/* Migration Button */}
+                                <button
+                                    onClick={() => setShowMigrationModal(true)}
+                                    className="px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center gap-2 shadow-lg"
+                                    title="Fix all 'GLOBAL' languages and auto-detect from text"
+                                >
+                                    <RefreshCw className="w-4 h-4" />
+                                    Fix Languages
+                                </button>
+
                                 {/* Language Filter */}
                                 <div className="w-full sm:w-auto">
                                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
