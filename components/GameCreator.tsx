@@ -115,7 +115,7 @@ const TABS = [
     { id: 'LOGS', label: 'Logs', icon: ScrollText },
 ];
 
-const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, onDelete }) => {
+const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, onDelete, onOpenPlaygroundEditor }) => {
   const [activeTab, setActiveTab] = useState('GAME');
 
   // Core Info
