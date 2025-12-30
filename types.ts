@@ -24,10 +24,11 @@ export interface TeamMember {
   deviceId: string;
   userName: string;
   lastSeen: number;
-  location?: Coordinate; 
-  photoUrl?: string; 
-  role?: 'captain' | 'member'; 
+  location?: Coordinate;
+  photoUrl?: string;
+  role?: 'captain' | 'member';
   isSolving?: boolean; // New: Tracks if user is currently in a task modal
+  isRetired?: boolean; // New: Tracks if captain has retired this member (votes don't count)
 }
 
 export interface Team {
@@ -317,6 +318,7 @@ export interface GameTaskConfiguration {
   hintLimit?: number;
   showAnswerCorrectnessMode: 'never' | 'always' | 'task_specific';
   showAfterAnswerComment: boolean;
+  teamVotingMode: 'require_consensus' | 'captain_submit'; // New: How team voting works
 }
 
 export interface MapConfiguration {
