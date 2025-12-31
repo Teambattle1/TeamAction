@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GamePoint, GameAction, TaskLogic, ActionType, Playground } from '../types';
 import { X, Plus, Trash2, Zap, CheckCircle, XCircle, Unlock, Lock, Eye, MessageSquare, Music, Coins, Save, ArrowRight, Skull, PenTool, LayoutGrid, Info } from 'lucide-react';
@@ -61,16 +60,39 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
   };
 
   const handleSave = () => {
-      // Validation Logic
+      // ENHANCED VALIDATION: Check all action types for required fields
       const allTriggers = ['onOpen', 'onCorrect', 'onIncorrect'];
       for (const trigger of allTriggers) {
           const actions = logic[trigger as TriggerType];
           if (actions) {
-               const invalid = actions.find(a => (['unlock', 'lock', 'reveal', 'open_playground'].includes(a.type) && !a.targetId));
-               if (invalid) {
+               // Check for missing targetId
+               const missingTarget = actions.find(a =>
+                   (['unlock', 'lock', 'reveal', 'open_playground'].includes(a.type) && !a.targetId)
+               );
+               if (missingTarget) {
                    const triggerLabel = TRIGGER_TABS.find(t => t.id === trigger)?.label || trigger;
-                   const actionLabel = ACTION_TYPES.find(t => t.id === invalid.type)?.label || invalid.type;
-                   alert(`Please select a target for the "${actionLabel}" action in "${triggerLabel}". An action cannot be left incomplete.`);
+                   const actionLabel = ACTION_TYPES.find(t => t.id === missingTarget.type)?.label || missingTarget.type;
+                   alert(`Please select a target for the "${actionLabel}" action in "${triggerLabel}".`);
+                   return;
+               }
+
+               // Check for missing or invalid score values
+               const invalidScore = actions.find(a =>
+                   a.type === 'score' && (a.value === undefined || !Number.isFinite(a.value))
+               );
+               if (invalidScore) {
+                   const triggerLabel = TRIGGER_TABS.find(t => t.id === trigger)?.label || trigger;
+                   alert(`Please enter a valid number for the score action in "${triggerLabel}".`);
+                   return;
+               }
+
+               // Check for empty message text
+               const emptyMessage = actions.find(a =>
+                   a.type === 'message' && (!a.value || String(a.value).trim().length === 0)
+               );
+               if (emptyMessage) {
+                   const triggerLabel = TRIGGER_TABS.find(t => t.id === trigger)?.label || trigger;
+                   alert(`Please enter message text for the message action in "${triggerLabel}".`);
                    return;
                }
           }
@@ -100,14 +122,17 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
               {/* Action specific inputs */}
               <div className="flex flex-col gap-2">
                   {(action.type === 'unlock' || action.type === 'lock' || action.type === 'reveal') && (
-                      <select 
+                      <select
                           className="w-full p-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 text-sm focus:border-indigo-500 outline-none"
                           value={action.targetId || ''}
                           onChange={(e) => handleUpdateAction(action.id, { targetId: e.target.value })}
                       >
                           <option value="" disabled>Select Target Task...</option>
-                          {allPoints.filter(p => p.id !== point.id && !p.isSectionHeader).map(p => (
-                              <option key={p.id} value={p.id}>{p.title}</option>
+                          {allPoints
+                              .map((p, idx) => ({ ...p, order: idx + 1 }))
+                              .filter(p => p.id !== point.id && !p.isSectionHeader)
+                              .map(p => (
+                              <option key={p.id} value={p.id}>#{String(p.order).padStart(2, '0')} {p.title}</option>
                           ))}
                       </select>
                   )}

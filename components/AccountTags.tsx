@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, Tag, Plus, Trash2, Palette, Search, Hash, 
@@ -55,10 +54,14 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
             const low = tag.toLowerCase();
             map[low] = (map[low] || 0) + 1;
         }));
-        games.forEach(g => g.points.forEach(p => p.tags?.forEach(tag => {
-            const low = tag.toLowerCase();
-            map[low] = (map[low] || 0) + 1;
-        })));
+        games.forEach(g => {
+            if (g.points && Array.isArray(g.points)) {
+                g.points.forEach(p => p.tags?.forEach(tag => {
+                    const low = tag.toLowerCase();
+                    map[low] = (map[low] || 0) + 1;
+                }));
+            }
+        });
         return map;
     }, [library, games]);
 
@@ -114,36 +117,62 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
         if (count > 0) {
             setPurgeTarget(name);
         } else {
+            // Tag not in use, just remove from registry
             const next = { ...tagColors };
             delete next[name];
+            delete next[name.toLowerCase()]; // Also remove lowercase version if it exists
             saveTags(next);
-            if (editingOldName === name) handleCancelEdit();
+            console.log(`[AccountTags] Removed unused tag "${name}" from registry`);
+            if (editingOldName === name || editingOldName?.toLowerCase() === name.toLowerCase()) {
+                handleCancelEdit();
+            }
         }
     };
 
     const handleConfirmPurge = async () => {
         if (!purgeTarget || !onDeleteTagGlobally) return;
         setIsPurging(true);
-        const tagToPurge = purgeTarget; 
+        const tagToPurge = purgeTarget;
+
         try {
+            console.log(`[AccountTags] Starting global purge of tag: "${tagToPurge}"`);
+
+            // Delete from database FIRST (all tasks/games)
+            await onDeleteTagGlobally(tagToPurge);
+
+            console.log(`[AccountTags] Database purge complete for: "${tagToPurge}"`);
+
+            // THEN delete from localStorage to complete the operation
             const next = { ...tagColors };
             delete next[tagToPurge];
+            delete next[tagToPurge.toLowerCase()]; // Also remove lowercase version if it exists
             saveTags(next);
-            
-            await onDeleteTagGlobally(tagToPurge);
-            
+
+            console.log(`[AccountTags] Tag "${tagToPurge}" removed from registry`);
+
             setPurgeTarget(null);
-            if (editingOldName === tagToPurge) handleCancelEdit();
+            if (editingOldName === tagToPurge || editingOldName?.toLowerCase() === tagToPurge.toLowerCase()) {
+                handleCancelEdit();
+            }
         } catch (error) {
             console.error("Tag purge failed:", error);
+            alert(`Failed to delete tag "${tagToPurge}". Please try again.\n\nError: ${error}`);
+            // Keep purge target so user can retry
         } finally {
             setIsPurging(false);
         }
     };
 
     // Combined list of registered and discovered tags
+    // Only show tags that are configured (in tagColors) OR currently in use (in inUseTags)
+    // Deleted tags will not reappear since they're removed from tagColors
     const displayTags = useMemo(() => {
-        const combined = new Set([...Object.keys(tagColors), ...inUseTags]);
+        const combined = new Set<string>();
+        // Add all configured tags
+        Object.keys(tagColors).forEach(tag => combined.add(tag));
+        // Add all in-use tags (so users see tags they're using even if not configured)
+        inUseTags.forEach(tag => combined.add(tag));
+
         return Array.from(combined)
             .filter(name => name.toLowerCase().includes(searchQuery.toLowerCase()))
             .sort((a, b) => a.localeCompare(b));

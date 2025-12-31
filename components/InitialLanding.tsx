@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  Users, Gamepad2, Library, LayoutList, Shield, Edit2, 
+import {
+  Users, Gamepad2, Library, LayoutList, Shield, Edit2,
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin
 } from 'lucide-react';
 import { Game, AuthUser } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'CREATE_GAME' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR' | 'MANAGE_TEAMS') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'CREATE_GAME' | 'CREATE_MAP_GAME' | 'CREATE_PLAYZONE_GAME' | 'CREATE_ELIMINATION_GAME' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR' | 'MANAGE_TEAMS' | 'GAMESTATS') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
@@ -18,7 +18,7 @@ interface InitialLandingProps {
   onLogout?: () => void;
 }
 
-type CategoryView = 'HOME' | 'SETTINGS' | 'CREATE' | 'EDIT_MENU' | 'PLAY_MENU' | 'PLAY_TEAMS_MENU' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
+type CategoryView = 'HOME' | 'SETTINGS' | 'CREATE' | 'CREATE_GAME_SUBMENU' | 'EDIT_MENU' | 'PLAY_MENU' | 'PLAY_TEAMS_MENU' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
 
 const NavCard = ({ 
   title, 
@@ -129,21 +129,33 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   // Dynamic Header Content
   const getHeaderContent = () => {
       switch (view) {
-          case 'CREATE': return { title: 'CREATE CENTER', subtitle: 'NEW RESOURCE SETUP' };
-          case 'EDIT_MENU': return { title: 'EDIT CENTER', subtitle: 'MODIFY RESOURCES' };
-          case 'PLAY_MENU': return { title: 'PLAY CENTER', subtitle: 'GAME OPERATIONS' };
-          case 'PLAY_TEAMS_MENU': return { title: 'TEAM OPERATIONS', subtitle: 'SQUAD MANAGEMENT' };
-          case 'SETTINGS': return { title: 'SYSTEM TOOLS', subtitle: 'GLOBAL CONFIGURATION' };
-          case 'PREVIEW_SELECT': return { title: 'SIMULATION', subtitle: 'DEVICE PREVIEW MODE' };
-          default: return { title: 'COMMAND CENTER', subtitle: 'TEAMACTION MANAGEMENT' };
+          case 'CREATE': return { title: 'CREATE CENTER', subtitle: 'NEW RESOURCE SETUP', showBranding: false };
+          case 'CREATE_GAME_SUBMENU': return { title: 'GAME TYPE SELECTOR', subtitle: 'CHOOSE GAME MODE', showBranding: false };
+          case 'EDIT_MENU': return { title: 'EDIT CENTER', subtitle: 'MODIFY RESOURCES', showBranding: false };
+          case 'PLAY_MENU': return { title: 'PLAY CENTER', subtitle: 'GAME OPERATIONS', showBranding: false };
+          case 'PLAY_TEAMS_MENU': return { title: 'TEAM OPERATIONS', subtitle: 'SQUAD MANAGEMENT', showBranding: false };
+          case 'SETTINGS': return { title: 'SYSTEM TOOLS', subtitle: 'GLOBAL CONFIGURATION', showBranding: false };
+          case 'PREVIEW_SELECT': return { title: 'SIMULATION', subtitle: 'DEVICE PREVIEW MODE', showBranding: false };
+          default: return {
+              title: 'HOME',
+              subtitle: 'OPERATION CENTER',
+              showBranding: true,
+              brandingParts: [
+                  { text: 'TEAM', color: 'text-white' },
+                  { text: 'CHALLENGE', color: 'text-orange-500' }
+              ]
+          };
       }
   };
 
-  const { title: pageTitle, subtitle: pageSubtitle } = getHeaderContent();
+  const headerContent = getHeaderContent();
 
   // Navigation Logic
   const handleBack = () => {
       switch (view) {
+          case 'CREATE_GAME_SUBMENU':
+              setView('CREATE');
+              break;
           case 'PLAY_TEAMS_MENU':
               setView('PLAY_MENU');
               break;
@@ -184,37 +196,60 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderCreateMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
-              <MapPinButton 
-                  title="GAME" 
-                  icon={Gamepad2} 
-                  gradient="bg-gradient-to-br from-orange-500 to-red-500" 
-                  onClick={() => onAction('CREATE_GAME')} 
+          <div className="flex flex-col md:flex-row gap-12 md:gap-16 lg:gap-20 items-center justify-center w-full px-4 pb-10">
+              <MapPinButton
+                  title="GAME"
+                  icon={Gamepad2}
+                  gradient="bg-gradient-to-br from-orange-500 to-red-500"
+                  onClick={() => setView('CREATE_GAME_SUBMENU')}
                   delay={0}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="TASK" 
-                  icon={FilePlus} 
-                  gradient="bg-gradient-to-br from-blue-500 to-cyan-500" 
-                  onClick={() => onAction('TASKS')} 
+              <MapPinButton
+                  title="TASK"
+                  icon={FilePlus}
+                  gradient="bg-gradient-to-br from-blue-500 to-cyan-500"
+                  onClick={() => onAction('TASKS')}
+                  delay={50}
+                  scale={0.75}
+              />
+              <MapPinButton
+                  title="PLAYZONE"
+                  icon={Globe}
+                  gradient="bg-gradient-to-br from-emerald-500 to-green-500"
+                  onClick={() => onAction('PLAYGROUNDS')}
                   delay={100}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="TASKLIST" 
-                  icon={LayoutList} 
-                  gradient="bg-gradient-to-br from-purple-500 to-indigo-500" 
-                  onClick={() => onAction('TASKLIST')} 
-                  delay={200}
+          </div>
+      </div>
+  );
+
+  const renderGameTypeSubmenu = () => (
+      <div className="flex flex-col items-center w-full">
+          <div className="flex flex-col md:flex-row gap-12 md:gap-16 lg:gap-20 items-center justify-center w-full px-4 pb-10">
+              <MapPinButton
+                  title="MAP"
+                  icon={MapPin}
+                  gradient="bg-gradient-to-br from-orange-500 to-red-500"
+                  onClick={() => onAction('CREATE_MAP_GAME')}
+                  delay={0}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="PLAYGROUND" 
-                  icon={Globe} 
-                  gradient="bg-gradient-to-br from-emerald-500 to-green-500" 
-                  onClick={() => onAction('PLAYGROUNDS')} 
-                  delay={300}
+              <MapPinButton
+                  title="PLAYZONE"
+                  icon={Smartphone}
+                  gradient="bg-gradient-to-br from-teal-500 to-emerald-500"
+                  onClick={() => onAction('CREATE_PLAYZONE_GAME')}
+                  delay={50}
+                  scale={0.75}
+              />
+              <MapPinButton
+                  title="ELIMINATION"
+                  icon={Bomb}
+                  gradient="bg-gradient-to-br from-red-500 to-pink-500"
+                  onClick={() => onAction('CREATE_ELIMINATION_GAME')}
+                  delay={100}
                   scale={0.75}
               />
           </div>
@@ -223,37 +258,29 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderEditMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 w-full justify-items-center pb-10 max-w-[1400px] mx-auto">
-              <MapPinButton 
-                  title="EDIT GAME" 
-                  icon={Gamepad2} 
-                  gradient="bg-gradient-to-br from-cyan-600 to-blue-600" 
-                  onClick={() => onAction('GAMES')} 
+          <div className="flex flex-col md:flex-row gap-12 md:gap-16 lg:gap-20 items-center justify-center w-full px-4 pb-10">
+              <MapPinButton
+                  title="EDIT GAME"
+                  icon={Gamepad2}
+                  gradient="bg-gradient-to-br from-cyan-600 to-blue-600"
+                  onClick={() => onAction('GAMES')}
                   delay={0}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="EDIT TASK" 
-                  icon={Edit2} 
-                  gradient="bg-gradient-to-br from-purple-600 to-violet-600" 
-                  onClick={() => onAction('TASKS')} 
+              <MapPinButton
+                  title="EDIT TASK"
+                  icon={Edit2}
+                  gradient="bg-gradient-to-br from-purple-600 to-violet-600"
+                  onClick={() => onAction('TASKS')}
                   delay={100}
                   scale={0.75}
               />
-              <MapPinButton 
-                  title="EDIT LIST" 
-                  icon={LayoutList} 
-                  gradient="bg-gradient-to-br from-pink-600 to-rose-600" 
-                  onClick={() => onAction('TASKLIST')} 
+              <MapPinButton
+                  title="EDIT PLAYZONE"
+                  icon={Globe}
+                  gradient="bg-gradient-to-br from-emerald-600 to-teal-600"
+                  onClick={() => onAction('PLAYGROUNDS')}
                   delay={200}
-                  scale={0.75}
-              />
-              <MapPinButton 
-                  title="EDIT ZONE" 
-                  icon={Globe} 
-                  gradient="bg-gradient-to-br from-emerald-600 to-teal-600" 
-                  onClick={() => onAction('PLAYGROUNDS')} 
-                  delay={300}
                   scale={0.75}
               />
           </div>
@@ -262,7 +289,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderPlayMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+          <div className="flex flex-col md:flex-row gap-12 md:gap-16 lg:gap-20 items-center justify-center w-full px-4 pb-10">
               <MapPinButton 
                   title="PLAY GAME" 
                   icon={Play} 
@@ -293,7 +320,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
   const renderPlayTeamsMenu = () => (
       <div className="flex flex-col items-center w-full">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full justify-items-center pb-10 max-w-[1200px] mx-auto">
+          <div className="flex flex-col md:flex-row gap-12 md:gap-16 lg:gap-20 items-center justify-center w-full px-4 pb-10">
               <MapPinButton 
                   title="TEAMLOBBY" 
                   icon={Users} 
@@ -350,40 +377,26 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           color="bg-blue-600"
                           onClick={() => onAction('DATABASE')} 
                       />
-                      <NavCard 
-                          title="GLOBAL LIBRARY" 
-                          subtitle="TASK REPOSITORY" 
-                          icon={Library} 
-                          color="bg-emerald-500"
-                          onClick={() => onAction('TASKS')}
-                      />
-                      <NavCard 
-                          title="TEAM LOBBY" 
-                          subtitle="MANAGE TEAMS" 
-                          icon={Anchor} 
-                          color="bg-rose-500"
-                          onClick={() => onAction('TEAM_LOBBY')}
-                      />
-                      <NavCard 
-                          title="APP PREVIEW" 
-                          subtitle="SIMULATE DEVICES" 
-                          icon={Smartphone} 
-                          color="bg-teal-500"
-                          onClick={() => setView('PREVIEW_SELECT')} 
-                      />
-                      <NavCard 
-                          title="QR CODES" 
-                          subtitle="PRINT & DOWNLOAD" 
-                          icon={QrCode} 
+                      <NavCard
+                          title="QR CODES"
+                          subtitle="PRINT & DOWNLOAD"
+                          icon={QrCode}
                           color="bg-indigo-500"
                           onClick={() => onAction('QR_CODES')}
                       />
-                      <NavCard 
-                          title="DELETE GAMES" 
-                          subtitle="REMOVE SESSIONS" 
-                          icon={Trash2} 
+                      <NavCard
+                          title="GAMESTATS"
+                          subtitle="GAME ANALYTICS"
+                          icon={BarChart3}
+                          color="bg-cyan-500"
+                          onClick={() => onAction('GAMESTATS')}
+                      />
+                      <NavCard
+                          title="DELETE GAMES"
+                          subtitle="REMOVE SESSIONS"
+                          icon={Trash2}
                           color="bg-red-600"
-                          onClick={() => onAction('DELETE_GAMES')} 
+                          onClick={() => onAction('DELETE_GAMES')}
                       />
                   </div>
               );
@@ -498,17 +511,31 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                 {/* Title */}
                 <div className="flex flex-col items-center gap-4 animate-in slide-in-from-top-4 duration-500">
                     <div className="text-center">
-                        <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none mb-2 text-white drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)]">
-                            {pageTitle}
-                        </h1>
-                        <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
-                            {pageSubtitle}
-                        </p>
+                        {headerContent.showBranding ? (
+                            <>
+                                <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none mb-2 drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)]">
+                                    <span className="text-white">{headerContent.brandingParts?.[0]?.text}</span>
+                                    <span className="text-orange-500">{headerContent.brandingParts?.[1]?.text}</span>
+                                </h1>
+                                <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
+                                    {headerContent.subtitle}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none mb-2 text-white drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)]">
+                                    {headerContent.title}
+                                </h1>
+                                <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
+                                    {headerContent.subtitle}
+                                </p>
+                            </>
+                        )}
                     </div>
                 </div>
                 
-                {/* Session Selector (Hidden in Create Mode) */}
-                {view !== 'CREATE' && (
+                {/* Session Selector (Only shown in Edit and Play Menus) */}
+                {(view === 'EDIT_MENU' || view === 'PLAY_MENU') && (
                     <div className="relative z-20 animate-in slide-in-from-bottom-2 duration-500 delay-100">
                         <button 
                             onClick={() => setShowGameMenu(!showGameMenu)}
@@ -540,13 +567,14 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
-              {view === 'HOME' || view === 'CREATE' || view === 'EDIT_MENU' || view === 'PLAY_MENU' || view === 'PLAY_TEAMS_MENU' ? (
+              {view === 'HOME' || view === 'CREATE' || view === 'CREATE_GAME_SUBMENU' || view === 'EDIT_MENU' || view === 'PLAY_MENU' || view === 'PLAY_TEAMS_MENU' ? (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
-                      {view === 'HOME' ? renderHome() : 
-                       (view === 'CREATE' ? renderCreateMenu() : 
-                       (view === 'EDIT_MENU' ? renderEditMenu() : 
-                       (view === 'PLAY_MENU' ? renderPlayMenu() : 
-                       renderPlayTeamsMenu())))}
+                      {view === 'HOME' ? renderHome() :
+                       (view === 'CREATE' ? renderCreateMenu() :
+                       (view === 'CREATE_GAME_SUBMENU' ? renderGameTypeSubmenu() :
+                       (view === 'EDIT_MENU' ? renderEditMenu() :
+                       (view === 'PLAY_MENU' ? renderPlayMenu() :
+                       renderPlayTeamsMenu()))))}
                   </div>
               ) : (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">

@@ -1,21 +1,23 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { GamePoint, IconId, TaskType, PointActivationType, PointCompletionLogic, TimelineItem } from '../types';
+import { detectLanguageFromText, normalizeLanguage } from '../utils/i18n';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { getCroppedImg } from '../utils/image';
 import Cropper from 'react-easy-crop';
 import { generateAiImage } from '../services/ai';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import QRCode from 'qrcode';
-import { 
-  X, Save, Trash2, Upload, Link, Loader2, CheckCircle, 
-  AlignLeft, CheckSquare, ListChecks, ToggleLeft, SlidersHorizontal, 
-  Plus, AlertCircle, ZoomIn, Scissors, Image as ImageIcon, Tag, 
-  Copy, KeyRound, ChevronDown, ChevronsUpDown, RotateCw, Type, 
-  Palette, Bold, Italic, Underline, MonitorPlay, Speaker, MapPin, 
+import MeetingPointMapPicker from './MeetingPointMapPicker';
+import {
+  X, Save, Trash2, Upload, Link, Loader2, CheckCircle,
+  AlignLeft, CheckSquare, ListChecks, ToggleLeft, SlidersHorizontal,
+  Plus, AlertCircle, ZoomIn, Scissors, Image as ImageIcon, Tag,
+  Copy, KeyRound, ChevronDown, ChevronsUpDown, RotateCw, Type,
+  Palette, Bold, Italic, Underline, MonitorPlay, Speaker, MapPin,
   Settings, Zap, MessageSquare, Clock, Globe, Lock, Check, Wand2, Hash,
   Edit2, MousePointerClick, EyeOff, Eye, Maximize, Smartphone, Monitor, QrCode, Download, Map as MapIcon, Info,
-  ListOrdered
+  ListOrdered, Wifi
 } from 'lucide-react';
 
 interface TaskEditorProps {
@@ -24,7 +26,9 @@ interface TaskEditorProps {
   onDelete: (pointId: string) => void;
   onClose: () => void;
   onClone?: (point: GamePoint) => void;
-  isTemplateMode?: boolean; 
+  isTemplateMode?: boolean;
+  requestedTab?: 'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | null;
+  gameMode?: 'standard' | 'playzone';
 }
 
 const TAG_COLORS = ['#64748b', '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -50,7 +54,7 @@ const LANGUAGES = [
   '🇮🇱 Hebrew (Ivrit)'
 ];
 
-// --- RICH TEXT EDITOR COMPONENT ---
+// --- ENHANCED RICH TEXT EDITOR COMPONENT ---
 const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onChange: (val: string) => void, placeholder?: string }) => {
   const handleCommand = (command: string, val?: string) => {
     document.execCommand(command, false, val || '');
@@ -58,36 +62,49 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
 
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500 transition-shadow bg-white dark:bg-gray-700">
-      <div className="flex items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">
-        <button type="button" onClick={() => handleCommand('bold')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"><Bold className="w-4 h-4" /></button>
-        <button type="button" onClick={() => handleCommand('italic')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"><Italic className="w-4 h-4" /></button>
-        <button type="button" onClick={() => handleCommand('underline')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300"><Underline className="w-4 h-4" /></button>
+      <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">
+        <button type="button" onClick={() => handleCommand('bold')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Bold"><Bold className="w-4 h-4" /></button>
+        <button type="button" onClick={() => handleCommand('italic')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Italic"><Italic className="w-4 h-4" /></button>
+        <button type="button" onClick={() => handleCommand('underline')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Underline"><Underline className="w-4 h-4" /></button>
         <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-        <button type="button" onClick={() => handleCommand('foreColor', '#ef4444')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-red-500 font-bold">A</button>
-        <button type="button" onClick={() => handleCommand('foreColor', '#3b82f6')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-blue-500 font-bold">A</button>
+        <button type="button" onClick={() => handleCommand('insertUnorderedList')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Bullet List">●</button>
+        <button type="button" onClick={() => handleCommand('insertOrderedList')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300" title="Numbered List">1.</button>
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button type="button" onClick={() => handleCommand('formatBlock', 'h2')} className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300 font-bold text-xs" title="Heading">H</button>
+        <button type="button" onClick={() => handleCommand('formatBlock', 'p')} className="px-2 py-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-gray-700 dark:text-gray-300 text-xs" title="Paragraph">P</button>
+        <div className="w-px h-4 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+        <button type="button" onClick={() => handleCommand('foreColor', '#ef4444')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-red-500 font-bold" title="Red Color">A</button>
+        <button type="button" onClick={() => handleCommand('foreColor', '#3b82f6')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-blue-500 font-bold" title="Blue Color">A</button>
+        <button type="button" onClick={() => handleCommand('foreColor', '#10b981')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-green-500 font-bold" title="Green Color">A</button>
+        <button type="button" onClick={() => handleCommand('foreColor', '#f59e0b')} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-amber-500 font-bold" title="Amber Color">A</button>
       </div>
-      <div 
-        className="p-3 min-h-[100px] outline-none text-sm text-gray-900 dark:text-white prose dark:prose-invert max-w-none"
+      <div
+        className="p-3 min-h-[120px] outline-none text-sm text-gray-900 dark:text-white prose dark:prose-invert max-w-none"
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
         style={{ whiteSpace: 'pre-wrap' }}
+        data-placeholder={placeholder}
       />
     </div>
   );
 };
 
-const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClose, onClone, isTemplateMode = false }) => {
-  const [editedPoint, setEditedPoint] = useState<GamePoint>({ 
+const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClose, onClone, isTemplateMode = false, requestedTab = null, gameMode = undefined }) => {
+  // Normalize the incoming language first (remove "global")
+  const normalizedIncomingLanguage = normalizeLanguage(point.settings?.language);
+
+  const [editedPoint, setEditedPoint] = useState<GamePoint>({
     ...point,
     points: point.points || 100,
     shortIntro: point.shortIntro || '',
-    activationTypes: point.activationTypes || ['radius'],
+    activationTypes: point.activationTypes && point.activationTypes.length > 0 ? point.activationTypes : ['radius'], // GPS (radius) enabled by default
     areaColor: point.areaColor || '',
     iconUrl: point.iconUrl || '',
     completionLogic: point.completionLogic || 'remove_any',
     instructorNotes: point.instructorNotes || '',
     isHiddenBeforeScan: point.isHiddenBeforeScan || false,
+    isLocationLocked: point.isLocationLocked || false,
     radiusMeters: point.radiusMeters || 30, // Ensure radius default
     task: {
         type: 'text',
@@ -110,17 +127,32 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     settings: {
         timeLimitSeconds: undefined,
         scoreDependsOnSpeed: false,
-        language: 'English',
         showAnswerStatus: true,
         showCorrectAnswerOnMiss: false,
-        ...point.settings
+        ...point.settings,
+        language: normalizedIncomingLanguage // Ensure normalized
     },
     tags: point.tags || []
   });
 
-  const [activeTab, setActiveTab] = useState<'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ACTIONS'>('GENERAL');
+  const [activeTab, setActiveTab] = useState<'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS'>(requestedTab || 'GENERAL');
+  const [showTaskTypeTooltip, setShowTaskTypeTooltip] = useState(false);
+  const [hoveredTaskType, setHoveredTaskType] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState(false);
+  const [qrCodeDuplicateWarning, setQrCodeDuplicateWarning] = useState(false);
+
+  // Map picker modal state
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  // Collapse/expand states for activation sections
+  const [expandedActivations, setExpandedActivations] = useState<Record<string, boolean>>({
+    click: false,
+    location: false,
+    qr: false,
+    nfc: false,
+    ibeacon: false
+  });
   
   // Image states
   const [isUploading, setIsUploading] = useState(false);
@@ -141,6 +173,25 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   // QR Code State
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
 
+  // Auto-detect language from task question on component mount
+  useEffect(() => {
+      const hasQuestion = editedPoint.task.question && editedPoint.task.question.trim().length > 0;
+      const currentLanguage = normalizeLanguage(editedPoint.settings?.language);
+
+      // Auto-detect if: no valid language yet (default English) OR question contains special chars suggesting different language
+      if (hasQuestion) {
+          const detectedLanguage = detectLanguageFromText(editedPoint.task.question);
+
+          // Update if we detected a different language than current
+          if (detectedLanguage !== currentLanguage && detectedLanguage !== 'English') {
+              setEditedPoint(prev => ({
+                  ...prev,
+                  settings: { ...prev.settings, language: detectedLanguage }
+              }));
+          }
+      }
+  }, []); // Run only on mount
+
   // Generate QR Code when relevant fields change or tab opens
   useEffect(() => {
       if (activeTab === 'ACTIONS' && (editedPoint.activationTypes.includes('qr') || editedPoint.activationTypes.includes('click') || editedPoint.isHiddenBeforeScan)) {
@@ -151,6 +202,17 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
               .catch(err => console.error(err));
       }
   }, [activeTab, editedPoint.activationTypes, editedPoint.id, editedPoint.isHiddenBeforeScan]);
+
+  // Generate QR Code for ACTIVATION tab when qrCodeString changes
+  useEffect(() => {
+      if (activeTab === 'ACTIVATION' && editedPoint.qrCodeString) {
+          const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
+          if (canvas) {
+              QRCode.toCanvas(canvas, editedPoint.qrCodeString, { width: 150, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+                  .catch(err => console.error('QR Code generation error:', err));
+          }
+      }
+  }, [activeTab, editedPoint.qrCodeString]);
 
   const handleGenerateImage = async () => {
       const prompt = editedPoint.task.question.replace(/<[^>]*>?/gm, '') + " " + editedPoint.title;
@@ -195,11 +257,14 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   };
 
   const handleAddTag = () => {
-      if (tagInput.trim() && !editedPoint.tags?.includes(tagInput.trim())) {
-          setEditedPoint(prev => ({ ...prev, tags: [...(prev.tags || []), tagInput.trim()] }));
-          setTagInput('');
-          setTagError(false);
+      const trimmedInput = tagInput.trim();
+      if (!trimmedInput || editedPoint.tags?.includes(trimmedInput)) {
+          setTagError(true);
+          return;
       }
+      setEditedPoint(prev => ({ ...prev, tags: [...(prev.tags || []), trimmedInput] }));
+      setTagInput('');
+      setTagError(false);
   };
 
   const handleRemoveTag = (tag: string) => {
@@ -213,7 +278,15 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         setActiveTab('GENERAL');
         return;
     }
-    onSave(editedPoint);
+    // Ensure language is normalized before saving
+    const pointToSave = {
+        ...editedPoint,
+        settings: {
+            ...editedPoint.settings,
+            language: normalizeLanguage(editedPoint.settings?.language)
+        }
+    };
+    onSave(pointToSave);
   };
 
   const handleTimelineImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -489,12 +562,14 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
         ) : (
            <form onSubmit={handleSubmit} className="flex flex-col h-full overflow-hidden">
                {/* ... Tab Navigation (Same as before) ... */}
-               <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0">
+               <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0 overflow-x-auto">
                    {[
                        {id: 'GENERAL', label: 'General', icon: AlignLeft},
+                       {id: 'ANSWER', label: 'Answer', icon: MessageSquare},
                        {id: 'IMAGE', label: 'Image', icon: ImageIcon},
                        {id: 'SETTINGS', label: 'Config', icon: SlidersHorizontal},
-                       {id: 'ACTIONS', label: 'Actions', icon: Zap},
+                       {id: 'ACTIVATION', label: 'Activation', icon: Lock},
+                       {id: 'TAGS', label: 'Tags', icon: Tag},
                    ].map(tab => (
                        <button
                            key={tab.id}
@@ -518,17 +593,20 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                <input type="text" value={editedPoint.title} onChange={(e) => setEditedPoint({ ...editedPoint, title: e.target.value })} className="w-full px-4 py-2 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none transition-all" placeholder="e.g. Statue Quiz"/>
                            </div>
                            
-                           {/* MANDATORY TAGS SECTION */}
-                           <div>
-                               <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2 ${tagError ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
-                                   TAGS <span className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-[8px] px-1 rounded">REQUIRED</span>
-                                   {tagError && <AlertCircle className="w-3 h-3 text-red-500" />}
-                               </label>
+                           {/* TAGS SECTION */}
+                          <div>
+                              <label className={`block text-[10px] font-black uppercase tracking-[0.2em] mb-1.5 flex items-center gap-2 ${tagError ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  TAGS
+                                  {(!editedPoint.tags || editedPoint.tags.length === 0) && (
+                                      <span className="bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-[8px] px-1 rounded">REQUIRED</span>
+                                  )}
+                                  {tagError && <AlertCircle className="w-3 h-3 text-red-500" />}
+                              </label>
                                <div className="flex flex-wrap gap-2 mb-2">
-                                   {editedPoint.tags?.map(tag => (
-                                       <span key={tag} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1">
+                                   {editedPoint.tags?.map((tag, index) => (
+                                       <span key={`${tag}-${index}`} onClick={() => setActiveTab('TAGS')} className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-800/50 transition-colors">
                                            {tag}
-                                           <button type="button" onClick={() => handleRemoveTag(tag)} className="hover:text-blue-900 dark:hover:text-white"><X className="w-3 h-3" /></button>
+                                           <button type="button" onClick={(e) => { e.stopPropagation(); handleRemoveTag(tag); }} className="hover:text-blue-900 dark:hover:text-white"><X className="w-3 h-3" /></button>
                                        </span>
                                    ))}
                                </div>
@@ -551,21 +629,54 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                <RichTextEditor value={editedPoint.task.question} onChange={(html) => setEditedPoint({ ...editedPoint, task: { ...editedPoint.task, question: html } })} />
                            </div>
                            <div className="grid grid-cols-2 gap-4">
-                               <div>
-                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">TYPE</label>
-                                   <div className="relative">
-                                       <select value={editedPoint.task.type} onChange={(e) => setEditedPoint({ ...editedPoint, task: { ...editedPoint.task, type: e.target.value as any } })} className="w-full px-4 py-2.5 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none appearance-none cursor-pointer text-sm">
-                                           <option value="text">TEXT INPUT</option>
-                                           <option value="multiple_choice">QUIZ (MC)</option>
-                                           <option value="boolean">YES / NO</option>
-                                           <option value="slider">SLIDER</option>
-                                           <option value="checkbox">CHECKBOXES</option>
-                                           <option value="dropdown">DROPDOWN</option>
-                                           <option value="timeline">TIMELINE / ORDER</option>
-                                       </select>
-                                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                   </div>
-                               </div>
+                              <div>
+                                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em] flex items-center gap-1">
+                                      TYPE <Info className="w-3 h-3 text-blue-500" title="Hover over type for info" />
+                                  </label>
+                                  <div className="relative group">
+                                      <select
+                                          value={editedPoint.task.type}
+                                          onChange={(e) => setEditedPoint({ ...editedPoint, task: { ...editedPoint.task, type: e.target.value as any } })}
+                                          onMouseEnter={() => setShowTaskTypeTooltip(true)}
+                                          onMouseLeave={() => setShowTaskTypeTooltip(false)}
+                                          className="w-full px-4 py-2.5 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none appearance-none cursor-pointer text-sm"
+                                      >
+                                          <option value="text">TEXT INPUT</option>
+                                          <option value="multiple_choice">QUIZ (MC)</option>
+                                          <option value="boolean">YES / NO</option>
+                                          <option value="slider">SLIDER</option>
+                                          <option value="checkbox">CHECKBOXES</option>
+                                          <option value="dropdown">DROPDOWN</option>
+                                          <option value="timeline">TIMELINE / ORDER</option>
+                                      </select>
+                                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                      {showTaskTypeTooltip && (
+                                          <div className="absolute left-0 top-full mt-2 w-72 bg-blue-900 border-2 border-blue-500 rounded-xl p-3 shadow-2xl z-50 text-xs text-blue-100 space-y-2">
+                                              {editedPoint.task.type === 'text' && (
+                                                  <><p className="font-bold text-blue-200">📝 TEXT INPUT</p><p className="text-blue-300/80">Players type their answer</p><p className="italic text-blue-400">Ex: "Capital of Denmark?"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'multiple_choice' && (
+                                                  <><p className="font-bold text-blue-200">✅ QUIZ (MC)</p><p className="text-blue-300/80">Select from options</p><p className="italic text-blue-400">Ex: A) Paris B) Copenhagen</p></>
+                                              )}
+                                              {editedPoint.task.type === 'boolean' && (
+                                                  <><p className="font-bold text-blue-200">✔️ YES / NO</p><p className="text-blue-300/80">True or false question</p><p className="italic text-blue-400">Ex: "Is this correct?"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'slider' && (
+                                                  <><p className="font-bold text-blue-200">🎚️ SLIDER</p><p className="text-blue-300/80">Select number on scale</p><p className="italic text-blue-400">Ex: "How tall? (1-100m)"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'checkbox' && (
+                                                  <><p className="font-bold text-blue-200">☑️ CHECKBOXES</p><p className="text-blue-300/80">Multiple correct answers</p><p className="italic text-blue-400">Ex: "Nordic countries?"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'dropdown' && (
+                                                  <><p className="font-bold text-blue-200">📋 DROPDOWN</p><p className="text-blue-300/80">Pick from menu</p><p className="italic text-blue-400">Ex: "Select the year"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'timeline' && (
+                                                  <><p className="font-bold text-blue-200">📅 TIMELINE</p><p className="text-blue-300/80">Arrange in order</p><p className="italic text-blue-400">Ex: "Sort by date"</p></>
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
+                              </div>
                                <div>
                                    <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">POINTS</label>
                                    <input type="number" value={editedPoint.points} onChange={(e) => setEditedPoint({ ...editedPoint, points: parseInt(e.target.value) || 0 })} className="w-full px-4 py-2 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-orange-500 outline-none transition-all text-sm"/>
@@ -737,45 +848,517 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                               <div>
                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em]">LANGUAGE</label>
-                                  <select 
-                                       value={editedPoint.settings?.language || 'English'}
+                                  <div className="flex gap-2">
+                                      <select
+                                       value={normalizeLanguage(editedPoint.settings?.language)}
                                        onChange={(e) => setEditedPoint({...editedPoint, settings: {...editedPoint.settings, language: e.target.value }})}
-                                       className="w-full px-4 py-3 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium outline-none focus:border-orange-500 uppercase text-xs"
+                                       className="flex-1 px-4 py-3 border-2 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium outline-none focus:border-orange-500 uppercase text-xs"
                                   >
-                                      {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
-                                  </select>
+                                      {['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'].map(lang => (
+                                          <option key={lang} value={lang}>{lang}</option>
+                                      ))}
+                                      </select>
+                                      <button
+                                          type="button"
+                                          onClick={() => {
+                                              if (editedPoint.task.question) {
+                                                  const detected = detectLanguageFromText(editedPoint.task.question);
+                                                  setEditedPoint({
+                                                      ...editedPoint,
+                                                      settings: { ...editedPoint.settings, language: detected }
+                                                  });
+                                              }
+                                          }}
+                                          className="px-4 py-3 border-2 dark:border-gray-700 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 font-bold uppercase text-[10px] transition-colors"
+                                          title="Auto-detect language from question"
+                                      >
+                                          🔍 AUTO
+                                      </button>
+                                  </div>
                               </div>
                            </div>
                        </div>
                    )}
 
-                   {activeTab === 'ACTIONS' && (
-                       <div className="space-y-6">
-                           <div className="space-y-3">
-                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">UNLOCK METHODS</label>
-                               {[
-                                   { id: 'radius', label: 'GPS GEOFENCE', desc: 'Unlocks within physical radius', icon: MapIcon },
-                                   { id: 'click', label: 'TAP TO OPEN', desc: 'Allows opening from anywhere', icon: MousePointerClick },
-                                   { id: 'qr', label: 'QR / BARCODE', desc: 'Player must scan a code', icon: Hash },
-                               ].map(method => (
-                                   <button
-                                       key={method.id}
-                                       type="button"
-                                       onClick={() => {
-                                           const exists = editedPoint.activationTypes.includes(method.id as any);
-                                           const newTypes = exists ? editedPoint.activationTypes.filter(t => t !== method.id) : [...editedPoint.activationTypes, method.id as any];
-                                           setEditedPoint({...editedPoint, activationTypes: newTypes});
-                                       }}
-                                       className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 text-left transition-all ${editedPoint.activationTypes.includes(method.id as any) ? 'bg-orange-50 border-orange-500 dark:bg-orange-900/20' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-orange-200'}`}
-                                   >
-                                       <div className={`p-3 rounded-xl ${editedPoint.activationTypes.includes(method.id as any) ? 'bg-orange-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}><method.icon className="w-6 h-6" /></div>
-                                       <div className="flex-1 min-w-0">
-                                           <span className="block font-black text-sm uppercase tracking-wide">{method.label}</span>
-                                           <span className="text-[10px] text-gray-500 uppercase font-bold">{method.desc}</span>
+                   {activeTab === 'ANSWER' && (
+                       <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                           {/* FEEDBACK MESSAGES */}
+                           <div className="grid grid-cols-1 gap-4">
+                               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
+                                   <label className="block text-[9px] font-bold text-green-700 dark:text-green-300 mb-2 uppercase flex items-center gap-1">
+                                       <CheckCircle className="w-3 h-3" /> Correct Answer Message
+                                   </label>
+                                   <textarea
+                                       value={editedPoint.feedback?.correctMessage || ''}
+                                       onChange={(e) => setEditedPoint({
+                                           ...editedPoint,
+                                           feedback: {...editedPoint.feedback, correctMessage: e.target.value}
+                                       })}
+                                       className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
+                                       rows={2}
+                                   />
+                               </div>
+
+                               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-200 dark:border-red-700">
+                                   <label className="block text-[9px] font-bold text-red-700 dark:text-red-300 mb-2 uppercase flex items-center gap-1">
+                                       <AlertCircle className="w-3 h-3" /> Incorrect Answer Message
+                                   </label>
+                                   <textarea
+                                       value={editedPoint.feedback?.incorrectMessage || ''}
+                                       onChange={(e) => setEditedPoint({
+                                           ...editedPoint,
+                                           feedback: {...editedPoint.feedback, incorrectMessage: e.target.value}
+                                       })}
+                                       className="w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
+                                       rows={2}
+                                   />
+                               </div>
+                           </div>
+
+                           {/* HINT SECTION */}
+                           <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 p-5 rounded-2xl border-2 border-yellow-200 dark:border-yellow-700">
+                               <div className="flex items-center gap-2 mb-3">
+                                   <MessageSquare className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                                   <label className="text-[10px] font-black text-yellow-700 dark:text-yellow-300 uppercase tracking-[0.2em]">HINT System</label>
+                               </div>
+
+                               <div className="space-y-4">
+                                   <div>
+                                       <label className="block text-[9px] font-bold text-yellow-700/80 dark:text-yellow-400/80 mb-1.5 uppercase">Hint Text</label>
+                                       <textarea
+                                           value={editedPoint.feedback?.hint || ''}
+                                           onChange={(e) => setEditedPoint({
+                                               ...editedPoint,
+                                               feedback: {...editedPoint.feedback, hint: e.target.value}
+                                           })}
+                                           placeholder="Enter a helpful hint for players..."
+                                           className="w-full px-4 py-3 border-2 border-yellow-200 dark:border-yellow-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm outline-none focus:border-yellow-500 resize-none"
+                                           rows={3}
+                                       />
+                                       <p className="text-[9px] text-yellow-600 dark:text-yellow-400 mt-1 italic">Leave empty to hide hint button from players</p>
+                                   </div>
+
+                                   <div>
+                                       <label className="block text-[9px] font-bold text-yellow-700/80 dark:text-yellow-400/80 mb-1.5 uppercase">Points Deduction for Using Hint</label>
+                                       <div className="flex items-center gap-3">
+                                           <input
+                                               type="number"
+                                               value={editedPoint.feedback?.hintCost || 0}
+                                               onChange={(e) => setEditedPoint({
+                                                   ...editedPoint,
+                                                   feedback: {...editedPoint.feedback, hintCost: parseInt(e.target.value) || 0}
+                                               })}
+                                               className="w-32 px-4 py-2 border-2 border-yellow-200 dark:border-yellow-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold outline-none focus:border-yellow-500"
+                                           />
+                                           <span className="text-sm text-yellow-700 dark:text-yellow-300 font-bold">points</span>
                                        </div>
-                                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${editedPoint.activationTypes.includes(method.id as any) ? 'bg-orange-600 border-orange-600 text-white' : 'border-gray-200'}`}>{editedPoint.activationTypes.includes(method.id as any) && <Check className="w-4 h-4" />}</div>
-                                   </button>
-                               ))}
+                                       <p className="text-[9px] text-yellow-600 dark:text-yellow-400 mt-1">Default: -50 points (use negative for deduction)</p>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
+                   {activeTab === 'ACTIVATION' && (
+                       <div className="space-y-6">
+                           {/* Playzone Game Warning */}
+                           {gameMode === 'playzone' && (
+                               <div className="bg-teal-100 dark:bg-teal-900/30 border-2 border-teal-400 dark:border-teal-600 p-4 rounded-xl">
+                                   <p className="text-sm font-bold text-teal-900 dark:text-teal-200">
+                                       📱 <strong>PLAYZONE MODE</strong>: GPS activations are disabled for indoor games. Use QR, NFC, iBeacon, or Click methods instead.
+                                   </p>
+                               </div>
+                           )}
+
+                           {/* GPS LOCATION - PRIMARY ACTIVATION (Always enabled by default) - Hidden for Playzone */}
+                           {gameMode !== 'playzone' && (
+                           <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 p-6 rounded-2xl border-2 border-green-200 dark:border-green-800">
+                               <button
+                                   type="button"
+                                   onClick={() => setExpandedActivations({...expandedActivations, location: !expandedActivations.location})}
+                                   className="w-full flex items-start gap-4 text-left hover:opacity-80 transition-opacity"
+                               >
+                                   <div className="w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <MapIcon className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <div className="flex items-center justify-between">
+                                           <div className="flex items-center gap-2">
+                                               <h3 className="font-black text-sm uppercase tracking-wide">GPS Geofence Location</h3>
+                                               <span className="bg-green-600 text-white text-[8px] px-2 py-1 rounded font-bold">PRIMARY</span>
+                                           </div>
+                                           <ChevronDown className={`w-5 h-5 text-green-600 transition-transform ${expandedActivations.location ? 'rotate-180' : ''}`} />
+                                       </div>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Lock this task to a specific GPS location with configurable radius.</p>
+                                   </div>
+                               </button>
+
+                               {expandedActivations.location && (
+                                   <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+                                       <div className="space-y-3">
+                                           <div className="flex items-center gap-3 mb-4 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                               <div className="flex-1">
+                                                   <label className="block text-[10px] font-bold text-green-700 dark:text-green-300 uppercase mb-2">GPS ENABLED</label>
+                                                   <p className="text-[9px] text-green-600 dark:text-green-400">This task can always be solved using GPS geofencing. Disable only with explicit confirmation.</p>
+                                               </div>
+                                               <label className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                                                   const hasGps = editedPoint.activationTypes.includes('radius');
+                                                   if (hasGps) {
+                                                       const confirmed = window.confirm('⚠️ Disable GPS activation? Task must have at least one activation method enabled.');
+                                                       if (confirmed) {
+                                                           setEditedPoint({...editedPoint, activationTypes: editedPoint.activationTypes.filter(t => t !== 'radius')});
+                                                       }
+                                                   } else {
+                                                       setEditedPoint({...editedPoint, activationTypes: [...editedPoint.activationTypes, 'radius']});
+                                                   }
+                                               }}>
+                                                   <div className={`w-12 h-7 rounded-full transition-all ${editedPoint.activationTypes.includes('radius') ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                                       <div className={`w-6 h-6 bg-white rounded-full transition-all transform ${editedPoint.activationTypes.includes('radius') ? 'translate-x-6' : 'translate-x-0'}`} />
+                                                   </div>
+                                               </label>
+                                           </div>
+
+                                           {editedPoint.activationTypes.includes('radius') && editedPoint.location ? (
+                                               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-200 dark:border-green-700">
+                                                   <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">📍 CURRENT LOCATION</p>
+                                                   <p className="text-sm font-mono text-gray-900 dark:text-white mb-3">{editedPoint.location.lat.toFixed(6)}, {editedPoint.location.lng.toFixed(6)}</p>
+
+                                                   <div className="mb-4">
+                                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">⭕ RADIUS: {editedPoint.radiusMeters}m</label>
+                                                       <input
+                                                           type="range"
+                                                           min="10"
+                                                           max="500"
+                                                           step="10"
+                                                           value={editedPoint.radiusMeters || 50}
+                                                           onChange={(e) => setEditedPoint({...editedPoint, radiusMeters: parseInt(e.target.value)})}
+                                                           className="w-full h-2 bg-green-200 dark:bg-green-800 rounded-lg appearance-none cursor-pointer accent-green-600"
+                                                       />
+                                                       <div className="flex justify-between text-[9px] text-gray-500 mt-1">
+                                                           <span>10m</span>
+                                                           <span>500m</span>
+                                                       </div>
+                                                   </div>
+
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setShowMapPicker(true)}
+                                                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 mb-3"
+                                                   >
+                                                       <MapPin className="w-5 h-5" />
+                                                       SELECT ON MAP
+                                                   </button>
+
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setEditedPoint({...editedPoint, isLocationLocked: !editedPoint.isLocationLocked})}
+                                                       className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 border-2 ${editedPoint.isLocationLocked ? 'bg-green-600 text-white border-green-700 shadow-lg shadow-green-500/30' : 'bg-white dark:bg-gray-800 text-green-600 border-green-300 dark:border-green-700 hover:bg-green-50 dark:hover:bg-gray-700'}`}
+                                                   >
+                                                       {editedPoint.isLocationLocked ? (
+                                                           <>
+                                                               <Lock className="w-5 h-5" />
+                                                               LOCKED TO LOCATION ✓
+                                                           </>
+                                                       ) : (
+                                                           <>
+                                                               <Lock className="w-5 h-5 opacity-40" />
+                                                               UNLOCK FROM LOCATION
+                                                           </>
+                                                       )}
+                                                   </button>
+
+                                                   {editedPoint.isLocationLocked && (
+                                                       <div className="bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg p-3 mt-3">
+                                                           <p className="text-xs text-green-900 dark:text-green-200 font-bold">
+                                                               ✓ This task is locked to this location. Players must be within {editedPoint.radiusMeters}m to solve it.
+                                                           </p>
+                                                       </div>
+                                                   )}
+                                               </div>
+                                           ) : (
+                                               <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3">
+                                                   <p className="text-xs text-yellow-900 dark:text-yellow-200 font-bold mb-3">
+                                                       ⚠️ This task doesn't have a location set yet.
+                                                   </p>
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setShowMapPicker(true)}
+                                                       className="w-full py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-bold text-sm uppercase tracking-wide transition-all flex items-center justify-center gap-2"
+                                                   >
+                                                       <MapPin className="w-4 h-4" />
+                                                       SELECT LOCATION ON MAP
+                                                   </button>
+                                               </div>
+                                           )}
+                                       </div>
+                                   </div>
+                               )}
+                           </div>
+                           )}
+
+                           {/* OTHER ACTIVATION METHODS */}
+
+                           {/* QR Code Configuration */}
+                           <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-2xl border-2 border-purple-200 dark:border-purple-800">
+                               <div className="flex items-start gap-4">
+                                   <div className="w-12 h-12 bg-purple-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <QrCode className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">QR Code Activation</h3>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Attach a QR code string to this task (e.g., house ID, location code). Players must scan this code to unlock the task.</p>
+
+                                       <div className="space-y-3">
+                                           <div>
+                                               <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">📱 QR CODE STRING</label>
+                                               <input
+                                                   type="text"
+                                                   value={editedPoint.qrCodeString || ''}
+                                                   onChange={(e) => {
+                                                       setEditedPoint({...editedPoint, qrCodeString: e.target.value});
+                                                       setQrCodeDuplicateWarning(false); // Clear warning on input change
+                                                   }}
+                                                   placeholder="e.g., HOUSE_001, LOCATION_ALPHA, or any unique identifier"
+                                                   className={`w-full px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:border-purple-500 outline-none transition-all ${qrCodeDuplicateWarning ? 'border-red-500' : 'border-purple-200 dark:border-purple-700'}`}
+                                               />
+                                               <p className="text-[10px] text-gray-500 mt-2">This is the value that will be encoded in the QR code.</p>
+                                               {qrCodeDuplicateWarning && (
+                                                   <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-2 mt-2">
+                                                       <p className="text-[10px] text-red-700 dark:text-red-300 font-bold">
+                                                           ⚠️ This QR code string is already used by another task in this game. Each QR code must be unique.
+                                                       </p>
+                                                   </div>
+                                               )}
+                                           </div>
+
+                                           {editedPoint.qrCodeString && (
+                                               <div className="space-y-3">
+                                                   <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-purple-200 dark:border-purple-700 flex flex-col items-center">
+                                                       <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 text-center">📤 DOWNLOADABLE QR CODE</p>
+                                                       <div id="qr-preview" className="flex items-center justify-center bg-white p-2 rounded-lg border border-purple-100 dark:border-purple-900">
+                                                           <canvas id="qr-canvas" style={{ maxWidth: '150px', maxHeight: '150px' }} />
+                                                       </div>
+                                                       <button
+                                                           type="button"
+                                                           onClick={async () => {
+                                                               const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
+                                                               if (canvas) {
+                                                                   const url = canvas.toDataURL('image/png');
+                                                                   const link = document.createElement('a');
+                                                                   link.href = url;
+                                                                   link.download = `qr-code-${editedPoint.qrCodeString || 'task'}.png`;
+                                                                   link.click();
+                                                               }
+                                                           }}
+                                                           className="mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-2 transition-colors"
+                                                       >
+                                                           <Download className="w-4 h-4" /> Download QR
+                                                       </button>
+                                                   </div>
+                                               </div>
+                                           )}
+
+                                           {!editedPoint.qrCodeString && (
+                                               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-gray-300 dark:border-gray-700 text-center">
+                                                   <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase">Enter a QR code string above to generate a downloadable QR code.</p>
+                                               </div>
+                                           )}
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+
+                           {/* NFC Configuration */}
+                           <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-6 rounded-2xl border-2 border-green-200 dark:border-green-800">
+                               <div className="flex items-start gap-4">
+                                   <div className="w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <Smartphone className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">NFC Tag Activation</h3>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Enable this task to be unlocked by scanning an NFC tag. Perfect for physical locations like house doors, information boards, etc.</p>
+
+                                       <div className="space-y-3">
+                                           <div>
+                                               <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">🏷️ NFC TAG ID</label>
+                                               <input
+                                                   type="text"
+                                                   value={editedPoint.nfcTagId || ''}
+                                                   onChange={(e) => setEditedPoint({...editedPoint, nfcTagId: e.target.value})}
+                                                   placeholder="e.g., NFC_HOUSE_A, BEACON_LOCATION_1"
+                                                   className="w-full px-4 py-3 border-2 border-green-200 dark:border-green-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:border-green-500 outline-none transition-all"
+                                               />
+                                               <p className="text-[10px] text-gray-500 mt-2">Unique identifier for this NFC tag.</p>
+                                           </div>
+
+                                           <div>
+                                               <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">📝 NFC TAG DATA (Optional)</label>
+                                               <textarea
+                                                   value={editedPoint.nfcTagData || ''}
+                                                   onChange={(e) => setEditedPoint({...editedPoint, nfcTagData: e.target.value})}
+                                                   placeholder="Additional data to store (JSON format recommended)"
+                                                   className="w-full px-4 py-3 border-2 border-green-200 dark:border-green-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:border-green-500 outline-none transition-all"
+                                                   rows={2}
+                                               />
+                                               <p className="text-[10px] text-gray-500 mt-2">Store extra data like location coordinates, timestamps, etc.</p>
+                                           </div>
+
+                                           {editedPoint.nfcTagId && (
+                                               <div className="bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg p-3">
+                                                   <p className="text-xs text-green-900 dark:text-green-200 font-bold">
+                                                       ✓ This task can be unlocked by scanning an NFC tag with ID: <strong>{editedPoint.nfcTagId}</strong>
+                                                   </p>
+                                               </div>
+                                           )}
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+
+                           {/* iBeacon Configuration */}
+                           <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 p-6 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800">
+                               <div className="flex items-start gap-4">
+                                   <div className="w-12 h-12 bg-indigo-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <Wifi className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">iBeacon Activation</h3>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Enable this task to be unlocked when a player enters proximity of a specific iBeacon. Works with Bluetooth LE beacons.</p>
+
+                                       <div className="space-y-3">
+                                           <div className="grid grid-cols-1 gap-3">
+                                               <div>
+                                                   <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">📡 iBeacon UUID</label>
+                                                   <input
+                                                       type="text"
+                                                       value={editedPoint.ibeaconUUID || ''}
+                                                       onChange={(e) => setEditedPoint({...editedPoint, ibeaconUUID: e.target.value})}
+                                                       placeholder="e.g., 550e8400-e29b-41d4-a716-446655440000"
+                                                       className="w-full px-4 py-3 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-xs focus:border-indigo-500 outline-none transition-all"
+                                                   />
+                                               </div>
+
+                                               <div className="grid grid-cols-2 gap-3">
+                                                   <div>
+                                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">MAJOR</label>
+                                                       <input
+                                                           type="number"
+                                                           value={editedPoint.ibeaconMajor || ''}
+                                                           onChange={(e) => setEditedPoint({...editedPoint, ibeaconMajor: parseInt(e.target.value) || undefined})}
+                                                           placeholder="0-65535"
+                                                           className="w-full px-4 py-3 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:border-indigo-500 outline-none transition-all"
+                                                       />
+                                                   </div>
+
+                                                   <div>
+                                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">MINOR</label>
+                                                       <input
+                                                           type="number"
+                                                           value={editedPoint.ibeaconMinor || ''}
+                                                           onChange={(e) => setEditedPoint({...editedPoint, ibeaconMinor: parseInt(e.target.value) || undefined})}
+                                                           placeholder="0-65535"
+                                                           className="w-full px-4 py-3 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:border-indigo-500 outline-none transition-all"
+                                                       />
+                                                   </div>
+                                               </div>
+
+                                               <div>
+                                                   <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">⚡ PROXIMITY TO TRIGGER</label>
+                                                   <select
+                                                       value={editedPoint.ibeaconProximity || 'near'}
+                                                       onChange={(e) => setEditedPoint({...editedPoint, ibeaconProximity: e.target.value as any})}
+                                                       className="w-full px-4 py-3 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:border-indigo-500 outline-none transition-all"
+                                                   >
+                                                       <option value="immediate">🟢 Immediate (0-1 meter)</option>
+                                                       <option value="near">🟡 Near (1-3 meters)</option>
+                                                       <option value="far">🔴 Far (3+ meters)</option>
+                                                   </select>
+                                               </div>
+                                           </div>
+
+                                           {editedPoint.ibeaconUUID && (
+                                               <div className="bg-indigo-100 dark:bg-indigo-900/30 border border-indigo-300 dark:border-indigo-700 rounded-lg p-3">
+                                                   <p className="text-xs text-indigo-900 dark:text-indigo-200 font-bold mb-1">
+                                                       ✓ iBeacon configured
+                                                   </p>
+                                                   <p className="text-[10px] text-indigo-800 dark:text-indigo-300">
+                                                       UUID: <code className="text-[9px]">{editedPoint.ibeaconUUID}</code>
+                                                       {editedPoint.ibeaconMajor !== undefined && ` | Major: ${editedPoint.ibeaconMajor}`}
+                                                       {editedPoint.ibeaconMinor !== undefined && ` | Minor: ${editedPoint.ibeaconMinor}`}
+                                                       {editedPoint.ibeaconProximity && ` | Proximity: ${editedPoint.ibeaconProximity}`}
+                                                   </p>
+                                               </div>
+                                           )}
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
+                   {activeTab === 'TAGS' && (
+                       <div className="space-y-6">
+                           <div>
+                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">MANAGE TASK TAGS</label>
+                               <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Add or remove tags to organize and categorize this task.</p>
+
+                               {/* Current Tags */}
+                               {editedPoint.tags.length > 0 && (
+                                   <div className="mb-6">
+                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">CURRENT TAGS ({editedPoint.tags.length})</label>
+                                       <div className="flex flex-wrap gap-2">
+                                           {editedPoint.tags.map((tag, idx) => (
+                                               <div key={`${tag}-${idx}`} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2">
+                                                   <span className="text-sm font-bold text-blue-900 dark:text-blue-100">{tag}</span>
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setEditedPoint({
+                                                           ...editedPoint,
+                                                           tags: editedPoint.tags.filter((_, i) => i !== idx)
+                                                       })}
+                                                       className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                                       title="Remove tag"
+                                                   >
+                                                       <X className="w-4 h-4" />
+                                                   </button>
+                                               </div>
+                                           ))}
+                                       </div>
+                                   </div>
+                               )}
+
+                               {/* Add New Tag */}
+                               <div className="space-y-3">
+                                   <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">ADD NEW TAG</label>
+                                   <div className="flex gap-2">
+                                       <input
+                                           type="text"
+                                           value={tagInput}
+                                           onChange={(e) => {
+                                               setTagInput(e.target.value);
+                                               setTagError(false);
+                                           }}
+                                           onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                                           placeholder="Type tag name and press Enter..."
+                                           className={`flex-1 px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:outline-none transition-all ${tagError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700 focus:border-blue-500'}`}
+                                       />
+                                       <button
+                                           type="button"
+                                           onClick={handleAddTag}
+                                           className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide transition-colors flex items-center gap-2"
+                                       >
+                                           <Plus className="w-4 h-4" />
+                                           ADD
+                                       </button>
+                                   </div>
+                                   {tagError && (
+                                       <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-3">
+                                           <p className="text-xs text-red-700 dark:text-red-300 font-bold">
+                                               ⚠️ This tag already exists for this task or is empty.
+                                           </p>
+                                       </div>
+                                   )}
+                               </div>
                            </div>
                        </div>
                    )}
@@ -787,6 +1370,19 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                     {onClone && <button type="button" onClick={() => onClone(editedPoint)} className="flex-1 py-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-gray-300 transition-all flex items-center justify-center gap-2">CLONE</button>}
                     <button type="submit" className="flex-[2] py-4 bg-orange-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-orange-700 transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center gap-2">SAVE CHANGES</button>
                </div>
+
+               {/* Map Picker Modal */}
+               {showMapPicker && (
+                   <MeetingPointMapPicker
+                       initialLat={editedPoint.location?.lat || 55.6761}
+                       initialLng={editedPoint.location?.lng || 12.5683}
+                       onLocationSelect={(lat, lng) => {
+                           setEditedPoint({...editedPoint, location: { lat, lng }});
+                           setShowMapPicker(false);
+                       }}
+                       onClose={() => setShowMapPicker(false)}
+                   />
+               )}
            </form>
         )}
       </div>

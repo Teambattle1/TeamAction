@@ -1,5 +1,138 @@
-
 export type Language = 'English' | 'Danish' | 'German' | 'Spanish' | 'French' | 'Swedish' | 'Norwegian' | 'Dutch' | 'Belgian' | 'Hebrew';
+
+/**
+ * Normalize language setting - remove "global" or invalid values
+ */
+export const normalizeLanguage = (lang: any): Language => {
+    if (!lang || lang === 'global' || lang === 'GLOBAL') return 'English';
+
+    const validLanguages: Language[] = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
+    if (validLanguages.includes(lang as Language)) return lang as Language;
+
+    // Extract language name from flag+name format (e.g., "🇩🇰 Danish (Dansk)" -> "Danish")
+    if (typeof lang === 'string') {
+        const match = lang.match(/([A-Z][a-z]+)/);
+        if (match) {
+            const extracted = match[1];
+            if (validLanguages.includes(extracted as Language)) return extracted as Language;
+        }
+    }
+
+    return 'English';
+};
+
+/**
+ * Detect language from text content using keyword analysis
+ * Returns the detected language or 'English' as default
+ */
+export const detectLanguageFromText = (text: string): Language => {
+    if (!text || text.length === 0) return 'English';
+
+    const lowerText = text.toLowerCase();
+
+    // Check for special characters FIRST (most reliable)
+    const hasHebrewChars = /[\u0590-\u05FF]/.test(text);
+    if (hasHebrewChars) return 'Hebrew';
+
+    const hasDanishChars = /[øåæ]/i.test(text);
+    if (hasDanishChars) return 'Danish';
+
+    const hasGermanChars = /[üöäß]/i.test(text);
+    if (hasGermanChars) return 'German';
+
+    const hasSpanishChars = /[áéíóúñ¿¡]/i.test(text);
+    if (hasSpanishChars) return 'Spanish';
+
+    const hasFrenchChars = /[éèêëàâôùûüçœæ]/i.test(text);
+    if (hasFrenchChars) return 'French';
+
+    const hasSwedishChars = /[åäö]/i.test(text);
+    if (hasSwedishChars) return 'Swedish';
+
+    const hasNorwegianChars = /[åæø]/i.test(text);
+    if (hasNorwegianChars) return 'Norwegian';
+
+    // Dutch check (mostly overlaps with special chars, but keyword based)
+
+    // Language-specific keyword patterns for fallback
+    const languagePatterns: Record<Language, RegExp[]> = {
+        Danish: [
+            /\b(og|der|det|en|til|i|fra|du|hvad|hvor|hvordan|hvornår|når|jeg|dig|han|hun|vi|i|mig|ham|hende|os|jer|dem|hvis|mens|fordi|så|også|dog|eller|men)\b/g,
+            /ø|å|æ/g, // Special Danish characters
+        ],
+        German: [
+            /\b(und|der|die|das|ein|eine|einen|dem|des|den|in|von|zu|mit|für|ist|haben|sein|nicht|das|werden|kann|könnte|mein|dein|sein|ihr|unser|euer)\b/g,
+            /ü|ö|ä|ß/g, // Special German characters
+        ],
+        Spanish: [
+            /\b(y|el|la|los|las|un|una|unos|unas|de|que|en|a|por|con|es|está|están|ser|estar|haber|tener|hacer|querer|decir|ir|venir|poder|deber|saber)\b/g,
+            /á|é|í|ó|ú|ñ|¿|¡/g, // Spanish diacritics
+        ],
+        French: [
+            /\b(et|le|la|les|un|une|des|de|d|qu|que|qui|où|comment|quand|quoi|quel|je|tu|il|elle|nous|vous|ils|elles|est|sont|avoir|être|pouvoir|vouloir|devoir|faire|aller|venir|savoir)\b/g,
+            /é|è|ê|ë|à|ù|â|ô|ç|œ|æ/g, // French diacritics
+        ],
+        Swedish: [
+            /\b(och|det|en|att|i|jag|hon|som|han|på|de|med|han|inte|då|sin|för|är|ha|från|du|nu|över|än|dig|kan|sina|här|ha|varit|hans|honom|skulle|hennes|där|min|man|ej|vid|kunde|något|från|utan|varit|hur|ingen|mitt|ni|bli|blev|oss|din|dessa|några|deras|varit|varit|varit)\b/g,
+            /å|ä|ö/g, // Swedish diacritics
+        ],
+        Norwegian: [
+            /\b(og|i|jeg|det|at|en|til|er|som|på|de|med|han|av|ikk|han|hvor|da|seg|då|seg|seg|får|har|han|honom|hans|hennes|henne|hennes|hans|sitt|hennes|vår|deres|min|min|hans|sin|sitt|sin|sine|hans|våre|mine|dine|deres)\b/g,
+            /å|ä|ö|æ/g, // Norwegian diacritics
+        ],
+        Dutch: [
+            /\b(en|de|het|een|van|is|dat|die|in|een|op|te|voor|met|als|zijn|worden|kan|hij|zij|daar|waar|wat|wie|hoe|wanneer|waarom|alle|geen|veel|alleen|ook|nog|noch)\b/g,
+            /ij|ei|ou/g, // Dutch diphthongs
+        ],
+        Belgian: [
+            /\b(en|de|het|een|van|is|dat|die|in|op|te|voor|met|als|zijn|worden|kan|hij|zij|daar|waar|wat|wie|hoe|wanneer|waarom|alle|geen|veel|alleen|ook|nog|noch)\b/g,
+            /ij|ei|ou|ë|ü|ï/g,
+        ],
+        Hebrew: [
+            /[\u0590-\u05FF]/g, // Hebrew Unicode range
+        ],
+        English: [
+            /\b(the|and|a|an|or|is|are|was|were|be|been|am|have|has|had|do|does|did|will|would|could|should|may|might|must|can|cannot|not|no|yes|it|he|she|they|them|their|this|that|these|those|what|which|who|when|where|why|how|why|how|so|if|because|as|for|with|from|to|in|on|at|by|of|by)\b/g,
+        ]
+    };
+
+    // Score each language based on keyword matches
+    const scores: Record<Language, number> = {
+        English: 0,
+        Danish: 0,
+        German: 0,
+        Spanish: 0,
+        French: 0,
+        Swedish: 0,
+        Norwegian: 0,
+        Dutch: 0,
+        Belgian: 0,
+        Hebrew: 0,
+    };
+
+    for (const [language, patterns] of Object.entries(languagePatterns)) {
+        for (const pattern of patterns) {
+            const matches = (lowerText.match(pattern) || []).length;
+            scores[language as Language] += matches;
+        }
+    }
+
+    // Find language with highest score
+    let detectedLanguage: Language = 'English';
+    let maxScore = scores.English;
+
+    for (const [language, score] of Object.entries(scores)) {
+        if (score > maxScore) {
+            maxScore = score;
+            detectedLanguage = language as Language;
+        }
+    }
+
+    // If score is too low, return English (likely English with unknown chars)
+    if (maxScore < 3) return 'English';
+
+    return detectedLanguage;
+};
 
 export const getFlag = (lang?: string): string => {
     if (!lang) return "🇬🇧";

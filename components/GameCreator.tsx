@@ -1,40 +1,48 @@
-
 import React, { useState, useRef, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { Game, TimerConfig, TimerMode, MapStyleId, Language, DesignConfig, GameTaskConfiguration, MapConfiguration } from '../types';
-import { 
-    X, Gamepad2, Calendar, Building2, Upload, Search, Loader2, Clock, Hourglass, 
-    StopCircle, CheckCircle, Image as ImageIcon, Save, Edit, Map as MapIcon, 
-    Layers, Globe, Trash2, Bold, Italic, Underline, Link as LinkIcon, Info, 
-    Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2, 
-    Settings, Play, Target, List, Palette, EyeOff, ScrollText, Check, AlertTriangle,
-    Snowflake, Mountain, ExternalLink, Code, PlayCircle
+import {
+    X, Gamepad2, Calendar, Building2, Upload, Search, Loader2, Clock, Hourglass,
+    StopCircle, CheckCircle, Image as ImageIcon, Save, Edit, Map as MapIcon,
+    Layers, Globe, Trash2, Bold, Italic, Underline, Link as LinkIcon, Info,
+    Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2,
+    Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
+    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus
 } from 'lucide-react';
 import { searchLogoUrl } from '../services/ai';
 import { uploadImage } from '../services/storage';
-import { fetchUniqueTags } from '../services/db';
+import { fetchUniqueTags, countMapStyleUsage, replaceMapStyleInGames, fetchCustomMapStyles, saveCustomMapStyle, deleteCustomMapStyle } from '../services/db';
 import { resizeImage } from '../utils/image';
+import GameLogViewer from './GameLogViewer';
+import MeetingPointMapPicker from './MeetingPointMapPicker';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import './DatePickerStyles.css';
+import { formatDateTime, formatDateShort, formatTimeShort, getLocaleFromLanguage } from '../utils/date';
 
 interface GameCreatorProps {
   onClose: () => void;
   onCreate: (game: Partial<Game>) => void;
-  baseGame?: Game; 
+  baseGame?: Game;
   onDelete?: (id: string) => void;
+  onOpenPlaygroundEditor?: (playgroundId?: string) => void;
+  initialGameMode?: 'standard' | 'playzone' | 'elimination' | null;
 }
 
 // Map Styles with working preview logic
 // We use CSS classes to simulate the look for Historic/Winter to match the actual map implementation
 const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: string; icon?: React.ElementType }[] = [
-    { id: 'osm', label: 'Standard', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png' },
-    { id: 'satellite', label: 'Satellite', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/12/1258/2177' },
-    { id: 'dark', label: 'Dark Mode', preview: 'https://a.basemaps.cartocdn.com/dark_all/12/2177/1258.png' },
-    { id: 'light', label: 'Light Mode', preview: 'https://a.basemaps.cartocdn.com/light_all/12/2177/1258.png' },
-    // Use OSM tile but apply CSS sepia filter in the UI to match the map behavior
-    { id: 'historic', label: 'Historic', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png', className: 'sepia-[.7] contrast-125 brightness-90', icon: ScrollText },
-    // Use OSM tile but apply CSS filter for Winter look
-    { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/12/2177/1258.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
-    { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/12/2177/1258.png', icon: Mountain },
-    { id: 'google_custom', label: 'Google Custom', preview: '', icon: Settings },
     { id: 'none', label: 'No Map View', preview: '', icon: EyeOff },
+    { id: 'google_custom', label: 'Snazzy & Custom', preview: '', icon: Settings },
+    { id: 'osm', label: 'Standard', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png' },
+    { id: 'satellite', label: 'Satellite', preview: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/13/2722/4285' },
+    { id: 'dark', label: 'Dark Mode', preview: 'https://a.basemaps.cartocdn.com/dark_all/13/4285/2722.png' },
+    // Use OSM tile but apply CSS sepia filter in the UI to match the map behavior
+    { id: 'historic', label: 'Historic', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.7] contrast-125 brightness-90', icon: ScrollText },
+    // Use OSM tile but apply CSS filter for Winter look
+    { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
+    { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', icon: Mountain },
+    { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', className: 'saturate-115 brightness-108', icon: Snowflake },
 ];
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
@@ -86,7 +94,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
         className="p-3 outline-none text-sm text-slate-300 flex-1 overflow-y-auto"
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
         data-placeholder={placeholder}
       />
     </div>
@@ -97,17 +105,125 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
 const TABS = [
     { id: 'GAME', label: 'Game', icon: Gamepad2 },
     { id: 'TEAMS', label: 'Teams', icon: Users },
-    { id: 'MAP', label: 'Map', icon: MapIcon },
+    { id: 'VOTE', label: 'Vote', icon: Users },
+    { id: 'MAP', label: 'Mapstyle', icon: MapIcon },
     { id: 'TIMING', label: 'Timing', icon: Clock }, // New Timing Tab
-    { id: 'PLAY', label: 'Play', icon: PlayCircle }, 
-    { id: 'DESIGN', label: 'Design', icon: PenTool },
+    { id: 'PLAY', label: 'Play', icon: PlayCircle },
+    { id: 'DESIGN', label: 'Game Setup', icon: PenTool },
     { id: 'TASKS', label: 'Tasks', icon: List },
     { id: 'PLAYGROUNDS', label: 'Zones', icon: LayoutGrid },
     { id: 'SETTINGS', label: 'Settings', icon: Settings },
+    { id: 'LOGS', label: 'Logs', icon: ScrollText },
 ];
 
-const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, onDelete }) => {
+// Map Style Card Component with image loading state
+interface MapStyleCardProps {
+    style: { id: MapStyleId; label: string; preview: string; className?: string; icon?: React.ElementType };
+    previewUrl: string;
+    isCustom: boolean;
+    Icon?: React.ElementType;
+    isSelected: boolean;
+    onSelect: () => void;
+    onEditThumbnail: (e: React.MouseEvent) => void;
+    onPreview: (e: React.MouseEvent) => void;
+    usageCount?: number;
+}
+
+const MapStyleCard: React.FC<MapStyleCardProps> = ({
+    style,
+    previewUrl,
+    isCustom,
+    Icon,
+    isSelected,
+    onSelect,
+    onEditThumbnail,
+    onPreview,
+    usageCount
+}) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(false);
+
+    return (
+        <div className="relative group">
+            <button
+                onClick={onSelect}
+                className={`relative w-full rounded-xl overflow-hidden border-2 transition-all ${isSelected ? 'border-orange-500 ring-2 ring-orange-500/30' : 'border-slate-700 hover:border-white'}`}
+            >
+                {/* Usage Count Badge */}
+                {usageCount !== undefined && (
+                    <div className="absolute top-2 left-2 bg-blue-600 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase z-10 shadow-lg">
+                        {usageCount === 0 ? 'Not used' : `Used in ${usageCount} game${usageCount > 1 ? 's' : ''}`}
+                    </div>
+                )}
+
+                <div className="aspect-square bg-slate-800 relative flex items-center justify-center">
+                    {previewUrl && !imageError ? (
+                        <>
+                            {!imageLoaded && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <Loader2 className="w-6 h-6 text-slate-600 animate-spin" />
+                                </div>
+                            )}
+                            <img
+                                src={previewUrl}
+                                alt={style.label}
+                                className={`w-full h-full object-cover ${!isCustom && style.className ? style.className : ''} transition-opacity ${imageLoaded ? 'opacity-80 group-hover:opacity-100' : 'opacity-0'}`}
+                                onLoad={() => setImageLoaded(true)}
+                                onError={() => {
+                                    console.warn(`Failed to load map preview for ${style.id}:`, previewUrl);
+                                    setImageError(true);
+                                }}
+                                loading="lazy"
+                                crossOrigin="anonymous"
+                            />
+                        </>
+                    ) : (
+                        <div className="text-slate-500 group-hover:text-white transition-colors flex flex-col items-center gap-2">
+                            {Icon ? <Icon className="w-10 h-10" /> : <MapIcon className="w-10 h-10" />}
+                            {imageError && previewUrl && (
+                                <span className="text-[8px] text-slate-600 uppercase font-bold">Preview unavailable</span>
+                            )}
+                        </div>
+                    )}
+                </div>
+                <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2 text-center">
+                    <span className="text-[10px] font-black uppercase text-white">{style.label}</span>
+                </div>
+                {isSelected && (
+                    <div className="absolute top-2 right-2 bg-orange-600 text-white rounded-full p-1 shadow-lg">
+                        <CheckCircle className="w-4 h-4" />
+                    </div>
+                )}
+            </button>
+
+            {/* Edit Thumbnail Button */}
+            <button
+                onClick={onEditThumbnail}
+                className="absolute bottom-2 left-2 p-1.5 bg-slate-800/80 hover:bg-white text-white hover:text-black rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                title="Upload Custom Thumbnail"
+            >
+                <Edit className="w-3 h-3" />
+            </button>
+
+            {/* Preview Button - Bottom Bar */}
+            {previewUrl && (
+                <div className="mt-1">
+                    <button
+                        onClick={onPreview}
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all flex items-center justify-center gap-1.5 text-[10px] font-black uppercase"
+                    >
+                        <Eye className="w-3.5 h-3.5" />
+                        PREVIEW
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, onDelete, onOpenPlaygroundEditor, initialGameMode = null }) => {
   const [activeTab, setActiveTab] = useState('GAME');
+  const [gameMode, setGameMode] = useState<'standard' | 'playzone' | 'elimination'>(baseGame?.gameMode || initialGameMode || 'standard');
 
   // Core Info
   const [name, setName] = useState(baseGame?.name || '');
@@ -126,7 +242,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
 
   // Client Info
   const [clientName, setClientName] = useState(baseGame?.client?.name || '');
-  const [playingDate, setPlayingDate] = useState(baseGame?.client?.playingDate || new Date().toISOString().split('T')[0]);
+  // Default to today's date when creating new game, or use existing date when editing
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const [playingDate, setPlayingDate] = useState(baseGame?.client?.playingDate || getTodayDate());
   const [clientLogo, setClientLogo] = useState(baseGame?.client?.logoUrl || '');
   const [isSearchingLogo, setIsSearchingLogo] = useState(false);
   
@@ -135,7 +253,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [showRanking, setShowRanking] = useState(baseGame?.showRankingToPlayers || false);
   const [allowChatting, setAllowChatting] = useState(baseGame?.allowChatting ?? true);
   const [showPlayerLocations, setShowPlayerLocations] = useState(baseGame?.showPlayerLocations ?? true);
-  const [showTaskDetails, setShowTaskDetails] = useState(baseGame?.showTaskDetailsToPlayers || false);
+  const [showTaskDetails, setShowTaskDetails] = useState(baseGame?.showTaskDetailsToPlayers ?? true);
 
   // New Fields
   const [aboutTemplate, setAboutTemplate] = useState(baseGame?.aboutTemplate || '');
@@ -143,8 +261,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [templateImages, setTemplateImages] = useState<string[]>(baseGame?.templateImageUrls || []);
 
   // End Location
-  const [endLat, setEndLat] = useState<string>(baseGame?.endLocation?.lat.toString() || '');
-  const [endLng, setEndLng] = useState<string>(baseGame?.endLocation?.lng.toString() || '');
+  const [endLat, setEndLat] = useState<string>(baseGame?.endLocation?.lat?.toString?.() ?? '');
+  const [endLng, setEndLng] = useState<string>(baseGame?.endLocation?.lng?.toString?.() ?? '');
   const [enableMeetingPoint, setEnableMeetingPoint] = useState<boolean>(baseGame?.enableMeetingPoint || false);
 
   // Design Config
@@ -154,7 +272,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [secondaryColor, setSecondaryColor] = useState<string>(baseGame?.designConfig?.secondaryColor || '#ef4444');
   const [useDefaultSecondary, setUseDefaultSecondary] = useState(!baseGame?.designConfig?.secondaryColor);
   
-  const [enableCodeScanner, setEnableCodeScanner] = useState(baseGame?.designConfig?.enableCodeScanner || false);
+  const [enableCodeScanner, setEnableCodeScanner] = useState(baseGame?.designConfig?.enableCodeScanner ?? true);
   const [enableGameTime, setEnableGameTime] = useState(baseGame?.designConfig?.enableGameTime ?? true);
   const [hideScore, setHideScore] = useState(baseGame?.designConfig?.hideScore || false);
   
@@ -170,6 +288,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [hintLimit, setHintLimit] = useState<number>(baseGame?.taskConfig?.hintLimit || 3);
   const [showAnswerCorrectnessMode, setShowAnswerCorrectnessMode] = useState<'never' | 'always' | 'task_specific'>(baseGame?.taskConfig?.showAnswerCorrectnessMode || 'task_specific');
   const [showAfterAnswerComment, setShowAfterAnswerComment] = useState<boolean>(baseGame?.taskConfig?.showAfterAnswerComment ?? true);
+  const [teamVotingMode, setTeamVotingMode] = useState<'require_consensus' | 'captain_submit'>(baseGame?.taskConfig?.teamVotingMode || 'captain_submit');
 
   // Map Configuration (New)
   const [pinDisplayMode, setPinDisplayMode] = useState<'order' | 'score' | 'none'>(baseGame?.mapConfig?.pinDisplayMode || 'none');
@@ -199,27 +318,71 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [isUploadingTaskBg, setIsUploadingTaskBg] = useState(false);
+  const [showDateTimePicker, setShowDateTimePicker] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showMapStylePreview, setShowMapStylePreview] = useState(false);
+  const [previewMapStyle, setPreviewMapStyle] = useState<MapStyleId | null>(null);
+  const [previewCustomStyle, setPreviewCustomStyle] = useState<{id: string; name: string; json: string; previewUrl?: string} | null>(null);
+  const [showSnazzyMapsBrowser, setShowSnazzyMapsBrowser] = useState(false);
+  const [showCreateStyleModal, setShowCreateStyleModal] = useState(false);
+  const [customStyleName, setCustomStyleName] = useState('');
+  const [customStyles, setCustomStyles] = useState<Array<{id: string; name: string; json: string; previewUrl?: string}>>([]);
+  const [editingCustomStyleId, setEditingCustomStyleId] = useState<string | null>(null);
+  const [mapStyleUsage, setMapStyleUsage] = useState<Record<string, number>>({});
+  const [isLoadingUsage, setIsLoadingUsage] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const templateImgInputRef = useRef<HTMLInputElement>(null);
   const mapPreviewInputRef = useRef<HTMLInputElement>(null);
   const taskBgInputRef = useRef<HTMLInputElement>(null);
+  const customStylePreviewInputRef = useRef<HTMLInputElement>(null);
 
   // Load Tag Colors & Fetch Unique Tags on mount
   useEffect(() => {
-      try {
-          const stored = localStorage.getItem('geohunt_tag_colors');
-          if (stored) setTagColors(JSON.parse(stored));
-          
-          // Load map previews
-          const storedPreviews = localStorage.getItem('geohunt_map_previews');
-          if (storedPreviews) setMapStylePreviews(JSON.parse(storedPreviews));
-      } catch (e) {
-          console.error("Failed to load local settings", e);
-      }
+      const loadSettings = async () => {
+          try {
+              const stored = localStorage.getItem('geohunt_tag_colors');
+              if (stored) setTagColors(JSON.parse(stored));
 
-      fetchUniqueTags().then(tags => setExistingTags(tags));
+              // Load map previews (kept in localStorage for standard styles)
+              const storedPreviews = localStorage.getItem('geohunt_map_previews');
+              if (storedPreviews) setMapStylePreviews(JSON.parse(storedPreviews));
+
+              // Load custom styles from Supabase
+              const supabaseStyles = await fetchCustomMapStyles();
+              setCustomStyles(supabaseStyles);
+          } catch (e) {
+              console.error("Failed to load settings", e);
+          }
+
+          fetchUniqueTags().then(tags => setExistingTags(tags));
+      };
+
+      loadSettings();
   }, []);
+
+  // Load map style usage counts
+  useEffect(() => {
+      const loadUsageCounts = async () => {
+          setIsLoadingUsage(true);
+          const usage: Record<string, number> = {};
+
+          // Count usage for all standard map styles
+          for (const style of MAP_STYLES) {
+              const count = await countMapStyleUsage(style.id);
+              usage[style.id] = count;
+          }
+
+          // Count usage for custom styles (they all use 'google_custom' as the ID)
+          const googleCustomCount = await countMapStyleUsage('google_custom');
+          usage['google_custom'] = googleCustomCount;
+
+          setMapStyleUsage(usage);
+          setIsLoadingUsage(false);
+      };
+
+      loadUsageCounts();
+  }, [customStyles]);
 
   const saveTagColors = (newColors: Record<string, string>) => {
       setTagColors(newColors);
@@ -240,13 +403,49 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       if (mapPreviewInputRef.current) mapPreviewInputRef.current.value = '';
   };
 
+  const handleCustomStylePreviewUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && editingCustomStyleId) {
+          const url = await uploadImage(file);
+          if (url) {
+              const styleToUpdate = customStyles.find(s => s.id === editingCustomStyleId);
+              if (styleToUpdate) {
+                  const updatedStyle = { ...styleToUpdate, previewUrl: url };
+                  // Save to Supabase
+                  const savedStyle = await saveCustomMapStyle(updatedStyle);
+                  if (savedStyle) {
+                      const updatedStyles = customStyles.map(style =>
+                          style.id === editingCustomStyleId ? savedStyle : style
+                      );
+                      setCustomStyles(updatedStyles);
+                  }
+              }
+          }
+      }
+      setEditingCustomStyleId(null);
+      if (customStylePreviewInputRef.current) customStylePreviewInputRef.current.value = '';
+  };
+
   const handleLogoSearch = async () => {
       if (!clientName.trim()) return;
       setIsSearchingLogo(true);
       const url = await searchLogoUrl(clientName);
-      if (url) setClientLogo(url);
-      else alert("No logo found for this name. Try uploading one.");
+      if (url) {
+          setClientLogo(url);
+      } else {
+          alert("No logo found for this name. Try uploading one.");
+      }
       setIsSearchingLogo(false);
+  };
+
+  const handleLogoError = () => {
+      // If Clearbit fails, try fallback to Google favicon
+      if (clientLogo && clientLogo.includes('clearbit')) {
+          const domain = clientLogo.split('/').pop();
+          const fallbackUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+          console.log('[Logo] Clearbit failed, trying Google favicon:', fallbackUrl);
+          setClientLogo(fallbackUrl);
+      }
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,12 +537,101 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           const parsed = JSON.parse(customMapJson);
           if (Array.isArray(parsed)) {
               setJsonValidationStatus('VALID');
-              setTimeout(() => setJsonValidationStatus('IDLE'), 2000);
+              // Apply the custom map style
+              setSelectedMapStyle('google_custom');
+              // Keep the validation status as VALID (don't reset)
           } else {
               setJsonValidationStatus('INVALID');
           }
       } catch (e) {
           setJsonValidationStatus('INVALID');
+      }
+  };
+
+  const handleCreateCustomStyle = async () => {
+      if (!customStyleName.trim()) {
+          alert('Please enter a name for your custom style');
+          return;
+      }
+
+      if (!customMapJson.trim()) {
+          alert('Please add custom map JSON first');
+          return;
+      }
+
+      try {
+          // Validate JSON
+          const parsed = JSON.parse(customMapJson);
+          if (!Array.isArray(parsed)) {
+              alert('Invalid JSON format');
+              return;
+          }
+
+          // Create new custom style (without ID, will be generated by Supabase)
+          const newStyle = {
+              name: customStyleName.trim(),
+              json: customMapJson
+          };
+
+          // Save to Supabase
+          const savedStyle = await saveCustomMapStyle(newStyle);
+
+          if (savedStyle) {
+              // Add to custom styles in state
+              const updatedStyles = [...customStyles, savedStyle];
+              setCustomStyles(updatedStyles);
+
+              // Close modal and reset
+              setShowCreateStyleModal(false);
+              setCustomStyleName('');
+              // Clear the JSON box
+              setCustomMapJson('');
+              setJsonValidationStatus('IDLE');
+
+              // Show success
+              alert(`Custom style "${savedStyle.name}" added to library!`);
+          } else {
+              alert('Failed to save custom style to database. Please try again.');
+          }
+      } catch (e) {
+          alert('Failed to create custom style. Please check your JSON format.');
+      }
+  };
+
+  const handleDeleteCustomStyle = async (styleId: string) => {
+      const style = customStyles.find(s => s.id === styleId);
+      if (!style) return;
+
+      // Check if google_custom is in use (all custom styles use this ID)
+      const usageCount = mapStyleUsage['google_custom'] || 0;
+
+      let confirmMessage = `Delete custom style "${style.name}"?`;
+      if (usageCount > 0) {
+          confirmMessage = `This style is currently used in ${usageCount} game${usageCount > 1 ? 's' : ''}.\n\nDeleting it will replace it with "Standard" map style in all affected games.\n\nContinue?`;
+      }
+
+      if (!confirm(confirmMessage)) return;
+
+      // If in use, replace with standard in all games
+      if (usageCount > 0) {
+          const replaced = await replaceMapStyleInGames('google_custom', 'osm');
+          if (replaced > 0) {
+              alert(`Replaced custom map style with "Standard" in ${replaced} game${replaced > 1 ? 's' : ''}.`);
+              // Reload usage counts
+              const newUsage = { ...mapStyleUsage, 'google_custom': 0 };
+              setMapStyleUsage(newUsage);
+          }
+      }
+
+      // Delete from Supabase
+      const deleted = await deleteCustomMapStyle(styleId);
+
+      if (deleted) {
+          // Remove from custom styles in state
+          const updatedStyles = customStyles.filter(s => s.id !== styleId);
+          setCustomStyles(updatedStyles);
+      } else {
+          alert('Failed to delete custom style from database. Please try again.');
       }
   };
 
@@ -353,11 +641,62 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           return;
       }
 
+      // --- VALIDATION ---
+      if (timerMode === 'countdown') {
+          if (!Number.isFinite(duration) || duration <= 0) {
+              alert('Please enter a valid countdown duration (minutes).');
+              return;
+          }
+      }
+
+      if (timeLimitMode === 'global') {
+          if (!Number.isFinite(globalTimeLimit) || globalTimeLimit <= 0) {
+              alert('Please enter a valid global time limit (seconds).');
+              return;
+          }
+      }
+
+      if (limitHints) {
+          if (!Number.isFinite(hintLimit) || hintLimit <= 0) {
+              alert('Please enter a valid hint limit.');
+              return;
+          }
+      }
+
+      if (selectedMapStyle === 'google_custom') {
+          try {
+              const parsed = JSON.parse(customMapJson);
+              if (!Array.isArray(parsed)) {
+                  alert('Custom Google Map Style JSON must be a JSON array.');
+                  return;
+              }
+          } catch {
+              alert('Invalid JSON for Custom Google Map Style.');
+              return;
+          }
+      }
+
+      // Validate Game Modes
+      if (gameMode === 'playzone') {
+          // Note: Full playground validation will occur when game is saved with tasks
+          // This check ensures user is aware of playzone requirements
+          console.log('✓ Playzone game mode selected. Remember to add playgrounds and tasks.');
+      }
+
+      if (gameMode === 'elimination') {
+          // Elimination games require GPS support and will feature team colors and bomb system
+          console.log('✓ Elimination game mode selected. Teams will compete to capture tasks first.');
+      }
+
       let endLocation = undefined;
       if (endLat && endLng) {
           const lat = parseFloat(endLat);
           const lng = parseFloat(endLng);
           if (!isNaN(lat) && !isNaN(lng)) {
+              if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                  alert('End location coordinates are out of range.');
+                  return;
+              }
               endLocation = { lat, lng };
           }
       }
@@ -381,7 +720,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           limitHints,
           hintLimit,
           showAnswerCorrectnessMode,
-          showAfterAnswerComment
+          showAfterAnswerComment,
+          teamVotingMode
       };
 
       const mapConfig: MapConfiguration = {
@@ -399,6 +739,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           description,
           finishMessage,
           language,
+          gameMode,
           defaultMapStyle: selectedMapStyle,
           googleMapStyleJson: selectedMapStyle === 'google_custom' ? customMapJson : undefined,
           aboutTemplate,
@@ -475,21 +816,73 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   );
 
   const renderContent = () => {
-      switch (activeTab) {
+      // Prevent MAP tab for playzone mode only (elimination is GPS-based and needs map style selection)
+      const effectiveTab = gameMode === 'playzone' && activeTab === 'MAP' ? 'GAME' : activeTab;
+
+      switch (effectiveTab) {
           // ... (Existing Cases) ...
           case 'GAME':
               return (
                   <div className="space-y-6 max-w-3xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* 0. Game Mode Selection */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-4">Game Mode</label>
+                          <div className="flex gap-4">
+                              <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'standard' ? '#f97316' : '#475569', backgroundColor: gameMode === 'standard' ? '#7c2d12' : '#1e293b' }}>
+                                  <input
+                                      type="radio"
+                                      name="gameMode"
+                                      value="standard"
+                                      checked={gameMode === 'standard'}
+                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone' | 'elimination')}
+                                      className="w-4 h-4"
+                                  />
+                                  <div>
+                                      <span className="font-bold text-white block">STANDARD GAME</span>
+                                      <span className="text-[10px] text-slate-400">GPS-based navigation & map</span>
+                                  </div>
+                              </label>
+                              <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'playzone' ? '#14b8a6' : '#475569', backgroundColor: gameMode === 'playzone' ? '#134e4a' : '#1e293b' }}>
+                                  <input
+                                      type="radio"
+                                      name="gameMode"
+                                      value="playzone"
+                                      checked={gameMode === 'playzone'}
+                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone' | 'elimination')}
+                                      className="w-4 h-4"
+                                  />
+                                  <div>
+                                      <span className="font-bold text-white block">PLAYZONE GAME</span>
+                                      <span className="text-[10px] text-slate-400">Indoor, touch-based on playground</span>
+                                  </div>
+                              </label>
+                              <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'elimination' ? '#ef4444' : '#475569', backgroundColor: gameMode === 'elimination' ? '#7f1d1d' : '#1e293b' }}>
+                                  <input
+                                      type="radio"
+                                      name="gameMode"
+                                      value="elimination"
+                                      checked={gameMode === 'elimination'}
+                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone' | 'elimination')}
+                                      className="w-4 h-4"
+                                  />
+                                  <div>
+                                      <span className="font-bold text-white block">ELIMINATION GAME</span>
+                                      <span className="text-[10px] text-slate-400">GPS-based competitive CTF with bombs</span>
+                                  </div>
+                              </label>
+                          </div>
+                      </div>
+
                       {/* 1. Name & Date */}
                       <div className="grid grid-cols-3 gap-6">
                           <div className="col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                               <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Game Name</label>
-                              <input 
-                                  type="text" 
+                              <input
+                                  type="text"
                                   value={name}
-                                  onChange={(e) => setName(e.target.value)}
-                                  placeholder="e.g. City Explorer 2025"
-                                  className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none transition-colors text-lg"
+                                  onChange={(e) => setName(e.target.value.toUpperCase())}
+                                  placeholder="e.g. CITY EXPLORER 2025"
+                                  className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none transition-colors text-lg uppercase"
                               />
                           </div>
                           <div className="col-span-1 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
@@ -513,12 +906,12 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="flex-1 space-y-4">
                                   <div className="relative">
                                       <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                                      <input 
-                                          type="text" 
+                                      <input
+                                          type="text"
                                           value={clientName}
-                                          onChange={(e) => setClientName(e.target.value)}
-                                          placeholder="Client Name (e.g. Acme Corp)"
-                                          className="w-full pl-10 p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none"
+                                          onChange={(e) => setClientName(e.target.value.toUpperCase())}
+                                          placeholder="CLIENT NAME (E.G. ACME CORP)"
+                                          className="w-full pl-10 p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none uppercase"
                                       />
                                   </div>
                                   <div className="flex gap-2">
@@ -544,7 +937,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
                                   ) : clientLogo ? (
                                       <div className="relative w-full h-full p-2 flex items-center justify-center">
-                                          <img src={clientLogo} className="max-w-full max-h-full object-contain" />
+                                          <img
+                                              src={clientLogo}
+                                              onError={handleLogoError}
+                                              className="max-w-full max-h-full object-contain"
+                                          />
                                           <button 
                                               onClick={() => setClientLogo('')}
                                               className="absolute top-1 right-1 p-1 bg-red-600 rounded-full text-white hover:bg-red-700 transition-colors"
@@ -587,15 +984,15 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="flex items-start gap-4 mb-4">
                                   {/* 1. Auto-complete Input */}
                                   <div className="relative flex-1">
-                                      <input 
-                                          type="text" 
+                                      <input
+                                          type="text"
                                           value={tagInput}
-                                          onChange={(e) => handleTagInputChange(e.target.value)}
+                                          onChange={(e) => handleTagInputChange(e.target.value.toUpperCase())}
                                           onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
                                           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                                           onFocus={() => tagInput && setShowSuggestions(true)}
-                                          placeholder="Add tag..."
-                                          className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none focus:border-blue-500 h-[48px]"
+                                          placeholder="ADD TAG..."
+                                          className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm outline-none focus:border-blue-500 h-[48px] uppercase"
                                       />
                                       {showSuggestions && filteredSuggestions.length > 0 && (
                                           <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 overflow-hidden animate-in slide-in-from-top-1">
@@ -633,11 +1030,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               {/* 3. Selected Chips (Tags Made) */}
                               <div className="flex flex-wrap gap-2 min-h-[32px]">
                                   {tags.length === 0 && <span className="text-xs text-slate-600 italic">No tags added yet.</span>}
-                                  {tags.map(tag => {
+                                  {tags.map((tag, index) => {
                                       const color = tagColors[tag] || TAG_COLORS[0];
                                       return (
-                                          <span 
-                                            key={tag} 
+                                          <span
+                                            key={`${tag}-${index}`}
                                             onClick={() => cycleTagColor(tag)}
                                             className="text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity select-none shadow-sm"
                                             style={{ backgroundColor: color }}
@@ -674,11 +1071,14 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="space-y-4 animate-in fade-in">
                                   <div>
                                       <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Duration (Minutes)</label>
-                                      <input type="number" value={duration} onChange={(e) => setDuration(parseInt(e.target.value))} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none" />
+                                      <input type="number" value={duration} onChange={(e) => {
+                                          const v = parseInt(e.target.value, 10);
+                                          setDuration(Number.isFinite(v) ? v : 0);
+                                      }} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none uppercase" />
                                   </div>
                                   <div>
                                       <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Timer Title</label>
-                                      <input type="text" value={timerTitle} onChange={(e) => setTimerTitle(e.target.value)} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none" />
+                                      <input type="text" value={timerTitle} onChange={(e) => setTimerTitle(e.target.value.toUpperCase())} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-orange-500 outline-none uppercase" />
                                   </div>
                               </div>
                           )}
@@ -687,11 +1087,26 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="space-y-4 animate-in fade-in">
                                   <div>
                                       <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Ends At (Local Time)</label>
-                                      <input type="datetime-local" value={endDateTime} onChange={(e) => setEndDateTime(e.target.value)} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-red-500 outline-none" />
+                                      <button
+                                          onClick={() => setShowDateTimePicker(true)}
+                                          className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold hover:border-red-500 transition-colors text-left flex items-center justify-between group"
+                                      >
+                                          <span className={endDateTime ? 'text-white' : 'text-slate-500'}>
+                                              {endDateTime ? formatDateTime(endDateTime, language, {
+                                                  day: '2-digit',
+                                                  month: 'short',
+                                                  year: 'numeric',
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                  hour12: false
+                                              }) : 'Click to select date & time'}
+                                          </span>
+                                          <Calendar className="w-5 h-5 text-red-500 group-hover:scale-110 transition-transform" />
+                                      </button>
                                   </div>
                                   <div>
                                       <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Timer Title</label>
-                                      <input type="text" value={timerTitle} onChange={(e) => setTimerTitle(e.target.value)} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-red-500 outline-none" />
+                                      <input type="text" value={timerTitle} onChange={(e) => setTimerTitle(e.target.value.toUpperCase())} className="w-full p-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold focus:border-red-500 outline-none uppercase" />
                                   </div>
                               </div>
                           )}
@@ -709,172 +1124,186 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                   const customPreview = mapStylePreviews[style.id];
                                   const previewUrl = customPreview || style.preview;
                                   const isCustom = !!customPreview;
-                                  
+
                                   return (
-                                      <div key={style.id} className="relative group">
+                                      <MapStyleCard
+                                          key={style.id}
+                                          style={style}
+                                          previewUrl={previewUrl}
+                                          isCustom={isCustom}
+                                          Icon={Icon}
+                                          isSelected={selectedMapStyle === style.id}
+                                          usageCount={mapStyleUsage[style.id]}
+                                          onSelect={() => {
+                                              setSelectedMapStyle(style.id);
+                                              setShowMapStylePreview(false);
+                                          }}
+                                          onEditThumbnail={(e) => {
+                                              e.stopPropagation();
+                                              setEditingStyleId(style.id);
+                                              mapPreviewInputRef.current?.click();
+                                          }}
+                                          onPreview={(e) => {
+                                              e.stopPropagation();
+                                              setPreviewMapStyle(style.id);
+                                              setPreviewCustomStyle(null);
+                                              setShowMapStylePreview(true);
+                                          }}
+                                      />
+                                  );
+                              })}
+
+                              {/* Custom Saved Styles */}
+                              {customStyles.map(customStyle => {
+                                  return (
+                                      <div key={customStyle.id} className="relative group">
                                           <button
-                                              onClick={() => setSelectedMapStyle(style.id)}
-                                              className={`relative w-full rounded-xl overflow-hidden border-2 transition-all ${selectedMapStyle === style.id ? 'border-orange-500 ring-2 ring-orange-500/30' : 'border-slate-700 hover:border-white'}`}
+                                              onClick={() => {
+                                                  setSelectedMapStyle('google_custom');
+                                                  setCustomMapJson(customStyle.json);
+                                                  setJsonValidationStatus('VALID');
+                                                  setShowMapStylePreview(false);
+                                              }}
+                                              className={`relative w-full rounded-xl overflow-hidden border-2 transition-all ${selectedMapStyle === 'google_custom' && customMapJson === customStyle.json ? 'border-orange-500 ring-2 ring-orange-500/30' : 'border-slate-700 hover:border-white'}`}
                                           >
-                                              <div className="aspect-square bg-slate-800 relative flex items-center justify-center">
-                                                  {previewUrl ? (
-                                                      <img 
-                                                          src={previewUrl} 
-                                                          alt={style.label} 
-                                                          className={`w-full h-full object-cover ${!isCustom && style.className ? style.className : ''} opacity-80 group-hover:opacity-100 transition-opacity`} 
+                                              {/* Usage Count Badge for Custom Styles */}
+                                              {mapStyleUsage['google_custom'] !== undefined && (
+                                                  <div className="absolute top-2 left-2 bg-purple-600 text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase z-10 shadow-lg">
+                                                      {mapStyleUsage['google_custom'] === 0 ? 'Not used' : `Used in ${mapStyleUsage['google_custom']} game${mapStyleUsage['google_custom'] > 1 ? 's' : ''}`}
+                                                  </div>
+                                              )}
+
+                                              <div className="aspect-square bg-gradient-to-br from-purple-900 to-blue-900 relative flex items-center justify-center">
+                                                  {customStyle.previewUrl ? (
+                                                      <img
+                                                          src={customStyle.previewUrl}
+                                                          alt={customStyle.name}
+                                                          className="w-full h-full object-cover"
+                                                          crossOrigin="anonymous"
                                                       />
                                                   ) : (
-                                                      <div className="text-slate-500 group-hover:text-white transition-colors">
-                                                          {Icon ? <Icon className="w-10 h-10" /> : <MapIcon className="w-10 h-10" />}
-                                                      </div>
+                                                      <Settings className="w-10 h-10 text-purple-300" />
                                                   )}
                                               </div>
                                               <div className="absolute bottom-0 left-0 right-0 bg-black/80 p-2 text-center">
-                                                  <span className="text-[10px] font-black uppercase text-white">{style.label}</span>
+                                                  <span className="text-[10px] font-black uppercase text-white">{customStyle.name}</span>
                                               </div>
-                                              {selectedMapStyle === style.id && (
+                                              {selectedMapStyle === 'google_custom' && customMapJson === customStyle.json && (
                                                   <div className="absolute top-2 right-2 bg-orange-600 text-white rounded-full p-1 shadow-lg">
                                                       <CheckCircle className="w-4 h-4" />
                                                   </div>
                                               )}
                                           </button>
-                                          
-                                          {/* Edit Thumbnail Button */}
-                                          <button 
-                                              onClick={(e) => { e.stopPropagation(); setEditingStyleId(style.id); mapPreviewInputRef.current?.click(); }}
-                                              className="absolute top-2 left-2 p-1.5 bg-slate-800/80 hover:bg-white text-white hover:text-black rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
-                                              title="Upload Custom Thumbnail"
+
+                                          {/* Upload Thumbnail Button */}
+                                          <button
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setEditingCustomStyleId(customStyle.id);
+                                                  customStylePreviewInputRef.current?.click();
+                                              }}
+                                              className="absolute bottom-2 right-2 p-1.5 bg-slate-800/80 hover:bg-white text-white hover:text-black rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                                              title="Upload Thumbnail"
                                           >
                                               <Edit className="w-3 h-3" />
                                           </button>
+
+                                          {/* Delete Button */}
+                                          <button
+                                              onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleDeleteCustomStyle(customStyle.id);
+                                              }}
+                                              className="absolute bottom-2 left-2 p-1.5 bg-red-600/90 hover:bg-red-500 text-white rounded-full transition-all opacity-0 group-hover:opacity-100 z-10"
+                                              title="Delete Custom Style"
+                                          >
+                                              <Trash2 className="w-3 h-3" />
+                                          </button>
+
+                                          {/* Preview Button */}
+                                          {customStyle.previewUrl && (
+                                              <div className="mt-1">
+                                                  <button
+                                                      onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          setPreviewCustomStyle(customStyle);
+                                                          setPreviewMapStyle(null);
+                                                          setShowMapStylePreview(true);
+                                                      }}
+                                                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all flex items-center justify-center gap-1.5 text-[10px] font-black uppercase"
+                                                  >
+                                                      <Eye className="w-3.5 h-3.5" />
+                                                      PREVIEW
+                                                  </button>
+                                              </div>
+                                          )}
                                       </div>
                                   );
                               })}
                           </div>
-                          
+
                           <input ref={mapPreviewInputRef} type="file" accept="image/*" className="hidden" onChange={handleMapPreviewUpload} />
+                          <input ref={customStylePreviewInputRef} type="file" accept="image/*" className="hidden" onChange={handleCustomStylePreviewUpload} />
 
                           {selectedMapStyle === 'google_custom' && (
                               <div className="mt-6 bg-slate-950 border border-slate-700 rounded-xl p-4 animate-in fade-in slide-in-from-top-2 relative">
                                   <div className="flex justify-between items-start mb-2">
-                                      <label className="block text-[10px] font-bold text-slate-400 uppercase">Google Maps Custom Style JSON</label>
-                                      <button 
+                                      <label className="block text-[10px] font-bold text-slate-400 uppercase">Snazzy Maps / Custom Style JSON</label>
+                                      <button
                                           onClick={() => setShowJsonHelp(true)}
                                           className="text-[10px] font-bold text-blue-400 hover:text-blue-300 uppercase flex items-center gap-1"
                                       >
                                           <Info className="w-3 h-3" /> HOW TO GET JSON?
                                       </button>
                                   </div>
-                                  <textarea 
+
+                                  {jsonValidationStatus === 'VALID' && customMapJson.trim() && (
+                                      <div className="mb-3 bg-green-900/30 border border-green-600 rounded-lg p-3 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                                          <Check className="w-4 h-4 text-green-400" />
+                                          <span className="text-xs font-bold text-green-300 uppercase">Custom map style applied! This style will be used in your game.</span>
+                                      </div>
+                                  )}
+
+                                  <textarea
                                       value={customMapJson}
                                       onChange={(e) => { setCustomMapJson(e.target.value); setJsonValidationStatus('IDLE'); }}
                                       placeholder='Paste JSON array here (e.g. [{"featureType": "all", ...}])'
                                       className="w-full h-32 bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs font-mono text-slate-300 outline-none focus:border-orange-500 custom-scrollbar resize-none mb-2"
                                   />
                                   
-                                  <div className="flex justify-between items-center">
-                                      <a 
-                                          href="https://snazzymaps.com/" 
-                                          target="_blank" 
-                                          rel="noopener noreferrer" 
+                                  <div className="flex justify-between items-center gap-2">
+                                      <a
+                                          href="https://snazzymaps.com/"
+                                          target="_blank"
+                                          rel="noopener noreferrer"
                                           className="text-[10px] font-bold text-slate-500 hover:text-white uppercase flex items-center gap-1 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg transition-colors"
                                       >
                                           <ExternalLink className="w-3 h-3" /> OPEN SNAZZY MAPS
                                       </a>
-                                      
-                                      <button 
-                                          onClick={validateJson}
-                                          className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${jsonValidationStatus === 'VALID' ? 'bg-green-600 text-white' : (jsonValidationStatus === 'INVALID' ? 'bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white')}`}
-                                      >
-                                          {jsonValidationStatus === 'VALID' ? <Check className="w-3 h-3" /> : (jsonValidationStatus === 'INVALID' ? <AlertTriangle className="w-3 h-3" /> : <Code className="w-3 h-3" />)}
-                                          {jsonValidationStatus === 'VALID' ? 'VALID JSON' : (jsonValidationStatus === 'INVALID' ? 'INVALID JSON' : 'VALIDATE & APPLY')}
-                                      </button>
+
+                                      <div className="flex gap-2">
+                                          <button
+                                              onClick={validateJson}
+                                              className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 ${jsonValidationStatus === 'VALID' ? 'bg-green-600 text-white' : (jsonValidationStatus === 'INVALID' ? 'bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white')}`}
+                                          >
+                                              {jsonValidationStatus === 'VALID' ? <Check className="w-3 h-3" /> : (jsonValidationStatus === 'INVALID' ? <AlertTriangle className="w-3 h-3" /> : <Code className="w-3 h-3" />)}
+                                              {jsonValidationStatus === 'VALID' ? '✓ APPLIED' : (jsonValidationStatus === 'INVALID' ? 'INVALID JSON' : 'VALIDATE & APPLY')}
+                                          </button>
+
+                                          {jsonValidationStatus === 'VALID' && customMapJson.trim() && (
+                                              <button
+                                                  onClick={() => setShowCreateStyleModal(true)}
+                                                  className="px-4 py-2 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-2 bg-orange-600 hover:bg-orange-700 text-white border-2 border-orange-500"
+                                              >
+                                                  <Plus className="w-3 h-3" /> CREATE STYLE
+                                              </button>
+                                          )}
+                                      </div>
                                   </div>
                               </div>
                           )}
                       </div>
 
-                      {/* Map Configuration Cards */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          
-                          {/* Pin Settings */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Pin settings</label>
-                              <div className="space-y-3">
-                                  <RadioOption 
-                                      label="Display task order on pin"
-                                      selected={pinDisplayMode === 'order'}
-                                      onClick={() => setPinDisplayMode('order')}
-                                  />
-                                  <RadioOption 
-                                      label="Display task score on map"
-                                      selected={pinDisplayMode === 'score'}
-                                      onClick={() => setPinDisplayMode('score')}
-                                  />
-                                  <RadioOption 
-                                      label="Display nothing on pin"
-                                      selected={pinDisplayMode === 'none'}
-                                      onClick={() => setPinDisplayMode('none')}
-                                  />
-                                  <div className="pt-2 border-t border-slate-800">
-                                      <CheckboxOption 
-                                          label="Display task short intro under pin"
-                                          checked={showShortIntroUnderPin}
-                                          onChange={setShowShortIntroUnderPin}
-                                      />
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Map Interaction Settings */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Map interaction settings</label>
-                              <div className="space-y-3">
-                                  <RadioOption 
-                                      label="Disable opening tasks on the map by click"
-                                      selected={mapInteraction === 'disable_click'}
-                                      onClick={() => setMapInteraction('disable_click')}
-                                  />
-                                  <RadioOption 
-                                      label="Allow opening all tasks on the map by click"
-                                      selected={mapInteraction === 'allow_all'}
-                                      onClick={() => setMapInteraction('allow_all')}
-                                  />
-                                  <RadioOption 
-                                      label="Allow opening specific tasks on map"
-                                      selected={mapInteraction === 'allow_specific'}
-                                      onClick={() => setMapInteraction('allow_specific')}
-                                  />
-                              </div>
-                          </div>
-
-                          {/* Additional Map Settings */}
-                          <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Additional map settings</label>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <CheckboxOption 
-                                      label="Hide my location"
-                                      checked={hideMyLocation}
-                                      onChange={setHideMyLocation}
-                                  />
-                                  <CheckboxOption 
-                                      label="Show my track"
-                                      checked={showMyTrack}
-                                      onChange={setShowMyTrack}
-                                  />
-                                  <CheckboxOption 
-                                      label="Allow navigation"
-                                      checked={allowNavigation}
-                                      onChange={setAllowNavigation}
-                                  />
-                                  <CheckboxOption 
-                                      label="Allow opening tasks if GPS signal weak (beta)"
-                                      checked={allowWeakGps}
-                                      onChange={setAllowWeakGps}
-                                  />
-                              </div>
-                          </div>
-                      </div>
                   </div>
               );
           case 'PLAY': // NEW TAB
@@ -904,147 +1333,68 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                           />
                       </div>
 
-                      {/* Meeting Point Section */}
-                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                          <div className="flex items-center gap-2 mb-4">
-                              <label className="text-[10px] font-bold text-white uppercase">Meeting Point</label>
-                              <Info className="w-3 h-3 text-slate-500" />
-                          </div>
-                          
-                          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Meeting point</label>
-                              
-                              <div className="flex items-center gap-3 mb-6">
-                                  <input 
-                                      type="checkbox" 
-                                      checked={enableMeetingPoint}
-                                      onChange={(e) => setEnableMeetingPoint(e.target.checked)}
-                                      className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
-                                  />
-                                  <span className="text-xs text-slate-300">Enable meeting point after finishing the game</span>
+                      {/* Meeting Point Section - Only for GPS-based games */}
+                      {gameMode !== 'playzone' && (
+                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <div className="flex items-center gap-2 mb-4">
+                                  <label className="text-[10px] font-bold text-white uppercase">Meeting Point</label>
+                                  <Info className="w-3 h-3 text-slate-500" />
                               </div>
 
-                              {enableMeetingPoint && (
-                                  <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2">
-                                      <div>
-                                          <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Latitude</label>
-                                          <input 
-                                              type="text" 
-                                              value={endLat} 
-                                              onChange={(e) => setEndLat(e.target.value)} 
-                                              placeholder="55.6761"
-                                              className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none" 
-                                          />
-                                      </div>
-                                      <div>
-                                          <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Longitude</label>
-                                          <input 
-                                              type="text" 
-                                              value={endLng} 
-                                              onChange={(e) => setEndLng(e.target.value)} 
-                                              placeholder="12.5683"
-                                              className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none" 
-                                          />
-                                      </div>
+                              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                                  <label className="block text-[10px] font-bold text-white uppercase mb-4">Meeting point</label>
+
+                                  <div className="flex items-center gap-3 mb-6">
+                                      <input
+                                          type="checkbox"
+                                          checked={enableMeetingPoint}
+                                          onChange={(e) => setEnableMeetingPoint(e.target.checked)}
+                                          className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-xs text-slate-300">Enable meeting point after finishing the game</span>
                                   </div>
-                              )}
+
+                                  {enableMeetingPoint && (
+                                      <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                          <button
+                                              onClick={() => setShowMapPicker(true)}
+                                              className="w-full p-4 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-xl font-bold uppercase text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 group"
+                                          >
+                                              <MapPin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                              PICK LOCATION ON MAP
+                                          </button>
+                                          <div className="grid grid-cols-2 gap-4">
+                                              <div>
+                                                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Latitude</label>
+                                                  <input
+                                                      type="text"
+                                                      value={endLat}
+                                                      onChange={(e) => setEndLat(e.target.value)}
+                                                      placeholder="55.6761"
+                                                      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none uppercase"
+                                                  />
+                                              </div>
+                                              <div>
+                                                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Longitude</label>
+                                                  <input
+                                                      type="text"
+                                                      value={endLng}
+                                                      onChange={(e) => setEndLng(e.target.value)}
+                                                      placeholder="12.5683"
+                                                      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none uppercase"
+                                                  />
+                                              </div>
+                                          </div>
+                                      </div>
+                                  )}
+                              </div>
                           </div>
-                      </div>
+                      )}
                   </div>
               );
-          case 'DESIGN': // UPDATED TAB
+          case 'DESIGN': // GAME SETUP TAB
               return (
                   <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2">
-                      {/* Task Background Image */}
-                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                          <div className="flex justify-between items-center mb-4">
-                              <label className="block text-[10px] font-bold text-slate-500 uppercase">Task background image <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded ml-2">optional</span></label>
-                          </div>
-                          <div className="flex gap-4 items-center">
-                              <div className="flex-1">
-                                  <div className="relative flex items-center">
-                                      <button 
-                                          onClick={() => taskBgInputRef.current?.click()}
-                                          className="px-4 py-2 bg-slate-800 border border-slate-700 text-white text-xs font-bold rounded-l-lg hover:bg-slate-700 uppercase"
-                                      >
-                                          Vælg fil
-                                      </button>
-                                      <div className="flex-1 p-2 bg-slate-950 border-y border-r border-slate-700 rounded-r-lg text-slate-400 text-xs truncate">
-                                          {taskBackgroundImage ? 'Image selected' : 'Der er ikke valgt nogen fil'}
-                                      </div>
-                                  </div>
-                                  <p className="text-[9px] text-slate-500 mt-2 leading-relaxed">
-                                      Add image background to all the tasks within the game. Image will fulfill the whole screen. Max background image size is 10mb.
-                                      The image will be resized on the server to the size of 1200 pix for longer side.
-                                  </p>
-                              </div>
-                              {taskBackgroundImage && (
-                                  <div className="w-20 h-20 bg-slate-950 border border-slate-700 rounded-lg overflow-hidden relative">
-                                      <img src={taskBackgroundImage} className="w-full h-full object-cover" />
-                                      <button onClick={() => setTaskBackgroundImage('')} className="absolute top-0 right-0 bg-red-600 text-white p-1 rounded-bl-lg"><X className="w-3 h-3" /></button>
-                                  </div>
-                              )}
-                              <input ref={taskBgInputRef} type="file" accept="image/*" className="hidden" onChange={handleTaskBgUpload} />
-                          </div>
-                          {isUploadingTaskBg && <p className="text-xs text-orange-500 font-bold mt-2 animate-pulse">Processing image...</p>}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-6">
-                          {/* Primary Color */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Primary color</label>
-                              <div className="flex items-center gap-3 mb-2">
-                                  <input 
-                                      type="checkbox" 
-                                      checked={useDefaultPrimary} 
-                                      onChange={(e) => setUseDefaultPrimary(e.target.checked)}
-                                      className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
-                                  />
-                                  <div className="w-4 h-4 rounded-full bg-blue-600 border border-slate-600"></div>
-                                  <span className="text-xs text-slate-300">Use default from account settings</span>
-                              </div>
-                              {!useDefaultPrimary && (
-                                  <div className="mt-3 flex items-center gap-2">
-                                      <input 
-                                          type="color" 
-                                          value={primaryColor} 
-                                          onChange={(e) => setPrimaryColor(e.target.value)} 
-                                          className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
-                                      />
-                                      <span className="text-xs font-mono text-slate-400">{primaryColor}</span>
-                                  </div>
-                              )}
-                              <p className="text-[10px] text-slate-500 mt-2">Used for links and buttons.</p>
-                          </div>
-
-                          {/* Secondary Color */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Secondary color</label>
-                              <div className="flex items-center gap-3 mb-2">
-                                  <input 
-                                      type="checkbox" 
-                                      checked={useDefaultSecondary} 
-                                      onChange={(e) => setUseDefaultSecondary(e.target.checked)}
-                                      className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-orange-600 focus:ring-orange-500"
-                                  />
-                                  <div className="w-4 h-4 rounded-full bg-orange-600 border border-slate-600"></div>
-                                  <span className="text-xs text-slate-300">Use default from account settings</span>
-                              </div>
-                              {!useDefaultSecondary && (
-                                  <div className="mt-3 flex items-center gap-2">
-                                      <input 
-                                          type="color" 
-                                          value={secondaryColor} 
-                                          onChange={(e) => setSecondaryColor(e.target.value)} 
-                                          className="w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0"
-                                      />
-                                      <span className="text-xs font-mono text-slate-400">{secondaryColor}</span>
-                                  </div>
-                              )}
-                              <p className="text-[10px] text-slate-500 mt-2">Used for warning messages, timer, exit buttons, loading animations.</p>
-                          </div>
-                      </div>
-
                       {/* Visibility & Scoring */}
                       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
                           <label className="block text-[10px] font-bold text-white uppercase mb-4">Visibility of app design elements</label>
@@ -1084,12 +1434,12 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <label className="text-[10px] font-bold text-white uppercase">Show score after having played for</label>
                                       <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] uppercase">optional</span>
                                   </div>
-                                  <input 
-                                      type="text" 
-                                      value={showScoreAfter} 
-                                      onChange={(e) => setShowScoreAfter(e.target.value)} 
-                                      placeholder="HH:mm:ss"
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500"
+                                  <input
+                                      type="text"
+                                      value={showScoreAfter}
+                                      onChange={(e) => setShowScoreAfter(e.target.value.toUpperCase())}
+                                      placeholder="HH:MM:SS"
+                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500 uppercase"
                                   />
                               </div>
                               <div>
@@ -1097,15 +1447,107 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <label className="text-[10px] font-bold text-white uppercase">Hide score after having played for</label>
                                       <span className="bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded text-[9px] uppercase">optional</span>
                                   </div>
-                                  <input 
-                                      type="text" 
-                                      value={hideScoreAfter} 
-                                      onChange={(e) => setHideScoreAfter(e.target.value)} 
-                                      placeholder="HH:mm:ss"
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500"
+                                  <input
+                                      type="text"
+                                      value={hideScoreAfter}
+                                      onChange={(e) => setHideScoreAfter(e.target.value.toUpperCase())}
+                                      placeholder="HH:MM:SS"
+                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-mono placeholder:text-slate-600 outline-none focus:border-slate-500 uppercase"
                                   />
                               </div>
                           </div>
+                      </div>
+
+                      {/* Map/PLAYZONE Configuration Settings */}
+                      {gameMode !== 'playzone' && (
+                          <div className="text-[10px] font-bold text-white uppercase mb-2 text-center opacity-70">MAP CONFIGURATION SETTINGS</div>
+                      )}
+                      {gameMode === 'playzone' && (
+                          <div className="text-[10px] font-bold text-white uppercase mb-2 text-center opacity-70">PLAYZONE CONFIGURATION SETTINGS</div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                          {/* Pin Settings / PLAYZONE Task Settings */}
+                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <label className="block text-[10px] font-bold text-white uppercase mb-4">{gameMode === 'playzone' ? 'PLAYZONE Task' : 'Pin'} settings</label>
+                              <div className="space-y-3">
+                                  <RadioOption
+                                      label="Display task order on pin"
+                                      selected={pinDisplayMode === 'order'}
+                                      onClick={() => setPinDisplayMode('order')}
+                                  />
+                                  <RadioOption
+                                      label="Display task score on map"
+                                      selected={pinDisplayMode === 'score'}
+                                      onClick={() => setPinDisplayMode('score')}
+                                  />
+                                  <RadioOption
+                                      label="Display nothing on pin"
+                                      selected={pinDisplayMode === 'none'}
+                                      onClick={() => setPinDisplayMode('none')}
+                                  />
+                                  <div className="pt-2 border-t border-slate-800">
+                                      <CheckboxOption
+                                          label="Display task short intro under pin"
+                                          checked={showShortIntroUnderPin}
+                                          onChange={setShowShortIntroUnderPin}
+                                      />
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Map Interaction Settings - Only for GPS-based games */}
+                          {gameMode !== 'playzone' && (
+                              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                                  <label className="block text-[10px] font-bold text-white uppercase mb-4">Map interaction settings</label>
+                                  <div className="space-y-3">
+                                      <RadioOption
+                                          label="Disable opening tasks on the map by click"
+                                          selected={mapInteraction === 'disable_click'}
+                                          onClick={() => setMapInteraction('disable_click')}
+                                      />
+                                      <RadioOption
+                                          label="Allow opening all tasks on the map by click"
+                                          selected={mapInteraction === 'allow_all'}
+                                          onClick={() => setMapInteraction('allow_all')}
+                                      />
+                                      <RadioOption
+                                          label="Allow opening specific tasks on map"
+                                          selected={mapInteraction === 'allow_specific'}
+                                          onClick={() => setMapInteraction('allow_specific')}
+                                      />
+                                  </div>
+                              </div>
+                          )}
+
+                          {/* Additional Map Settings - Only for GPS-based games */}
+                          {gameMode !== 'playzone' && (
+                              <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                                  <label className="block text-[10px] font-bold text-white uppercase mb-4">Additional map settings</label>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <CheckboxOption
+                                          label="Hide my location"
+                                          checked={hideMyLocation}
+                                          onChange={setHideMyLocation}
+                                      />
+                                      <CheckboxOption
+                                          label="Show my track"
+                                          checked={showMyTrack}
+                                          onChange={setShowMyTrack}
+                                      />
+                                      <CheckboxOption
+                                          label="Allow navigation"
+                                          checked={allowNavigation}
+                                          onChange={setAllowNavigation}
+                                      />
+                                      <CheckboxOption
+                                          label="Allow opening tasks if GPS signal weak (beta)"
+                                          checked={allowWeakGps}
+                                          onChange={setAllowWeakGps}
+                                      />
+                                  </div>
+                              </div>
+                          )}
                       </div>
                   </div>
               );
@@ -1141,45 +1583,53 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="mt-4 animate-in fade-in">
                                   <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Time limit</label>
                                   <div className="flex items-center gap-2">
-                                      <input 
-                                          type="number" 
-                                          value={globalTimeLimit} 
-                                          onChange={(e) => setGlobalTimeLimit(parseInt(e.target.value))}
-                                          className="w-24 bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-sm font-bold outline-none focus:border-orange-500"
+                                      <input
+                                          type="number"
+                                          value={globalTimeLimit}
+                                          onChange={(e) => {
+                                              const v = parseInt(e.target.value, 10);
+                                              setGlobalTimeLimit(Number.isFinite(v) ? v : 0);
+                                          }}
+                                          className="w-24 bg-slate-950 border border-slate-700 rounded-lg p-2 text-white text-sm font-bold outline-none focus:border-orange-500 uppercase"
                                       />
-                                      <span className="text-xs text-slate-400">seconds</span>
+                                      <span className="text-xs text-slate-400">SECONDS</span>
                                   </div>
                               </div>
                           )}
                       </div>
 
-                      {/* Hints */}
-                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                          <label className="block text-[10px] font-bold text-white uppercase mb-4">Hints</label>
-                          
-                          <div className="flex items-center gap-3 mb-4">
-                              <input 
-                                  type="checkbox" 
-                                  checked={limitHints} 
-                                  onChange={(e) => setLimitHints(e.target.checked)}
-                                  className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600"
-                              />
-                              <span className="text-xs text-slate-300">Limit hints (when available)</span>
-                          </div>
+                      {/* Hints - Only for GPS-based games */}
+                      {gameMode !== 'playzone' && (
+                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Disable Hints</label>
 
-                          {limitHints && (
-                              <div className="animate-in fade-in">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Hint number limit</label>
-                                  <input 
-                                      type="number" 
-                                      value={hintLimit} 
-                                      onChange={(e) => setHintLimit(parseInt(e.target.value))}
-                                      placeholder="Hint number limit..."
-                                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-bold outline-none focus:border-orange-500 placeholder:text-slate-600"
+                              <div className="flex items-center gap-3 mb-4">
+                                  <input
+                                      type="checkbox"
+                                      checked={limitHints}
+                                      onChange={(e) => setLimitHints(e.target.checked)}
+                                      className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600"
                                   />
+                                  <span className="text-xs text-slate-300">Disable hints in game if available</span>
                               </div>
-                          )}
-                      </div>
+
+                              {limitHints && (
+                                  <div className="animate-in fade-in">
+                                      <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Hint number limit</label>
+                                      <input
+                                          type="number"
+                                          value={hintLimit}
+                                          onChange={(e) => {
+                                              const v = parseInt(e.target.value, 10);
+                                              setHintLimit(Number.isFinite(v) ? v : 0);
+                                          }}
+                                          placeholder="HINT NUMBER LIMIT..."
+                                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white text-sm font-bold outline-none focus:border-orange-500 placeholder:text-slate-600 uppercase"
+                                      />
+                                  </div>
+                              )}
+                          </div>
+                      )}
 
                       {/* Incorrect Answer Penalty */}
                       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
@@ -1301,31 +1751,35 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               />
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                              <div>
-                                  <p className="text-xs font-bold text-white uppercase">TEAMS can see other Team Captains on the map</p>
-                                  <p className="text-[10px] text-slate-500">Only team captains are shown to reduce data traffic</p>
+                          {gameMode !== 'playzone' && (
+                              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                  <div>
+                                      <p className="text-xs font-bold text-white uppercase">TEAMS can see other Team Captains on the map</p>
+                                      <p className="text-[10px] text-slate-500">Only team captains are shown to reduce data traffic</p>
+                                  </div>
+                                  <input
+                                      type="checkbox"
+                                      checked={showOtherTeams}
+                                      onChange={(e) => setShowOtherTeams(e.target.checked)}
+                                      className="w-5 h-5 accent-orange-600 cursor-pointer"
+                                  />
                               </div>
-                              <input 
-                                  type="checkbox" 
-                                  checked={showOtherTeams} 
-                                  onChange={(e) => setShowOtherTeams(e.target.checked)}
-                                  className="w-5 h-5 accent-orange-600 cursor-pointer"
-                              />
-                          </div>
+                          )}
 
-                          <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                              <div>
-                                  <p className="text-xs font-bold text-white uppercase">Track player locations</p>
-                                  <p className="text-[10px] text-slate-500">Show player's own location on the map</p>
+                          {gameMode !== 'playzone' && (
+                              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                  <div>
+                                      <p className="text-xs font-bold text-white uppercase">Track player locations</p>
+                                      <p className="text-[10px] text-slate-500">Show player's own location on the map</p>
+                                  </div>
+                                  <input
+                                      type="checkbox"
+                                      checked={showPlayerLocations}
+                                      onChange={(e) => setShowPlayerLocations(e.target.checked)}
+                                      className="w-5 h-5 accent-orange-600 cursor-pointer"
+                                  />
                               </div>
-                              <input 
-                                  type="checkbox" 
-                                  checked={showPlayerLocations} 
-                                  onChange={(e) => setShowPlayerLocations(e.target.checked)}
-                                  className="w-5 h-5 accent-orange-600 cursor-pointer"
-                              />
-                          </div>
+                          )}
 
                           <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
                               <div>
@@ -1340,14 +1794,14 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               />
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800 opacity-60">
+                          <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
                               <div>
                                   <p className="text-xs font-bold text-white uppercase">Show task breakdown</p>
                                   <p className="text-[10px] text-slate-500">Players see detailed list: Completed/Total (X/Y)</p>
                               </div>
-                              <input 
-                                  type="checkbox" 
-                                  checked={showTaskDetails} 
+                              <input
+                                  type="checkbox"
+                                  checked={showTaskDetails}
                                   onChange={(e) => setShowTaskDetails(e.target.checked)}
                                   className="w-5 h-5 accent-orange-600 cursor-pointer"
                               />
@@ -1355,15 +1809,128 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                       </div>
                   </div>
               );
-          case 'PLAYGROUNDS':
+          case 'VOTE':
               return (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-10 opacity-50">
-                      <LayoutGrid className="w-16 h-16 mb-4 text-slate-600" />
-                      <h3 className="text-xl font-black text-white uppercase tracking-widest mb-2">MANAGED IN EDITOR</h3>
-                      <p className="text-sm text-slate-400 max-w-xs uppercase">
-                          Playgrounds and zones are built using the visual editor.
-                      </p>
+                  <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* Team Voting Mode */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                          <label className="block text-[10px] font-bold text-white uppercase mb-4">Team Voting Mode</label>
+                          <p className="text-xs text-slate-400 mb-4">How team answers are submitted for tasks</p>
+                          <div className="space-y-3">
+                              <RadioOption
+                                  label="Require Consensus - All active members must agree"
+                                  sublabel="Team must reach 100% agreement on answers (retired members don't count)"
+                                  selected={teamVotingMode === 'require_consensus'}
+                                  onClick={() => setTeamVotingMode('require_consensus')}
+                              />
+                              <RadioOption
+                                  label="Captain Submit - Captain can submit without full consensus"
+                                  sublabel="Captain can submit any time, team votes are visible but not required"
+                                  selected={teamVotingMode === 'captain_submit'}
+                                  onClick={() => setTeamVotingMode('captain_submit')}
+                              />
+                          </div>
+                      </div>
                   </div>
+              );
+          case 'PLAYGROUNDS':
+              const gamePlaygrounds = baseGame?.playgrounds || [];
+              return (
+                  <div className="space-y-6 max-w-4xl animate-in fade-in slide-in-from-bottom-2">
+                      <div className="flex items-center justify-between mb-4">
+                          <div>
+                              <h3 className="text-xl font-black text-white uppercase tracking-widest">GAME ZONES</h3>
+                              <p className="text-xs text-slate-500 uppercase font-bold mt-1">
+                                  {gamePlaygrounds.length} zone{gamePlaygrounds.length !== 1 ? 's' : ''} in this game
+                              </p>
+                          </div>
+                          {onOpenPlaygroundEditor && gamePlaygrounds.length > 0 && (
+                              <button
+                                  onClick={() => onOpenPlaygroundEditor()}
+                                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2 transition-colors shadow-lg"
+                              >
+                                  <LayoutGrid className="w-4 h-4" />
+                                  OPEN EDITOR
+                              </button>
+                          )}
+                      </div>
+
+                      {gamePlaygrounds.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-64 text-center p-10 bg-slate-900 border border-slate-800 rounded-2xl">
+                              <LayoutGrid className="w-16 h-16 mb-4 text-slate-600" />
+                              <h3 className="text-lg font-black text-white uppercase tracking-widest mb-2">NO ZONES YET</h3>
+                              <p className="text-sm text-slate-400 max-w-xs uppercase mb-4">
+                                  Playgrounds and zones are built using the visual editor.
+                              </p>
+                              {onOpenPlaygroundEditor && (
+                                  <button
+                                      onClick={() => onOpenPlaygroundEditor()}
+                                      className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold uppercase text-xs tracking-wide flex items-center gap-2 transition-colors shadow-lg"
+                                  >
+                                      <Plus className="w-4 h-4" />
+                                      CREATE FIRST ZONE
+                                  </button>
+                              )}
+                          </div>
+                      ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                              {gamePlaygrounds.map((playground, index) => (
+                                  <div
+                                      key={playground.id}
+                                      onClick={() => onOpenPlaygroundEditor?.(playground.id)}
+                                      className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm hover:shadow-xl hover:border-orange-500 transition-all group cursor-pointer flex flex-col"
+                                  >
+                                      <div className="aspect-video bg-slate-800 relative overflow-hidden">
+                                          {playground.imageUrl ? (
+                                              <img
+                                                  src={playground.imageUrl}
+                                                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                  alt={playground.title}
+                                              />
+                                          ) : (
+                                              <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                  <LayoutGrid className="w-12 h-12" />
+                                              </div>
+                                          )}
+                                          <div className="absolute top-2 left-2 bg-orange-600 text-white text-[10px] font-bold px-2 py-1 rounded">
+                                              ZONE #{index + 1}
+                                          </div>
+                                          {playground.buttonVisible && (
+                                              <div className="absolute top-2 right-2 bg-black/60 text-white text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm">
+                                                  INTERACTIVE
+                                              </div>
+                                          )}
+                                      </div>
+                                      <div className="p-4 flex-1 flex flex-col">
+                                          <h3 className="font-bold text-white uppercase truncate mb-2 group-hover:text-orange-400 transition-colors">
+                                              {playground.title}
+                                          </h3>
+                                          <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-bold">
+                                              {playground.orientationLock && playground.orientationLock !== 'none' && (
+                                                  <span className="bg-slate-800 px-2 py-1 rounded">
+                                                      {playground.orientationLock}
+                                                  </span>
+                                              )}
+                                              {playground.audioUrl && (
+                                                  <span className="bg-slate-800 px-2 py-1 rounded">
+                                                      🔊 AUDIO
+                                                  </span>
+                                              )}
+                                          </div>
+                                          <div className="mt-auto pt-3 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400 uppercase font-bold">
+                                              <span>Click to edit</span>
+                                              <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-orange-500 transition-colors" />
+                                          </div>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              );
+          case 'LOGS':
+              return (
+                  <GameLogViewer game={baseGame} />
               );
           default:
               return null;
@@ -1388,11 +1955,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                         {deleteConfirm ? 'CONFIRM DELETE?' : 'DELETE'}
                     </button>
                 )}
-                <button 
+                <button
                     onClick={handleCreate}
                     className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-black uppercase text-xs tracking-widest shadow-lg flex items-center gap-2"
                 >
-                    <Save className="w-4 h-4" /> SAVE
+                    <Save className="w-4 h-4" /> {isEditMode ? 'UPDATE' : 'SAVE'}
                 </button>
                 <div className="h-6 w-px bg-slate-800 mx-2"></div>
                 <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
@@ -1406,8 +1973,14 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
             {/* Sidebar Tabs */}
             <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
                 <div className="p-4 space-y-1">
-                    {TABS.map(tab => (
-                        <button 
+                    {TABS.filter(tab => {
+                        // Hide MAP tab for playzone mode only (elimination is GPS-based and needs map style selection)
+                        if (gameMode === 'playzone' && tab.id === 'MAP') {
+                            return false;
+                        }
+                        return true;
+                    }).map(tab => (
+                        <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-xs font-bold uppercase tracking-wide text-left group ${activeTab === tab.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
@@ -1451,6 +2024,354 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                     <button onClick={() => setShowJsonHelp(false)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold uppercase text-xs rounded-xl transition-colors">
                         Got it
                     </button>
+                </div>
+            </div>
+        )}
+
+        {/* Date & Time Picker Modal */}
+        {showDateTimePicker && (
+            <div className="fixed inset-0 z-[7000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                    <div className="p-6 border-b border-slate-700 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-red-600/20 rounded-lg">
+                                <Calendar className="w-6 h-6 text-red-500" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-white uppercase">SELECT END TIME</h3>
+                                <p className="text-xs text-slate-400 uppercase font-bold mt-1">Choose date and time</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setShowDateTimePicker(false)}
+                            className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6 flex justify-center">
+                        <DatePicker
+                            selected={endDateTime ? new Date(endDateTime) : new Date()}
+                            onChange={(date: Date | null) => {
+                                if (date) {
+                                    // Convert to datetime-local format (YYYY-MM-DDTHH:mm)
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    setEndDateTime(`${year}-${month}-${day}T${hours}:${minutes}`);
+                                }
+                            }}
+                            showTimeSelect
+                            timeFormat="HH:mm"
+                            timeIntervals={1}
+                            timeCaption="Time"
+                            dateFormat="MMMM d, yyyy h:mm aa"
+                            inline
+                            className="bg-slate-950"
+                        />
+                    </div>
+                    <div className="p-4 border-t border-slate-700 bg-slate-950 flex gap-3">
+                        <button
+                            onClick={() => setShowDateTimePicker(false)}
+                            className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase text-xs transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => setShowDateTimePicker(false)}
+                            className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-bold uppercase text-xs transition-all shadow-lg flex items-center justify-center gap-2"
+                        >
+                            <Check className="w-4 h-4" />
+                            CONFIRM
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Meeting Point Map Picker Modal */}
+        {showMapPicker && (
+            <MeetingPointMapPicker
+                initialLat={endLat ? parseFloat(endLat) : 55.6761}
+                initialLng={endLng ? parseFloat(endLng) : 12.5683}
+                onLocationSelect={(lat, lng) => {
+                    setEndLat(lat.toString());
+                    setEndLng(lng.toString());
+                }}
+                onClose={() => setShowMapPicker(false)}
+            />
+        )}
+
+        {/* Map Style Preview Modal */}
+        {showMapStylePreview && (previewMapStyle || previewCustomStyle) && (
+            <div
+                className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in"
+                onClick={() => {
+                    setShowMapStylePreview(false);
+                    setPreviewCustomStyle(null);
+                }}
+            >
+                <div
+                    className="bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-4 border-b-2 border-blue-500 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-lg font-black text-white uppercase">Map Style Preview</h3>
+                            <p className="text-xs text-blue-100 uppercase font-bold mt-1">
+                                {previewCustomStyle ? previewCustomStyle.name : MAP_STYLES.find(s => s.id === previewMapStyle)?.label}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setShowMapStylePreview(false);
+                                setPreviewCustomStyle(null);
+                            }}
+                            className="p-2 hover:bg-white/20 rounded-full text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        {(() => {
+                            const style = previewMapStyle ? MAP_STYLES.find(s => s.id === previewMapStyle) : null;
+                            const previewUrl = previewCustomStyle?.previewUrl || style?.preview;
+
+                            return (
+                                <>
+                                    {previewUrl ? (
+                                        <div className="bg-slate-950 rounded-xl overflow-hidden border-2 border-slate-700 p-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Tile Preview (Original Size)</p>
+                                                    <img
+                                                        src={previewUrl}
+                                                        alt={style?.label}
+                                                        className={`w-full rounded-lg border border-slate-700 ${style?.className || ''}`}
+                                                        crossOrigin="anonymous"
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">Zoomed Out Preview (2x2 Tiles)</p>
+                                                    <div className="aspect-square rounded-lg border border-slate-700 overflow-hidden bg-slate-900">
+                                                        <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 1`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 2`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 3`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                            <img
+                                                                src={previewUrl}
+                                                                alt={`${style?.label} - tile 4`}
+                                                                className={`w-full h-full object-cover ${style?.className || ''}`}
+                                                                crossOrigin="anonymous"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="mt-4 p-3 bg-slate-900 rounded-lg">
+                                                <p className="text-xs text-slate-400">
+                                                    <span className="font-bold text-white">Note:</span> The left shows a single map tile, the right shows how multiple tiles connect.
+                                                    The actual map will cover your entire game area with this visual style.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="bg-slate-950 rounded-xl border-2 border-slate-700 p-8 flex flex-col items-center justify-center gap-4">
+                                            <EyeOff className="w-16 h-16 text-slate-600" />
+                                            <p className="text-sm text-slate-400 text-center">
+                                                No preview available for this map style
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-4 flex gap-3 justify-end">
+                                        <button
+                                            onClick={() => window.open('https://www.openstreetmap.org/#map=13/55.6761/12.5683', '_blank')}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center gap-2"
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            Open in OpenStreetMap
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (previewCustomStyle) {
+                                                    setSelectedMapStyle('google_custom');
+                                                    setCustomMapJson(previewCustomStyle.json);
+                                                    setJsonValidationStatus('VALID');
+                                                } else if (previewMapStyle) {
+                                                    setSelectedMapStyle(previewMapStyle);
+                                                }
+                                                setShowMapStylePreview(false);
+                                                setPreviewCustomStyle(null);
+                                            }}
+                                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center gap-2"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                            Use This Style
+                                        </button>
+                                    </div>
+                                </>
+                            );
+                        })()}
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Snazzy Maps Browser Modal */}
+        {showSnazzyMapsBrowser && (
+            <div
+                className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in"
+                onClick={() => setShowSnazzyMapsBrowser(false)}
+            >
+                <div
+                    className="bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-4 border-b-2 border-purple-500 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-lg font-black text-white uppercase">Browse Snazzy Maps</h3>
+                            <p className="text-xs text-purple-100 uppercase font-bold mt-1">Find and import custom Google Map styles</p>
+                        </div>
+                        <button
+                            onClick={() => setShowSnazzyMapsBrowser(false)}
+                            className="p-2 hover:bg-white/20 rounded-full text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <div className="bg-slate-950 border border-slate-700 rounded-xl p-4 mb-4">
+                            <h4 className="text-sm font-black text-white uppercase mb-2 flex items-center gap-2">
+                                <Info className="w-4 h-4 text-blue-400" />
+                                How to Import from Snazzy Maps
+                            </h4>
+                            <ol className="text-xs text-slate-300 space-y-2">
+                                <li className="flex gap-2">
+                                    <span className="text-orange-500 font-bold">1.</span>
+                                    <span>Click "Browse Snazzy Maps" below to open the website</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <span className="text-orange-500 font-bold">2.</span>
+                                    <span>Find a map style you like and click on it</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <span className="text-orange-500 font-bold">3.</span>
+                                    <span>Scroll down and click "Copy JSON" button</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <span className="text-orange-500 font-bold">4.</span>
+                                    <span>Return here, select "Google Custom" map style, and paste the JSON</span>
+                                </li>
+                            </ol>
+                        </div>
+                        <div className="aspect-video w-full rounded-xl overflow-hidden border-2 border-slate-700">
+                            <iframe
+                                src="https://snazzymaps.com/explore"
+                                className="w-full h-full"
+                                title="Snazzy Maps Browser"
+                            />
+                        </div>
+                        <div className="mt-4 flex gap-3">
+                            <button
+                                onClick={() => window.open('https://snazzymaps.com/explore', '_blank')}
+                                className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center justify-center gap-2"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                                Browse Snazzy Maps
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowSnazzyMapsBrowser(false);
+                                    setSelectedMapStyle('google_custom');
+                                }}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center justify-center gap-2"
+                            >
+                                <Code className="w-4 h-4" />
+                                Go to JSON Import
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Create Custom Style Modal */}
+        {showCreateStyleModal && (
+            <div
+                className="fixed inset-0 bg-black/95 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in"
+                onClick={() => setShowCreateStyleModal(false)}
+            >
+                <div
+                    className="bg-slate-900 border-2 border-slate-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-4"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="bg-gradient-to-r from-orange-600 to-orange-700 p-4 border-b-2 border-orange-500 flex justify-between items-center">
+                        <div>
+                            <h3 className="text-lg font-black text-white uppercase">Create Custom Style</h3>
+                            <p className="text-xs text-orange-100 uppercase font-bold mt-1">Save this style to your library</p>
+                        </div>
+                        <button
+                            onClick={() => setShowCreateStyleModal(false)}
+                            className="p-2 hover:bg-white/20 rounded-full text-white transition-colors"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+                    <div className="p-6">
+                        <div className="bg-slate-950 border border-slate-700 rounded-xl p-4 mb-4">
+                            <p className="text-xs text-slate-400 mb-3">
+                                <span className="font-bold text-white">Note:</span> This will save your current custom JSON style
+                                to your library so you can easily reuse it in other games.
+                            </p>
+                            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2">Style Name</label>
+                            <input
+                                type="text"
+                                value={customStyleName}
+                                onChange={(e) => setCustomStyleName(e.target.value)}
+                                placeholder="e.g., Dark Blue Theme, Vintage Map, etc."
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 outline-none focus:border-orange-500 transition-colors"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleCreateCustomStyle();
+                                    }
+                                }}
+                            />
+                        </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowCreateStyleModal(false)}
+                                className="flex-1 px-4 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase text-xs transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleCreateCustomStyle}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs transition-all flex items-center justify-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" />
+                                Create Style
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         )}

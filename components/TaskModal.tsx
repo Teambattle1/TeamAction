@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { GamePoint, TaskVote, GameMode, TimelineItem } from '../types';
-import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown } from 'lucide-react';
+import { GamePoint, TaskVote, GameMode, TimelineItem, Game } from '../types';
+import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown, Lightbulb, Shield } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
 import DOMPurify from 'dompurify';
 
@@ -17,30 +16,39 @@ interface TaskModalProps {
   onOpenActions?: () => void;
   onTaskOpen?: () => void;
   onTaskIncorrect?: () => void;
+  game?: Game | null;
+  isCaptain?: boolean;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ 
-    point, 
-    onClose, 
-    onComplete, 
-    onPenalty, 
-    onUnlock, 
-    distance, 
-    isInstructorMode = false, 
-    mode, 
+const TaskModal: React.FC<TaskModalProps> = ({
+    point,
+    onClose,
+    onComplete,
+    onPenalty,
+    onUnlock,
+    distance,
+    isInstructorMode = false,
+    mode,
     onOpenActions,
     onTaskOpen,
-    onTaskIncorrect
+    onTaskIncorrect,
+    game,
+    isCaptain = false
 }) => {
+  // CRITICAL: Check for null point BEFORE any hooks to prevent crashes
+  if (!point) return null;
+
   const [answer, setAnswer] = useState('');
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [sliderValue, setSliderValue] = useState<number>(point?.task.range?.min || 0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [hintRevealed, setHintRevealed] = useState(false);
+  const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
 
   // Voting State
   const [isVoting, setIsVoting] = useState(false);
   const [teamVotes, setTeamVotes] = useState<TaskVote[]>([]);
-  const [memberCount, setMemberCount] = useState(1);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]); // Track all team members with retirement status
 
   // Manual Unlock State
   const [unlockCode, setUnlockCode] = useState('');
@@ -94,11 +102,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
   useEffect(() => {
       if (!point || isEditMode || isInstructor || isSimulation) return;
       
-      const unsubscribeVotes = teamSync.subscribeToVotes((votes) => {
+      const unsubscribeVotes = teamSync.subscribeToVotesForTask(point.id, (votes) => {
           setTeamVotes(votes);
       });
-      const unsubscribeMembers = teamSync.subscribeToMemberCount((count) => {
-          setMemberCount(Math.max(teamSync.getVotesForTask(point.id).length, 1)); 
+      const unsubscribeMembers = teamSync.subscribeToMembers((members) => {
+          setTeamMembers(members);
       });
 
       const existing = teamSync.getVotesForTask(point.id);
@@ -117,15 +125,29 @@ const TaskModal: React.FC<TaskModalProps> = ({
       };
   }, [point, isEditMode, isInstructor, isSimulation]);
 
-  if (!point) return null;
-
   // UNLOCK LOGIC: Allow open if Unlocked OR Instructor OR Editor OR Playground OR Simulation
   const isLocked = !point.isUnlocked && !isInstructor && !isEditMode && !isPlayground && !isSimulation;
 
+  const normalizeAnswerForConsensus = (a: any) => {
+      if (Array.isArray(a)) return JSON.stringify([...a].sort());
+      if (typeof a === 'string') return a.trim().toLowerCase();
+      if (typeof a === 'number' && Number.isFinite(a)) return String(a);
+      if (a && typeof a === 'object') return JSON.stringify(a);
+      return String(a);
+  };
+
   const checkConsensus = () => {
       if (teamVotes.length === 0) return false;
-      const firstAnswer = JSON.stringify(teamVotes[0].answer);
-      return teamVotes.every(v => JSON.stringify(v.answer) === firstAnswer);
+
+      // Count only active (non-retired) members
+      const activeMembers = teamMembers.filter(m => !m.isRetired);
+      const activeMemberCount = Math.max(activeMembers.length, 1);
+
+      // Require everyone currently online (and not retired) to have voted.
+      if (teamVotes.length < activeMemberCount) return false;
+
+      const firstAnswer = normalizeAnswerForConsensus(teamVotes[0].answer);
+      return teamVotes.every(v => normalizeAnswerForConsensus(v.answer) === firstAnswer);
   };
 
   const consensusReached = checkConsensus();
@@ -257,11 +279,23 @@ const TaskModal: React.FC<TaskModalProps> = ({
           onClose();
       } else {
           if (onTaskIncorrect) onTaskIncorrect();
+
+          // Use custom incorrect message if available
+          const incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
+              ? point.feedback.incorrectMessage
+              : (isDoubleTrouble
+                  ? `DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`
+                  : "Incorrect answer in simulation.");
+
           if (isDoubleTrouble && onPenalty) {
               onPenalty(point.points);
-              setErrorMsg(`DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`);
-          } else {
-              setErrorMsg("Incorrect answer in simulation.");
+          }
+
+          setErrorMsg(incorrectMsg);
+
+          // Show correct answer if configured
+          if (point.settings?.showCorrectAnswerOnMiss) {
+              setShowCorrectAnswer(true);
           }
       }
   }
@@ -297,13 +331,25 @@ const TaskModal: React.FC<TaskModalProps> = ({
           onClose();
       } else {
           if (onTaskIncorrect) onTaskIncorrect();
+
+          // Use custom incorrect message if available
+          const incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
+              ? point.feedback.incorrectMessage
+              : (isDoubleTrouble
+                  ? `DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`
+                  : "Team answer is incorrect. Try again!");
+
           if (isDoubleTrouble && onPenalty) {
               onPenalty(point.points);
-              setErrorMsg(`DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`);
-          } else {
-              setErrorMsg("Team answer is incorrect. Try again!");
           }
-          setIsVoting(false); 
+
+          setErrorMsg(incorrectMsg);
+
+          // Show correct answer if configured
+          if (point.settings?.showCorrectAnswerOnMiss) {
+              setShowCorrectAnswer(true);
+          }
+          setIsVoting(false);
       }
   };
 
@@ -317,7 +363,19 @@ const TaskModal: React.FC<TaskModalProps> = ({
       }
   };
 
+  const handleRevealHint = () => {
+      if (!hintRevealed && point.feedback?.hint) {
+          const cost = point.feedback.hintCost || -50;
+          if (onPenalty) onPenalty(Math.abs(cost)); // Ensure positive value for penalty
+          setHintRevealed(true);
+      }
+  };
+
   const renderConsensusView = () => {
+      // Count only active (non-retired) members
+      const activeMembers = teamMembers.filter(m => !m.isRetired);
+      const activeMemberCount = Math.max(activeMembers.length, 1);
+
       // Group votes by answer to show distribution
       const voteGroups: Record<string, string[]> = {};
       teamVotes.forEach(v => {
@@ -333,6 +391,10 @@ const TaskModal: React.FC<TaskModalProps> = ({
           voteGroups[ansStr].push(v.userName);
       });
 
+      // Find who hasn't voted yet
+      const votedDeviceIds = new Set(teamVotes.map(v => v.deviceId));
+      const notVotedYet = activeMembers.filter(m => !votedDeviceIds.has(m.deviceId));
+
       return (
           <div className="space-y-6 animate-in fade-in">
               <div className="text-center">
@@ -341,8 +403,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   </div>
                   <h3 className="text-lg font-black uppercase text-gray-900 dark:text-white">TEAM CONSENSUS</h3>
                   <p className="text-sm text-gray-500 font-bold">
-                      {teamVotes.length} VOTES CAST
+                      {teamVotes.length} / {activeMemberCount} VOTES CAST
                   </p>
+                  {notVotedYet.length > 0 && (
+                      <p className="text-xs text-gray-400 mt-1">
+                          Waiting for: {notVotedYet.map(m => m.userName).join(', ')}
+                      </p>
+                  )}
               </div>
 
               <div className="space-y-3">
@@ -376,21 +443,60 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   })}
               </div>
 
+              {/* Hint Button in Consensus View */}
+              {point.feedback?.hint && !hintRevealed && (
+                  <button
+                      type="button"
+                      onClick={handleRevealHint}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2"
+                  >
+                      <Lightbulb className="w-5 h-5" />
+                      HINT ({point.feedback.hintCost || -50} points)
+                  </button>
+              )}
+
+              {/* Show Revealed Hint in Consensus View */}
+              {hintRevealed && point.feedback?.hint && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 animate-in slide-in-from-top-2">
+                      <div className="flex items-center gap-2 mb-2">
+                          <Lightbulb className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                          <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">
+                              Hint:
+                          </p>
+                      </div>
+                      <p className="text-yellow-900 dark:text-yellow-200 font-medium">
+                          {point.feedback.hint}
+                      </p>
+                  </div>
+              )}
+
               {consensusReached ? (
-                  <button 
+                  <button
                       onClick={handleFinalize}
                       className="w-full py-4 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition-all"
                   >
                       <ThumbsUp className="w-5 h-5" /> SUBMIT FINAL ANSWER
                   </button>
               ) : (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl flex items-center gap-3 border border-yellow-200 dark:border-yellow-800">
-                      <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
-                      <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">WAITING FOR TEAM AGREEMENT...</p>
-                  </div>
+                  <>
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-xl flex items-center gap-3 border border-yellow-200 dark:border-yellow-800">
+                          <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />
+                          <p className="text-xs font-bold text-yellow-700 dark:text-yellow-400 uppercase">WAITING FOR TEAM AGREEMENT...</p>
+                      </div>
+
+                      {/* Captain can submit without consensus if voting mode allows */}
+                      {isCaptain && game?.taskConfig?.teamVotingMode === 'captain_submit' && teamVotes.length > 0 && (
+                          <button
+                              onClick={handleFinalize}
+                              className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-bold uppercase flex items-center justify-center gap-2 transition-all"
+                          >
+                              <Shield className="w-4 h-4" /> CAPTAIN SUBMIT (Override)
+                          </button>
+                      )}
+                  </>
               )}
-              
-              <button 
+
+              <button
                   type="button"
                   onClick={() => setIsVoting(false)}
                   className="w-full py-3 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white font-bold uppercase text-xs transition-colors"
@@ -639,12 +745,82 @@ const TaskModal: React.FC<TaskModalProps> = ({
               </div>
 
               {(isInstructor || isEditMode) && point.task.type !== 'timeline' && (
-                <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-3 animate-in fade-in">
-                  <span className="text-xs font-bold text-orange-500 dark:text-orange-400 uppercase tracking-wider">Solution</span>
-                  <p className="text-orange-900 dark:text-orange-200 font-medium mt-1">
-                      {point.task.answer || point.task.correctAnswers?.join(', ') || "See logic"}
-                  </p>
-                </div>
+                <>
+                  {/* Question Type Badge */}
+                  <div className="mb-4 flex gap-2 items-center flex-wrap">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                      {point.task.type === 'multiple_choice' ? '📋 Multiple Choice' :
+                       point.task.type === 'text' ? '📝 Text Input' :
+                       point.task.type === 'slider' ? '🎚️ Slider' :
+                       point.task.type === 'boolean' ? '✓ True/False' :
+                       point.task.type === 'timeline' ? '📅 Timeline' :
+                       point.task.type}
+                    </span>
+                  </div>
+
+                  {/* Possible Answers (Multiple Choice, Checkbox, Radio, Dropdown) */}
+                  {(point.task.type === 'multiple_choice' || point.task.type === 'checkbox' || point.task.type === 'radio' || point.task.type === 'dropdown') && point.task.options && (
+                    <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-3">Possible Answers</span>
+                      <div className="space-y-2">
+                        {point.task.options.map((option, idx) => (
+                          <div key={idx} className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-blue-100 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200">
+                            {option}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Slider Range Display */}
+                  {point.task.type === 'slider' && point.task.range && (
+                    <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-3">Answer Range</span>
+                      <div className="p-3 rounded-lg bg-white dark:bg-gray-800 border border-blue-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between">
+                          <div className="text-center flex-1">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-bold">MIN</p>
+                            <p className="text-lg font-black text-blue-600 dark:text-blue-400">{point.task.range.min}</p>
+                          </div>
+                          <div className="text-gray-300 px-4">to</div>
+                          <div className="text-center flex-1">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-bold">MAX</p>
+                            <p className="text-lg font-black text-blue-600 dark:text-blue-400">{point.task.range.max}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Boolean Options Display */}
+                  {point.task.type === 'boolean' && (
+                    <div className="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
+                      <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-3">Possible Answers</span>
+                      <div className="flex gap-2">
+                        <div className="flex-1 p-2 rounded-lg bg-white dark:bg-gray-800 border border-blue-100 dark:border-gray-700 text-sm font-bold text-center text-green-600 dark:text-green-400">
+                          TRUE
+                        </div>
+                        <div className="flex-1 p-2 rounded-lg bg-white dark:bg-gray-800 border border-blue-100 dark:border-gray-700 text-sm font-bold text-center text-red-600 dark:text-red-400">
+                          FALSE
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Solution Block */}
+                  <div className="mb-6 bg-orange-50 dark:bg-orange-900/30 border border-orange-100 dark:border-orange-800 rounded-lg p-4 animate-in fade-in">
+                    <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider block mb-2">Solution / Correct Answer</span>
+                    <p className="text-orange-900 dark:text-orange-200 font-medium">
+                        {point.task.type === 'slider' ?
+                          (point.task.range?.correctValue !== undefined ? `${point.task.range.correctValue}` : point.task.correctAnswer || "See logic") :
+                          point.task.type === 'checkbox' || point.task.type === 'radio' ?
+                          point.task.correctAnswers?.join(', ') || point.task.answer || "See logic" :
+                          point.task.type === 'dropdown' ?
+                          point.task.answer || point.task.correctAnswers?.[0] || "See logic" :
+                          point.task.answer || point.task.correctAnswers?.join(', ') || (point.task.type === 'boolean' ? 'Check logic for bool answer' : "See logic")}
+                    </p>
+                  </div>
+                </>
               )}
 
               {!point.isCompleted && !isEditMode ? (
@@ -668,7 +844,50 @@ const TaskModal: React.FC<TaskModalProps> = ({
                                 </div>
                             )}
 
-                            <button 
+                            {/* Show Correct Answer when wrong */}
+                            {showCorrectAnswer && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 animate-in slide-in-from-top-2">
+                                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">
+                                        Correct Answer:
+                                    </p>
+                                    <p className="text-blue-900 dark:text-blue-200 font-bold text-lg">
+                                        {point.task.type === 'slider' ?
+                                            (point.task.range?.correctValue !== undefined ? `${point.task.range.correctValue}` : point.task.answer || "Not specified") :
+                                            point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown' ?
+                                            point.task.correctAnswers?.join(', ') || point.task.answer || "Not specified" :
+                                            point.task.answer || point.task.correctAnswers?.[0] || "Not specified"}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Hint Button - Only show in team view if hint exists and not already revealed */}
+                            {!isInstructor && !isSimulation && point.feedback?.hint && !hintRevealed && (
+                                <button
+                                    type="button"
+                                    onClick={handleRevealHint}
+                                    className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2"
+                                >
+                                    <Lightbulb className="w-5 h-5" />
+                                    HINT ({point.feedback.hintCost || -50} points)
+                                </button>
+                            )}
+
+                            {/* Show Revealed Hint */}
+                            {hintRevealed && point.feedback?.hint && (
+                                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 animate-in slide-in-from-top-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Lightbulb className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                                        <p className="text-xs font-bold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">
+                                            Hint:
+                                        </p>
+                                    </div>
+                                    <p className="text-yellow-900 dark:text-yellow-200 font-medium">
+                                        {point.feedback.hint}
+                                    </p>
+                                </div>
+                            )}
+
+                            <button
                                 type="submit"
                                 className="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-orange-600/20 mt-4"
                             >
@@ -680,7 +899,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
                 )
               ) : (!isEditMode && (
                 <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-4 text-center">
-                  <p className="text-green-800 dark:text-green-300 font-medium">Task Completed!</p>
+                  <p className="text-green-800 dark:text-green-300 font-medium">
+                    {point.feedback?.showCorrectMessage && point.feedback.correctMessage
+                      ? point.feedback.correctMessage
+                      : "Task Completed!"}
+                  </p>
                   <p className="text-sm text-green-600 dark:text-green-400">You earned {isDoubleTrouble ? point.points * 2 : point.points} points.</p>
                 </div>
               ))}

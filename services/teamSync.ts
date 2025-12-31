@@ -1,8 +1,25 @@
-
 import { supabase } from '../lib/supabase';
 import { TaskVote, TeamMember, ChatMessage, Coordinate } from '../types';
 
+const roundCoord = (c: Coordinate, digits = 5): Coordinate => ({
+    lat: Number(c.lat.toFixed(digits)),
+    lng: Number(c.lng.toFixed(digits))
+});
+
+// Cheap distance approximation to avoid pulling in heavier geo helpers.
+const approxDistanceMeters = (a: Coordinate, b: Coordinate) => {
+    const R = 6371000;
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+    const lat1 = (a.lat * Math.PI) / 180;
+    const lat2 = (b.lat * Math.PI) / 180;
+    const x = dLng * Math.cos((lat1 + lat2) / 2);
+    const y = dLat;
+    return Math.sqrt(x * x + y * y) * R;
+};
+
 type VoteCallback = (votes: TaskVote[]) => void;
+type VoteListener = { pointId: string | null; callback: VoteCallback };
 type MemberCallback = (members: TeamMember[]) => void;
 type ChatCallback = (message: ChatMessage) => void;
 type GlobalLocationCallback = (locations: { teamId: string, location: Coordinate, name: string, photoUrl?: string, timestamp: number }[]) => void;
@@ -10,22 +27,38 @@ type GlobalLocationCallback = (locations: { teamId: string, location: Coordinate
 class TeamSyncService {
   private channel: any = null;
   private globalChannel: any = null;
+  private votesDbChannel: any = null;
   
   private deviceId: string = '';
-  private userName: string = 'Anonymous'; 
+  private userName: string = 'Anonymous';
   private userLocation: Coordinate | null = null; // Track local location
   private isSolving: boolean = false; // Track solving status locally
-  
-  private votes: Record<string, TaskVote[]> = {}; 
+  private isRetired: boolean = false; // Track if user has retired from the team
+  private lastPresenceSent: { isSolving: boolean; isRetired: boolean } | null = null;
+
+  private gameId: string | null = null;
+  private teamKey: string | null = null;
+
+  private lastLocationSentAt = 0;
+  private lastLocationSent: Coordinate | null = null;
+  private locationDirty = false;
+
+  private votes: Record<string, TaskVote[]> = {};
   private members: Map<string, TeamMember> = new Map();
-  
+
   // Track other team locations (Global view)
   private otherTeams: Map<string, { location: Coordinate, name: string, photoUrl?: string, teamId: string, timestamp: number }> = new Map();
 
-  private voteListeners: VoteCallback[] = [];
+  private voteListeners: VoteListener[] = [];
   private memberListeners: MemberCallback[] = [];
   private chatListeners: ChatCallback[] = [];
   private globalLocationListeners: GlobalLocationCallback[] = [];
+
+  private presenceIntervalId: number | null = null;
+
+  // Debouncing for performance optimization
+  private memberNotifyTimeout: number | null = null;
+  private lastMemberListHash: string = '';
 
   // Track latest vote timestamp PER DEVICE to safely ignore out-of-order packets without global clock sync issues
   private deviceVoteTimestamps: Record<string, number> = {}; 
@@ -51,9 +84,11 @@ class TeamSyncService {
     if (this.channel) this.disconnect();
 
     this.userName = userName;
+    this.gameId = gameId;
+    this.teamKey = teamName.replace(/[^a-zA-Z0-9]/g, '_');
 
     // 1. Team-Specific Channel (For Voting & Presence)
-    const channelId = `game_${gameId}_team_${teamName.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const channelId = `game_${gameId}_team_${this.teamKey}`;
     
     console.log(`[TeamSync] Connecting to ${channelId} as ${userName}`);
 
@@ -65,19 +100,43 @@ class TeamSyncService {
       })
       .on('broadcast', { event: 'presence' }, (payload: any) => {
         const member = payload.payload as TeamMember;
-        this.members.set(member.deviceId, member);
+        const existing = this.members.get(member.deviceId);
+
+        // Presence heartbeats may omit location to reduce bandwidth.
+        const merged: TeamMember = {
+            ...(existing || {}),
+            ...member,
+            location: member.location ?? existing?.location,
+            isSolving: member.isSolving ?? existing?.isSolving,
+            isRetired: member.isRetired ?? existing?.isRetired
+        } as TeamMember;
+
+        this.members.set(member.deviceId, merged);
         this.notifyMemberListeners();
+      })
+      .on('broadcast', { event: 'retire_player' }, (payload: any) => {
+        const { deviceId, isRetired } = payload.payload;
+
+        // If this is me being retired/unretired by captain
+        if (deviceId === this.deviceId) {
+            this.isRetired = isRetired;
+            this.sendPresence();
+        }
       })
       .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
-           this.sendPresence();
-           // Send presence periodically
-           setInterval(() => this.sendPresence(), 5000); 
+           this.sendPresence(true); // Force initial send
+           // Send presence periodically (lower frequency to reduce battery + bandwidth)
+           if (this.presenceIntervalId) window.clearInterval(this.presenceIntervalId);
+           this.presenceIntervalId = window.setInterval(() => this.sendPresence(false), 12000); // Reduced to 12s
         }
       });
 
     // 2. Global Game Channel (For Messages from Instructor & Captain Locations)
     this.connectGlobal(gameId);
+
+    // 3. DB-backed votes (authoritative, survives refresh/reconnect)
+    this.connectVotesDb();
   }
 
   public connectGlobal(gameId: string) {
@@ -87,7 +146,7 @@ class TeamSyncService {
       console.log(`[TeamSync] Connecting to Global: ${globalId}`);
 
       this.globalChannel = supabase.channel(globalId);
-      
+
       this.globalChannel
         .on('broadcast', { event: 'chat' }, (payload: any) => {
             this.handleIncomingChat(payload.payload as ChatMessage);
@@ -98,7 +157,115 @@ class TeamSyncService {
         .subscribe();
   }
 
+  private connectVotesDb() {
+      if (!this.gameId || !this.teamKey) return;
+
+      if (this.votesDbChannel) {
+          supabase.removeChannel(this.votesDbChannel);
+          this.votesDbChannel = null;
+      }
+
+      const channelId = `game_${this.gameId}_team_${this.teamKey}_votes_db`;
+      this.votesDbChannel = supabase.channel(channelId);
+
+      this.votesDbChannel
+          .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'task_votes', filter: `game_id=eq.${this.gameId}` },
+              (payload: any) => {
+                  const row = payload?.new;
+                  if (!row) return;
+                  if (row.team_key !== this.teamKey) return;
+
+                  const vote: TaskVote = {
+                      deviceId: row.device_id,
+                      userName: row.user_name,
+                      pointId: row.point_id,
+                      answer: row.answer,
+                      timestamp: row.client_timestamp
+                  };
+
+                  this.handleIncomingVote(vote);
+              }
+          )
+          .subscribe((status: string) => {
+              if (status === 'SUBSCRIBED') {
+                  void this.loadVotesFromDb();
+              }
+          });
+  }
+
+  private async loadVotesFromDb() {
+      if (!this.gameId || !this.teamKey) return;
+
+      const { data, error } = await supabase
+          .from('task_votes')
+          .select('point_id, device_id, user_name, answer, client_timestamp')
+          .eq('game_id', this.gameId)
+          .eq('team_key', this.teamKey);
+
+      if (error) {
+          if (error?.code === '42P01') {
+              console.warn('[TeamSync] task_votes table missing. Run Database Setup.');
+          } else {
+              console.warn('[TeamSync] loadVotesFromDb failed', error?.message || error);
+          }
+          return;
+      }
+
+      (data || []).forEach((row: any) => {
+          const vote: TaskVote = {
+              deviceId: row.device_id,
+              userName: row.user_name,
+              pointId: row.point_id,
+              answer: row.answer,
+              timestamp: row.client_timestamp
+          };
+          this.handleIncomingVote(vote);
+      });
+  }
+
+  private async persistVoteToDb(vote: TaskVote) {
+      if (!this.gameId || !this.teamKey) return;
+
+      const { error } = await supabase.rpc('upsert_task_vote', {
+          p_game_id: this.gameId,
+          p_team_key: this.teamKey,
+          p_point_id: vote.pointId,
+          p_device_id: vote.deviceId,
+          p_user_name: vote.userName,
+          p_answer: vote.answer,
+          p_client_timestamp: vote.timestamp
+      });
+
+      if (error) {
+          if (error?.code === '42P01') {
+              console.warn('[TeamSync] upsert_task_vote missing. Run Database Setup.');
+          } else {
+              console.warn('[TeamSync] persistVoteToDb failed', error?.message || error);
+          }
+      }
+  }
+
   public disconnect() {
+    if (this.presenceIntervalId) {
+        window.clearInterval(this.presenceIntervalId);
+        this.presenceIntervalId = null;
+    }
+
+    if (this.memberNotifyTimeout) {
+        window.clearTimeout(this.memberNotifyTimeout);
+        this.memberNotifyTimeout = null;
+    }
+
+    this.gameId = null;
+    this.teamKey = null;
+    this.lastLocationSentAt = 0;
+    this.lastLocationSent = null;
+    this.locationDirty = false;
+    this.lastMemberListHash = '';
+    this.lastPresenceSent = null;
+
     if (this.channel) {
       supabase.removeChannel(this.channel);
       this.channel = null;
@@ -106,6 +273,10 @@ class TeamSyncService {
     if (this.globalChannel) {
         supabase.removeChannel(this.globalChannel);
         this.globalChannel = null;
+    }
+    if (this.votesDbChannel) {
+        supabase.removeChannel(this.votesDbChannel);
+        this.votesDbChannel = null;
     }
     this.votes = {};
     this.members.clear();
@@ -123,13 +294,18 @@ class TeamSyncService {
       timestamp: Date.now()
     };
 
+    // Update local state immediately for low-latency UI.
     this.handleIncomingVote(vote);
 
+    // Broadcast for ultra-fast peer updates.
     this.channel.send({
       type: 'broadcast',
       event: 'vote',
       payload: vote
     });
+
+    // Persist to DB for durability + authoritative ordering.
+    void this.persistVoteToDb(vote);
   }
 
   public sendChatMessage(gameId: string, message: string, targetTeamId: string | null = null, isUrgent: boolean = false) {
@@ -159,17 +335,17 @@ class TeamSyncService {
   // --- GLOBAL LOCATION LOGIC (Captain Visibility) ---
   public broadcastGlobalLocation(gameId: string, teamId: string, name: string, location: Coordinate, photoUrl?: string) {
       if (!this.globalChannel) return;
-      
+
       this.globalChannel.send({
           type: 'broadcast',
           event: 'global_location',
-          payload: { teamId, name, location, photoUrl }
+          payload: { teamId, name, location: roundCoord(location), photoUrl, timestamp: Date.now() }
       });
   }
 
   private handleGlobalLocation(data: any) {
       // Store or update other team location
-      this.otherTeams.set(data.teamId, { ...data, timestamp: Date.now() });
+      this.otherTeams.set(data.teamId, { ...data, timestamp: data.timestamp || Date.now() });
       this.notifyGlobalLocationListeners();
   }
 
@@ -203,7 +379,17 @@ class TeamSyncService {
   // Called by App.tsx whenever location updates
   public updateLocation(location: Coordinate) {
       this.userLocation = location;
-      // Optionally trigger immediate presence update if needed, but 5s interval is usually fine for battery
+
+      // Mark as dirty only when the user actually moves meaningfully.
+      if (!this.lastLocationSent) {
+          this.locationDirty = true;
+          return;
+      }
+
+      const moved = approxDistanceMeters(this.lastLocationSent, location);
+      if (moved >= 2) {
+          this.locationDirty = true;
+      }
   }
 
   // Called by TaskModal when opening/closing a task
@@ -212,21 +398,57 @@ class TeamSyncService {
       this.sendPresence();
   }
 
-  private sendPresence() {
-      if(!this.channel) return;
+  private sendPresence(force: boolean = false) {
+      if (!this.channel) return;
+
+      const now = Date.now();
+      const shouldSendLocation =
+          !!this.userLocation &&
+          (this.locationDirty || now - this.lastLocationSentAt > 20000);
+
+      // Only send if something changed or forced (initial connection)
+      const statusChanged = !this.lastPresenceSent ||
+          this.lastPresenceSent.isSolving !== this.isSolving ||
+          this.lastPresenceSent.isRetired !== this.isRetired;
+
+      if (!force && !shouldSendLocation && !statusChanged) {
+          return; // Skip sending if nothing changed
+      }
+
       const me: TeamMember = {
           deviceId: this.deviceId,
           userName: this.userName,
-          lastSeen: Date.now(),
-          location: this.userLocation || undefined,
-          isSolving: this.isSolving
+          lastSeen: now,
+          location: shouldSendLocation && this.userLocation ? roundCoord(this.userLocation) : undefined,
+          isSolving: this.isSolving,
+          isRetired: this.isRetired
       };
+
       this.channel.send({
           type: 'broadcast',
           event: 'presence',
           payload: me
       });
-      this.members.set(this.deviceId, me);
+
+      // Track what we sent
+      this.lastPresenceSent = {
+          isSolving: this.isSolving,
+          isRetired: this.isRetired
+      };
+
+      if (shouldSendLocation && this.userLocation) {
+          this.lastLocationSent = this.userLocation;
+          this.lastLocationSentAt = now;
+          this.locationDirty = false;
+      }
+
+      const existing = this.members.get(this.deviceId);
+      this.members.set(this.deviceId, {
+          ...(existing || {}),
+          ...me,
+          location: me.location ?? existing?.location
+      } as TeamMember);
+
       this.notifyMemberListeners();
   }
 
@@ -264,7 +486,11 @@ class TeamSyncService {
     });
     this.notifyMemberListeners();
 
-    this.voteListeners.forEach(cb => cb(this.votes[vote.pointId]));
+    this.voteListeners.forEach(l => {
+        if (l.pointId === null || l.pointId === vote.pointId) {
+            l.callback(this.votes[vote.pointId]);
+        }
+    });
   }
 
   private handleIncomingChat(msg: ChatMessage) {
@@ -272,30 +498,51 @@ class TeamSyncService {
   }
 
   private notifyMemberListeners() {
-      const now = Date.now();
-      const active: TeamMember[] = [];
-      const deadKeys: string[] = [];
+      // Debounce notifications to reduce re-renders
+      if (this.memberNotifyTimeout) {
+          window.clearTimeout(this.memberNotifyTimeout);
+      }
 
-      this.members.forEach((m, key) => {
-          // Strict Zombie Filtering: 60 seconds (1 minute)
-          if (now - m.lastSeen < 60000) {
-              active.push(m);
-          } else {
-              deadKeys.push(key);
+      this.memberNotifyTimeout = window.setTimeout(() => {
+          const now = Date.now();
+          const active: TeamMember[] = [];
+          const deadKeys: string[] = [];
+
+          this.members.forEach((m, key) => {
+              // Strict Zombie Filtering: 60 seconds (1 minute)
+              if (now - m.lastSeen < 60000) {
+                  active.push(m);
+              } else {
+                  deadKeys.push(key);
+              }
+          });
+
+          // Cleanup dead members from map to keep memory clean
+          deadKeys.forEach(k => this.members.delete(k));
+
+          // Only notify if members actually changed (check hash)
+          const currentHash = active.map(m => `${m.deviceId}:${m.lastSeen}:${m.isSolving}:${m.isRetired}`).sort().join('|');
+          if (currentHash !== this.lastMemberListHash) {
+              this.lastMemberListHash = currentHash;
+              this.memberListeners.forEach(cb => cb(active));
           }
-      });
-      
-      // Cleanup dead members from map to keep memory clean
-      deadKeys.forEach(k => this.members.delete(k));
-      
-      this.memberListeners.forEach(cb => cb(active));
+      }, 100); // Debounce for 100ms
   }
 
+  public subscribeToVotesForTask(pointId: string, callback: VoteCallback) {
+      this.voteListeners.push({ pointId, callback });
+      callback(this.votes[pointId] || []);
+      return () => {
+          this.voteListeners = this.voteListeners.filter(l => l.callback !== callback);
+      };
+  }
+
+  // Backwards-compatible: subscribes to all vote events.
   public subscribeToVotes(callback: VoteCallback) {
-    this.voteListeners.push(callback);
-    return () => {
-      this.voteListeners = this.voteListeners.filter(cb => cb !== callback);
-    };
+      this.voteListeners.push({ pointId: null, callback });
+      return () => {
+          this.voteListeners = this.voteListeners.filter(l => l.callback !== callback);
+      };
   }
   
   public subscribeToMembers(callback: MemberCallback) {
@@ -319,6 +566,52 @@ class TeamSyncService {
 
   public getVotesForTask(pointId: string): TaskVote[] {
       return this.votes[pointId] || [];
+  }
+
+  // Retire myself from the team (votes won't count)
+  public retireMyself() {
+      this.isRetired = true;
+      this.sendPresence();
+  }
+
+  // Un-retire myself (rejoin voting)
+  public unretireMyself() {
+      this.isRetired = false;
+      this.sendPresence();
+  }
+
+  // Captain can retire another player by deviceId
+  public retirePlayer(deviceId: string) {
+      if (!this.channel) return;
+
+      // Broadcast retirement command
+      this.channel.send({
+          type: 'broadcast',
+          event: 'retire_player',
+          payload: { deviceId, isRetired: true }
+      });
+  }
+
+  // Captain can un-retire another player
+  public unretirePlayer(deviceId: string) {
+      if (!this.channel) return;
+
+      // Broadcast un-retirement command
+      this.channel.send({
+          type: 'broadcast',
+          event: 'retire_player',
+          payload: { deviceId, isRetired: false }
+      });
+  }
+
+  // Get current retirement status
+  public isPlayerRetired(): boolean {
+      return this.isRetired;
+  }
+
+  // Get all members including their retirement status
+  public getAllMembers(): TeamMember[] {
+      return Array.from(this.members.values());
   }
 }
 

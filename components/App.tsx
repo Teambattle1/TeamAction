@@ -1,35 +1,44 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { migrateAllTasksInSystem } from '../utils/languageMigration';
 import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage, GameChangeLogEntry, TeamMember, PlaygroundTemplate, ActionType } from '../types';
 import * as db from '../services/db';
+import { logGameChange } from '../utils/gameLog';
+import { supabase } from '../lib/supabase';
 import { authService } from '../services/auth';
 import { teamSync } from '../services/teamSync';
 import { LocationProvider, useLocation } from '../contexts/LocationContext';
-import { haversineMeters, isWithinRadius } from '../utils/geo';
+import { haversineMeters, isWithinRadius, isValidCoordinate } from '../utils/geo';
+import { validatePlayzoneGame, cleanPlayzoneGame } from '../utils/playzoneValidation';
 import GameMap, { GameMapHandle } from './GameMap';
-import GameHUD from './components/GameHUD';
-import GameManager from './components/GameManager';
-import TaskMaster from './components/TaskMaster';
-import TeamsModal from './components/TeamsModal';
-import InstructorDashboard from './components/InstructorDashboard';
-import TeamDashboard from './components/TeamDashboard';
-import WelcomeScreen from './components/WelcomeScreen';
-import InitialLanding from './components/InitialLanding';
-import LoginPage from './components/LoginPage';
-import EditorDrawer from './components/EditorDrawer';
-import TaskModal from './components/TaskModal';
-import DeleteGamesModal from './components/DeleteGamesModal';
-import PlaygroundManager from './components/PlaygroundManager';
-import AdminModal from './components/AdminModal';
-import ChatDrawer from './components/ChatDrawer';
-import TeamsHubModal from './components/TeamsHubModal';
-import ClientSubmissionView from './components/ClientSubmissionView';
-import GameCreator from './components/GameCreator';
-import TaskActionModal from './components/TaskActionModal';
-import PlaygroundEditor from './components/PlaygroundEditor';
-import MessagePopup from './components/MessagePopup';
-import Dashboard from './components/Dashboard';
-import { PlayCircle } from 'lucide-react';
+import GameHUD, { type GameHUDHandle } from './GameHUD';
+import GameManager from './GameManager';
+import TaskMaster from './TaskMaster';
+import TeamsModal from './TeamsModal';
+import InstructorDashboard from './InstructorDashboard';
+import TeamDashboard from './TeamDashboard';
+import WelcomeScreen from './WelcomeScreen';
+import InitialLanding from './InitialLanding';
+import LoginPage from './LoginPage';
+import EditorDrawer from './EditorDrawer';
+import TaskModal from './TaskModal';
+import DeleteGamesModal from './DeleteGamesModal';
+import PlaygroundManager from './PlaygroundManager';
+import AdminModal from './AdminModal';
+import ChatDrawer from './ChatDrawer';
+import TeamsHubModal from './TeamsHubModal';
+import ClientSubmissionView from './ClientSubmissionView';
+import GameCreator from './GameCreator';
+import TaskActionModal from './TaskActionModal';
+import PlaygroundEditor from './PlaygroundEditor';
+import MessagePopup from './MessagePopup';
+import Dashboard from './Dashboard';
+import DangerZoneModal from './DangerZoneModal';
+import TeamLobbyPanel from './TeamLobbyPanel';
+import PlayzoneGameEntry from './PlayzoneGameEntry';
+import ErrorBoundary from './ErrorBoundary';
+import OfflineIndicator from './OfflineIndicator';
+import ConnectionStatus from './ConnectionStatus';
+import { PlayCircle, Ruler } from 'lucide-react';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
@@ -56,6 +65,7 @@ const GameApp: React.FC = () => {
   const [showGameChooser, setShowGameChooser] = useState(false);
   const [showTaskMaster, setShowTaskMaster] = useState(false);
   const [taskMasterInitialTab, setTaskMasterInitialTab] = useState<'LIBRARY' | 'LISTS' | 'TAGS' | 'CLIENT'>('LIBRARY');
+  const [pendingImport, setPendingImport] = useState<{ type: 'tasks' | 'list'; data: any } | null>(null);
   const [showTeamsModal, setShowTeamsModal] = useState(false);
   const [showInstructorDashboard, setShowInstructorDashboard] = useState(false);
   const [showTeamDashboard, setShowTeamDashboard] = useState(false);
@@ -65,8 +75,10 @@ const GameApp: React.FC = () => {
   const [showChatDrawer, setShowChatDrawer] = useState(false);
   const [showTeamsHub, setShowTeamsHub] = useState(false);
   const [showGameCreator, setShowGameCreator] = useState(false);
+  const [showTeamLobby, setShowTeamLobby] = useState(false);
   const [gameToEdit, setGameToEdit] = useState<Game | null>(null);
-  
+  const [initialGameMode, setInitialGameMode] = useState<'standard' | 'playzone' | null>(null);
+
   // --- DASHBOARD STATE ---
   const [showDashboard, setShowDashboard] = useState(false);
   const [dashboardTab, setDashboardTab] = useState<'dashboard' | 'games' | 'templates' | 'tasks' | 'users' | 'tags' | 'client'>('dashboard');
@@ -82,7 +94,17 @@ const GameApp: React.FC = () => {
   const { userLocation, gpsAccuracy } = useLocation();
   const [activeTaskModalId, setActiveTaskModalId] = useState<string | null>(null);
   const [score, setScore] = useState(0);
-  const [showScores, setShowScores] = useState(false);
+  const [showScores, setShowScores] = useState(true);
+  const [showTaskId, setShowTaskId] = useState(true); // Task order (001, 002, etc.)
+  const [showTaskTitle, setShowTaskTitle] = useState(true); // Task name/title
+
+  // Update showScores when game changes based on designConfig.hideScore
+  useEffect(() => {
+    const currentGame = games.find(g => g.id === activeGameId);
+    if (currentGame?.designConfig?.hideScore !== undefined) {
+      setShowScores(!currentGame.designConfig.hideScore);
+    }
+  }, [activeGameId, games]);
   const [currentDangerZone, setCurrentDangerZone] = useState<DangerZone | null>(null);
   const [activeDangerZone, setActiveDangerZone] = useState<DangerZone | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -93,13 +115,18 @@ const GameApp: React.FC = () => {
   // --- MAP STATE ---
   const [localMapStyle, setLocalMapStyle] = useState<MapStyleId>('osm');
   const mapRef = useRef<GameMapHandle>(null);
+  const gameHudRef = useRef<GameHUDHandle>(null);
+  const geofenceCheckRunningRef = useRef(false);
   const [isRelocating, setIsRelocating] = useState(false);
-  
+  const [relocateScopeCenter, setRelocateScopeCenter] = useState<Coordinate | null>(null);
+
   // --- MEASUREMENT ---
   const [isMeasuring, setIsMeasuring] = useState(false);
   const [measurePath, setMeasurePath] = useState<Coordinate[]>([]);
   const [measuredDistance, setMeasuredDistance] = useState(0);
   const [measurePointsCount, setMeasurePointsCount] = useState(0);
+  const [selectedMeasurePointIds, setSelectedMeasurePointIds] = useState<string[]>([]);
+  const [showMeasureResult, setShowMeasureResult] = useState(false);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -110,24 +137,76 @@ const GameApp: React.FC = () => {
         setAuthUser(user);
       }
       const loadedGames = await db.fetchGames();
-      setGames(loadedGames);
       const loadedLists = await db.fetchTaskLists();
-      setTaskLists(loadedLists);
       const loadedLib = await db.fetchLibrary();
-      setTaskLibrary(loadedLib);
+
+      // Migrate all tasks to have proper language detection
+      const { games: migratedGames, library: migratedLibrary } = await migrateAllTasksInSystem(loadedGames, loadedLib);
+
+      setGames(migratedGames);
+      setTaskLists(loadedLists);
+      setTaskLibrary(migratedLibrary);
+
+      // Save migrated data back to database
+      for (const game of migratedGames) {
+        await db.saveGame(game);
+      }
+      for (const template of migratedLibrary) {
+        await db.saveTemplate(template);
+      }
     };
     init();
   }, []);
 
-  // Measurement logic updates
+  // --- REALTIME: Games/Templates list updates across editors ---
   useEffect(() => {
-      if (isMeasuring && userLocation) {
-          setMeasurePath(prev => {
-              if (prev.length === 0) return [userLocation];
-              return [...prev.slice(0, prev.length - 1), userLocation];
+      const channel = supabase.channel('games_list_changes');
+
+      const rowToGame = (row: any): Game => ({
+          ...(row.data as Game),
+          id: row.id,
+          dbUpdatedAt: row.updated_at
+      });
+
+      const applyIncomingGame = (incoming: Game) => {
+          setGames(prev => {
+              const exists = prev.some(g => g.id === incoming.id);
+              const next = exists ? prev.map(g => (g.id === incoming.id ? incoming : g)) : [incoming, ...prev];
+              return next;
           });
-      }
-  }, [userLocation, isMeasuring]);
+
+          if (activeGameId === incoming.id) {
+              if ((mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && activeTask) return;
+              setActiveGame(incoming);
+          }
+      };
+
+      channel
+          .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'games' },
+              (payload: any) => {
+                  if (payload.eventType === 'DELETE') {
+                      const id = payload.old?.id;
+                      if (!id) return;
+                      setGames(prev => prev.filter(g => g.id !== id));
+                      if (activeGameId === id) setActiveGame(null);
+                      return;
+                  }
+
+                  const row = payload.new;
+                  if (!row) return;
+                  applyIncomingGame(rowToGame(row));
+              }
+          )
+          .subscribe();
+
+      return () => {
+          supabase.removeChannel(channel);
+      };
+  }, [activeGameId, mode, activeTask]);
+
+  // Measurement logic: no auto-update with user location, only manual task clicks
 
   useEffect(() => {
       if (activeGameId) {
@@ -136,6 +215,57 @@ const GameApp: React.FC = () => {
           if (game?.defaultMapStyle) setLocalMapStyle(game.defaultMapStyle);
       }
   }, [activeGameId, games]);
+
+  // --- MULTI-USER EDIT SYNC (realtime with safe fallback) ---
+  useEffect(() => {
+      if (!activeGameId) return;
+      if (mode !== GameMode.EDIT && mode !== GameMode.INSTRUCTOR) return;
+      // Avoid overwriting local, unsaved edits while a point is open in the editor.
+      if (activeTask) return;
+
+      let isSubscribed = false;
+      let pollingId: number | null = null;
+      const channel = supabase.channel(`game_changes_${activeGameId}`);
+
+      const applyRemoteGame = (remote: Game) => {
+          if (remote.dbUpdatedAt && remote.dbUpdatedAt === activeGame?.dbUpdatedAt) return;
+          setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+          setActiveGame(remote);
+      };
+
+      channel
+          .on(
+              'postgres_changes',
+              { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${activeGameId}` },
+              (payload: any) => {
+                  const row = payload?.new;
+                  if (!row) return;
+                  const remote: Game = { ...(row.data as Game), id: row.id, dbUpdatedAt: row.updated_at };
+                  applyRemoteGame(remote);
+              }
+          )
+          .subscribe((status: string) => {
+              if (status === 'SUBSCRIBED') {
+                  isSubscribed = true;
+              }
+          });
+
+      // Fallback polling: only if realtime doesn't subscribe within 7s.
+      const fallbackTimer = window.setTimeout(() => {
+          if (isSubscribed) return;
+          pollingId = window.setInterval(async () => {
+              const remote = await db.fetchGame(activeGameId);
+              if (!remote) return;
+              applyRemoteGame(remote);
+          }, 20000);
+      }, 7000);
+
+      return () => {
+          window.clearTimeout(fallbackTimer);
+          if (pollingId) window.clearInterval(pollingId);
+          supabase.removeChannel(channel);
+      };
+  }, [activeGameId, mode, activeTask, activeGame?.dbUpdatedAt]);
 
   // Subscribe to Team Members if Playing
   useEffect(() => {
@@ -190,26 +320,51 @@ const GameApp: React.FC = () => {
       if (!activeGame || mode !== GameMode.PLAY || !userLocation) return;
 
       const checkGeofences = async () => {
-          let hasUpdates = false;
-          const updatedPoints = activeGame.points.map(p => {
-              if (p.isUnlocked || p.isCompleted || p.isSectionHeader || p.playgroundId) return p;
-              if (p.activationTypes.includes('radius') && isWithinRadius(userLocation, p.location, p.radiusMeters)) {
-                  hasUpdates = true;
-                  if (navigator.vibrate) navigator.vibrate(200);
-                  return { ...p, isUnlocked: true };
-              }
-              return p;
-          });
+          // Prevent overlapping checks
+          if (geofenceCheckRunningRef.current) return;
+          geofenceCheckRunningRef.current = true;
 
-          if (hasUpdates) {
-              const updatedGame = { ...activeGame, points: updatedPoints };
-              await db.saveGame(updatedGame);
-              setActiveGame(updatedGame);
-              setGames(prev => prev.map(g => g.id === updatedGame.id ? updatedGame : g));
+          const patches: { pointId: string; patch: any }[] = [];
+
+          // OPTIMIZATION: Filter once instead of checking each iteration
+          const radiusActivatedPoints = (activeGame?.points || []).filter(
+              p => !p.isUnlocked && !p.isCompleted && !p.isSectionHeader && !p.playgroundId && p.activationTypes.includes('radius')
+          );
+
+          // Early exit if no radius-activated tasks
+          if (radiusActivatedPoints.length === 0) {
+              geofenceCheckRunningRef.current = false;
+              return;
+          }
+
+          // Check only relevant points
+          for (const p of radiusActivatedPoints) {
+              if (isWithinRadius(userLocation, p.location, p.radiusMeters)) {
+                  patches.push({ pointId: p.id, patch: { isUnlocked: true } });
+              }
+          }
+
+          try {
+              if (patches.length > 0) {
+                  if (navigator.vibrate) navigator.vibrate(200);
+
+                  const remote = await db.patchGamePoints(activeGame.id, patches, {
+                      user: authUser?.name,
+                      action: 'Geofence Unlock'
+                  });
+
+                  if (remote) {
+                      setActiveGame(remote);
+                      setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+                  }
+              }
+          } finally {
+              geofenceCheckRunningRef.current = false;
           }
       };
 
-      const interval = setInterval(checkGeofences, 2000);
+      // PERFORMANCE: Reduced from 2s to 5s to minimize main thread blocking
+      const interval = setInterval(checkGeofences, 5000);
       return () => clearInterval(interval);
   }, [userLocation, activeGame, mode]);
 
@@ -259,14 +414,17 @@ const GameApp: React.FC = () => {
           return;
       }
 
+      const updatedAt = new Date().toISOString();
+
       const changeEntry: GameChangeLogEntry = {
           timestamp: Date.now(),
           user: authUser?.name || 'Unknown',
           action: changeDescription
       };
-      
+
       const gameToSave = {
           ...updatedGame,
+          dbUpdatedAt: updatedAt,
           lastModifiedBy: authUser?.name || 'Unknown',
           changeLog: [...(updatedGame.changeLog || []), changeEntry]
       };
@@ -325,14 +483,63 @@ const GameApp: React.FC = () => {
   };
 
   const handleDeleteItem = async (pointId: string) => {
-      if (!currentGameObj) return;
+      if (!currentGameObj || !pointId) return;
+      console.log('[Delete] Deleting point:', pointId);
+
       const updatedPoints = currentGameObj.points.filter(p => p.id !== pointId);
       const updatedZones = (currentGameObj.dangerZones || []).filter(z => z.id !== pointId);
+
+      console.log('[Delete] Updated points count:', updatedPoints.length, 'Total before:', currentGameObj.points.length);
+
       await updateActiveGame({ ...currentGameObj, points: updatedPoints, dangerZones: updatedZones }, "Deleted Task/Zone");
       if (activeTask?.id === pointId) setActiveTask(null);
   };
 
   const handlePointClick = (point: GamePoint) => {
+      // CRITICAL: When measuring mode is active, ONLY add to measurement path
+      // Do NOT open any modals or task views
+      if (isMeasuring) {
+          if (!point.location || !isValidCoordinate(point.location)) {
+              console.warn('[Measure] Cannot measure task without valid location:', point.id);
+              return;
+          }
+
+          console.log('[Measure] Task clicked in measure mode:', point.id, 'Location:', point.location);
+
+          // Calculate distance BEFORE updating state
+          const distanceToAdd = measurePath.length > 0
+              ? haversineMeters(measurePath[measurePath.length - 1], point.location)
+              : 0;
+
+          console.log('[Measure] Distance calculation:', {
+              previousPoint: measurePath[measurePath.length - 1],
+              currentPoint: point.location,
+              distanceToAdd: distanceToAdd.toFixed(2) + 'm'
+          });
+
+          // Add task ID to selected list (for visual feedback)
+          setSelectedMeasurePointIds(prev => [...prev, point.id]);
+
+          // Add task location to measurement path
+          setMeasurePath(prev => [...prev, point.location]);
+
+          // Update distance with the calculated value
+          setMeasuredDistance(prev => {
+              const newDistance = prev + distanceToAdd;
+              console.log('[Measure] Distance update:', prev.toFixed(2) + 'm', '+', distanceToAdd.toFixed(2) + 'm', '=', newDistance.toFixed(2) + 'm');
+              return newDistance;
+          });
+
+          // Update point count
+          setMeasurePointsCount(prev => prev + 1);
+
+          console.log('[Measure] ✓ Added task to path. Total distance:', (measuredDistance + distanceToAdd).toFixed(2) + 'm');
+
+          // CRITICAL: Stop execution here - do NOT open task modal
+          return;
+      }
+
+      // Normal mode: Open task modal/editor
       if (mode === GameMode.EDIT) {
           setActiveTask(point);
       } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR || mode === GameMode.SIMULATION) {
@@ -385,8 +592,39 @@ const GameApp: React.FC = () => {
   };
 
   const handleMapClick = (coord: Coordinate) => {
+      // DISABLED: Measure tool should ONLY work with tasks, not random map points
+      // Users should click tasks to measure between them
       if (mode === GameMode.EDIT && isMeasuring) {
-          setMeasurePath(prev => [...prev, coord]);
+          console.log('[Measure] Map click ignored - please click tasks to measure between them');
+          return;
+      }
+
+      if (mode === GameMode.EDIT && isRelocating && currentGameObj) {
+          // Calculate offset from current center to new location
+          const points = currentGameObj.points;
+          if (points.length === 0) return;
+
+          // Calculate center of all points
+          const centerLat = points.reduce((sum, p) => sum + p.location.lat, 0) / points.length;
+          const centerLng = points.reduce((sum, p) => sum + p.location.lng, 0) / points.length;
+          const currentCenter = { lat: centerLat, lng: centerLng };
+
+          // Calculate offset
+          const latOffset = coord.lat - currentCenter.lat;
+          const lngOffset = coord.lng - currentCenter.lng;
+
+          // Apply offset to all points
+          const relocatedPoints = points.map(p => ({
+              ...p,
+              location: {
+                  lat: p.location.lat + latOffset,
+                  lng: p.location.lng + lngOffset
+              }
+          }));
+
+          updateActiveGame({ ...currentGameObj, points: relocatedPoints }, "Relocated All Tasks");
+          // Keep scope active for multiple relocations - user must click button again to exit
+          console.log('[Relocate] Moved all tasks by offset:', { latOffset, lngOffset });
       }
   };
 
@@ -405,14 +643,41 @@ const GameApp: React.FC = () => {
   };
 
   const handleRelocateGame = () => {
-      setIsRelocating(!isRelocating);
+      if (!isRelocating && currentGameObj && currentGameObj.points.length > 0) {
+          // Entering relocation mode - calculate scope center
+          const points = currentGameObj.points;
+          const centerLat = points.reduce((sum, p) => sum + p.location.lat, 0) / points.length;
+          const centerLng = points.reduce((sum, p) => sum + p.location.lng, 0) / points.length;
+          setRelocateScopeCenter({ lat: centerLat, lng: centerLng });
+          setIsRelocating(true);
+          console.log('[Relocate] Entered scope mode, center at:', { lat: centerLat, lng: centerLng });
+      } else {
+          // Exiting relocation mode
+          setIsRelocating(false);
+          setRelocateScopeCenter(null);
+      }
   };
 
   const handleToggleMeasure = () => {
-      setIsMeasuring(!isMeasuring);
-      if (!isMeasuring) setMeasurePath(userLocation ? [userLocation] : []);
-      else setMeasurePath([]);
+      if (isMeasuring) {
+          // Exit measuring mode - clear all measurement data
+          console.log('[Measure] Exiting measure mode');
+          setIsMeasuring(false);
+          setMeasurePath([]);
+          setMeasuredDistance(0);
+          setMeasurePointsCount(0);
+          setSelectedMeasurePointIds([]);
+      } else {
+          // Enter measuring mode - start fresh
+          console.log('[Measure] Entering measure mode - Click tasks to measure distances');
+          setIsMeasuring(true);
+          setMeasurePath([]);
+          setMeasuredDistance(0);
+          setMeasurePointsCount(0);
+          setSelectedMeasurePointIds([]);
+      }
   };
+
 
   const handleLocateMe = () => {
       if (userLocation && mapRef.current) {
@@ -421,18 +686,41 @@ const GameApp: React.FC = () => {
   };
 
   const handleAddDangerZone = () => {
-      if (!currentGameObj || !mapRef.current) return;
-      const center = mapRef.current.getCenter();
-      const newZone: DangerZone = {
-          id: `dz-${Date.now()}`,
-          location: center,
-          radius: 50,
-          penalty: 50,
-          duration: 10,
-          title: 'NEW ZONE',
-          penaltyType: 'fixed'
-      };
-      updateActiveGame({ ...currentGameObj, dangerZones: [...(currentGameObj.dangerZones || []), newZone] }, "Added Danger Zone");
+      try {
+          if (!currentGameObj || !mapRef.current) {
+              console.warn('[Danger Zone] Missing game object or map ref');
+              return;
+          }
+          const center = mapRef.current.getCenter();
+          const newZone: DangerZone = {
+              id: `dz-${Date.now()}`,
+              location: center,
+              radius: 50,
+              penalty: 50,
+              duration: 10,
+              title: 'NEW ZONE',
+              penaltyType: 'fixed'
+          };
+          updateActiveGame({ ...currentGameObj, dangerZones: [...(currentGameObj.dangerZones || []), newZone] }, "Added Danger Zone");
+          setActiveDangerZone(newZone);
+          console.log('[Danger Zone] Zone added at:', center);
+      } catch (error) {
+          console.error('[Danger Zone] Error adding danger zone:', error);
+      }
+  };
+
+  const handleSaveDangerZone = async (updatedZone: DangerZone) => {
+      if (!currentGameObj) return;
+      const updatedZones = (currentGameObj.dangerZones || []).map(z => z.id === updatedZone.id ? updatedZone : z);
+      await updateActiveGame({ ...currentGameObj, dangerZones: updatedZones }, "Updated Danger Zone");
+      setActiveDangerZone(null);
+  };
+
+  const handleDeleteDangerZone = async () => {
+      if (!currentGameObj || !activeDangerZone) return;
+      const updatedZones = (currentGameObj.dangerZones || []).filter(z => z.id !== activeDangerZone.id);
+      await updateActiveGame({ ...currentGameObj, dangerZones: updatedZones }, "Deleted Danger Zone");
+      setActiveDangerZone(null);
   };
 
   const handleUpdateRoute = (id: string, updates: Partial<GameRoute>) => {
@@ -443,11 +731,29 @@ const GameApp: React.FC = () => {
 
   const handleManualUnlock = async (pointId: string) => {
       if (!currentGameObj) return;
-      const updatedPoints = currentGameObj.points.map(p => p.id === pointId ? { ...p, isUnlocked: true } : p);
-      await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
+
+      if (mode === GameMode.SIMULATION) {
+          const updatedPoints = currentGameObj.points.map(p => (p.id === pointId ? { ...p, isUnlocked: true } : p));
+          await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
+          return;
+      }
+
+      const remote = await db.patchGamePoints(
+          currentGameObj.id,
+          [{ pointId, patch: { isUnlocked: true } }],
+          { user: authUser?.name, action: 'Manual Unlock' }
+      );
+
+      if (remote) {
+          setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+          setActiveGame(remote);
+      } else {
+          const updatedPoints = currentGameObj.points.map(p => (p.id === pointId ? { ...p, isUnlocked: true } : p));
+          await updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Manual Unlock");
+      }
   };
 
-  const handleTaskComplete = (id: string, pts?: number) => {
+  const handleTaskComplete = async (id: string, pts?: number) => {
       const pointsToAdd = pts || 0;
       setScore(s => s + pointsToAdd);
       
@@ -477,8 +783,26 @@ const GameApp: React.FC = () => {
       }
 
       const updatedPoints = currentGameObj?.points.map(p => p.id === id ? { ...p, isCompleted: true } : p) || [];
-      if (currentGameObj) updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
-      
+
+      if (currentGameObj) {
+          if (mode === GameMode.SIMULATION) {
+              updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
+          } else {
+              const remote = await db.patchGamePoints(
+                  currentGameObj.id,
+                  [{ pointId: id, patch: { isCompleted: true } }],
+                  { user: authUser?.name, action: 'Task Completed' }
+              );
+
+              if (remote) {
+                  setGames(prev => prev.map(g => (g.id === remote.id ? remote : g)));
+                  setActiveGame(remote);
+              } else {
+                  updateActiveGame({ ...currentGameObj, points: updatedPoints }, "Task Completed");
+              }
+          }
+      }
+
       setActiveTaskModalId(null);
   };
 
@@ -525,10 +849,12 @@ const GameApp: React.FC = () => {
   };
 
   const handleDeleteTagGlobally = async (tagToDelete: string) => {
+      const tagToDeleteLower = tagToDelete.toLowerCase();
+
       const removeInTasks = (tasks: TaskTemplate[]) => {
           return tasks.map(t => ({
               ...t,
-              tags: t.tags?.filter(tag => tag !== tagToDelete) || []
+              tags: t.tags?.filter(tag => tag.toLowerCase() !== tagToDeleteLower) || []
           }));
       };
 
@@ -547,7 +873,7 @@ const GameApp: React.FC = () => {
           ...g,
           points: g.points.map(p => ({
               ...p,
-              tags: p.tags?.filter(tag => tag !== tagToDelete) || []
+              tags: p.tags?.filter(tag => tag.toLowerCase() !== tagToDeleteLower) || []
           }))
       }));
       for (const g of updatedGames) await db.saveGame(g);
@@ -658,7 +984,44 @@ const GameApp: React.FC = () => {
                       setShowGameChooser(false);
                       setShowLanding(false);
                   }}
-                  onSelectGame={(id) => { setActiveGameId(id); setShowGameChooser(false); }}
+                  onSelectGame={async (id) => {
+                      setActiveGameId(id);
+                      setShowGameChooser(false);
+
+                      // Handle pending import
+                      if (pendingImport) {
+                          const selectedGame = games.find(g => g.id === id);
+                          if (selectedGame) {
+                              if (pendingImport.type === 'tasks') {
+                                  const newPoints = pendingImport.data.map((t: any) => ({
+                                      ...t,
+                                      id: `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                                      location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                                      radiusMeters: 30,
+                                      activationTypes: ['radius'],
+                                      isUnlocked: true,
+                                      isCompleted: false,
+                                      order: selectedGame.points.length
+                                  } as GamePoint));
+                                  await updateActiveGame({ ...selectedGame, points: [...selectedGame.points, ...newPoints] }, `Imported ${pendingImport.data.length} Tasks`);
+                              } else if (pendingImport.type === 'list') {
+                                  const list = pendingImport.data;
+                                  const newPoints = list.tasks.map((t: any, idx: number) => ({
+                                      ...t,
+                                      id: `p-${Date.now()}-${idx}-${Math.random().toString(36).substr(2,9)}`,
+                                      location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                                      radiusMeters: 30,
+                                      activationTypes: ['radius'],
+                                      isUnlocked: true,
+                                      isCompleted: false,
+                                      order: selectedGame.points.length + idx
+                                  } as GamePoint));
+                                  await updateActiveGame({ ...selectedGame, points: [...selectedGame.points, ...newPoints] }, `Imported TaskList "${list.name}" (${list.tasks.length} Tasks)`);
+                              }
+                              setPendingImport(null);
+                          }
+                      }
+                  }}
                   onDeleteGame={handleDeleteGame}
                   onClose={() => setShowGameChooser(false)}
                   onEditGame={(id) => { 
@@ -702,10 +1065,12 @@ const GameApp: React.FC = () => {
                   onUnlock={handleManualUnlock}
                   mode={mode}
                   isInstructorMode={mode === GameMode.INSTRUCTOR}
+                  game={activeGame}
+                  isCaptain={currentTeam?.captainDeviceId === teamSync.getDeviceId() || mode === GameMode.SIMULATION}
               />
           )}
           {showTaskMaster && (
-              <TaskMaster 
+              <TaskMaster
                   initialTab={taskMasterInitialTab}
                   onClose={() => setShowTaskMaster(false)}
                   onImportTasks={async (tasks) => {
@@ -722,10 +1087,36 @@ const GameApp: React.FC = () => {
                           } as GamePoint));
                           await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported ${tasks.length} Tasks`);
                           setShowTaskMaster(false);
+                      } else {
+                          setPendingImport({ type: 'tasks', data: tasks });
+                          setShowGameChooser(true);
+                          setShowTaskMaster(false);
+                      }
+                  }}
+                  onImportTaskList={async (list) => {
+                      if (currentGameObj) {
+                          const newPoints = list.tasks.map((t, idx) => ({
+                              ...t,
+                              id: `p-${Date.now()}-${idx}-${Math.random().toString(36).substr(2,9)}`,
+                              location: mapRef.current?.getCenter() || { lat: 0, lng: 0 },
+                              radiusMeters: 30,
+                              activationTypes: ['radius'],
+                              isUnlocked: true,
+                              isCompleted: false,
+                              order: currentGameObj.points.length + idx
+                          } as GamePoint));
+                          await updateActiveGame({ ...currentGameObj, points: [...currentGameObj.points, ...newPoints] }, `Imported TaskList "${list.name}" (${list.tasks.length} Tasks)`);
+                          setShowTaskMaster(false);
+                      } else {
+                          setPendingImport({ type: 'list', data: list });
+                          setShowGameChooser(true);
+                          setShowTaskMaster(false);
                       }
                   }}
                   taskLists={taskLists}
                   onUpdateTaskLists={setTaskLists}
+                  taskLibrary={taskLibrary}
+                  onUpdateTaskLibrary={setTaskLibrary}
                   games={games}
                   onDeleteTagGlobally={handleDeleteTagGlobally}
                   onRenameTagGlobally={handleRenameTagGlobally}
@@ -733,20 +1124,47 @@ const GameApp: React.FC = () => {
           )}
           {/* ... Rest of modals ... */}
           {showGameCreator && (
-              <GameCreator 
-                  onClose={() => setShowGameCreator(false)}
+              <GameCreator
+                  onClose={() => { setShowGameCreator(false); setInitialGameMode(null); }}
                   onCreate={async (gameData) => {
                       if (gameToEdit && gameToEdit.id === gameData.id) {
-                          await updateActiveGame({ ...gameToEdit, ...gameData }, "Updated Game Settings");
+                          // Validate playzone game before updating
+                          const gameWithMode = { ...gameToEdit, ...gameData, gameMode: gameToEdit.gameMode || gameData.gameMode };
+                          if (gameWithMode.gameMode === 'playzone') {
+                              const validation = validatePlayzoneGame(gameWithMode);
+                              if (!validation.valid) {
+                                  alert(`⚠️ Playzone Game Validation Failed:\n\n${validation.errors.join('\n')}`);
+                                  return;
+                              }
+                              if (validation.warnings.length > 0) {
+                                  console.warn('Playzone Game Warnings:', validation.warnings);
+                              }
+                              // Clean the game data (remove GPS activations, etc.)
+                              const cleanedGame = cleanPlayzoneGame(gameWithMode);
+                              await updateActiveGame(cleanedGame, "Updated Playzone Game Settings");
+                          } else {
+                              await updateActiveGame(gameWithMode, "Updated Game Settings");
+                          }
                       } else {
-                          const newGame = { 
-                              ...gameData, 
-                              id: `game-${Date.now()}`, 
-                              points: [], 
+                          let newGame = {
+                              ...gameData,
+                              id: `game-${Date.now()}`,
+                              points: [],
                               createdAt: Date.now(),
                               createdBy: authUser?.name,
-                              changeLog: [{ timestamp: Date.now(), user: authUser?.name || 'Unknown', action: 'Created Game' }]
+                              changeLog: [{ timestamp: Date.now(), user: authUser?.name || 'Unknown', action: 'Created Game' }],
+                              gameMode: initialGameMode || 'standard'
                           } as Game;
+
+                          // Validate and clean playzone games
+                          if (newGame.gameMode === 'playzone') {
+                              const validation = validatePlayzoneGame(newGame);
+                              if (validation.warnings.length > 0) {
+                                  console.warn('✓ Playzone Game created with warnings:', validation.warnings);
+                              }
+                              newGame = cleanPlayzoneGame(newGame);
+                          }
+
                           await db.saveGame(newGame);
                           setGames([...games, newGame]);
                           setActiveGameId(newGame.id);
@@ -754,9 +1172,15 @@ const GameApp: React.FC = () => {
                       }
                       setShowGameCreator(false);
                       setGameToEdit(null);
+                      setInitialGameMode(null);
                   }}
                   baseGame={gameToEdit || undefined}
                   onDelete={handleDeleteGame}
+                  initialGameMode={initialGameMode}
+                  onOpenPlaygroundEditor={(playgroundId) => {
+                      setShowGameCreator(false);
+                      setViewingPlaygroundId(playgroundId || null);
+                  }}
               />
           )}
           {showTeamsHub && (
@@ -792,12 +1216,31 @@ const GameApp: React.FC = () => {
               />
           )}
           {showTeamDashboard && activeGameId && (
-              <TeamDashboard 
+              <TeamDashboard
                   gameId={activeGameId}
                   totalMapPoints={currentGameObj?.points.length || 0}
                   onOpenAgents={() => {}}
                   onClose={() => setShowTeamDashboard(false)}
                   chatHistory={chatHistory}
+              />
+          )}
+          {showTeamLobby && currentTeam && activeGame?.gameMode === 'playzone' && (
+              <PlayzoneGameEntry
+                  isOpen={showTeamLobby}
+                  onClose={() => setShowTeamLobby(false)}
+                  onTeamJoin={(name) => {
+                      // For playzone games, set team name and start game
+                      setCurrentTeam({...currentTeam, name});
+                      setShowTeamLobby(false);
+                  }}
+                  gameName={activeGame?.name}
+              />
+          )}
+          {showTeamLobby && currentTeam && activeGame?.gameMode !== 'playzone' && (
+              <TeamLobbyPanel
+                  isOpen={showTeamLobby}
+                  onClose={() => setShowTeamLobby(false)}
+                  isCaptain={currentTeam.captainDeviceId === teamSync.getDeviceId() || mode === GameMode.SIMULATION}
               />
           )}
           {showDeleteGames && (
@@ -817,7 +1260,7 @@ const GameApp: React.FC = () => {
                   onCreate={() => {
                       const newTemplate: PlaygroundTemplate = {
                           id: `tpl-${Date.now()}`,
-                          title: 'New Playground Template',
+                          title: 'New Playzone Template',
                           isGlobal: true,
                           createdAt: Date.now(),
                           playgroundData: {
@@ -835,7 +1278,7 @@ const GameApp: React.FC = () => {
               />
           )}
           {(viewingPlaygroundId || playgroundTemplateToEdit) && (
-              <PlaygroundEditor 
+              <PlaygroundEditor
                   game={playgroundTemplateToEdit ? {
                       id: 'template-edit',
                       name: playgroundTemplateToEdit.title,
@@ -844,7 +1287,7 @@ const GameApp: React.FC = () => {
                       points: playgroundTemplateToEdit.tasks,
                       playgrounds: [playgroundTemplateToEdit.playgroundData]
                   } as Game : (currentGameObj || { id: 'temp', name: 'Temp', points: [], createdAt: 0 } as any)}
-                  
+
                   onUpdateGame={(updatedGame) => {
                       if (playgroundTemplateToEdit) {
                           setPlaygroundTemplateToEdit({
@@ -891,6 +1334,7 @@ const GameApp: React.FC = () => {
                       }
                   }}
                   onAddZoneFromLibrary={() => {}}
+                  onStartSimulation={!playgroundTemplateToEdit && currentGameObj ? () => handleStartSimulation(currentGameObj) : undefined}
               />
           )}
           {showChatDrawer && activeGameId && (
@@ -920,12 +1364,64 @@ const GameApp: React.FC = () => {
               />
           )}
           {latestMessage && (
-              <MessagePopup 
-                  message={latestMessage.message} 
-                  sender={latestMessage.sender} 
+              <MessagePopup
+                  message={latestMessage.message}
+                  sender={latestMessage.sender}
                   onClose={() => setLatestMessage(null)}
                   isUrgent={latestMessage.isUrgent}
               />
+          )}
+          {activeDangerZone && (
+              <DangerZoneModal
+                  zone={activeDangerZone}
+                  onSave={handleSaveDangerZone}
+                  onDelete={handleDeleteDangerZone}
+                  onClose={() => setActiveDangerZone(null)}
+              />
+          )}
+          {showMeasureResult && (
+              <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+                  <div className="bg-slate-900 border-2 border-orange-500 rounded-2xl shadow-[0_0_50px_rgba(249,115,22,0.5)] overflow-hidden flex flex-col max-w-sm w-full">
+                      <div className="p-6 bg-orange-950/50 border-b border-orange-900/50 flex items-center gap-3">
+                          <div className="p-2 bg-orange-600 rounded-lg">
+                              <Ruler className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                              <h2 className="text-lg font-black text-white uppercase tracking-widest">MEASUREMENT RESULT</h2>
+                              <p className="text-[10px] text-orange-400 font-bold uppercase tracking-wide">Task Distance Analysis</p>
+                          </div>
+                      </div>
+                      <div className="p-6 space-y-6">
+                          <div className="space-y-2">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TASKS SELECTED</div>
+                              <div className="text-4xl font-black text-orange-500">{measurePointsCount}</div>
+                              <p className="text-[10px] text-slate-400 mt-2">point{measurePointsCount !== 1 ? 's' : ''} in measurement line</p>
+                          </div>
+                          <div className="space-y-2">
+                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">TOTAL DISTANCE</div>
+                              <div className="text-3xl font-black text-green-500">{measuredDistance.toFixed(0)}<span className="text-lg ml-2">M</span></div>
+                              <p className="text-[10px] text-slate-400 mt-2">between selected tasks</p>
+                          </div>
+                      </div>
+                      <div className="p-4 bg-slate-800/50 border-t border-slate-700 flex gap-3">
+                          <button
+                              onClick={() => {
+                                  setShowMeasureResult(false);
+                                  setSelectedMeasurePointIds([]);
+                              }}
+                              className="flex-1 py-2 px-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg transition-colors text-sm uppercase"
+                          >
+                              Clear Selection
+                          </button>
+                          <button
+                              onClick={() => setShowMeasureResult(false)}
+                              className="flex-1 py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-lg transition-colors text-sm uppercase shadow-lg"
+                          >
+                              Close
+                          </button>
+                      </div>
+                  </div>
+              </div>
           )}
       </>
   );
@@ -933,8 +1429,8 @@ const GameApp: React.FC = () => {
   if (showLanding) {
       return (
           <>
-            <InitialLanding 
-                version="3.1.0"
+            <InitialLanding
+                version="4.0.1"
                 games={games}
                 activeGameId={activeGameId}
                 onSelectGame={setActiveGameId}
@@ -961,7 +1457,16 @@ const GameApp: React.FC = () => {
                     ensureSession(() => {
                         switch (action) {
                             case 'GAMES': setShowGameChooser(true); break;
-                            case 'CREATE_GAME': setGameToEdit(null); setShowGameCreator(true); break;
+                            case 'CREATE_GAME':
+                                setGameToEdit(null);
+                                setInitialGameMode('standard');
+                                setShowGameCreator(true);
+                                break;
+                            case 'CREATE_PLAYZONE_GAME':
+                                setGameToEdit(null);
+                                setInitialGameMode('playzone');
+                                setShowGameCreator(true);
+                                break;
                             case 'EDIT_GAME': 
                                 if (activeGameId && activeGame) {
                                     setGameToEdit(activeGame);
@@ -999,7 +1504,10 @@ const GameApp: React.FC = () => {
   // Active Game View
   return (
     <div className={`fixed inset-0 w-full h-full overflow-hidden bg-slate-900 text-white ${mode === GameMode.SIMULATION ? 'border-4 border-orange-500 shadow-[inset_0_0_50px_rgba(249,115,22,0.5)]' : ''}`}>
-        
+
+        {/* CONNECTION STATUS BANNER */}
+        <ConnectionStatus />
+
         {/* SIMULATION BANNER */}
         {mode === GameMode.SIMULATION && (
             <div className="absolute top-0 left-0 right-0 h-12 bg-orange-600/90 backdrop-blur-md flex items-center justify-between px-6 z-[6000] shadow-xl border-b border-orange-400">
@@ -1016,8 +1524,10 @@ const GameApp: React.FC = () => {
             </div>
         )}
 
+        {/* GAME MAP - Hidden for Playzone Games */}
+        {activeGame?.gameMode !== 'playzone' && (
         <div className="absolute inset-0 z-0">
-            <GameMap 
+            <GameMap
                 ref={mapRef}
                 points={currentGameObj?.points || []}
                 routes={currentGameObj?.routes || []}
@@ -1025,27 +1535,66 @@ const GameApp: React.FC = () => {
                 logicLinks={logicLinks}
                 measurePath={measurePath}
                 mode={mode}
-                mapStyle={localMapStyle || 'osm'} 
+                mapStyle={localMapStyle || 'osm'}
                 onPointClick={handlePointClick}
                 onZoneClick={(z) => setActiveDangerZone(z)}
                 onMapClick={handleMapClick}
                 onDeletePoint={handleDeleteItem}
+                onDragStart={(pointId: string) => {
+                    if (!currentGameObj) return;
+                    const point = currentGameObj.points.find(p => p.id === pointId);
+                    if (point) setActiveTask(point);
+                }}
                 onPointMove={async (id, loc) => {
                     if (!currentGameObj) return;
-                    const updatedPoints = currentGameObj.points.map(p => p.id === id ? { ...p, location: loc } : p);
-                    const updatedPlaygrounds = (currentGameObj.playgrounds || []).map(pg => pg.id === id ? { ...pg, location: loc } : pg);
-                    const updatedZones = (currentGameObj.dangerZones || []).map(z => z.id === id ? { ...z, location: loc } : z);
-                    await updateActiveGame({ ...currentGameObj, points: updatedPoints, playgrounds: updatedPlaygrounds, dangerZones: updatedZones }, "Moved Item");
+
+                    if (mode === GameMode.SIMULATION) {
+                        const updatedPoints = currentGameObj.points.map(p => p.id === id ? { ...p, location: loc } : p);
+                        const updatedPlaygrounds = (currentGameObj.playgrounds || []).map(pg => pg.id === id ? { ...pg, location: loc } : pg);
+                        const updatedZones = (currentGameObj.dangerZones || []).map(z => z.id === id ? { ...z, location: loc } : z);
+                        setSimulatedGame({ ...currentGameObj, points: updatedPoints, playgrounds: updatedPlaygrounds, dangerZones: updatedZones });
+                        return;
+                    }
+
+                    const plainLoc = { lat: loc.lat, lng: loc.lng };
+                    const updated = await db.updateGameItemLocation(currentGameObj.id, id, plainLoc, {
+                        user: authUser?.name,
+                        action: 'Moved Item'
+                    });
+                    if (!updated) return;
+
+                    setGames(prev => prev.map(g => g.id === updated.id ? updated : g));
+                    setActiveGame(updated);
                 }}
                 accuracy={gpsAccuracy}
                 isRelocating={isRelocating}
+                relocateScopeCenter={relocateScopeCenter}
                 showScores={showScores}
+                showTaskId={showTaskId}
+                showTaskTitle={showTaskTitle}
                 teams={mapTeams}
                 showUserLocation={currentGameObj?.showPlayerLocations ?? true}
             />
         </div>
+        )}
 
-        <GameHUD 
+        {/* MEASURE MODE BANNER */}
+        {isMeasuring && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none animate-in fade-in slide-in-from-top">
+                <div className="bg-orange-600 text-white px-6 py-3 rounded-full shadow-2xl border-2 border-orange-400 flex items-center gap-3">
+                    <Ruler className="w-5 h-5 animate-pulse" />
+                    <div className="font-black uppercase tracking-wider text-sm">
+                        MEASURE MODE: Click tasks to calculate distance
+                    </div>
+                    <div className="bg-orange-800 px-3 py-1 rounded-full text-xs font-bold">
+                        {measurePointsCount} tasks • {Math.round(measuredDistance)}m
+                    </div>
+                </div>
+            </div>
+        )}
+
+        <GameHUD
+            ref={gameHudRef}
             accuracy={gpsAccuracy}
             mode={mode}
             toggleMode={() => {}}
@@ -1066,23 +1615,49 @@ const GameApp: React.FC = () => {
             playgrounds={currentGameObj?.playgrounds}
             onOpenPlayground={(id) => setViewingPlaygroundId(id)}
             onOpenTeamDashboard={() => setShowTeamDashboard(true)}
+            onOpenTeamLobby={() => setShowTeamLobby(true)}
             onRelocateGame={handleRelocateGame}
             isRelocating={isRelocating}
             timerConfig={currentGameObj?.timerConfig}
             onFitBounds={(coords) => {
-                if (coords && coords.length > 0) mapRef.current?.fitBounds(coords);
-                else mapRef.current?.fitBounds(currentGameObj?.points || []);
+                try {
+                    const pointsToFit = (coords && Array.isArray(coords) && coords.length > 0) ? coords : (currentGameObj?.points || []);
+
+                    if (!pointsToFit || pointsToFit.length === 0) {
+                        console.warn('[FitBounds] No points available to fit', { currentGameObj, coords });
+                        return;
+                    }
+
+                    // Log detailed info about points
+                    console.log('[FitBounds] Fitting bounds:', {
+                        pointCount: pointsToFit.length,
+                        points: pointsToFit.slice(0, 3).map((p: any) => ({
+                            id: p.id,
+                            location: p.location,
+                            lat: p.location?.lat,
+                            lng: p.location?.lng
+                        }))
+                    });
+
+                    mapRef.current?.fitBounds(pointsToFit);
+                } catch (error) {
+                    console.error('[FitBounds] Error fitting bounds:', error);
+                }
             }}
             onLocateMe={handleLocateMe}
             onSearchLocation={(c) => mapRef.current?.jumpTo(c)}
             isDrawerExpanded={isEditorExpanded}
             showScores={showScores}
             onToggleScores={() => setShowScores(!showScores)}
+            showTaskId={showTaskId}
+            onToggleTaskId={() => setShowTaskId(!showTaskId)}
+            showTaskTitle={showTaskTitle}
+            onToggleTaskTitle={() => setShowTaskTitle(!showTaskTitle)}
             hiddenPlaygroundIds={[]}
             onToggleChat={() => setShowChatDrawer(!showChatDrawer)}
             unreadMessagesCount={0}
             onAddDangerZone={handleAddDangerZone}
-            activeDangerZone={mode === GameMode.PLAY ? currentDangerZone : null}
+            activeDangerZone={activeDangerZone}
             onEditGameSettings={() => { setGameToEdit(activeGame || null); setShowGameCreator(true); }}
             onOpenGameChooser={() => setShowGameChooser(true)}
             routes={currentGameObj?.routes}
@@ -1093,6 +1668,9 @@ const GameApp: React.FC = () => {
                 updateActiveGame({ ...currentGameObj, routes: updated }, "Toggled Route");
             }}
             allowChatting={currentGameObj?.allowChatting ?? true}
+            authUser={authUser}
+            activeGame={activeGame}
+            onUpdateGame={(game) => updateActiveGame(game, "Updated Toolbar Positions")}
         />
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
@@ -1113,11 +1691,39 @@ const GameApp: React.FC = () => {
                 onDeletePoint={handleDeleteItem}
                 onReorderPoints={async (pts) => { if (activeGame) await updateActiveGame({ ...activeGame, points: pts }, "Reordered Points"); }}
                 onClearMap={() => { if (activeGame && confirm("Clear all points?")) updateActiveGame({ ...activeGame, points: [] }, "Cleared Map"); }}
-                onSaveGame={() => updateActiveGame(activeGame!, "Saved via Editor")}
+                onSaveGame={() => {
+                    if (!activeGame) return;
+                    // Get current toolbar positions from GameHUD
+                    const toolbarPositions = gameHudRef.current?.getToolbarPositions();
+                    const gameToSave = toolbarPositions
+                        ? { ...activeGame, toolbarPositions }
+                        : activeGame;
+                    updateActiveGame(gameToSave, "Saved via Editor");
+                }}
                 onOpenTaskMaster={() => setShowTaskMaster(true)}
                 onFitBounds={(coords) => {
-                    if (coords && coords.length > 0) mapRef.current?.fitBounds(coords);
-                    else mapRef.current?.fitBounds(activeGame?.points || []);
+                    try {
+                        const pointsToFit = (coords && Array.isArray(coords) && coords.length > 0) ? coords : (activeGame?.points || []);
+
+                        if (!pointsToFit || pointsToFit.length === 0) {
+                            console.warn('[FitBounds] No points available to fit', { activeGame, coords });
+                            return;
+                        }
+
+                        console.log('[FitBounds] Fitting bounds:', {
+                            pointCount: pointsToFit.length,
+                            points: pointsToFit.slice(0, 3).map((p: any) => ({
+                                id: p.id,
+                                location: p.location,
+                                lat: p.location?.lat,
+                                lng: p.location?.lng
+                            }))
+                        });
+
+                        mapRef.current?.fitBounds(pointsToFit);
+                    } catch (error) {
+                        console.error('[FitBounds] Error fitting bounds:', error);
+                    }
                 }}
                 onOpenPlaygroundEditor={() => setViewingPlaygroundId(activeGame?.playgrounds?.[0]?.id || null)}
                 initialExpanded={true}
@@ -1150,7 +1756,11 @@ const GameApp: React.FC = () => {
                         };
                         await updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] }, "Added Manual Task");
                         setActiveTask(newPoint);
-                    } else if (type === 'LIBRARY' || type === 'AI') {
+                    } else if (type === 'LIBRARY') {
+                        setTaskMasterInitialTab('LISTS');
+                        setShowTaskMaster(true);
+                    } else if (type === 'AI') {
+                        setTaskMasterInitialTab('LIBRARY');
                         setShowTaskMaster(true);
                     }
                 }}
@@ -1177,9 +1787,12 @@ const GameApp: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <LocationProvider>
-      <GameApp />
-    </LocationProvider>
+    <ErrorBoundary componentName="TeamChallenge App">
+      <OfflineIndicator />
+      <LocationProvider>
+        <GameApp />
+      </LocationProvider>
+    </ErrorBoundary>
   );
 };
 

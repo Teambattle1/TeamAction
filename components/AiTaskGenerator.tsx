@@ -1,8 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon, Home, Search, Hash, Save, Library, Gamepad2, Map, LayoutGrid, ArrowRight, LayoutList, Settings2, Target, Circle, Palette, MapPin } from 'lucide-react';
+import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon, Home, Search, Hash, Save, Library, Gamepad2, Map, LayoutGrid, ArrowRight, LayoutList, Settings2, Target, Circle, Palette, MapPin, Music, Play, Square } from 'lucide-react';
 import { TaskTemplate, Playground, TaskList, IconId } from '../types';
-import { generateAiTasks, generateAiImage, searchLogoUrl } from '../services/ai';
+import { generateAiTasks, generateAiImage, searchLogoUrl, generateMoodAudio } from '../services/ai';
 import { ICON_COMPONENTS } from '../utils/icons';
 
 interface AiTaskGeneratorProps {
@@ -50,6 +49,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
   const [progress, setProgress] = useState(0);
   const [generatedBuffer, setGeneratedBuffer] = useState<TaskTemplate[]>([]);
   const [approvedTasks, setApprovedTasks] = useState<TaskTemplate[]>([]);
+  const [resultsTab, setResultsTab] = useState<'REVIEW' | 'APPROVED'>('REVIEW');
   const [error, setError] = useState<string | null>(null);
   
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -70,6 +70,13 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
   const [batchColor, setBatchColor] = useState<string>('');
   const [batchRadius, setBatchRadius] = useState<number>(30);
   const [batchPoints, setBatchPoints] = useState<number>(100);
+  const [enableGpsForTasks, setEnableGpsForTasks] = useState<boolean>(true); // GPS (radius) enabled by default
+
+  // Sound Settings
+  const [batchAudioUrl, setBatchAudioUrl] = useState<string | null>(null);
+  const [isGeneratingSound, setIsGeneratingSound] = useState(false);
+  const [isPlayingSound, setIsPlayingSound] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // If mode is LIST or LIBRARY, default behavior adjustments
   useEffect(() => {
@@ -90,7 +97,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
       setIsGeneratingLogo(true);
       setLogoUrl(null);
       setError(null);
-      
+
       try {
           const url = await searchLogoUrl(topic);
           if (url) {
@@ -106,6 +113,37 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
       }
   };
 
+  const handleGenerateSound = async () => {
+      if (!topic.trim()) return;
+      setIsGeneratingSound(true);
+      setError(null);
+
+      try {
+          const url = await generateMoodAudio(topic);
+          if (url) {
+              setBatchAudioUrl(url);
+          } else {
+              setError("Could not generate audio for this topic. Try again.");
+          }
+      } catch (e) {
+          setError("Error generating audio. Check API key or try again.");
+      } finally {
+          setIsGeneratingSound(false);
+      }
+  };
+
+  const handlePlaySound = () => {
+      if (audioRef.current && batchAudioUrl) {
+          if (isPlayingSound) {
+              audioRef.current.pause();
+              setIsPlayingSound(false);
+          } else {
+              audioRef.current.play();
+              setIsPlayingSound(true);
+          }
+      }
+  };
+
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     if (!autoTag.trim()) {
@@ -117,6 +155,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
     setError(null);
     setProgress(0);
     setBatchFinished(false);
+    setResultsTab('REVIEW');
     isActiveRef.current = true;
     
     const interval = setInterval(() => {
@@ -195,14 +234,19 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
       if (approvedTasks.length === 0) return;
 
       // Apply batch settings
+      // Determine if GPS should be enabled (always true for MAP, configurable for PLAYGROUND/LIBRARY)
+      const shouldEnableGps = destinationType === 'MAP' || enableGpsForTasks;
+
       const finalTasks = approvedTasks.map(t => ({
           ...t,
           iconId: batchIcon !== 'auto' ? batchIcon : t.iconId,
           points: batchPoints,
+          activationTypes: shouldEnableGps ? ['radius'] : [], // GPS (radius) by default
           // We attach these as custom properties that onAddTasks in App.tsx will look for
           // Using casting to bypass strict TaskTemplate check for these transient props
           radiusMeters: batchRadius,
-          areaColor: batchColor
+          areaColor: batchColor,
+          openingAudioUrl: batchAudioUrl || undefined
       })) as TaskTemplate[];
 
       // 1. Add to Game (Map or Playground)
@@ -501,7 +545,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                                 <label className="text-[9px] font-bold text-slate-500 uppercase mb-1 block flex items-center gap-1"><Palette className="w-3 h-3" /> AREA COLOR</label>
                                 <div className="flex flex-wrap gap-1.5">
                                     {BATCH_COLORS.map((c) => (
-                                        <button 
+                                        <button
                                             key={c.name}
                                             onClick={() => setBatchColor(c.value)}
                                             className={`w-5 h-5 rounded-full border-2 transition-all ${batchColor === c.value ? 'border-white scale-110 shadow-sm' : 'border-transparent opacity-60 hover:opacity-100 hover:scale-105'}`}
@@ -511,7 +555,116 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                                     ))}
                                 </div>
                             </div>
+
+                            {/* GPS Toggle - Only for PLAYGROUND and LIBRARY mode */}
+                            {(destinationType === 'PLAYGROUND' || targetMode === 'LIBRARY') && (
+                                <div className="mt-4 pt-4 border-t border-slate-600">
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg hover:bg-blue-900/30 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={enableGpsForTasks}
+                                            onChange={(e) => setEnableGpsForTasks(e.target.checked)}
+                                            className="w-4 h-4 rounded border-blue-500 bg-slate-800 cursor-pointer accent-blue-600"
+                                        />
+                                        <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">GPS ENABLED</span>
+                                        <span className="text-[8px] font-bold text-blue-300/60 ml-auto">
+                                            {enableGpsForTasks ? '✓ Location-based' : '✗ Not location-based'}
+                                        </span>
+                                    </label>
+                                    <p className="text-[8px] text-slate-500 mt-2">
+                                        {destinationType === 'PLAYGROUND'
+                                            ? 'Playzone tasks typically don\'t use GPS. Uncheck if not needed.'
+                                            : 'Library tasks will require GPS activation when placed on the map.'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* For MAP mode, always show GPS is enabled */}
+                            {destinationType === 'MAP' && (
+                                <div className="mt-4 pt-4 border-t border-slate-600">
+                                    <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+                                        <p className="text-[9px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-1">
+                                            <Check className="w-3 h-3" /> GPS ENABLED
+                                        </p>
+                                        <p className="text-[8px] text-green-300/70 mt-1">Map-based tasks require GPS activation by default.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="mt-4 pt-4 border-t border-slate-600">
+                                <label className="text-[9px] font-bold text-slate-500 uppercase mb-2 block flex items-center gap-1"><Music className="w-3 h-3" /> OPENING SOUND</label>
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={handleGenerateSound}
+                                        disabled={!topic.trim() || isGeneratingSound}
+                                        className={`w-full py-2 text-xs font-bold uppercase rounded-lg transition-all flex items-center justify-center gap-2 ${
+                                            isGeneratingSound
+                                                ? 'bg-indigo-600/50 text-indigo-300 cursor-wait'
+                                                : batchAudioUrl
+                                                ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-600/40 hover:border-indigo-500'
+                                                : 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 border border-indigo-600/40 hover:border-indigo-500'
+                                        }`}
+                                        type="button"
+                                    >
+                                        {isGeneratingSound ? (
+                                            <>
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                GENERATING...
+                                            </>
+                                        ) : batchAudioUrl ? (
+                                            <>
+                                                <Check className="w-3 h-3" />
+                                                AUDIO READY
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Music className="w-3 h-3" />
+                                                GENERATE SOUND
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {batchAudioUrl && (
+                                        <div className="flex items-center gap-2 bg-slate-900/50 p-2 rounded-lg border border-indigo-500/30">
+                                            <button
+                                                onClick={handlePlaySound}
+                                                className="p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded transition-colors flex-shrink-0"
+                                                type="button"
+                                                title={isPlayingSound ? 'Pause' : 'Play'}
+                                            >
+                                                {isPlayingSound ? <Square className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                                            </button>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[8px] font-bold text-indigo-400 uppercase truncate">2.5 second vignette</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setBatchAudioUrl(null);
+                                                    if (audioRef.current) {
+                                                        audioRef.current.removeAttribute('src');
+                                                        audioRef.current.load();
+                                                    }
+                                                    setIsPlayingSound(false);
+                                                }}
+                                                className="p-1 text-slate-500 hover:text-red-500 transition-colors flex-shrink-0"
+                                                type="button"
+                                                title="Remove sound"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
+
+                        {/* Hidden audio element for preview */}
+                        <audio
+                            ref={audioRef}
+                            src={batchAudioUrl ?? undefined}
+                            onEnded={() => setIsPlayingSound(false)}
+                            className="hidden"
+                        />
 
                         <button 
                             onClick={handleGenerate}
@@ -543,13 +696,34 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                     {/* Header for Results */}
                     <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
                         <div className="flex gap-4">
-                            <button className="text-xs font-black uppercase text-purple-400 border-b-2 border-purple-500 pb-1">REVIEW ({generatedBuffer.length})</button>
-                            <button className="text-xs font-black uppercase text-slate-500 hover:text-white pb-1">APPROVED ({approvedTasks.length})</button>
+                            <button
+                                onClick={() => setResultsTab('REVIEW')}
+                                className={`text-xs font-black uppercase pb-1 border-b-2 transition-colors ${
+                                    resultsTab === 'REVIEW'
+                                        ? 'text-purple-400 border-purple-500'
+                                        : 'text-slate-500 border-transparent hover:text-white'
+                                }`}
+                                type="button"
+                            >
+                                REVIEW ({generatedBuffer.length})
+                            </button>
+                            <button
+                                onClick={() => setResultsTab('APPROVED')}
+                                className={`text-xs font-black uppercase pb-1 border-b-2 transition-colors ${
+                                    resultsTab === 'APPROVED'
+                                        ? 'text-purple-400 border-purple-500'
+                                        : 'text-slate-500 border-transparent hover:text-white'
+                                }`}
+                                type="button"
+                            >
+                                APPROVED ({approvedTasks.length})
+                            </button>
                         </div>
-                        {generatedBuffer.length > 0 && (
-                            <button 
+                        {resultsTab === 'REVIEW' && generatedBuffer.length > 0 && (
+                            <button
                                 onClick={handleApproveAll}
                                 className="text-[10px] font-bold text-green-500 uppercase tracking-wider hover:text-green-400 flex items-center gap-1"
+                                type="button"
                             >
                                 <Check className="w-3 h-3" /> APPROVE ALL
                             </button>
@@ -557,63 +731,110 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                        {generatedBuffer.length === 0 && approvedTasks.length === 0 ? (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
-                                <Wand2 className="w-16 h-16 mb-4" />
-                                <p className="text-sm font-black uppercase tracking-widest">READY TO GENERATE</p>
-                            </div>
-                        ) : (
-                            generatedBuffer.map((task, idx) => {
-                                const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
-                                return (
-                                    <div key={task.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 group hover:border-purple-500/50 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards" style={{ animationDelay: `${idx * 50}ms` }}>
-                                        <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
-                                            {task.task.imageUrl ? (
-                                                <img src={task.task.imageUrl} className="w-full h-full object-cover rounded-xl" />
-                                            ) : (
-                                                <Icon className="w-6 h-6 text-slate-400" />
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <h4 className="font-bold text-white text-sm uppercase truncate">{task.title}</h4>
-                                                <span className="text-[9px] font-black bg-slate-900 text-slate-400 px-2 py-0.5 rounded uppercase">{task.task.type}</span>
-                                            </div>
-                                            <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-2">{task.task.question}</p>
-                                            
-                                            {/* Answers Preview */}
-                                            {task.task.type === 'multiple_choice' && (
-                                                <div className="flex flex-wrap gap-1 mb-2">
-                                                    {task.task.options?.map(o => (
-                                                        <span key={o} className={`text-[9px] px-1.5 py-0.5 rounded border ${o === task.task.answer ? 'bg-green-900/30 border-green-500/30 text-green-400' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>
-                                                            {o}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-col gap-2 shrink-0">
-                                            <button onClick={() => handleApproveTask(task)} className="p-2 bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white rounded-lg transition-colors" title="Approve">
-                                                <ThumbsUp className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => handleDiscardTask(task.id)} className="p-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-colors" title="Discard">
-                                                <ThumbsDown className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                        {resultsTab === 'REVIEW' && (
+                            <>
+                                {generatedBuffer.length === 0 && approvedTasks.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
+                                        <Wand2 className="w-16 h-16 mb-4" />
+                                        <p className="text-sm font-black uppercase tracking-widest">READY TO GENERATE</p>
                                     </div>
-                                );
-                            })
+                                ) : generatedBuffer.length === 0 ? (
+                                    <div className="text-center py-10">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
+                                            <Check className="w-8 h-8 text-green-500" />
+                                        </div>
+                                        <h3 className="text-lg font-black text-white uppercase tracking-widest mb-1">{approvedTasks.length} TASKS APPROVED</h3>
+                                        <p className="text-xs text-slate-500 uppercase font-bold">SWITCH TO APPROVED TAB TO REVIEW</p>
+                                    </div>
+                                ) : (
+                                    generatedBuffer.map((task, idx) => {
+                                        const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
+                                        return (
+                                            <div key={task.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 group hover:border-purple-500/50 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
+                                                    {task.task.imageUrl ? (
+                                                        <img src={task.task.imageUrl} className="w-full h-full object-cover rounded-xl" />
+                                                    ) : (
+                                                        <Icon className="w-6 h-6 text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className="font-bold text-white text-sm uppercase truncate">{task.title}</h4>
+                                                        <span className="text-[9px] font-black bg-slate-900 text-slate-400 px-2 py-0.5 rounded uppercase">{task.task.type}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-2">{task.task.question}</p>
+
+                                                    {/* Answers Preview */}
+                                                    {task.task.type === 'multiple_choice' && (
+                                                        <div className="flex flex-wrap gap-1 mb-2">
+                                                            {task.task.options?.map(o => (
+                                                                <span key={o} className={`text-[9px] px-1.5 py-0.5 rounded border ${o === task.task.answer ? 'bg-green-900/30 border-green-500/30 text-green-400' : 'bg-slate-900 border-slate-700 text-slate-500'}`}>
+                                                                    {o}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex flex-col gap-2 shrink-0">
+                                                    <button onClick={() => handleApproveTask(task)} className="p-2 bg-green-600/20 text-green-500 hover:bg-green-600 hover:text-white rounded-lg transition-colors" title="Approve" type="button">
+                                                        <ThumbsUp className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={() => handleDiscardTask(task.id)} className="p-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-colors" title="Discard" type="button">
+                                                        <ThumbsDown className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </>
                         )}
-                        
-                        {/* If buffer empty but we have approved tasks, show them or a message */}
-                        {generatedBuffer.length === 0 && approvedTasks.length > 0 && (
-                            <div className="text-center py-10">
-                                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500/20 rounded-full mb-4">
-                                    <Check className="w-8 h-8 text-green-500" />
-                                </div>
-                                <h3 className="text-lg font-black text-white uppercase tracking-widest mb-1">{approvedTasks.length} TASKS APPROVED</h3>
-                                <p className="text-xs text-slate-500 uppercase font-bold">READY TO SAVE</p>
-                            </div>
+
+                        {resultsTab === 'APPROVED' && (
+                            <>
+                                {approvedTasks.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-slate-600 opacity-50">
+                                        <Check className="w-16 h-16 mb-4" />
+                                        <p className="text-sm font-black uppercase tracking-widest">NO APPROVED TASKS</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mt-2">APPROVE TASKS IN THE REVIEW TAB</p>
+                                    </div>
+                                ) : (
+                                    approvedTasks.map((task, idx) => {
+                                        const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
+                                        return (
+                                            <div key={task.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex gap-4 group hover:border-green-500/40 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards" style={{ animationDelay: `${idx * 40}ms` }}>
+                                                <div className="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center shrink-0">
+                                                    {task.task.imageUrl ? (
+                                                        <img src={task.task.imageUrl} className="w-full h-full object-cover rounded-xl" />
+                                                    ) : (
+                                                        <Icon className="w-6 h-6 text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className="font-bold text-white text-sm uppercase truncate">{task.title}</h4>
+                                                        <span className="text-[9px] font-black bg-slate-900 text-slate-400 px-2 py-0.5 rounded uppercase">{task.task.type}</span>
+                                                    </div>
+                                                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{task.task.question}</p>
+                                                </div>
+                                                <div className="flex flex-col gap-2 shrink-0">
+                                                    <button
+                                                        onClick={() => {
+                                                            setApprovedTasks(prev => prev.filter(t => t.id !== task.id));
+                                                        }}
+                                                        className="p-2 bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                                                        title="Remove from approved"
+                                                        type="button"
+                                                    >
+                                                        <ThumbsDown className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </>
                         )}
                     </div>
 

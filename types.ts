@@ -1,14 +1,13 @@
-
 export interface Coordinate {
   lat: number;
   lng: number;
 }
 
-export type IconId = 'default' | 'star' | 'flag' | 'trophy' | 'camera' | 'question' | 'skull' | 'treasure';
+export type IconId = 'default' | 'star' | 'flag' | 'trophy' | 'camera' | 'question' | 'skull' | 'treasure' | 'music' | 'nature' | 'world';
 
 export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown' | 'timeline';
 
-export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'light' | 'ancient' | 'clean' | 'voyager' | 'winter' | 'ski' | 'historic' | 'google_custom' | 'none';
+export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'ancient' | 'clean' | 'winter' | 'ski' | 'norwegian' | 'historic' | 'google_custom' | 'none';
 
 export type Language = 'English' | 'Danish' | 'German' | 'Spanish' | 'French' | 'Swedish' | 'Norwegian' | 'Dutch' | 'Belgian' | 'Hebrew';
 
@@ -25,10 +24,11 @@ export interface TeamMember {
   deviceId: string;
   userName: string;
   lastSeen: number;
-  location?: Coordinate; 
-  photoUrl?: string; 
-  role?: 'captain' | 'member'; 
+  location?: Coordinate;
+  photoUrl?: string;
+  role?: 'captain' | 'member';
   isSolving?: boolean; // New: Tracks if user is currently in a task modal
+  isRetired?: boolean; // New: Tracks if captain has retired this member (votes don't count)
 }
 
 export interface Team {
@@ -131,7 +131,7 @@ export interface TaskSettings {
   showCorrectAnswerOnMiss: boolean;
 }
 
-export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click';
+export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click' | 'ibeacon';
 
 export type PointCompletionLogic = 
   | 'remove_any'
@@ -205,16 +205,25 @@ export interface PlaygroundTemplate {
 
 export interface GamePoint {
   id: string;
-  title: string; 
+  title: string;
   shortIntro?: string;
-  
+
   task: GameTask;
-  
+
   // Location & Activation
-  location: Coordinate;
+  location: Coordinate | null; // null for playground-only points without map location
   radiusMeters: number;
   activationTypes: PointActivationType[];
-  manualUnlockCode?: string; 
+  manualUnlockCode?: string;
+  isLocationLocked?: boolean; // If true, task can only be completed at this specific location
+  qrCodeString?: string; // QR code string value (e.g., house ID, location code)
+  qrCodeUsageCount?: number; // Track how many times this QR code is used (prevent duplicates)
+  nfcTagId?: string; // NFC tag identifier for NFC-based activation
+  nfcTagData?: string; // Additional NFC tag data (task info, location, etc.)
+  ibeaconUUID?: string; // iBeacon UUID for beacon-based activation
+  ibeaconMajor?: number; // iBeacon major ID
+  ibeaconMinor?: number; // iBeacon minor ID
+  ibeaconProximity?: 'immediate' | 'near' | 'far'; // Required proximity to trigger task 
   
   // Playground Specific
   playgroundId?: string; 
@@ -239,6 +248,7 @@ export interface GamePoint {
   settings?: TaskSettings;
   completionLogic?: PointCompletionLogic;
   instructorNotes?: string;
+  showStatusMarkers?: boolean; // Show OK/Wrong answer markers (✓/✗) when task is completed
   
   // Event Logic
   logic?: TaskLogic;
@@ -259,11 +269,17 @@ export interface TaskTemplate {
   feedback?: TaskFeedback;
   settings?: TaskSettings;
   logic?: TaskLogic;
-  
+
+  // Activation Types (for template defaults)
+  activationTypes?: PointActivationType[];
+  qrCodeString?: string;
+  nfcTagId?: string;
+  ibeaconUUID?: string;
+
   // Client Submission Fields
   submissionStatus?: 'pending' | 'approved' | 'rejected';
   submitterName?: string;
-  isNew?: boolean; 
+  isNew?: boolean;
 }
 
 export interface TaskList {
@@ -318,6 +334,7 @@ export interface GameTaskConfiguration {
   hintLimit?: number;
   showAnswerCorrectnessMode: 'never' | 'always' | 'task_specific';
   showAfterAnswerComment: boolean;
+  teamVotingMode: 'require_consensus' | 'captain_submit'; // New: How team voting works
 }
 
 export interface MapConfiguration {
@@ -335,6 +352,22 @@ export interface GameChangeLogEntry {
     user: string;
     action: string;
 }
+
+export interface ToolbarPosition {
+  x: number;
+  y: number;
+}
+
+export interface ToolbarPositions {
+  locationToolboxPos?: ToolbarPosition;
+  topToolbarPos?: ToolbarPosition;
+  viewSwitcherPos?: ToolbarPosition;
+  pinsToolboxPos?: ToolbarPosition;
+  showToolboxPos?: ToolbarPosition;
+  editorOrientationPos?: ToolbarPosition;
+  editorShowPos?: ToolbarPosition;
+}
+
 // ------------------------
 
 export interface Game {
@@ -351,7 +384,30 @@ export interface Game {
   createdAt: number;
   defaultMapStyle?: MapStyleId;
   googleMapStyleJson?: string; // New: Custom Google Maps Style
-  
+  toolbarPositions?: ToolbarPositions; // Per-game toolbar positions
+
+  // Game Mode Configuration
+  gameMode?: 'standard' | 'playzone' | 'elimination'; // 'standard' = GPS-based, 'playzone' = playground-only indoor, 'elimination' = GPS-based CTF
+
+  // Elimination Mode Specific Fields
+  teamColors?: Record<string, string>; // Team ID -> Hex color code mapping (e.g., '#FF0000' for red)
+  capturedTasks?: Record<string, string>; // Task ID -> Team ID who captured it
+  failedAttempts?: Array<{
+    taskId: string;
+    teamId: string;
+    timestamp: number;
+    cooldownUntil: number; // Unix timestamp when cooldown expires (timestamp + 2 minutes)
+  }>;
+  bombs?: Array<{
+    id: string;
+    teamId: string;
+    location: Coordinate;
+    duration: 30 | 60 | 120; // Duration in seconds
+    createdAt: number;
+    detonatesAt: number; // createdAt + duration
+  }>;
+  teamCaptureCount?: Record<string, number>; // Team ID -> Number of captured tasks
+
   // Team & Permission Settings
   showOtherTeams?: boolean;
   showTaskDetailsToPlayers?: boolean; 
@@ -373,6 +429,7 @@ export interface Game {
   enableMeetingPoint?: boolean; // New Flag
 
   // New Template Fields
+  isGameTemplate?: boolean;
   aboutTemplate?: string;
   instructorNotes?: string;
   templateImageUrls?: string[];
@@ -381,6 +438,9 @@ export interface Game {
   createdBy?: string;
   lastModifiedBy?: string;
   changeLog?: GameChangeLogEntry[];
+
+  // Client-side mirror of DB updated_at (used for multi-user syncing)
+  dbUpdatedAt?: string;
 }
 
 export interface GameState {

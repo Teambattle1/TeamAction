@@ -1,7 +1,6 @@
-
 import L from 'leaflet';
 import { IconId } from '../types';
-import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem, ListOrdered } from 'lucide-react';
+import { MapPin, Star, Flag, Trophy, Camera, HelpCircle, Skull, Gem, ListOrdered, Music, Leaf, Globe } from 'lucide-react';
 import React from 'react';
 
 // Mapping for UI components (React)
@@ -14,6 +13,9 @@ export const ICON_COMPONENTS: Record<IconId | 'timeline', React.ElementType> = {
   question: HelpCircle,
   skull: Skull,
   treasure: Gem,
+  music: Music,
+  nature: Leaf,
+  world: Globe,
   timeline: ListOrdered // Added fallback mapping just in case
 };
 
@@ -27,6 +29,9 @@ const ICON_COLORS: Record<IconId, string> = {
   question: '#8b5cf6', // Violet
   skull: '#1f2937',   // Gray
   treasure: '#10b981', // Emerald
+  music: '#ec4899',   // Pink
+  nature: '#22c55e',  // Green
+  world: '#06b6d4',   // Cyan
 };
 
 /**
@@ -69,16 +74,14 @@ export const getLeafletIcon = (
         camera: `<rect x="2" y="6" width="20" height="12" rx="2" fill="${color}" stroke="white" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>`,
         question: `<circle cx="12" cy="12" r="10" fill="${color}" stroke="white" stroke-width="2"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="white" stroke-width="2"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="3"/>`,
         skull: `<circle cx="9" cy="12" r="1" fill="white"/><circle cx="15" cy="12" r="1" fill="white"/><path d="M12 2a8 8 0 0 0-8 8c0 4.5 3.5 7.5 5 9h6c1.5-1.5 5-4.5 5-9a8 8 0 0 0-8-8z" fill="${color}" stroke="white" stroke-width="2"/>`,
-        treasure: `<path d="M6 3h12l4 6-10 13L2 9z" fill="${color}" stroke="white" stroke-width="2"/><path d="M11 3l-5 6h12l-5-6" fill="white" fill-opacity="0.3"/>`
+        treasure: `<path d="M6 3h12l4 6-10 13L2 9z" fill="${color}" stroke="white" stroke-width="2"/><path d="M11 3l-5 6h12l-5-6" fill="white" fill-opacity="0.3"/>`,
+        music: `<path d="M9 18V5l12-2v13A4 4 0 1 1 15 15a4 4 0 0 0 4-4V3" fill="none" stroke="${color}" stroke-width="2"/><circle cx="6" cy="18" r="3" fill="${color}" stroke="white" stroke-width="2"/>`,
+        nature: `<path d="M12 2c1 1 2 2 3 4 1-2 2-3 3-4M9 7c0 2 1 4 3 6-2 2-3 4-3 6M15 7c0 2-1 4-3 6 2 2 3 4 3 6M12 22c-3-2-5-5-5-8 0-4 2-7 5-9 3 2 5 5 5 9 0 3-2 6-5 8z" fill="${color}" stroke="white" stroke-width="1.5"/>`,
+        world: `<circle cx="12" cy="12" r="10" fill="none" stroke="${color}" stroke-width="2"/><path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20z" fill="none" stroke="${color}" stroke-width="2"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" fill="none" stroke="${color}" stroke-width="2"/>`
       };
-      
+
       const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${svgs[iconId] || svgs.default}</svg>`;
       html += svgContent;
-  }
-  
-  // ID Label - Centered ABOVE the icon (pill shape) - Moved higher (top: -24px) to avoid overlap
-  if (label) {
-      html += `<div style="position: absolute; top: -24px; left: 50%; transform: translateX(-50%); background-color: #0f172a; color: white; font-size: 10px; font-weight: 900; padding: 1px 6px; border-radius: 8px; border: 1px solid white; z-index: 20; white-space: nowrap;">${label}</div>`;
   }
 
   // Score Badge - Bottom Center (bottom: -16px) to separate from label
@@ -94,6 +97,11 @@ export const getLeafletIcon = (
   // Logic Badge - Bottom Right (Red Dot)
   if (hasActions) {
       html += `<div class="animate-pulse" style="position: absolute; bottom: 0px; right: -4px; width: 10px; height: 10px; background-color: #ef4444; border-radius: 50%; box-shadow: 0 0 4px 1px rgba(239,68,68,0.8); border: 2px solid white; z-index: 23;"></div>`;
+  }
+
+  // ID Label - Centered ABOVE the icon (pill shape) - Added last for highest visual z-order
+  if (label) {
+      html += `<div style="position: absolute; top: -24px; left: 50%; transform: translateX(-50%); background-color: #0f172a; color: white; font-size: 10px; font-weight: 900; padding: 1px 6px; border-radius: 8px; border: 1px solid white; z-index: 999; white-space: nowrap; pointer-events: none;">${label}</div>`;
   }
   
   html += `</div>`;

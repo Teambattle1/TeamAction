@@ -1,14 +1,19 @@
-
 import { AuthUser } from '../types';
 import * as db from './db';
 
 const STORAGE_KEY_USER = 'geohunt_auth_user';
 
+const getThomasPassword = (): string => {
+    const local = typeof window !== 'undefined' ? localStorage.getItem('THOMAS_ADMIN_PASSWORD') : null;
+    const env = (import.meta as any).env?.VITE_THOMAS_ADMIN_PASSWORD;
+    return local || env || 'Sommer22?';
+};
+
 export const authService = {
     login: async (email: string, password?: string): Promise<AuthUser | null> => {
         try {
-            // 0. Hardcoded Super Admin (Thomas)
-            if (email.toLowerCase() === 'thomas@teambattle.dk' && password === 'Sommer22?') {
+            // 0. Owner Login (Thomas) - password can be overridden via localStorage/env
+            if (email.toLowerCase() === 'thomas@teambattle.dk' && password === getThomasPassword()) {
                  const thomasUser: AuthUser = {
                     id: 'admin-thomas-permanent',
                     name: 'THOMAS',
@@ -56,7 +61,7 @@ export const authService = {
             
             // 3. Fallback for Connection Errors (e.g. Table missing)
             // Allow entry to run SQL setup script in Admin panel
-            if (email.toLowerCase() === 'admin@teambattle.dk' || (email.toLowerCase() === 'thomas@teambattle.dk' && password === 'Sommer22?')) {
+            if (email.toLowerCase() === 'admin@teambattle.dk' || (email.toLowerCase() === 'thomas@teambattle.dk' && password === getThomasPassword())) {
                  const rescueUser: AuthUser = {
                     id: 'admin-rescue',
                     name: 'System Admin (Rescue)',

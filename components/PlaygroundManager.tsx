@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { PlaygroundTemplate } from '../types';
 import * as db from '../services/db';
@@ -30,7 +29,7 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
       e.stopPropagation();
       e.preventDefault();
       
-      if (confirm('Are you sure you want to delete this global playground template?')) {
+      if (confirm('Are you sure you want to delete this global playzone template?')) {
           await db.deletePlaygroundTemplate(id);
           setTemplates(prev => prev.filter(t => t.id !== id));
       }
@@ -47,7 +46,7 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
                     <Globe className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                    <h2 className="text-2xl font-black tracking-tight uppercase leading-none">GLOBAL PLAYGROUNDS</h2>
+                    <h2 className="text-2xl font-black tracking-tight uppercase leading-none">GLOBAL PLAYZONES</h2>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">TEMPLATE LIBRARY</p>
                 </div>
             </div>
