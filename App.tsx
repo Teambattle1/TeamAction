@@ -1632,6 +1632,8 @@ const GameApp: React.FC = () => {
             onToggleTaskId={() => setShowTaskId(!showTaskId)}
             showTaskTitle={showTaskTitle}
             onToggleTaskTitle={() => setShowTaskTitle(!showTaskTitle)}
+            showTaskActions={showTaskActions}
+            onToggleTaskActions={() => setShowTaskActions(!showTaskActions)}
             hiddenPlaygroundIds={[]}
             onToggleChat={() => setShowChatDrawer(!showChatDrawer)}
             unreadMessagesCount={0}
