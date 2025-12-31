@@ -39,9 +39,15 @@ const AiTaskGeneratorModal: React.FC<AiTaskGeneratorModalProps> = ({
             if (tasks.length === 0) {
                 setError('No tasks were generated. Please try a different description.');
             }
-        } catch (err) {
-            setError('Failed to generate tasks. Please check your API key and try again.');
-            console.error('AI generation error:', err);
+        } catch (err: any) {
+            const errorMessage = err?.message || 'Failed to generate tasks.';
+            if (errorMessage.includes('AI API Key missing')) {
+                setPendingPrompt(prompt);
+                setShowGeminiKeyModal(true);
+            } else {
+                setError('Failed to generate tasks. Please check your API key and try again.');
+                console.error('AI generation error:', err);
+            }
         } finally {
             setIsGenerating(false);
         }
