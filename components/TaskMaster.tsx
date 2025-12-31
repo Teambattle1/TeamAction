@@ -1271,13 +1271,24 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                                 {/* Activation Type Filter */}
                                 <div className="w-full sm:w-auto">
-                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                                        <div className="flex items-center justify-between mb-2">
+                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
+                                        <div className="flex items-center justify-between">
                                             <p className="text-[9px] font-bold text-slate-400 uppercase">🔧 Activation Filters</p>
                                             <span className="text-[8px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">
                                                 {getFilteredAndSortedLibrary().length} / {library.length}
                                             </span>
                                         </div>
+
+                                        {/* Activation Stats Summary */}
+                                        {getActivationStats().withActivations > 0 && (
+                                            <div className="bg-slate-800/50 rounded border border-slate-700 p-2 text-[8px] space-y-1">
+                                                <p className="font-bold text-slate-300">Activation Statistics:</p>
+                                                <div className="flex justify-between text-slate-400">
+                                                    <span>✓ With Activations: <span className="text-green-400 font-bold">{getActivationStats().withActivations}</span></span>
+                                                    <span>✗ Without: <span className="text-slate-500 font-bold">{getActivationStats().withoutActivations}</span></span>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Show Only With Activations Toggle */}
                                         <label className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400 mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
