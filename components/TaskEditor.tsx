@@ -8,6 +8,7 @@ import Cropper from 'react-easy-crop';
 import { generateAiImage } from '../services/ai';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import QRCode from 'qrcode';
+import MeetingPointMapPicker from './MeetingPointMapPicker';
 import {
   X, Save, Trash2, Upload, Link, Loader2, CheckCircle,
   AlignLeft, CheckSquare, ListChecks, ToggleLeft, SlidersHorizontal,
