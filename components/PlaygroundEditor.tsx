@@ -1970,9 +1970,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         <ZoomOut className="w-5 h-5" />
                     </button>
                     <button
-                        onClick={() => setZoom(1)}
+                        onClick={handleResetBackground}
                         className="p-3 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-xl border border-slate-700 transition-colors"
-                        title="Reset Zoom"
+                        title="Reset and center background"
                     >
                         <Maximize className="w-5 h-5" />
                     </button>
