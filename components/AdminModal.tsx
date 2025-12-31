@@ -181,6 +181,22 @@ NOTIFY pgrst, 'reload config';`;
       setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleMigrateGpsActivation = async () => {
+      setIsMigratingGps(true);
+      try {
+          const result = await migrateAllTasksToGpsEnabled();
+          setGpsMigrationResult(result);
+          console.log('GPS Migration Result:', result);
+      } catch (error) {
+          console.error('Migration failed:', error);
+          setGpsMigrationResult({
+              error: error instanceof Error ? error.message : 'Unknown error'
+          });
+      } finally {
+          setIsMigratingGps(false);
+      }
+  };
+
   return (
     <div className="fixed inset-0 z-[6000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-lg max-h-[85vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
