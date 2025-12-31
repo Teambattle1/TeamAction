@@ -880,6 +880,39 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                    {activeTab === 'ANSWER' && (
                        <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
+                           {/* FEEDBACK MESSAGES */}
+                           <div className="grid grid-cols-1 gap-4">
+                               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
+                                   <label className="block text-[9px] font-bold text-green-700 dark:text-green-300 mb-2 uppercase flex items-center gap-1">
+                                       <CheckCircle className="w-3 h-3" /> Correct Answer Message
+                                   </label>
+                                   <textarea
+                                       value={editedPoint.feedback?.correctMessage || ''}
+                                       onChange={(e) => setEditedPoint({
+                                           ...editedPoint,
+                                           feedback: {...editedPoint.feedback, correctMessage: e.target.value}
+                                       })}
+                                       className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
+                                       rows={2}
+                                   />
+                               </div>
+
+                               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-200 dark:border-red-700">
+                                   <label className="block text-[9px] font-bold text-red-700 dark:text-red-300 mb-2 uppercase flex items-center gap-1">
+                                       <AlertCircle className="w-3 h-3" /> Incorrect Answer Message
+                                   </label>
+                                   <textarea
+                                       value={editedPoint.feedback?.incorrectMessage || ''}
+                                       onChange={(e) => setEditedPoint({
+                                           ...editedPoint,
+                                           feedback: {...editedPoint.feedback, incorrectMessage: e.target.value}
+                                       })}
+                                       className="w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
+                                       rows={2}
+                                   />
+                               </div>
+                           </div>
+
                            {/* HINT SECTION */}
                            <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 p-5 rounded-2xl border-2 border-yellow-200 dark:border-yellow-700">
                                <div className="flex items-center gap-2 mb-3">
@@ -919,39 +952,6 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                        </div>
                                        <p className="text-[9px] text-yellow-600 dark:text-yellow-400 mt-1">Default: -50 points (use negative for deduction)</p>
                                    </div>
-                               </div>
-                           </div>
-
-                           {/* FEEDBACK MESSAGES */}
-                           <div className="grid grid-cols-1 gap-4">
-                               <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-xl border-2 border-green-200 dark:border-green-700">
-                                   <label className="block text-[9px] font-bold text-green-700 dark:text-green-300 mb-2 uppercase flex items-center gap-1">
-                                       <CheckCircle className="w-3 h-3" /> Correct Answer Message
-                                   </label>
-                                   <textarea
-                                       value={editedPoint.feedback?.correctMessage || ''}
-                                       onChange={(e) => setEditedPoint({
-                                           ...editedPoint,
-                                           feedback: {...editedPoint.feedback, correctMessage: e.target.value}
-                                       })}
-                                       className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
-                                       rows={2}
-                                   />
-                               </div>
-
-                               <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border-2 border-red-200 dark:border-red-700">
-                                   <label className="block text-[9px] font-bold text-red-700 dark:text-red-300 mb-2 uppercase flex items-center gap-1">
-                                       <AlertCircle className="w-3 h-3" /> Incorrect Answer Message
-                                   </label>
-                                   <textarea
-                                       value={editedPoint.feedback?.incorrectMessage || ''}
-                                       onChange={(e) => setEditedPoint({
-                                           ...editedPoint,
-                                           feedback: {...editedPoint.feedback, incorrectMessage: e.target.value}
-                                       })}
-                                       className="w-full px-3 py-2 border border-red-300 dark:border-red-600 rounded-lg bg-white dark:bg-gray-800 text-sm outline-none"
-                                       rows={2}
-                                   />
                                </div>
                            </div>
                        </div>
