@@ -226,6 +226,15 @@ const GameApp: React.FC = () => {
           const game = games.find(g => g.id === activeGameId) || null;
           setActiveGame(game);
           if (game?.defaultMapStyle) setLocalMapStyle(game.defaultMapStyle);
+
+          // For PLAYZONE games, go directly to playground editor, skip map view
+          if (game?.gameMode === 'playzone') {
+              setMode(GameMode.EDIT);
+              // Open the first playground if available
+              if (game?.playgrounds && game.playgrounds.length > 0) {
+                  setViewingPlaygroundId(game.playgrounds[0].id);
+              }
+          }
       }
   }, [activeGameId, games]);
 
