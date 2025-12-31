@@ -1668,6 +1668,20 @@ const GameApp: React.FC = () => {
             </div>
         )}
 
+        {/* SNAP TO ROAD MODE BANNER */}
+        {snapToRoadMode && (mode === GameMode.EDIT) && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[2000] pointer-events-none animate-in fade-in slide-in-from-top">
+                <div className="bg-cyan-600 text-white px-6 py-3 rounded-full shadow-2xl border-2 border-cyan-400 flex items-center gap-3">
+                    <Navigation className="w-5 h-5" />
+                    <div className="font-black uppercase tracking-wider text-sm">
+                        {!snapSelectionStart && 'SNAP MODE: Click MAP to start rectangle selection'}
+                        {snapSelectionStart && !snapSelectionEnd && 'SNAP MODE: Click MAP again to finish selection'}
+                        {snapSelectionStart && snapSelectionEnd && `SNAP MODE: ${selectedSnapTaskIds.length} tasks selected - Click SNAP button to snap to roads`}
+                    </div>
+                </div>
+            </div>
+        )}
+
         <GameHUD
             accuracy={gpsAccuracy}
             mode={mode}
