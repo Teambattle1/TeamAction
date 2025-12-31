@@ -120,6 +120,9 @@ const GameApp: React.FC = () => {
   const [measurePointsCount, setMeasurePointsCount] = useState(0);
   const [selectedMeasurePointIds, setSelectedMeasurePointIds] = useState<string[]>([]);
 
+  // --- SNAP TO ROAD ---
+  const [snapToRoadMode, setSnapToRoadMode] = useState(false);
+
   // --- HOVER STATE ---
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null); // List → Map
   const [hoveredDangerZoneId, setHoveredDangerZoneId] = useState<string | null>(null); // List → Map
