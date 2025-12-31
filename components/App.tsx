@@ -8,6 +8,7 @@ import { authService } from '../services/auth';
 import { teamSync } from '../services/teamSync';
 import { LocationProvider, useLocation } from '../contexts/LocationContext';
 import { haversineMeters, isWithinRadius, isValidCoordinate } from '../utils/geo';
+import { validatePlayzoneGame, cleanPlayzoneGame } from '../utils/playzoneValidation';
 import GameMap, { GameMapHandle } from './GameMap';
 import GameHUD, { type GameHUDHandle } from './GameHUD';
 import GameManager from './GameManager';
