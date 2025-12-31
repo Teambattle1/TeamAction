@@ -142,10 +142,14 @@ END $$;
 
 NOTIFY pgrst, 'reload config';`;
 
-  const copyToClipboard = () => {
-      navigator.clipboard.writeText(sqlCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  const copyToClipboard = async () => {
+      try {
+          await navigator.clipboard.writeText(sqlCode);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+      } catch (error) {
+          console.error('Failed to copy SQL to clipboard:', error);
+      }
   };
 
   return (
