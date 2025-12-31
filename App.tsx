@@ -123,6 +123,9 @@ const GameApp: React.FC = () => {
 
   // --- SNAP TO ROAD ---
   const [snapToRoadMode, setSnapToRoadMode] = useState(false);
+  const [snapSelectionStart, setSnapSelectionStart] = useState<Coordinate | null>(null);
+  const [snapSelectionEnd, setSnapSelectionEnd] = useState<Coordinate | null>(null);
+  const [selectedSnapTaskIds, setSelectedSnapTaskIds] = useState<string[]>([]);
 
   // --- HOVER STATE ---
   const [hoveredPointId, setHoveredPointId] = useState<string | null>(null); // List → Map
