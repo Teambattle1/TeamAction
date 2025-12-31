@@ -5,10 +5,11 @@ import { generateFeatureCatalogPDF } from '../utils/pdfGenerator';
 import { migrateAllTasksToGpsEnabled } from '../services/migrationGpsActivation';
 
 interface AdminModalProps {
-  games: Game[]; 
+  games: Game[];
   onClose: () => void;
-  onDeleteGame: (id: string) => void; 
+  onDeleteGame: (id: string) => void;
   initialShowSql?: boolean;
+  onLibraryUpdated?: () => void;
 }
 
 const AdminModal: React.FC<AdminModalProps> = ({ onClose, initialShowSql = false }) => {
