@@ -1671,6 +1671,7 @@ const GameApp: React.FC = () => {
             authUser={authUser}
             activeGame={activeGame}
             onUpdateGame={(game) => updateActiveGame(game, "Updated Toolbar Positions")}
+            onStartSimulation={() => activeGame && handleStartSimulation(activeGame)}
         />
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
