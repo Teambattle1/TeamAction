@@ -26,7 +26,7 @@ export const migrateAllTasksToGpsEnabled = async (): Promise<MigrationResult> =>
   try {
     // Fetch all templates from the database
     console.log('[GPS Migration] Starting migration...');
-    const allTemplates = await db.fetchAllTemplates();
+    const allTemplates = await db.fetchLibrary();
     
     result.total = allTemplates.length;
     console.log(`[GPS Migration] Found ${result.total} tasks to process`);
