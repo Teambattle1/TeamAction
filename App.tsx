@@ -1375,6 +1375,21 @@ const GameApp: React.FC = () => {
                         switch (action) {
                             case 'GAMES': setShowGameChooser(true); break;
                             case 'CREATE_GAME': setGameToEdit(null); setShowGameCreator(true); break;
+                            case 'CREATE_MAP_GAME':
+                                setGameToEdit(null);
+                                setInitialGameMode('standard');
+                                setShowGameCreator(true);
+                                break;
+                            case 'CREATE_PLAYZONE_GAME':
+                                setGameToEdit(null);
+                                setInitialGameMode('playzone');
+                                setShowGameCreator(true);
+                                break;
+                            case 'CREATE_ELIMINATION_GAME':
+                                setGameToEdit(null);
+                                setInitialGameMode('elimination');
+                                setShowGameCreator(true);
+                                break;
                             case 'EDIT_GAME': 
                                 if (activeGameId) {
                                     setMode(GameMode.EDIT);
