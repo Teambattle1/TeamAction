@@ -98,6 +98,7 @@ interface GameMapProps {
   showScores?: boolean;
   showTaskId?: boolean;
   showTaskTitle?: boolean;
+  showTaskActions?: boolean;
   onZoneClick?: (zone: DangerZone) => void;
   onZoneMove?: (zoneId: string, newLoc: Coordinate) => void; // NEW: For dragging danger zones
   hoveredPointId?: string | null; // NEW: Point being hovered in list
