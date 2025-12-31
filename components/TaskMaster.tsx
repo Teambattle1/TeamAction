@@ -964,7 +964,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                         </div>
                                     </td>
                                     <td
-                                        className="px-4 py-3 font-bold text-white truncate max-w-xs cursor-pointer hover:text-blue-400 transition-colors"
+                                        className="px-4 py-3 font-bold text-white truncate max-w-xs cursor-pointer hover:text-blue-400 transition-colors uppercase"
                                         onClick={() => !selectionMode && setEditingTemplate(task)}
                                         title="Click to edit"
                                     >
