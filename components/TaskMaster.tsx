@@ -79,6 +79,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [languageFilters, setLanguageFilters] = useState<Record<string, boolean>>({});
     const [taskListFilter, setTaskListFilter] = useState<string>(''); // Filter by task list ID
     const [activationFilters, setActivationFilters] = useState<Record<string, boolean>>({}); // Filter by activation types
+    const [showOnlyWithActivations, setShowOnlyWithActivations] = useState(false); // Show only tasks with activations
     const [taskListViewMode, setTaskListViewMode] = useState<'grid' | 'list'>('list'); // List view as default
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [showGameSelector, setShowGameSelector] = useState(false);
