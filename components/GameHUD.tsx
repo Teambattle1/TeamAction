@@ -672,6 +672,17 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     </button>
                                 )}
 
+                                {/* Simulate Button - Only in Editor Mode */}
+                                {mode === GameMode.EDIT && onStartSimulation && (
+                                    <button
+                                        onClick={onStartSimulation}
+                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-green-800 border-green-600 text-green-300 hover:bg-green-700 hover:text-white"
+                                        title="Activate Simulation Mode"
+                                    >
+                                        <Play className="w-4 h-4" />
+                                    </button>
+                                )}
+
                                 {/* MAPSTYLE Button */}
                                 <div className="relative">
                                     <button
