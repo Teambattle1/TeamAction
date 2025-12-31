@@ -78,12 +78,11 @@ export const migrateAllTasksToGpsEnabled = async (): Promise<MigrationResult> =>
 };
 
 /**
- * Fetch all templates from database
- * Note: This is a helper function - you may need to implement fetchAllTemplates in db.ts if it doesn't exist
+ * Get all tasks from the library that don't have GPS enabled
  */
 export const getAllTasksWithoutGps = async (): Promise<TaskTemplate[]> => {
   try {
-    const allTemplates = await db.fetchAllTemplates();
+    const allTemplates = await db.fetchLibrary();
     return allTemplates.filter(t => 
       !t.activationTypes || t.activationTypes.length === 0 || !t.activationTypes.includes('radius')
     );
