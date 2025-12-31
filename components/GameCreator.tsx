@@ -1458,12 +1458,18 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                           </div>
                       </div>
 
-                      {/* Map Configuration Settings */}
+                      {/* Map/PLAYZONE Configuration Settings */}
+                      {gameMode !== 'playzone' && (
+                          <div className="text-[10px] font-bold text-white uppercase mb-2 text-center opacity-70">MAP CONFIGURATION SETTINGS</div>
+                      )}
+                      {gameMode === 'playzone' && (
+                          <div className="text-[10px] font-bold text-white uppercase mb-2 text-center opacity-70">PLAYZONE CONFIGURATION SETTINGS</div>
+                      )}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                          {/* Pin Settings */}
+                          {/* Pin Settings / PLAYZONE Task Settings */}
                           <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Pin settings</label>
+                              <label className="block text-[10px] font-bold text-white uppercase mb-4">{gameMode === 'playzone' ? 'PLAYZONE Task' : 'Pin'} settings</label>
                               <div className="space-y-3">
                                   <RadioOption
                                       label="Display task order on pin"
