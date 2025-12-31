@@ -90,7 +90,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
   );
 };
 
-const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClose, onClone, isTemplateMode = false, requestedTab = null }) => {
+const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClose, onClone, isTemplateMode = false, requestedTab = null, gameMode = undefined }) => {
   // Normalize the incoming language first (remove "global")
   const normalizedIncomingLanguage = normalizeLanguage(point.settings?.language);
 
