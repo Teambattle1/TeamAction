@@ -567,7 +567,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
           </div>
 
           <div className="flex-1 flex flex-col justify-center">
-              {view === 'HOME' || view === 'CREATE' || view === 'EDIT_MENU' || view === 'PLAY_MENU' || view === 'PLAY_TEAMS_MENU' ? (
+              {view === 'HOME' || view === 'CREATE' || view === 'CREATE_GAME_SUBMENU' || view === 'EDIT_MENU' || view === 'PLAY_MENU' || view === 'PLAY_TEAMS_MENU' ? (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
                       {view === 'HOME' ? renderHome() :
                        (view === 'CREATE' ? renderCreateMenu() :
