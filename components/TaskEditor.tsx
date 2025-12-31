@@ -956,6 +956,36 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                    {activeTab === 'ACTIVATION' && (
                        <div className="space-y-6">
+                           {/* OPEN AT CLICK ON TASK Toggle */}
+                           <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 p-6 rounded-2xl border-2 border-orange-200 dark:border-orange-800">
+                               <div className="flex items-start gap-4">
+                                   <div className="w-12 h-12 bg-orange-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <MousePointerClick className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">Open At Click On Task</h3>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Allow this task to be opened immediately without any activation requirement. Players can solve it anywhere.</p>
+
+                                       <label className="flex items-center gap-3 cursor-pointer">
+                                           <div className={`w-12 h-7 rounded-full transition-all ${editedPoint.activationTypes.includes('click') ? 'bg-orange-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                               <div className={`w-6 h-6 bg-white rounded-full transition-all transform ${editedPoint.activationTypes.includes('click') ? 'translate-x-6' : 'translate-x-0'}`} />
+                                           </div>
+                                           <span className="font-bold text-sm uppercase tracking-wide text-gray-900 dark:text-white">
+                                               {editedPoint.activationTypes.includes('click') ? 'ENABLED' : 'DISABLED'}
+                                           </span>
+                                       </label>
+
+                                       {editedPoint.activationTypes.includes('click') && (
+                                           <div className="bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-lg p-3 mt-4">
+                                               <p className="text-xs text-orange-900 dark:text-orange-200 font-bold">
+                                                   ✓ This task can be opened without any activation requirement.
+                                               </p>
+                                           </div>
+                                       )}
+                                   </div>
+                               </div>
+                           </div>
+
                            {/* Location Lock Feature */}
                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-6 rounded-2xl border-2 border-blue-200 dark:border-blue-800">
                                <div className="flex items-start gap-4">
