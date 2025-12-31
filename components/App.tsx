@@ -1128,9 +1128,25 @@ const GameApp: React.FC = () => {
                   onClose={() => { setShowGameCreator(false); setInitialGameMode(null); }}
                   onCreate={async (gameData) => {
                       if (gameToEdit && gameToEdit.id === gameData.id) {
-                          await updateActiveGame({ ...gameToEdit, ...gameData }, "Updated Game Settings");
+                          // Validate playzone game before updating
+                          const gameWithMode = { ...gameToEdit, ...gameData, gameMode: gameToEdit.gameMode || gameData.gameMode };
+                          if (gameWithMode.gameMode === 'playzone') {
+                              const validation = validatePlayzoneGame(gameWithMode);
+                              if (!validation.valid) {
+                                  alert(`⚠️ Playzone Game Validation Failed:\n\n${validation.errors.join('\n')}`);
+                                  return;
+                              }
+                              if (validation.warnings.length > 0) {
+                                  console.warn('Playzone Game Warnings:', validation.warnings);
+                              }
+                              // Clean the game data (remove GPS activations, etc.)
+                              const cleanedGame = cleanPlayzoneGame(gameWithMode);
+                              await updateActiveGame(cleanedGame, "Updated Playzone Game Settings");
+                          } else {
+                              await updateActiveGame(gameWithMode, "Updated Game Settings");
+                          }
                       } else {
-                          const newGame = {
+                          let newGame = {
                               ...gameData,
                               id: `game-${Date.now()}`,
                               points: [],
@@ -1139,6 +1155,16 @@ const GameApp: React.FC = () => {
                               changeLog: [{ timestamp: Date.now(), user: authUser?.name || 'Unknown', action: 'Created Game' }],
                               gameMode: initialGameMode || 'standard'
                           } as Game;
+
+                          // Validate and clean playzone games
+                          if (newGame.gameMode === 'playzone') {
+                              const validation = validatePlayzoneGame(newGame);
+                              if (validation.warnings.length > 0) {
+                                  console.warn('✓ Playzone Game created with warnings:', validation.warnings);
+                              }
+                              newGame = cleanPlayzoneGame(newGame);
+                          }
+
                           await db.saveGame(newGame);
                           setGames([...games, newGame]);
                           setActiveGameId(newGame.id);
