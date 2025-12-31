@@ -815,7 +815,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             
                             <h4
                                 onClick={(e) => { e.stopPropagation(); setEditingTemplate(task); }}
-                                className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase"
                                 title="Click to edit"
                             >
                                 {task.title}
