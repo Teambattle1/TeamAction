@@ -928,6 +928,65 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
+                   {activeTab === 'ACTIVATION' && (
+                       <div className="space-y-6">
+                           {/* Location Lock Feature */}
+                           <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-6 rounded-2xl border-2 border-blue-200 dark:border-blue-800">
+                               <div className="flex items-start gap-4">
+                                   <div className="w-12 h-12 bg-blue-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <Lock className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">Location-Specific Task</h3>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Lock this task to its current location. Players can only complete it at this specific point on the map.</p>
+
+                                       {editedPoint.location ? (
+                                           <div className="space-y-3">
+                                               <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-blue-200 dark:border-blue-700">
+                                                   <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">📍 CURRENT LOCATION</p>
+                                                   <p className="text-sm font-mono text-gray-900 dark:text-white">{editedPoint.location.lat.toFixed(6)}, {editedPoint.location.lng.toFixed(6)}</p>
+                                                   <p className="text-[10px] text-gray-500 mt-1">Radius: {editedPoint.radiusMeters}m</p>
+                                               </div>
+
+                                               <button
+                                                   type="button"
+                                                   onClick={() => setEditedPoint({...editedPoint, isLocationLocked: !editedPoint.isLocationLocked})}
+                                                   className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 border-2 ${editedPoint.isLocationLocked ? 'bg-blue-600 text-white border-blue-700 shadow-lg shadow-blue-500/30' : 'bg-white dark:bg-gray-800 text-blue-600 border-blue-300 dark:border-blue-700 hover:bg-blue-50 dark:hover:bg-gray-700'}`}
+                                               >
+                                                   {editedPoint.isLocationLocked ? (
+                                                       <>
+                                                           <Lock className="w-5 h-5" />
+                                                           LOCKED TO LOCATION ✓
+                                                       </>
+                                                   ) : (
+                                                       <>
+                                                           <Lock className="w-5 h-5 opacity-40" />
+                                                           UNLOCK FROM LOCATION
+                                                       </>
+                                                   )}
+                                               </button>
+
+                                               {editedPoint.isLocationLocked && (
+                                                   <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg p-3">
+                                                       <p className="text-xs text-blue-900 dark:text-blue-200 font-bold">
+                                                           ✓ This task is now locked to this location. Players must be within {editedPoint.radiusMeters}m to solve it.
+                                                       </p>
+                                                   </div>
+                                               )}
+                                           </div>
+                                       ) : (
+                                           <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3">
+                                               <p className="text-xs text-yellow-900 dark:text-yellow-200 font-bold">
+                                                   ⚠️ This task doesn't have a location set yet. Set a location on the map first to enable location locking.
+                                               </p>
+                                           </div>
+                                       )}
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+                   )}
+
                    {activeTab === 'ACTIONS' && (
                        <div className="space-y-6">
                            <div className="space-y-3">
