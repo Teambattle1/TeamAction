@@ -101,6 +101,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     completionLogic: point.completionLogic || 'remove_any',
     instructorNotes: point.instructorNotes || '',
     isHiddenBeforeScan: point.isHiddenBeforeScan || false,
+    isLocationLocked: point.isLocationLocked || false,
     radiusMeters: point.radiusMeters || 30, // Ensure radius default
     task: {
         type: 'text',
