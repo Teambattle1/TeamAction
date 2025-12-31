@@ -202,6 +202,14 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   scale={0.75}
               />
               <MapPinButton
+                  title="PLAYZONE GAME"
+                  icon={Smartphone}
+                  gradient="bg-gradient-to-br from-teal-500 to-emerald-500"
+                  onClick={() => onAction('CREATE_PLAYZONE_GAME')}
+                  delay={50}
+                  scale={0.75}
+              />
+              <MapPinButton
                   title="TASK"
                   icon={FilePlus}
                   gradient="bg-gradient-to-br from-blue-500 to-cyan-500"
@@ -214,7 +222,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   icon={Globe}
                   gradient="bg-gradient-to-br from-emerald-500 to-green-500"
                   onClick={() => onAction('PLAYGROUNDS')}
-                  delay={200}
+                  delay={150}
                   scale={0.75}
               />
           </div>
