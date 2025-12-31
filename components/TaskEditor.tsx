@@ -537,6 +537,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        {id: 'IMAGE', label: 'Image', icon: ImageIcon},
                        {id: 'SETTINGS', label: 'Config', icon: SlidersHorizontal},
                        {id: 'ANSWER', label: 'Answer', icon: MessageSquare},
+                       {id: 'ACTIVATION', label: 'Activation', icon: Lock},
                        {id: 'ACTIONS', label: 'Actions', icon: Zap},
                    ].map(tab => (
                        <button
