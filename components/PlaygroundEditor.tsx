@@ -15,6 +15,7 @@ import { snapPointsToRoad, isPointInBox } from '../utils/mapbox';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
 import TaskMaster from './TaskMaster';
+import GeminiApiKeyModal from './GeminiApiKeyModal';
 
 interface PlaygroundEditorProps {
   game: Game;
