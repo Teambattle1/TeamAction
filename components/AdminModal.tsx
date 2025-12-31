@@ -144,12 +144,37 @@ NOTIFY pgrst, 'reload config';`;
 
   const copyToClipboard = async () => {
       try {
-          await navigator.clipboard.writeText(sqlCode);
-          setCopied(true);
-          setTimeout(() => setCopied(false), 2000);
+          // Try modern Clipboard API first
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(sqlCode);
+          } else {
+              throw new Error('Clipboard API not available');
+          }
       } catch (error) {
-          console.error('Failed to copy SQL to clipboard:', error);
+          // Fallback to older execCommand method for restricted iframe contexts
+          try {
+              const textArea = document.createElement('textarea');
+              textArea.value = sqlCode;
+              textArea.style.position = 'fixed';
+              textArea.style.left = '-999999px';
+              textArea.style.top = '-999999px';
+              document.body.appendChild(textArea);
+              textArea.focus();
+              textArea.select();
+              const successful = document.execCommand('copy');
+              document.body.removeChild(textArea);
+
+              if (!successful) {
+                  throw new Error('execCommand copy failed');
+              }
+          } catch (fallbackError) {
+              console.error('Failed to copy SQL to clipboard:', error, fallbackError);
+              return;
+          }
       }
+
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
   };
 
   return (
