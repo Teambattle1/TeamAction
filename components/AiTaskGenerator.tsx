@@ -70,6 +70,7 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
   const [batchColor, setBatchColor] = useState<string>('');
   const [batchRadius, setBatchRadius] = useState<number>(30);
   const [batchPoints, setBatchPoints] = useState<number>(100);
+  const [enableGpsForTasks, setEnableGpsForTasks] = useState<boolean>(true); // GPS (radius) enabled by default
 
   // Sound Settings
   const [batchAudioUrl, setBatchAudioUrl] = useState<string | null>(null);
