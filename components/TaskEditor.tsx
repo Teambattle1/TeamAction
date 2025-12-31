@@ -961,7 +961,17 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                    {activeTab === 'ACTIVATION' && (
                        <div className="space-y-6">
-                           {/* GPS LOCATION - PRIMARY ACTIVATION (Always enabled by default) */}
+                           {/* Playzone Game Warning */}
+                           {gameMode === 'playzone' && (
+                               <div className="bg-teal-100 dark:bg-teal-900/30 border-2 border-teal-400 dark:border-teal-600 p-4 rounded-xl">
+                                   <p className="text-sm font-bold text-teal-900 dark:text-teal-200">
+                                       📱 <strong>PLAYZONE MODE</strong>: GPS activations are disabled for indoor games. Use QR, NFC, iBeacon, or Click methods instead.
+                                   </p>
+                               </div>
+                           )}
+
+                           {/* GPS LOCATION - PRIMARY ACTIVATION (Always enabled by default) - Hidden for Playzone */}
+                           {gameMode !== 'playzone' && (
                            <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 p-6 rounded-2xl border-2 border-green-200 dark:border-green-800">
                                <button
                                    type="button"
@@ -1084,6 +1094,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    </div>
                                )}
                            </div>
+                           )}
 
                            {/* OTHER ACTIVATION METHODS */}
 
