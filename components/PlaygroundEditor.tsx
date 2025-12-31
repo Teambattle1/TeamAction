@@ -1380,26 +1380,61 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </button>
                 )}
 
-                {/* Top Overlay Bar - Title and Home Only */}
-                <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center z-10 pointer-events-none">
-                    <div className="flex items-center gap-4 pointer-events-auto">
-                        <h1 className="text-xl font-black text-white uppercase tracking-widest drop-shadow-md">
-                            PLAYZONE EDITOR
-                        </h1>
-                        <div className="bg-orange-600 text-white px-4 py-1.5 rounded-full shadow-lg flex items-center gap-2">
-                            <span className="text-[10px] font-bold opacity-70">01</span>
-                            <span className="text-xs font-black uppercase tracking-wide">{activePlayground.title}</span>
-                        </div>
-                    </div>
+                {/* Top Overlay Bar - Title, Zones, and Home */}
+                <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
+                    <div className="p-4 flex flex-col gap-3">
+                        {/* Top Row: Title and Home */}
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-4 pointer-events-auto">
+                                <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm border border-orange-500/30 rounded-xl px-4 py-2 shadow-xl">
+                                    <LayoutGrid className="w-5 h-5 text-orange-500" />
+                                    <div>
+                                        <h1 className="text-sm font-black text-white uppercase tracking-widest">
+                                            PLAYZONE EDITOR
+                                        </h1>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                                            {game.playgrounds?.length || 0} ZONES ACTIVE
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
-                    <div className="flex items-center gap-3 pointer-events-auto">
-                        <button
-                            onClick={onHome}
-                            className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-full shadow-lg transition-all"
-                            title="Return Home"
-                        >
-                            <Home className="w-5 h-5" />
-                        </button>
+                            <div className="flex items-center gap-3 pointer-events-auto">
+                                <button
+                                    onClick={onHome}
+                                    className="p-3 bg-slate-900/80 backdrop-blur-sm hover:bg-slate-800 text-slate-400 hover:text-white rounded-full shadow-xl border border-slate-700 transition-all"
+                                    title="Return Home"
+                                >
+                                    <ArrowLeft className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Zone Tabs Row */}
+                        <div className="flex gap-2 overflow-x-auto pointer-events-auto max-w-[calc(100%-80px)] hide-scrollbar">
+                            {game.playgrounds?.map((pg, index) => (
+                                <button
+                                    key={pg.id}
+                                    onClick={() => setActivePlaygroundId(pg.id)}
+                                    className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 flex items-center gap-2 shadow-lg border-2 ${
+                                        activePlaygroundId === pg.id
+                                            ? 'bg-orange-600 text-white border-orange-500 shadow-orange-500/50'
+                                            : 'bg-slate-800/80 backdrop-blur-sm text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700 hover:border-slate-600'
+                                    }`}
+                                    title={`Switch to ${pg.title}`}
+                                >
+                                    <span className="text-[10px] font-black opacity-70">{String(index + 1).padStart(2, '0')}</span>
+                                    {pg.title}
+                                </button>
+                            ))}
+                            <button
+                                onClick={addNewZone}
+                                className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 bg-green-600 hover:bg-green-700 text-white shadow-lg border-2 border-green-500 flex items-center gap-2"
+                                title="Add a new zone to the game"
+                            >
+                                <Plus className="w-4 h-4" /> ADD NEW
+                            </button>
+                        </div>
                     </div>
                 </div>
 
