@@ -295,8 +295,8 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
     const isCompleted = point.isCompleted;
 
     // Draggable in Edit & Instructor Mode (only when parent provides onMove handler)
-    // CRITICAL: Disable dragging in relocate mode, but ALLOW in measure mode
-    const draggable = (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !!onMove && !isRelocating;
+    // CRITICAL: Disable dragging in relocate mode and snap mode, but ALLOW in measure mode
+    const draggable = (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !!onMove && !isRelocating && !snapToRoadMode;
 
     const eventHandlers = React.useMemo(
         () => ({
