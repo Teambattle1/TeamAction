@@ -623,8 +623,8 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                 compact={true}
                                 showLabels={true}
                             />
-                            {/* Snap Tasks to Road Button */}
-                            {onToggleSnapToRoad && (
+                            {/* Snap Tasks to Road Button - Only for GPS-based games */}
+                            {onToggleSnapToRoad && activeGame?.gameMode !== 'playzone' && (
                                 <button
                                     onClick={onToggleSnapToRoad}
                                     className={`w-full mt-3 px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${
