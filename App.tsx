@@ -1569,8 +1569,10 @@ const GameApp: React.FC = () => {
   // Active Game View (Map & HUD)
   return (
     <div className="fixed inset-0 w-full h-full overflow-hidden bg-slate-900 text-white">
-        <div className="absolute inset-0 z-0">
-            <GameMap
+        {/* Hide map for PLAYZONE games - they use playground editor only */}
+        {activeGame?.gameMode !== 'playzone' && (
+            <div className="absolute inset-0 z-0">
+                <GameMap
                 ref={mapRef}
                 points={activeGame?.points || []}
                 routes={activeGame?.routes || []}
@@ -1645,7 +1647,8 @@ const GameApp: React.FC = () => {
                 hoveredDangerZoneId={hoveredDangerZoneId}
                 onPointHover={(point) => setMapHoveredPointId(point?.id || null)}
             />
-        </div>
+            </div>
+        )}
 
         {/* DRAGGABLE MEASURE BOX */}
         {isMeasuring && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
