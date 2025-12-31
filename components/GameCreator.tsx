@@ -1737,31 +1737,35 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               />
                           </div>
 
-                          <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                              <div>
-                                  <p className="text-xs font-bold text-white uppercase">TEAMS can see other Team Captains on the map</p>
-                                  <p className="text-[10px] text-slate-500">Only team captains are shown to reduce data traffic</p>
+                          {gameMode !== 'playzone' && (
+                              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                  <div>
+                                      <p className="text-xs font-bold text-white uppercase">TEAMS can see other Team Captains on the map</p>
+                                      <p className="text-[10px] text-slate-500">Only team captains are shown to reduce data traffic</p>
+                                  </div>
+                                  <input
+                                      type="checkbox"
+                                      checked={showOtherTeams}
+                                      onChange={(e) => setShowOtherTeams(e.target.checked)}
+                                      className="w-5 h-5 accent-orange-600 cursor-pointer"
+                                  />
                               </div>
-                              <input 
-                                  type="checkbox" 
-                                  checked={showOtherTeams} 
-                                  onChange={(e) => setShowOtherTeams(e.target.checked)}
-                                  className="w-5 h-5 accent-orange-600 cursor-pointer"
-                              />
-                          </div>
+                          )}
 
-                          <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
-                              <div>
-                                  <p className="text-xs font-bold text-white uppercase">Track player locations</p>
-                                  <p className="text-[10px] text-slate-500">Show player's own location on the map</p>
+                          {gameMode !== 'playzone' && (
+                              <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
+                                  <div>
+                                      <p className="text-xs font-bold text-white uppercase">Track player locations</p>
+                                      <p className="text-[10px] text-slate-500">Show player's own location on the map</p>
+                                  </div>
+                                  <input
+                                      type="checkbox"
+                                      checked={showPlayerLocations}
+                                      onChange={(e) => setShowPlayerLocations(e.target.checked)}
+                                      className="w-5 h-5 accent-orange-600 cursor-pointer"
+                                  />
                               </div>
-                              <input 
-                                  type="checkbox" 
-                                  checked={showPlayerLocations} 
-                                  onChange={(e) => setShowPlayerLocations(e.target.checked)}
-                                  className="w-5 h-5 accent-orange-600 cursor-pointer"
-                              />
-                          </div>
+                          )}
 
                           <div className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800">
                               <div>
