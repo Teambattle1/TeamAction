@@ -131,7 +131,7 @@ export interface TaskSettings {
   showCorrectAnswerOnMiss: boolean;
 }
 
-export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click';
+export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click' | 'ibeacon';
 
 export type PointCompletionLogic = 
   | 'remove_any'
