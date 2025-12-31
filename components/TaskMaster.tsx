@@ -768,6 +768,23 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                 {task.task.question}
                             </p>
 
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                {getActivationBadges(task).map(badge => {
+                                    const badgeColors: Record<string, string> = {
+                                        'QR': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+                                        'NFC': 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                                        'iBeacon': 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+                                        'GPS': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                                        'TAP': 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
+                                    };
+                                    return (
+                                        <span key={badge} className={`text-[8px] px-1.5 py-0.5 ${badgeColors[badge] || 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'} rounded uppercase font-bold tracking-wider`}>
+                                            {badge}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+
                             <div className="flex flex-wrap gap-1 mt-auto">
                                 {task.tags.slice(0, 3).map((tag, index) => (
                                     <span key={`${tag}-${index}`} className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded uppercase font-bold tracking-wider">
