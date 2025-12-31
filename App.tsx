@@ -1630,6 +1630,10 @@ const GameApp: React.FC = () => {
                 accuracy={gpsAccuracy}
                 isRelocating={isRelocating}
                 isMeasuring={isMeasuring}
+                snapToRoadMode={snapToRoadMode}
+                snapSelectionStart={snapSelectionStart}
+                snapSelectionEnd={snapSelectionEnd}
+                selectedSnapTaskIds={selectedSnapTaskIds}
                 relocateScopeCenter={relocateScopeCenter}
                 relocateAllTaskIds={relocateAllTaskIds}
                 showScores={showScores}
