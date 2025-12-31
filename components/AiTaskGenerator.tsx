@@ -556,6 +556,41 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                                 </div>
                             </div>
 
+                            {/* GPS Toggle - Only for PLAYGROUND and LIBRARY mode */}
+                            {(destinationType === 'PLAYGROUND' || targetMode === 'LIBRARY') && (
+                                <div className="mt-4 pt-4 border-t border-slate-600">
+                                    <label className="flex items-center gap-2 cursor-pointer p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg hover:bg-blue-900/30 transition-colors">
+                                        <input
+                                            type="checkbox"
+                                            checked={enableGpsForTasks}
+                                            onChange={(e) => setEnableGpsForTasks(e.target.checked)}
+                                            className="w-4 h-4 rounded border-blue-500 bg-slate-800 cursor-pointer accent-blue-600"
+                                        />
+                                        <span className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">GPS ENABLED</span>
+                                        <span className="text-[8px] font-bold text-blue-300/60 ml-auto">
+                                            {enableGpsForTasks ? '✓ Location-based' : '✗ Not location-based'}
+                                        </span>
+                                    </label>
+                                    <p className="text-[8px] text-slate-500 mt-2">
+                                        {destinationType === 'PLAYGROUND'
+                                            ? 'Playzone tasks typically don\'t use GPS. Uncheck if not needed.'
+                                            : 'Library tasks will require GPS activation when placed on the map.'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* For MAP mode, always show GPS is enabled */}
+                            {destinationType === 'MAP' && (
+                                <div className="mt-4 pt-4 border-t border-slate-600">
+                                    <div className="p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+                                        <p className="text-[9px] font-bold text-green-400 uppercase tracking-widest flex items-center gap-1">
+                                            <Check className="w-3 h-3" /> GPS ENABLED
+                                        </p>
+                                        <p className="text-[8px] text-green-300/70 mt-1">Map-based tasks require GPS activation by default.</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="mt-4 pt-4 border-t border-slate-600">
                                 <label className="text-[9px] font-bold text-slate-500 uppercase mb-2 block flex items-center gap-1"><Music className="w-3 h-3" /> OPENING SOUND</label>
                                 <div className="space-y-2">
