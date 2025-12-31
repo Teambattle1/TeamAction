@@ -153,6 +153,9 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   // Navigation Logic
   const handleBack = () => {
       switch (view) {
+          case 'CREATE_GAME_SUBMENU':
+              setView('CREATE');
+              break;
           case 'PLAY_TEAMS_MENU':
               setView('PLAY_MENU');
               break;
