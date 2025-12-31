@@ -592,8 +592,8 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             </div>
 
 
-            {/* Draggable Location Search Toolbox */}
-            {mode === GameMode.EDIT && (
+            {/* Draggable Location Search Toolbox - Only for GPS-based games */}
+            {mode === GameMode.EDIT && activeGame?.gameMode !== 'playzone' && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: locationToolboxPos.x, top: locationToolboxPos.y }}
