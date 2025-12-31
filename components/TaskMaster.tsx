@@ -846,11 +846,23 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             </div>
 
                             <div className="flex flex-wrap gap-1 mt-auto">
-                                {task.tags.slice(0, 3).map((tag, index) => (
-                                    <span key={`${tag}-${index}`} className="text-[9px] px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded uppercase font-bold tracking-wider">
-                                        {tag}
-                                    </span>
-                                ))}
+                                {task.tags.map((tag, index) => {
+                                    const tagKey = tag.toLowerCase();
+                                    const tagColor = tagColors[tagKey] || '#64748b';
+                                    // Calculate brightness to decide text color (white or black)
+                                    const rgb = parseInt(tagColor.slice(1), 16);
+                                    const r = (rgb >> 16) & 255;
+                                    const g = (rgb >> 8) & 255;
+                                    const b = rgb & 255;
+                                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                                    const textColor = brightness > 155 ? '#000000' : '#ffffff';
+
+                                    return (
+                                        <span key={`${tag}-${index}`} style={{ backgroundColor: tagColor, color: textColor }} className="text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                                            {tag}
+                                        </span>
+                                    );
+                                })}
                             </div>
 
                             {!selectionMode && !bulkSelectionMode && (
