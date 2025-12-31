@@ -734,14 +734,50 @@ const GameApp: React.FC = () => {
       if (snapToRoadMode) {
           // Deactivating - perform the snap
           console.log('[Snap to Road] Deactivating - performing snap');
-          // TODO: Get selected tasks from rectangle selection
-          // TODO: Call snapPointsToRoad utility
-          // TODO: Update the tasks with snapped coordinates
+
+          if (!activeGame || selectedSnapTaskIds.length === 0) {
+              console.log('[Snap to Road] No tasks selected or no active game');
+              setSnapToRoadMode(false);
+              setSnapSelectionStart(null);
+              setSnapSelectionEnd(null);
+              setSelectedSnapTaskIds([]);
+              return;
+          }
+
+          // Get coordinates of selected tasks
+          const tasksToSnap = activeGame.points.filter(p => selectedSnapTaskIds.includes(p.id) && p.location);
+          const coordinates = tasksToSnap.map(p => p.location!);
+
+          console.log('[Snap to Road] Snapping', tasksToSnap.length, 'tasks to roads');
+
+          // Call Mapbox API to snap to roads
+          const snappedCoordinates = await snapPointsToRoad(coordinates);
+
+          // Update tasks with snapped coordinates
+          const updatedPoints = activeGame.points.map(p => {
+              const taskIndex = tasksToSnap.findIndex(t => t.id === p.id);
+              if (taskIndex !== -1 && snappedCoordinates[taskIndex]) {
+                  return { ...p, location: snappedCoordinates[taskIndex] };
+              }
+              return p;
+          });
+
+          await updateActiveGame({ ...activeGame, points: updatedPoints });
+
+          console.log('[Snap to Road] Successfully snapped', tasksToSnap.length, 'tasks');
+
+          // Clear selection
           setSnapToRoadMode(false);
+          setSnapSelectionStart(null);
+          setSnapSelectionEnd(null);
+          setSelectedSnapTaskIds([]);
       } else {
           // Activating - enter selection mode
           console.log('[Snap to Road] Activating - draw rectangle to select tasks');
           setSnapToRoadMode(true);
+          setSnapSelectionStart(null);
+          setSnapSelectionEnd(null);
+          setSelectedSnapTaskIds([]);
       }
   };
 
