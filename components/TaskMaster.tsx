@@ -999,6 +999,32 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
+                                        {(() => {
+                                            const containingLists = getTaskListsContainingTask(task.id);
+                                            if (containingLists.length === 0) {
+                                                return <span className="text-slate-500 text-[9px]">-</span>;
+                                            }
+                                            return (
+                                                <div className="relative group inline-block">
+                                                    <div className="flex items-center justify-center gap-2 cursor-help">
+                                                        <Layers className="w-4 h-4 text-blue-400" />
+                                                        <span className="text-[11px] font-bold text-blue-400">{containingLists.length}</span>
+                                                    </div>
+                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto z-50">
+                                                        <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-left shadow-xl whitespace-nowrap">
+                                                            <p className="text-[9px] font-bold text-slate-300 uppercase mb-2">Used in:</p>
+                                                            {containingLists.map(list => (
+                                                                <div key={list.id} className="text-[10px] text-slate-200 mb-1">
+                                                                    • {list.name}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
                                         {!selectionMode && !bulkSelectionMode && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleShowAddToModal([task]); }}
