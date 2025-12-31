@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Game, TaskList, MapStyleId, GameChangeLogEntry } from '../types';
 import { X, Search, Gamepad2, Plus, Calendar, MapPin, RefreshCw, Settings, Layers, Clock, Hourglass, StopCircle, LayoutGrid, Map as MapIcon, List, LayoutList, History, User, FileClock, ChevronDown, PlayCircle } from 'lucide-react';
 import { getFlag } from '../utils/i18n';
+import { getGameModeIcon } from '../utils/gameModeIcons';
 
 interface GameChooserProps {
   games: Game[];
