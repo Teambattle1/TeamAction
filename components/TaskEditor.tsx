@@ -959,43 +959,131 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
                    {activeTab === 'ACTIVATION' && (
                        <div className="space-y-6">
-                           {/* OPEN AT CLICK ON TASK Toggle */}
-                           <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 p-6 rounded-2xl border-2 border-orange-200 dark:border-orange-800">
-                               <div className="flex items-start gap-4">
-                                   <div className="w-12 h-12 bg-orange-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
-                                       <MousePointerClick className="w-6 h-6" />
+                           {/* GPS LOCATION - PRIMARY ACTIVATION (Always enabled by default) */}
+                           <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 p-6 rounded-2xl border-2 border-green-200 dark:border-green-800">
+                               <button
+                                   type="button"
+                                   onClick={() => setExpandedActivations({...expandedActivations, location: !expandedActivations.location})}
+                                   className="w-full flex items-start gap-4 text-left hover:opacity-80 transition-opacity"
+                               >
+                                   <div className="w-12 h-12 bg-green-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <MapIcon className="w-6 h-6" />
                                    </div>
                                    <div className="flex-1">
-                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">Open At Click On Task</h3>
-                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Allow this task to be opened immediately without any activation requirement. Players can solve it anywhere.</p>
-
-                                       <label className="flex items-center gap-3 cursor-pointer" onClick={() => {
-                                           const hasClick = editedPoint.activationTypes.includes('click');
-                                           const newTypes = hasClick
-                                               ? editedPoint.activationTypes.filter(t => t !== 'click')
-                                               : [...editedPoint.activationTypes, 'click'];
-                                           setEditedPoint({...editedPoint, activationTypes: newTypes});
-                                       }}>
-                                           <div className={`w-12 h-7 rounded-full transition-all ${editedPoint.activationTypes.includes('click') ? 'bg-orange-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                                               <div className={`w-6 h-6 bg-white rounded-full transition-all transform ${editedPoint.activationTypes.includes('click') ? 'translate-x-6' : 'translate-x-0'}`} />
+                                       <div className="flex items-center justify-between">
+                                           <div className="flex items-center gap-2">
+                                               <h3 className="font-black text-sm uppercase tracking-wide">GPS Geofence Location</h3>
+                                               <span className="bg-green-600 text-white text-[8px] px-2 py-1 rounded font-bold">PRIMARY</span>
                                            </div>
-                                           <span className="font-bold text-sm uppercase tracking-wide text-gray-900 dark:text-white">
-                                               {editedPoint.activationTypes.includes('click') ? 'ENABLED' : 'DISABLED'}
-                                           </span>
-                                       </label>
-
-                                       {editedPoint.activationTypes.includes('click') && (
-                                           <div className="bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-lg p-3 mt-4">
-                                               <p className="text-xs text-orange-900 dark:text-orange-200 font-bold">
-                                                   ✓ This task can be opened without any activation requirement.
-                                               </p>
-                                           </div>
-                                       )}
+                                           <ChevronDown className={`w-5 h-5 text-green-600 transition-transform ${expandedActivations.location ? 'rotate-180' : ''}`} />
+                                       </div>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Lock this task to a specific GPS location with configurable radius.</p>
                                    </div>
-                               </div>
+                               </button>
+
+                               {expandedActivations.location && (
+                                   <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+                                       <div className="space-y-3">
+                                           <div className="flex items-center gap-3 mb-4 p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                               <div className="flex-1">
+                                                   <label className="block text-[10px] font-bold text-green-700 dark:text-green-300 uppercase mb-2">GPS ENABLED</label>
+                                                   <p className="text-[9px] text-green-600 dark:text-green-400">This task can always be solved using GPS geofencing. Disable only with explicit confirmation.</p>
+                                               </div>
+                                               <label className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                                                   const hasGps = editedPoint.activationTypes.includes('radius');
+                                                   if (hasGps) {
+                                                       const confirmed = window.confirm('⚠️ Disable GPS activation? Task must have at least one activation method enabled.');
+                                                       if (confirmed) {
+                                                           setEditedPoint({...editedPoint, activationTypes: editedPoint.activationTypes.filter(t => t !== 'radius')});
+                                                       }
+                                                   } else {
+                                                       setEditedPoint({...editedPoint, activationTypes: [...editedPoint.activationTypes, 'radius']});
+                                                   }
+                                               }}>
+                                                   <div className={`w-12 h-7 rounded-full transition-all ${editedPoint.activationTypes.includes('radius') ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                                                       <div className={`w-6 h-6 bg-white rounded-full transition-all transform ${editedPoint.activationTypes.includes('radius') ? 'translate-x-6' : 'translate-x-0'}`} />
+                                                   </div>
+                                               </label>
+                                           </div>
+
+                                           {editedPoint.activationTypes.includes('radius') && editedPoint.location ? (
+                                               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-green-200 dark:border-green-700">
+                                                   <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">📍 CURRENT LOCATION</p>
+                                                   <p className="text-sm font-mono text-gray-900 dark:text-white mb-3">{editedPoint.location.lat.toFixed(6)}, {editedPoint.location.lng.toFixed(6)}</p>
+
+                                                   <div className="mb-4">
+                                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">⭕ RADIUS: {editedPoint.radiusMeters}m</label>
+                                                       <input
+                                                           type="range"
+                                                           min="10"
+                                                           max="500"
+                                                           step="10"
+                                                           value={editedPoint.radiusMeters || 50}
+                                                           onChange={(e) => setEditedPoint({...editedPoint, radiusMeters: parseInt(e.target.value)})}
+                                                           className="w-full h-2 bg-green-200 dark:bg-green-800 rounded-lg appearance-none cursor-pointer accent-green-600"
+                                                       />
+                                                       <div className="flex justify-between text-[9px] text-gray-500 mt-1">
+                                                           <span>10m</span>
+                                                           <span>500m</span>
+                                                       </div>
+                                                   </div>
+
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setShowMapPicker(true)}
+                                                       className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 mb-3"
+                                                   >
+                                                       <MapPin className="w-5 h-5" />
+                                                       SELECT ON MAP
+                                                   </button>
+
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setEditedPoint({...editedPoint, isLocationLocked: !editedPoint.isLocationLocked})}
+                                                       className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-wider transition-all flex items-center justify-center gap-2 border-2 ${editedPoint.isLocationLocked ? 'bg-green-600 text-white border-green-700 shadow-lg shadow-green-500/30' : 'bg-white dark:bg-gray-800 text-green-600 border-green-300 dark:border-green-700 hover:bg-green-50 dark:hover:bg-gray-700'}`}
+                                                   >
+                                                       {editedPoint.isLocationLocked ? (
+                                                           <>
+                                                               <Lock className="w-5 h-5" />
+                                                               LOCKED TO LOCATION ✓
+                                                           </>
+                                                       ) : (
+                                                           <>
+                                                               <Lock className="w-5 h-5 opacity-40" />
+                                                               UNLOCK FROM LOCATION
+                                                           </>
+                                                       )}
+                                                   </button>
+
+                                                   {editedPoint.isLocationLocked && (
+                                                       <div className="bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg p-3 mt-3">
+                                                           <p className="text-xs text-green-900 dark:text-green-200 font-bold">
+                                                               ✓ This task is locked to this location. Players must be within {editedPoint.radiusMeters}m to solve it.
+                                                           </p>
+                                                       </div>
+                                                   )}
+                                               </div>
+                                           ) : (
+                                               <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg p-3">
+                                                   <p className="text-xs text-yellow-900 dark:text-yellow-200 font-bold mb-3">
+                                                       ⚠️ This task doesn't have a location set yet.
+                                                   </p>
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setShowMapPicker(true)}
+                                                       className="w-full py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-bold text-sm uppercase tracking-wide transition-all flex items-center justify-center gap-2"
+                                                   >
+                                                       <MapPin className="w-4 h-4" />
+                                                       SELECT LOCATION ON MAP
+                                                   </button>
+                                               </div>
+                                           )}
+                                       </div>
+                                   </div>
+                               )}
                            </div>
 
-                           {/* GPS Location Feature - Collapsible */}
+                           {/* OTHER ACTIVATION METHODS */}
                            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 p-6 rounded-2xl border-2 border-blue-200 dark:border-blue-800">
                                <button
                                    type="button"
