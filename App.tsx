@@ -1582,6 +1582,7 @@ const GameApp: React.FC = () => {
                             case 'DELETE_GAMES': setShowDeleteGames(true); break;
                             case 'PLAYGROUNDS': setShowPlaygroundManager(true); break;
                             case 'DATABASE': setShowDatabaseTools(true); break;
+                            case 'DIAGNOSTICS': setShowSupabaseDiagnostic(true); break;
                             case 'GAMESTATS':
                                 setShowGameStats(true);
                                 break;
