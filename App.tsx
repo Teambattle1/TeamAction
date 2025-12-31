@@ -1150,11 +1150,39 @@ const GameApp: React.FC = () => {
                       if (gameToEdit && gameToEdit.id === gameData.id) {
                           await updateActiveGame({ ...gameToEdit, ...gameData });
                       } else {
-                          const newGame = { ...gameData, id: `game-${Date.now()}`, points: [], createdAt: Date.now() } as Game;
+                          // PLAYZONE GAME: Auto-create empty playground and set to 'no map'
+                          const isPlayzone = gameData.gameMode === 'playzone';
+                          const playgroundId = `pg-${Date.now()}`;
+
+                          const newGame = {
+                              ...gameData,
+                              id: `game-${Date.now()}`,
+                              points: [],
+                              createdAt: Date.now(),
+                              // Force 'no map' for Playzone games
+                              defaultMapStyle: isPlayzone ? 'none' : gameData.defaultMapStyle,
+                              // Create initial empty playground for Playzone games
+                              playgrounds: isPlayzone ? [{
+                                  id: playgroundId,
+                                  title: 'New Playground',
+                                  buttonVisible: true,
+                                  iconId: 'default',
+                                  location: { lat: 0, lng: 0 }
+                              }] : (gameData.playgrounds || [])
+                          } as Game;
+
                           await db.saveGame(newGame);
                           setGames([...games, newGame]);
                           setActiveGameId(newGame.id);
-                          setShowGameChooser(true);
+
+                          // PLAYZONE: Open playground editor directly, skip GameChooser
+                          if (isPlayzone) {
+                              setMode(GameMode.EDIT);
+                              setViewingPlaygroundId(playgroundId);
+                              setShowLanding(false);
+                          } else {
+                              setShowGameChooser(true);
+                          }
                       }
                       setShowGameCreator(false);
                       setGameToEdit(null);
