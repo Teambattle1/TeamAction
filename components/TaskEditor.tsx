@@ -1323,6 +1323,19 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                     {onClone && <button type="button" onClick={() => onClone(editedPoint)} className="flex-1 py-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-gray-300 transition-all flex items-center justify-center gap-2">CLONE</button>}
                     <button type="submit" className="flex-[2] py-4 bg-orange-600 text-white rounded-2xl font-black text-sm uppercase tracking-[0.2em] hover:bg-orange-700 transition-all shadow-xl shadow-orange-500/20 flex items-center justify-center gap-2">SAVE CHANGES</button>
                </div>
+
+               {/* Map Picker Modal */}
+               {showMapPicker && (
+                   <MeetingPointMapPicker
+                       initialLat={editedPoint.location?.lat || 55.6761}
+                       initialLng={editedPoint.location?.lng || 12.5683}
+                       onLocationSelect={(lat, lng) => {
+                           setEditedPoint({...editedPoint, location: { lat, lng }});
+                           setShowMapPicker(false);
+                       }}
+                       onClose={() => setShowMapPicker(false)}
+                   />
+               )}
            </form>
         )}
       </div>
