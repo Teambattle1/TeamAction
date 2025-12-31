@@ -145,8 +145,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     // Sync with cached library from App when it updates
     useEffect(() => {
-        if (cachedLibrary && Array.isArray(cachedLibrary) && cachedLibrary.length > 0 && library.length === 0) {
-            setLibrary(cachedLibrary);
+        if (cachedLibrary && Array.isArray(cachedLibrary) && cachedLibrary.length > 0) {
+            // Update library if it's empty or if the parent's cache has been updated
+            // (e.g., after a migration or other changes)
+            if (library.length === 0 || JSON.stringify(library) !== JSON.stringify(cachedLibrary)) {
+                setLibrary(cachedLibrary);
+            }
         }
     }, [cachedLibrary]);
 
