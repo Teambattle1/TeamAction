@@ -138,6 +138,18 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState(false);
   const [qrCodeDuplicateWarning, setQrCodeDuplicateWarning] = useState(false);
+
+  // Map picker modal state
+  const [showMapPicker, setShowMapPicker] = useState(false);
+
+  // Collapse/expand states for activation sections
+  const [expandedActivations, setExpandedActivations] = useState<Record<string, boolean>>({
+    click: false,
+    location: false,
+    qr: false,
+    nfc: false,
+    ibeacon: false
+  });
   
   // Image states
   const [isUploading, setIsUploading] = useState(false);
