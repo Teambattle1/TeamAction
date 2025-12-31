@@ -342,27 +342,6 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           color="bg-blue-600"
                           onClick={() => onAction('DATABASE')} 
                       />
-                      <NavCard 
-                          title="GLOBAL LIBRARY" 
-                          subtitle="TASK REPOSITORY" 
-                          icon={Library} 
-                          color="bg-emerald-500"
-                          onClick={() => onAction('TASKS')}
-                      />
-                      <NavCard 
-                          title="TEAM LOBBY" 
-                          subtitle="MANAGE TEAMS" 
-                          icon={Anchor} 
-                          color="bg-rose-500"
-                          onClick={() => onAction('TEAM_LOBBY')}
-                      />
-                      <NavCard 
-                          title="APP PREVIEW" 
-                          subtitle="SIMULATE DEVICES" 
-                          icon={Smartphone} 
-                          color="bg-teal-500"
-                          onClick={() => setView('PREVIEW_SELECT')} 
-                      />
                       <NavCard
                           title="QR CODES"
                           subtitle="PRINT & DOWNLOAD"
