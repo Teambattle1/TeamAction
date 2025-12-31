@@ -114,6 +114,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showAiBackgroundPrompt, setShowAiBackgroundPrompt] = useState(false);
     const [aiBackgroundPromptValue, setAiBackgroundPromptValue] = useState('');
     const [isGeneratingBackground, setIsGeneratingBackground] = useState(false);
+    const [showGeminiKeyModal, setShowGeminiKeyModal] = useState(false);
+    const [pendingBackgroundKeywords, setPendingBackgroundKeywords] = useState<string | null>(null);
 
     // Delete Zone State
     const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
