@@ -1974,8 +1974,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
             <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
                 <div className="p-4 space-y-1">
                     {TABS.filter(tab => {
-                        // Hide MAP tab for playzone and elimination modes
-                        if ((gameMode === 'playzone' || gameMode === 'elimination') && tab.id === 'MAP') {
+                        // Hide MAP tab for playzone mode only (elimination is GPS-based and needs map style selection)
+                        if (gameMode === 'playzone' && tab.id === 'MAP') {
                             return false;
                         }
                         return true;
