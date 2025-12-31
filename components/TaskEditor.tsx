@@ -563,9 +563,9 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0 overflow-x-auto">
                    {[
                        {id: 'GENERAL', label: 'General', icon: AlignLeft},
+                       {id: 'ANSWER', label: 'Answer', icon: MessageSquare},
                        {id: 'IMAGE', label: 'Image', icon: ImageIcon},
                        {id: 'SETTINGS', label: 'Config', icon: SlidersHorizontal},
-                       {id: 'ANSWER', label: 'Answer', icon: MessageSquare},
                        {id: 'ACTIVATION', label: 'Activation', icon: Lock},
                        {id: 'TAGS', label: 'Tags', icon: Tag},
                    ].map(tab => (
