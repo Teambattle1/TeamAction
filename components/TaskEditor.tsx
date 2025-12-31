@@ -1289,35 +1289,69 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        </div>
                    )}
 
-                   {activeTab === 'ACTIONS' && (
+                   {activeTab === 'TAGS' && (
                        <div className="space-y-6">
-                           <div className="space-y-3">
-                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">UNLOCK METHODS</label>
-                               {[
-                                   { id: 'radius', label: 'GPS GEOFENCE', desc: 'Unlocks within physical radius', icon: MapIcon },
-                                   { id: 'click', label: 'TAP TO OPEN', desc: 'Allows opening from anywhere', icon: MousePointerClick },
-                                   { id: 'qr', label: 'QR / BARCODE', desc: 'Player must scan a code', icon: Hash },
-                                   { id: 'nfc', label: 'NFC TAG', desc: 'Scan an NFC tag to unlock', icon: Smartphone },
-                                   { id: 'ibeacon', label: 'iBeacon', desc: 'Enter iBeacon proximity to unlock', icon: Wifi },
-                               ].map(method => (
-                                   <button
-                                       key={method.id}
-                                       type="button"
-                                       onClick={() => {
-                                           const exists = editedPoint.activationTypes.includes(method.id as any);
-                                           const newTypes = exists ? editedPoint.activationTypes.filter(t => t !== method.id) : [...editedPoint.activationTypes, method.id as any];
-                                           setEditedPoint({...editedPoint, activationTypes: newTypes});
-                                       }}
-                                       className={`w-full p-4 rounded-2xl border-2 flex items-center gap-4 text-left transition-all ${editedPoint.activationTypes.includes(method.id as any) ? 'bg-orange-50 border-orange-500 dark:bg-orange-900/20' : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-orange-200'}`}
-                                   >
-                                       <div className={`p-3 rounded-xl ${editedPoint.activationTypes.includes(method.id as any) ? 'bg-orange-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-400'}`}><method.icon className="w-6 h-6" /></div>
-                                       <div className="flex-1 min-w-0">
-                                           <span className="block font-black text-sm uppercase tracking-wide">{method.label}</span>
-                                           <span className="text-[10px] text-gray-500 uppercase font-bold">{method.desc}</span>
+                           <div>
+                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">MANAGE TASK TAGS</label>
+                               <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Add or remove tags to organize and categorize this task.</p>
+
+                               {/* Current Tags */}
+                               {editedPoint.tags.length > 0 && (
+                                   <div className="mb-6">
+                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">CURRENT TAGS ({editedPoint.tags.length})</label>
+                                       <div className="flex flex-wrap gap-2">
+                                           {editedPoint.tags.map((tag, idx) => (
+                                               <div key={`${tag}-${idx}`} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2">
+                                                   <span className="text-sm font-bold text-blue-900 dark:text-blue-100">{tag}</span>
+                                                   <button
+                                                       type="button"
+                                                       onClick={() => setEditedPoint({
+                                                           ...editedPoint,
+                                                           tags: editedPoint.tags.filter((_, i) => i !== idx)
+                                                       })}
+                                                       className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                                       title="Remove tag"
+                                                   >
+                                                       <X className="w-4 h-4" />
+                                                   </button>
+                                               </div>
+                                           ))}
                                        </div>
-                                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${editedPoint.activationTypes.includes(method.id as any) ? 'bg-orange-600 border-orange-600 text-white' : 'border-gray-200'}`}>{editedPoint.activationTypes.includes(method.id as any) && <Check className="w-4 h-4" />}</div>
-                                   </button>
-                               ))}
+                                   </div>
+                               )}
+
+                               {/* Add New Tag */}
+                               <div className="space-y-3">
+                                   <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">ADD NEW TAG</label>
+                                   <div className="flex gap-2">
+                                       <input
+                                           type="text"
+                                           value={tagInput}
+                                           onChange={(e) => {
+                                               setTagInput(e.target.value);
+                                               setTagError(false);
+                                           }}
+                                           onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+                                           placeholder="Type tag name and press Enter..."
+                                           className={`flex-1 px-4 py-3 border-2 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:outline-none transition-all ${tagError ? 'border-red-500' : 'border-gray-200 dark:border-gray-700 focus:border-blue-500'}`}
+                                       />
+                                       <button
+                                           type="button"
+                                           onClick={handleAddTag}
+                                           className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide transition-colors flex items-center gap-2"
+                                       >
+                                           <Plus className="w-4 h-4" />
+                                           ADD
+                                       </button>
+                                   </div>
+                                   {tagError && (
+                                       <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-3">
+                                           <p className="text-xs text-red-700 dark:text-red-300 font-bold">
+                                               ⚠️ This tag already exists for this task or is empty.
+                                           </p>
+                                       </div>
+                                   )}
+                               </div>
                            </div>
                        </div>
                    )}
