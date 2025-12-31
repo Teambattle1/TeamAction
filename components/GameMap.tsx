@@ -87,6 +87,9 @@ interface GameMapProps {
   isRelocating?: boolean;
   isMeasuring?: boolean; // NEW: Measure mode flag to prevent task modals
   snapToRoadMode?: boolean; // NEW: Snap to road selection mode
+  snapSelectionStart?: Coordinate | null; // Start point of snap rectangle
+  snapSelectionEnd?: Coordinate | null; // End point of snap rectangle
+  selectedSnapTaskIds?: string[]; // Task IDs selected for snapping
   relocateScopeCenter?: Coordinate | null; // Center point when relocating all tasks
   relocateAllTaskIds?: string[]; // Task IDs selected for relocation
   onPointClick: (point: GamePoint) => void;
