@@ -877,6 +877,13 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                 </div>
 
             </div>
+
+            {/* Gemini API Key Modal */}
+            <GeminiApiKeyModal
+                isOpen={showGeminiKeyModal}
+                onClose={() => setShowGeminiKeyModal(false)}
+                onSave={handleApiKeySaved}
+            />
         </div>
     </div>
   );
