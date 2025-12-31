@@ -820,6 +820,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             <th className="px-4 py-3 text-left flex-1">Task Title</th>
                             <th className="px-4 py-3 text-left flex-1">Question</th>
                             <th className="px-4 py-3 text-left">Language</th>
+                            <th className="px-4 py-3 text-center">Activation</th>
                             <th className="px-4 py-3 text-center w-16">Used</th>
                             <th className="px-4 py-3 text-left">Tags</th>
                             <th className="px-4 py-3 text-center w-24">Action</th>
