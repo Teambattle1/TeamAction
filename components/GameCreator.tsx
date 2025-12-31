@@ -1490,54 +1490,58 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               </div>
                           </div>
 
-                          {/* Map Interaction Settings */}
-                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Map interaction settings</label>
-                              <div className="space-y-3">
-                                  <RadioOption
-                                      label="Disable opening tasks on the map by click"
-                                      selected={mapInteraction === 'disable_click'}
-                                      onClick={() => setMapInteraction('disable_click')}
-                                  />
-                                  <RadioOption
-                                      label="Allow opening all tasks on the map by click"
-                                      selected={mapInteraction === 'allow_all'}
-                                      onClick={() => setMapInteraction('allow_all')}
-                                  />
-                                  <RadioOption
-                                      label="Allow opening specific tasks on map"
-                                      selected={mapInteraction === 'allow_specific'}
-                                      onClick={() => setMapInteraction('allow_specific')}
-                                  />
+                          {/* Map Interaction Settings - Only for GPS-based games */}
+                          {gameMode !== 'playzone' && (
+                              <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                                  <label className="block text-[10px] font-bold text-white uppercase mb-4">Map interaction settings</label>
+                                  <div className="space-y-3">
+                                      <RadioOption
+                                          label="Disable opening tasks on the map by click"
+                                          selected={mapInteraction === 'disable_click'}
+                                          onClick={() => setMapInteraction('disable_click')}
+                                      />
+                                      <RadioOption
+                                          label="Allow opening all tasks on the map by click"
+                                          selected={mapInteraction === 'allow_all'}
+                                          onClick={() => setMapInteraction('allow_all')}
+                                      />
+                                      <RadioOption
+                                          label="Allow opening specific tasks on map"
+                                          selected={mapInteraction === 'allow_specific'}
+                                          onClick={() => setMapInteraction('allow_specific')}
+                                      />
+                                  </div>
                               </div>
-                          </div>
+                          )}
 
-                          {/* Additional Map Settings */}
-                          <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Additional map settings</label>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <CheckboxOption
-                                      label="Hide my location"
-                                      checked={hideMyLocation}
-                                      onChange={setHideMyLocation}
-                                  />
-                                  <CheckboxOption
-                                      label="Show my track"
-                                      checked={showMyTrack}
-                                      onChange={setShowMyTrack}
-                                  />
-                                  <CheckboxOption
-                                      label="Allow navigation"
-                                      checked={allowNavigation}
-                                      onChange={setAllowNavigation}
-                                  />
-                                  <CheckboxOption
-                                      label="Allow opening tasks if GPS signal weak (beta)"
-                                      checked={allowWeakGps}
-                                      onChange={setAllowWeakGps}
-                                  />
+                          {/* Additional Map Settings - Only for GPS-based games */}
+                          {gameMode !== 'playzone' && (
+                              <div className="md:col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                                  <label className="block text-[10px] font-bold text-white uppercase mb-4">Additional map settings</label>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <CheckboxOption
+                                          label="Hide my location"
+                                          checked={hideMyLocation}
+                                          onChange={setHideMyLocation}
+                                      />
+                                      <CheckboxOption
+                                          label="Show my track"
+                                          checked={showMyTrack}
+                                          onChange={setShowMyTrack}
+                                      />
+                                      <CheckboxOption
+                                          label="Allow navigation"
+                                          checked={allowNavigation}
+                                          onChange={setAllowNavigation}
+                                      />
+                                      <CheckboxOption
+                                          label="Allow opening tasks if GPS signal weak (beta)"
+                                          checked={allowWeakGps}
+                                          onChange={setAllowWeakGps}
+                                      />
+                                  </div>
                               </div>
-                          </div>
+                          )}
                       </div>
                   </div>
               );
