@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { X, Smartphone, QrCode, Users, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Smartphone, QrCode, Users, Loader2, AlertCircle } from 'lucide-react';
+import jsQR from 'jsqr';
 
 interface PlayzoneGameEntryProps {
   isOpen: boolean;
