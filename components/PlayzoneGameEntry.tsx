@@ -180,27 +180,60 @@ const PlayzoneGameEntry: React.FC<PlayzoneGameEntryProps> = ({ isOpen, onClose, 
             <>
               {/* QR Code Entry */}
               <p className="text-center text-slate-400 font-bold text-sm uppercase mb-4">
-                Enter QR Code Value
+                {isScanningQR ? 'Point camera at QR code...' : 'Enter QR Code Value'}
               </p>
 
-              <video
-                ref={videoRef}
-                className="w-full rounded-xl bg-slate-800 mb-4 hidden"
-              />
+              {isScanningQR && (
+                <div className="w-full bg-slate-800 rounded-xl overflow-hidden mb-4 relative">
+                  <video
+                    ref={videoRef}
+                    className="w-full aspect-video bg-slate-900"
+                  />
+                  <canvas ref={canvasRef} className="hidden" />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="w-48 h-48 border-2 border-purple-500 rounded-lg shadow-lg shadow-purple-500/50"></div>
+                  </div>
+                </div>
+              )}
+
+              {cameraError && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-4 flex gap-2">
+                  <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-300 font-bold">{cameraError}</p>
+                </div>
+              )}
+
+              {qrScanned && (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-green-300 font-bold">✓ QR Code detected!</p>
+                </div>
+              )}
 
               <input
                 type="text"
                 value={qrInput}
                 onChange={(e) => setQrInput(e.target.value.toUpperCase())}
                 onKeyPress={(e) => e.key === 'Enter' && handleQRSubmit()}
-                placeholder="PASTE QR CODE VALUE HERE..."
+                placeholder={isScanningQR ? "QR code will appear here..." : "PASTE QR CODE VALUE HERE..."}
                 className="w-full p-4 rounded-xl bg-slate-800 border-2 border-slate-700 text-white font-bold uppercase placeholder-slate-600 focus:border-purple-500 focus:outline-none transition-colors text-sm"
-                autoFocus
+                readOnly={isScanningQR}
               />
 
               <div className="flex gap-3 mt-6">
                 <button
-                  onClick={() => { setEntryMethod(null); setQrInput(''); setIsScanningQR(false); }}
+                  onClick={() => {
+                    setEntryMethod(null);
+                    setQrInput('');
+                    setIsScanningQR(false);
+                    setQrScanned(null);
+                    setCameraError(null);
+                    if (streamRef.current) {
+                      streamRef.current.getTracks().forEach(track => track.stop());
+                    }
+                    if (scanIntervalRef.current) {
+                      clearInterval(scanIntervalRef.current);
+                    }
+                  }}
                   className="flex-1 p-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase text-sm transition-colors"
                 >
                   BACK
@@ -210,7 +243,7 @@ const PlayzoneGameEntry: React.FC<PlayzoneGameEntryProps> = ({ isOpen, onClose, 
                   disabled={!qrInput.trim()}
                   className="flex-1 p-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-xl font-bold uppercase text-sm transition-colors"
                 >
-                  JOIN GAME
+                  {qrScanned ? 'JOIN GAME' : 'SUBMIT'}
                 </button>
               </div>
             </>
