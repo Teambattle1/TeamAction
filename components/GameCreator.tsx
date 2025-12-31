@@ -26,7 +26,7 @@ interface GameCreatorProps {
   baseGame?: Game;
   onDelete?: (id: string) => void;
   onOpenPlaygroundEditor?: (playgroundId?: string) => void;
-  initialGameMode?: 'standard' | 'playzone' | null;
+  initialGameMode?: 'standard' | 'playzone' | 'elimination' | null;
 }
 
 // Map Styles with working preview logic
