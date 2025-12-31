@@ -1359,10 +1359,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     {isDrawerOpen ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
                 </button>
 
-                {/* Top Overlay Bar - Title, Zone Tabs, Reset, and Home */}
+                {/* Top Overlay Bar - Title, Zone Tabs (centered), and Home */}
                 <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
-                    <div className="p-4 flex justify-between items-center gap-4">
-                        <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm border border-orange-500/30 rounded-xl px-4 py-2 shadow-xl pointer-events-auto">
+                    <div className="p-4 flex items-center gap-4 relative">
+                        {/* Left: Title */}
+                        <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm border border-orange-500/30 rounded-xl px-4 py-2 shadow-xl pointer-events-auto flex-shrink-0">
                             <LayoutGrid className="w-5 h-5 text-orange-500" />
                             <div>
                                 <h1 className="text-sm font-black text-white uppercase tracking-widest">
@@ -1374,8 +1375,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </div>
                         </div>
 
-                        {/* Zone Tabs - Centered in Editor View */}
-                        <div className="flex gap-2 overflow-x-auto pointer-events-auto hide-scrollbar justify-center flex-1">
+                        {/* Center: Zone Tabs - Centered in Editor Window */}
+                        <div className="absolute left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto pointer-events-auto hide-scrollbar">
                             {/* ADD NEW Button First */}
                             <button
                                 onClick={addNewZone}
@@ -1403,9 +1404,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             ))}
                         </div>
 
+                        {/* Right: Home Button */}
                         <button
                             onClick={onHome}
-                            className="p-3 bg-slate-900/80 backdrop-blur-sm hover:bg-slate-800 text-slate-400 hover:text-white rounded-full shadow-xl border border-slate-700 transition-all pointer-events-auto flex-shrink-0"
+                            className="p-3 bg-slate-900/80 backdrop-blur-sm hover:bg-slate-800 text-slate-400 hover:text-white rounded-full shadow-xl border border-slate-700 transition-all pointer-events-auto flex-shrink-0 ml-auto"
                             title="Return Home"
                         >
                             <ArrowLeft className="w-5 h-5" />
