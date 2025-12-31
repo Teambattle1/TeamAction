@@ -675,11 +675,16 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           }
       }
 
-      // Validate Playzone Games
+      // Validate Game Modes
       if (gameMode === 'playzone') {
           // Note: Full playground validation will occur when game is saved with tasks
           // This check ensures user is aware of playzone requirements
           console.log('✓ Playzone game mode selected. Remember to add playgrounds and tasks.');
+      }
+
+      if (gameMode === 'elimination') {
+          // Elimination games require GPS support and will feature team colors and bomb system
+          console.log('✓ Elimination game mode selected. Teams will compete to capture tasks first.');
       }
 
       let endLocation = undefined;
