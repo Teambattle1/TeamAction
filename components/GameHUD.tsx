@@ -647,96 +647,108 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                             </div>
                             <div className="flex gap-1">
                                 {/* Chat Button */}
-                                <button
-                                    onClick={onToggleChat}
-                                    className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-                                    title="Chat"
-                                >
-                                    <MessageSquare className="w-4 h-4" />
-                                </button>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={onToggleChat}
+                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                        title="Chat"
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                    </button>
+                                    <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight whitespace-nowrap">CHAT</div>
+                                </div>
 
                                 {/* Settings Button */}
-                                <button
-                                    onClick={onEditGameSettings}
-                                    className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-                                    title="Settings"
-                                >
-                                    <Settings className="w-4 h-4" />
-                                </button>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={onEditGameSettings}
+                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                        title="Settings"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                    </button>
+                                    <div className="text-[7px] font-black text-slate-400 uppercase tracking-widest leading-tight whitespace-nowrap">SETTINGS</div>
+                                </div>
 
                                 {/* ADJUST GAMETIME Button (Editor Mode) */}
                                 {mode === GameMode.EDIT && timerConfig && (
-                                    <button
-                                        onClick={() => setShowAdjustGameTime(true)}
-                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-cyan-800 border-cyan-600 text-cyan-300 hover:bg-cyan-700 hover:text-white"
-                                        title="Adjust Game Time"
-                                    >
-                                        <Clock className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={() => setShowAdjustGameTime(true)}
+                                            className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-cyan-800 border-cyan-600 text-cyan-300 hover:bg-cyan-700 hover:text-white"
+                                            title="Adjust Game Time"
+                                        >
+                                            <Clock className="w-4 h-4" />
+                                        </button>
+                                        <div className="text-[8px] font-black text-cyan-400 uppercase tracking-widest leading-tight whitespace-nowrap">TIME</div>
+                                    </div>
                                 )}
 
                                 {/* Simulate Button - Only in Editor Mode (MAP/ELIMINATION only) */}
                                 {mode === GameMode.EDIT && onStartSimulation && activeGame?.gameMode !== 'playzone' && (
-                                    <button
-                                        onClick={onStartSimulation}
-                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-green-800 border-green-600 text-green-300 hover:bg-green-700 hover:text-white"
-                                        title="Activate Simulation Mode"
-                                    >
-                                        <Play className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={onStartSimulation}
+                                            className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-green-800 border-green-600 text-green-300 hover:bg-green-700 hover:text-white"
+                                            title="Activate Simulation Mode"
+                                        >
+                                            <Play className="w-4 h-4" />
+                                        </button>
+                                        <div className="text-[8px] font-black text-green-400 uppercase tracking-widest leading-tight whitespace-nowrap">PLAY</div>
+                                    </div>
                                 )}
 
                                 {/* SNAP TASKS TO ROAD Button - Only for GPS-based games (MAP/ELIMINATION) */}
                                 {mode === GameMode.EDIT && onToggleSnapToRoad && activeGame?.gameMode !== 'playzone' && (
-                                    <button
-                                        onClick={onToggleSnapToRoad}
-                                        className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${
-                                            snapToRoadMode
-                                                ? 'bg-cyan-800 border-cyan-600 text-cyan-300 hover:bg-cyan-700 hover:text-white shadow-lg shadow-cyan-600/30'
-                                                : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'
-                                        }`}
-                                        title={snapToRoadMode ? 'ACTIVE: Draw rectangle around tasks to select them' : 'Click to activate snap mode: draw rectangle to select tasks, then deactivate to snap to roads'}
-                                    >
-                                        <Navigation className="w-4 h-4" />
-                                    </button>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={onToggleSnapToRoad}
+                                            className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${
+                                                snapToRoadMode
+                                                    ? 'bg-cyan-800 border-cyan-600 text-cyan-300 hover:bg-cyan-700 hover:text-white shadow-lg shadow-cyan-600/30'
+                                                    : 'bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white'
+                                            }`}
+                                            title={snapToRoadMode ? 'ACTIVE: Draw rectangle around tasks to select them' : 'Click to activate snap mode: draw rectangle to select tasks, then deactivate to snap to roads'}
+                                        >
+                                            <Navigation className="w-4 h-4" />
+                                        </button>
+                                        <div className={`text-[8px] font-black uppercase tracking-widest leading-tight whitespace-nowrap ${snapToRoadMode ? 'text-cyan-400' : 'text-slate-400'}`}>SNAP</div>
+                                    </div>
                                 )}
 
                                 {/* MAPSTYLE Button */}
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowLocationMapStyles(!showLocationMapStyles)}
-                                        className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
-                                        title="Map Styles"
-                                    >
-                                        <Layers className="w-4 h-4" />
-                                        {showLocationMapStyles && <div className="absolute top-0 right-0 w-2 h-2 bg-slate-300 rounded-full animate-pulse"></div>}
-                                    </button>
-                                    {showLocationMapStyles && (
-                                        <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-slate-700 rounded-xl p-2 shadow-xl animate-in slide-in-from-top-2 pointer-events-auto z-[3001] flex gap-2 flex-wrap max-w-[300px]">
-                                            {MAP_STYLES_LIST.map((style) => (
-                                                <div key={style.id} className="relative">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); onSetMapStyle(style.id); setShowLocationMapStyles(false); }}
-                                                        onMouseEnter={() => setHoveredMapStyle(style.id)}
-                                                        onMouseLeave={() => setHoveredMapStyle(null)}
-                                                        className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all border-2 ${mapStyle === style.id ? 'bg-slate-700 border-slate-500 shadow-lg shadow-slate-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600'}`}
-                                                        title={style.label}
-                                                    >
-                                                        <style.icon className={`w-4 h-4 ${mapStyle === style.id ? 'text-white' : 'text-slate-300'}`} />
-                                                        <span className={`text-[7px] font-black uppercase tracking-widest ${mapStyle === style.id ? 'text-white' : 'text-slate-400'}`}>{style.label}</span>
-                                                    </button>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setShowLocationMapStyles(!showLocationMapStyles)}
+                                            className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-slate-800 border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+                                            title="Map Styles"
+                                        >
+                                            <Layers className="w-4 h-4" />
+                                            {showLocationMapStyles && <div className="absolute top-0 right-0 w-2 h-2 bg-slate-300 rounded-full animate-pulse"></div>}
+                                        </button>
+                                        {showLocationMapStyles && (
+                                            <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-slate-900 border-2 border-slate-700 rounded-xl p-2 shadow-xl animate-in slide-in-from-top-2 pointer-events-auto z-[3001] flex gap-2 flex-wrap max-w-[300px]">
+                                                {MAP_STYLES_LIST.map((style) => (
+                                                    <div key={style.id} className="relative">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onSetMapStyle(style.id); setShowLocationMapStyles(false); }}
+                                                            onMouseEnter={() => setHoveredMapStyle(style.id)}
+                                                            onMouseLeave={() => setHoveredMapStyle(null)}
+                                                            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-all border-2 ${mapStyle === style.id ? 'bg-slate-700 border-slate-500 shadow-lg shadow-slate-500/50' : 'bg-slate-800 border-slate-700 hover:bg-slate-700 hover:border-slate-600'}`}
+                                                            title={style.label}
+                                                        >
+                                                            <style.icon className={`w-4 h-4 ${mapStyle === style.id ? 'text-white' : 'text-slate-300'}`} />
+                                                            <span className={`text-[7px] font-black uppercase tracking-widest ${mapStyle === style.id ? 'text-white' : 'text-slate-400'}`}>{style.label}</span>
+                                                        </button>
 
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight whitespace-nowrap">MAP</div>
                                 </div>
-                            </div>
-                            <div className="flex gap-1 text-center">
-                                <div className="flex-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight">CHAT</div>
-                                <div className="flex-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight">SETTINGS</div>
-                                <div className="flex-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight">TIME</div>
-                                <div className="flex-1 text-[8px] font-black text-slate-400 uppercase tracking-widest leading-tight">MAP</div>
                             </div>
                         </div>
                     </div>
