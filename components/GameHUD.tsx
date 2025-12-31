@@ -675,8 +675,8 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     </button>
                                 )}
 
-                                {/* Simulate Button - Only in Editor Mode */}
-                                {mode === GameMode.EDIT && onStartSimulation && (
+                                {/* Simulate Button - Only in Editor Mode (MAP/ELIMINATION only) */}
+                                {mode === GameMode.EDIT && onStartSimulation && activeGame?.gameMode !== 'playzone' && (
                                     <button
                                         onClick={onStartSimulation}
                                         className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-green-800 border-green-600 text-green-300 hover:bg-green-700 hover:text-white"
@@ -686,8 +686,8 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     </button>
                                 )}
 
-                                {/* SNAP TASKS TO ROAD Button - Always visible in Editor Mode */}
-                                {mode === GameMode.EDIT && onToggleSnapToRoad && (
+                                {/* SNAP TASKS TO ROAD Button - Only for GPS-based games (MAP/ELIMINATION) */}
+                                {mode === GameMode.EDIT && onToggleSnapToRoad && activeGame?.gameMode !== 'playzone' && (
                                     <button
                                         onClick={onToggleSnapToRoad}
                                         className={`w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative ${
