@@ -4,7 +4,7 @@ import {
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin
 } from 'lucide-react';
 import { Game, AuthUser } from '../types';
 
