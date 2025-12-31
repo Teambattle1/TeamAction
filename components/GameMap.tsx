@@ -808,7 +808,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
 
                     {/* Show selection rectangle if end point is set */}
                     {snapSelectionEnd && (
-                        <L.Rectangle
+                        <Rectangle
                             bounds={[
                                 [
                                     Math.min(snapSelectionStart.lat, snapSelectionEnd.lat),
