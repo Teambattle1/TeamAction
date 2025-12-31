@@ -43,6 +43,7 @@ interface GameManagerProps {
   mode: GameMode;
   onSetMode: (mode: GameMode) => void;
   onOpenAiGenerator?: () => void;
+  onOpenGameCreator?: () => void;
 }
 
 type GameStatusTab = 'TODAY' | 'PLANNED' | 'COMPLETED';
@@ -197,7 +198,8 @@ const GameManager: React.FC<GameManagerProps> = ({
   onDeleteGame,
   onClose,
   onCreateGame,
-  onCreateFromTemplate
+  onCreateFromTemplate,
+  onOpenGameCreator
 }) => {
   const [section, setSection] = useState<'GAMES' | 'TEMPLATES'>('GAMES');
   const [view, setView] = useState<'LIST' | 'CREATE'>('LIST');
@@ -315,7 +317,13 @@ const GameManager: React.FC<GameManagerProps> = ({
                 My Games
               </button>
               <button
-                onClick={() => setView('CREATE')}
+                onClick={() => {
+                  if (onOpenGameCreator) {
+                    onOpenGameCreator();
+                  } else {
+                    setView('CREATE');
+                  }
+                }}
                 className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all ${
                   view === 'CREATE'
                     ? 'bg-orange-600 text-white shadow-lg'
