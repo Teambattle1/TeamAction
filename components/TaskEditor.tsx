@@ -985,6 +985,66 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    </div>
                                </div>
                            </div>
+
+                           {/* QR Code Configuration */}
+                           <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-2xl border-2 border-purple-200 dark:border-purple-800">
+                               <div className="flex items-start gap-4">
+                                   <div className="w-12 h-12 bg-purple-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
+                                       <QrCode className="w-6 h-6" />
+                                   </div>
+                                   <div className="flex-1">
+                                       <h3 className="font-black text-sm uppercase tracking-wide mb-1">QR Code Activation</h3>
+                                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">Attach a QR code string to this task (e.g., house ID, location code). Players must scan this code to unlock the task.</p>
+
+                                       <div className="space-y-3">
+                                           <div>
+                                               <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">📱 QR CODE STRING</label>
+                                               <input
+                                                   type="text"
+                                                   value={editedPoint.qrCodeString || ''}
+                                                   onChange={(e) => setEditedPoint({...editedPoint, qrCodeString: e.target.value})}
+                                                   placeholder="e.g., HOUSE_001, LOCATION_ALPHA, or any unique identifier"
+                                                   className="w-full px-4 py-3 border-2 border-purple-200 dark:border-purple-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-mono text-sm focus:border-purple-500 outline-none transition-all"
+                                               />
+                                               <p className="text-[10px] text-gray-500 mt-2">This is the value that will be encoded in the QR code.</p>
+                                           </div>
+
+                                           {editedPoint.qrCodeString && (
+                                               <div className="space-y-3">
+                                                   <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-purple-200 dark:border-purple-700 flex flex-col items-center">
+                                                       <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 text-center">📤 DOWNLOADABLE QR CODE</p>
+                                                       <div id="qr-preview" className="flex items-center justify-center bg-white p-2 rounded-lg border border-purple-100 dark:border-purple-900">
+                                                           <canvas id="qr-canvas" style={{ maxWidth: '150px', maxHeight: '150px' }} />
+                                                       </div>
+                                                       <button
+                                                           type="button"
+                                                           onClick={async () => {
+                                                               const canvas = document.getElementById('qr-canvas') as HTMLCanvasElement;
+                                                               if (canvas) {
+                                                                   const url = canvas.toDataURL('image/png');
+                                                                   const link = document.createElement('a');
+                                                                   link.href = url;
+                                                                   link.download = `qr-code-${editedPoint.qrCodeString || 'task'}.png`;
+                                                                   link.click();
+                                                               }
+                                                           }}
+                                                           className="mt-3 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-black text-[10px] uppercase tracking-wider flex items-center gap-2 transition-colors"
+                                                       >
+                                                           <Download className="w-4 h-4" /> Download QR
+                                                       </button>
+                                                   </div>
+                                               </div>
+                                           )}
+
+                                           {!editedPoint.qrCodeString && (
+                                               <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-xl border border-gray-300 dark:border-gray-700 text-center">
+                                                   <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase">Enter a QR code string above to generate a downloadable QR code.</p>
+                                               </div>
+                                           )}
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
                        </div>
                    )}
 
