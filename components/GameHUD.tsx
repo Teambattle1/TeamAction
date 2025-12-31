@@ -623,6 +623,21 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                 compact={true}
                                 showLabels={true}
                             />
+                            {/* Snap Tasks to Road Button */}
+                            {onToggleSnapToRoad && (
+                                <button
+                                    onClick={onToggleSnapToRoad}
+                                    className={`w-full mt-3 px-3 py-2 rounded-lg font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 border ${
+                                        snapToRoadMode
+                                            ? 'bg-cyan-600 text-white border-cyan-500 shadow-lg hover:bg-cyan-700'
+                                            : 'bg-slate-800 text-slate-300 border-slate-600 hover:bg-slate-700 hover:text-white'
+                                    }`}
+                                    title={snapToRoadMode ? 'Snap to road enabled: click and drag on map' : 'Click and drag to snap selected tasks to road network'}
+                                >
+                                    <Navigation className="w-3 h-3" />
+                                    SNAP TO ROAD
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
