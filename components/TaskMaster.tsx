@@ -67,6 +67,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
     // Template Editing
     const [editingTemplate, setEditingTemplate] = useState<TaskTemplate | null>(null);
+    const [requestedTab, setRequestedTab] = useState<'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | null>(null);
 
     // Task editing within a list
     const [editingTaskIndex, setEditingTaskIndex] = useState<number | null>(null);
