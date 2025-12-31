@@ -808,6 +808,41 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           case 'GAME':
               return (
                   <div className="space-y-6 max-w-3xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* 0. Game Mode Selection */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-4">Game Mode</label>
+                          <div className="flex gap-4">
+                              <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'standard' ? '#f97316' : '#475569', backgroundColor: gameMode === 'standard' ? '#7c2d12' : '#1e293b' }}>
+                                  <input
+                                      type="radio"
+                                      name="gameMode"
+                                      value="standard"
+                                      checked={gameMode === 'standard'}
+                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone')}
+                                      className="w-4 h-4"
+                                  />
+                                  <div>
+                                      <span className="font-bold text-white block">STANDARD GAME</span>
+                                      <span className="text-[10px] text-slate-400">GPS-based navigation & map</span>
+                                  </div>
+                              </label>
+                              <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'playzone' ? '#14b8a6' : '#475569', backgroundColor: gameMode === 'playzone' ? '#134e4a' : '#1e293b' }}>
+                                  <input
+                                      type="radio"
+                                      name="gameMode"
+                                      value="playzone"
+                                      checked={gameMode === 'playzone'}
+                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone')}
+                                      className="w-4 h-4"
+                                  />
+                                  <div>
+                                      <span className="font-bold text-white block">PLAYZONE GAME</span>
+                                      <span className="text-[10px] text-slate-400">Indoor, touch-based on playground</span>
+                                  </div>
+                              </label>
+                          </div>
+                      </div>
+
                       {/* 1. Name & Date */}
                       <div className="grid grid-cols-3 gap-6">
                           <div className="col-span-2 bg-slate-900 border border-slate-800 p-6 rounded-2xl">
