@@ -1034,8 +1034,11 @@ const GameApp: React.FC = () => {
           )}
           {/* ... Rest of modals ... */}
           {showGameCreator && (
-              <GameCreator 
-                  onClose={() => setShowGameCreator(false)}
+              <GameCreator
+                  onClose={() => {
+                      setShowGameCreator(false);
+                      setInitialGameMode(null);
+                  }}
                   onCreate={async (gameData) => {
                       if (gameToEdit && gameToEdit.id === gameData.id) {
                           await updateActiveGame({ ...gameToEdit, ...gameData });
@@ -1048,9 +1051,11 @@ const GameApp: React.FC = () => {
                       }
                       setShowGameCreator(false);
                       setGameToEdit(null);
+                      setInitialGameMode(null);
                   }}
                   baseGame={gameToEdit || undefined}
                   onDelete={handleDeleteGame}
+                  initialGameMode={initialGameMode}
               />
           )}
           {showTeamsHub && (
