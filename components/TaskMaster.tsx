@@ -892,6 +892,27 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-center">
+                                        <div className="flex flex-wrap gap-1 justify-center">
+                                            {getActivationBadges(task).map(badge => {
+                                                const badgeColors: Record<string, string> = {
+                                                    'QR': 'bg-purple-600 text-white',
+                                                    'NFC': 'bg-green-600 text-white',
+                                                    'iBeacon': 'bg-indigo-600 text-white',
+                                                    'GPS': 'bg-blue-600 text-white',
+                                                    'TAP': 'bg-orange-600 text-white'
+                                                };
+                                                return (
+                                                    <span key={badge} className={`text-[8px] px-1.5 py-0.5 ${badgeColors[badge] || 'bg-slate-700 text-slate-300'} rounded uppercase font-bold`}>
+                                                        {badge}
+                                                    </span>
+                                                );
+                                            })}
+                                            {getActivationBadges(task).length === 0 && (
+                                                <span className="text-[9px] text-slate-500">-</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
                                         {usageCount > 0 ? (
                                             <span className="inline-block px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded">
                                                 {usageCount}
