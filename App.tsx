@@ -1563,6 +1563,7 @@ const GameApp: React.FC = () => {
                 showScores={showScores}
                 showTaskId={showTaskId}
                 showTaskTitle={showTaskTitle}
+                showTaskActions={showTaskActions}
                 measuredDistance={measuredDistance}
                 hoveredPointId={hoveredPointId}
                 hoveredDangerZoneId={hoveredDangerZoneId}
