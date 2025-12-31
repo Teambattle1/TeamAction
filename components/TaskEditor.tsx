@@ -1204,6 +1204,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                    { id: 'radius', label: 'GPS GEOFENCE', desc: 'Unlocks within physical radius', icon: MapIcon },
                                    { id: 'click', label: 'TAP TO OPEN', desc: 'Allows opening from anywhere', icon: MousePointerClick },
                                    { id: 'qr', label: 'QR / BARCODE', desc: 'Player must scan a code', icon: Hash },
+                                   { id: 'nfc', label: 'NFC TAG', desc: 'Scan an NFC tag to unlock', icon: Smartphone },
+                                   { id: 'ibeacon', label: 'iBeacon', desc: 'Enter iBeacon proximity to unlock', icon: Wifi },
                                ].map(method => (
                                    <button
                                        key={method.id}
