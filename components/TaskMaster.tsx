@@ -1432,6 +1432,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                 iconId: 'default',
                                                 createdAt: Date.now(),
                                                 points: 10,
+                                                activationTypes: ['radius'], // GPS enabled by default
                                                 feedback: {
                                                     correctMessage: 'Correct!',
                                                     showCorrectMessage: true,
