@@ -387,7 +387,7 @@ export interface Game {
   toolbarPositions?: ToolbarPositions; // Per-game toolbar positions
 
   // Game Mode Configuration
-  gameMode?: 'standard' | 'playzone'; // 'standard' = GPS-based, 'playzone' = playground-only indoor
+  gameMode?: 'standard' | 'playzone' | 'elimination'; // 'standard' = GPS-based, 'playzone' = playground-only indoor, 'elimination' = GPS-based CTF
 
   // Team & Permission Settings
   showOtherTeams?: boolean;
