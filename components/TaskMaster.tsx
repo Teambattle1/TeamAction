@@ -390,6 +390,15 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         return Array.from(used).sort();
     };
 
+    const getActivationStats = () => {
+        const tasksWithActivations = library.filter(task => getActivationBadges(task).length > 0).length;
+        return {
+            total: library.length,
+            withActivations: tasksWithActivations,
+            withoutActivations: library.length - tasksWithActivations
+        };
+    };
+
     const getLanguageFlag = (language: string): string => {
         const flagMap: Record<string, string> = {
             'English': '🇬🇧',
