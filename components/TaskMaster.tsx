@@ -508,6 +508,14 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 }
             }
 
+            // Apply "show only with activations" filter
+            if (showOnlyWithActivations) {
+                const taskActivations = getActivationBadges(task);
+                if (taskActivations.length === 0) {
+                    return false;
+                }
+            }
+
             // Apply activation type filters (if any selected, task must match at least one)
             const selectedActivationTypes = Object.keys(activationFilters).filter(type => activationFilters[type]);
             if (selectedActivationTypes.length > 0) {
