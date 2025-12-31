@@ -790,6 +790,47 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 </>
             )}
 
+            {/* Snap to Road Selection Rectangle */}
+            {snapToRoadMode && snapSelectionStart && (
+                <>
+                    {/* Show start point marker */}
+                    <Circle
+                        center={[snapSelectionStart.lat, snapSelectionStart.lng]}
+                        radius={10}
+                        pathOptions={{
+                            color: '#06b6d4',
+                            fillColor: '#06b6d4',
+                            fillOpacity: 0.5,
+                            weight: 2
+                        }}
+                        interactive={false}
+                    />
+
+                    {/* Show selection rectangle if end point is set */}
+                    {snapSelectionEnd && (
+                        <L.Rectangle
+                            bounds={[
+                                [
+                                    Math.min(snapSelectionStart.lat, snapSelectionEnd.lat),
+                                    Math.min(snapSelectionStart.lng, snapSelectionEnd.lng)
+                                ],
+                                [
+                                    Math.max(snapSelectionStart.lat, snapSelectionEnd.lat),
+                                    Math.max(snapSelectionStart.lng, snapSelectionEnd.lng)
+                                ]
+                            ]}
+                            pathOptions={{
+                                color: '#06b6d4',
+                                fillColor: '#06b6d4',
+                                fillOpacity: 0.1,
+                                weight: 3,
+                                dashArray: '10, 10'
+                            }}
+                        />
+                    )}
+                </>
+            )}
+
             {/* Tasks */}
             {mapPoints.map(point => (
                 <MapTaskMarker
