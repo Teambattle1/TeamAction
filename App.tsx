@@ -562,11 +562,17 @@ const GameApp: React.FC = () => {
           return;
       }
 
-      // Normal mode: Open task modal/editor
+      // Normal mode: Open task modal/editor OR action editor
       console.log('[handlePointClick] ⚠️ NORMAL MODE - Opening task modal/editor');
       if (mode === GameMode.EDIT) {
-          console.log('[handlePointClick] Setting activeTask:', point.id);
-          setActiveTask(point);
+          // If ACTIONS button is active, show action editor instead of full task editor
+          if (showTaskActions) {
+              console.log('[handlePointClick] ACTIONS mode active - Opening action editor:', point.id);
+              setActiveTaskActionPoint(point);
+          } else {
+              console.log('[handlePointClick] Setting activeTask:', point.id);
+              setActiveTask(point);
+          }
       } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
           console.log('[handlePointClick] Setting activeTaskModalId:', point.id);
           setActiveTaskModalId(point.id);
