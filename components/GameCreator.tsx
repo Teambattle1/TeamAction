@@ -815,7 +815,10 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   );
 
   const renderContent = () => {
-      switch (activeTab) {
+      // Prevent MAP tab for playzone and elimination modes
+      const effectiveTab = (gameMode === 'playzone' || gameMode === 'elimination') && activeTab === 'MAP' ? 'GAME' : activeTab;
+
+      switch (effectiveTab) {
           // ... (Existing Cases) ...
           case 'GAME':
               return (
