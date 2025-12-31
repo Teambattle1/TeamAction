@@ -1409,6 +1409,10 @@ const GameApp: React.FC = () => {
                     onClose={() => setShowDatabaseTools(false)}
                     onDeleteGame={handleDeleteGame}
                     initialShowSql={true}
+                    onLibraryUpdated={async () => {
+                        const updatedLib = await db.fetchLibrary();
+                        setTaskLibrary(updatedLib);
+                    }}
                 />
             )}
             {showGameStats && (
