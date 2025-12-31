@@ -825,7 +825,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       name="gameMode"
                                       value="standard"
                                       checked={gameMode === 'standard'}
-                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone')}
+                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone' | 'elimination')}
                                       className="w-4 h-4"
                                   />
                                   <div>
