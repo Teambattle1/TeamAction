@@ -1671,6 +1671,8 @@ const GameApp: React.FC = () => {
             authUser={authUser}
             activeGame={activeGame}
             onUpdateGame={(game) => updateActiveGame(game, "Updated Toolbar Positions")}
+            onToggleSnapToRoad={() => { /* TODO: Wire to snap to road handler */ }}
+            snapToRoadMode={false}
             onStartSimulation={() => activeGame && handleStartSimulation(activeGame)}
         />
 
