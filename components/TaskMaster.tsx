@@ -379,6 +379,16 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         return Array.from(used).sort();
     };
 
+    const getUsedActivationsInLibrary = (): string[] => {
+        const used = new Set<string>();
+        if (library && Array.isArray(library)) {
+            library.forEach(task => {
+                getActivationBadges(task).forEach(badge => used.add(badge));
+            });
+        }
+        return Array.from(used).sort();
+    };
+
     const getLanguageFlag = (language: string): string => {
         const flagMap: Record<string, string> = {
             'English': '🇬🇧',
