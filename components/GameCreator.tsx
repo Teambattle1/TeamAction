@@ -222,7 +222,7 @@ const MapStyleCard: React.FC<MapStyleCardProps> = ({
 
 const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, onDelete, onOpenPlaygroundEditor, initialGameMode = null }) => {
   const [activeTab, setActiveTab] = useState('GAME');
-  const [gameMode, setGameMode] = useState<'standard' | 'playzone'>(baseGame?.gameMode || initialGameMode || 'standard');
+  const [gameMode, setGameMode] = useState<'standard' | 'playzone' | 'elimination'>(baseGame?.gameMode || initialGameMode || 'standard');
 
   // Core Info
   const [name, setName] = useState(baseGame?.name || '');
