@@ -1333,61 +1333,63 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                           />
                       </div>
 
-                      {/* Meeting Point Section */}
-                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
-                          <div className="flex items-center gap-2 mb-4">
-                              <label className="text-[10px] font-bold text-white uppercase">Meeting Point</label>
-                              <Info className="w-3 h-3 text-slate-500" />
-                          </div>
-                          
-                          <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
-                              <label className="block text-[10px] font-bold text-white uppercase mb-4">Meeting point</label>
-                              
-                              <div className="flex items-center gap-3 mb-6">
-                                  <input 
-                                      type="checkbox" 
-                                      checked={enableMeetingPoint}
-                                      onChange={(e) => setEnableMeetingPoint(e.target.checked)}
-                                      className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
-                                  />
-                                  <span className="text-xs text-slate-300">Enable meeting point after finishing the game</span>
+                      {/* Meeting Point Section - Only for GPS-based games */}
+                      {gameMode !== 'playzone' && (
+                          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                              <div className="flex items-center gap-2 mb-4">
+                                  <label className="text-[10px] font-bold text-white uppercase">Meeting Point</label>
+                                  <Info className="w-3 h-3 text-slate-500" />
                               </div>
 
-                              {enableMeetingPoint && (
-                                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                                      <button
-                                          onClick={() => setShowMapPicker(true)}
-                                          className="w-full p-4 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-xl font-bold uppercase text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 group"
-                                      >
-                                          <MapPin className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                                          PICK LOCATION ON MAP
-                                      </button>
-                                      <div className="grid grid-cols-2 gap-4">
-                                          <div>
-                                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Latitude</label>
-                                              <input
-                                                  type="text"
-                                                  value={endLat}
-                                                  onChange={(e) => setEndLat(e.target.value)}
-                                                  placeholder="55.6761"
-                                                  className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none uppercase"
-                                              />
-                                          </div>
-                                          <div>
-                                              <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Longitude</label>
-                                              <input
-                                                  type="text"
-                                                  value={endLng}
-                                                  onChange={(e) => setEndLng(e.target.value)}
-                                                  placeholder="12.5683"
-                                                  className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none uppercase"
-                                              />
+                              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                                  <label className="block text-[10px] font-bold text-white uppercase mb-4">Meeting point</label>
+
+                                  <div className="flex items-center gap-3 mb-6">
+                                      <input
+                                          type="checkbox"
+                                          checked={enableMeetingPoint}
+                                          onChange={(e) => setEnableMeetingPoint(e.target.checked)}
+                                          className="w-5 h-5 rounded border-slate-600 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                                      />
+                                      <span className="text-xs text-slate-300">Enable meeting point after finishing the game</span>
+                                  </div>
+
+                                  {enableMeetingPoint && (
+                                      <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                          <button
+                                              onClick={() => setShowMapPicker(true)}
+                                              className="w-full p-4 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-xl font-bold uppercase text-sm tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 group"
+                                          >
+                                              <MapPin className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                                              PICK LOCATION ON MAP
+                                          </button>
+                                          <div className="grid grid-cols-2 gap-4">
+                                              <div>
+                                                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Latitude</label>
+                                                  <input
+                                                      type="text"
+                                                      value={endLat}
+                                                      onChange={(e) => setEndLat(e.target.value)}
+                                                      placeholder="55.6761"
+                                                      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none uppercase"
+                                                  />
+                                              </div>
+                                              <div>
+                                                  <label className="block text-[9px] font-bold text-slate-500 uppercase mb-1">Longitude</label>
+                                                  <input
+                                                      type="text"
+                                                      value={endLng}
+                                                      onChange={(e) => setEndLng(e.target.value)}
+                                                      placeholder="12.5683"
+                                                      className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono font-bold focus:border-orange-500 outline-none uppercase"
+                                                  />
+                                              </div>
                                           </div>
                                       </div>
-                                  </div>
-                              )}
+                                  )}
+                              </div>
                           </div>
-                      </div>
+                      )}
                   </div>
               );
           case 'DESIGN': // GAME SETUP TAB
