@@ -1385,15 +1385,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 <Plus className="w-4 h-4" /> ADD NEW
                             </button>
 
-                            {/* Reset Background Button */}
-                            <button
-                                onClick={handleResetBackground}
-                                className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 bg-blue-600 hover:bg-blue-700 text-white shadow-lg border-2 border-blue-500 flex items-center justify-center gap-2"
-                                title="Reset and center background"
-                            >
-                                <Maximize className="w-4 h-4" />
-                            </button>
-
                             {/* Zone Tabs */}
                             {game.playgrounds?.map((pg, index) => (
                                 <button
