@@ -60,6 +60,8 @@ interface GameHUDProps {
     onToggleTaskId: () => void;
     showTaskTitle: boolean;
     onToggleTaskTitle: () => void;
+    showTaskActions: boolean;
+    onToggleTaskActions: () => void;
     hiddenPlaygroundIds: string[];
     onUpdateGameTime?: (newEndTime: number) => Promise<void>;
     onToggleChat: () => void;
@@ -106,7 +108,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
     mapStyle, onSetMapStyle, language, onBackToHub, activeGameName, onOpenInstructorDashboard,
     isMeasuring, onToggleMeasure, measuredDistance, measurePointsCount = 0, playgrounds, onOpenPlayground, onOpenTeamDashboard, onOpenTeamLobby,
     onRelocateGame, isRelocating, onUpdateGameTime, timerConfig, onFitBounds, onLocateMe, onSearchLocation,
-    isDrawerExpanded, showScores, onToggleScores, showTaskId, onToggleTaskId, showTaskTitle, onToggleTaskTitle, hiddenPlaygroundIds, onToggleChat, unreadMessagesCount,
+    isDrawerExpanded, showScores, onToggleScores, showTaskId, onToggleTaskId, showTaskTitle, onToggleTaskTitle, showTaskActions, onToggleTaskActions, hiddenPlaygroundIds, onToggleChat, unreadMessagesCount,
     targetPlaygroundId, onAddDangerZone, activeDangerZone, onEditGameSettings, onOpenGameChooser,
     routes, onToggleRoute, onAddRoute, endingAt, gameEnded, onReturnToStart, allowChatting = true, locateFeedback,
     authUser, activeGame, onUpdateGame, onStartSimulation, onToggleSnapToRoad, snapToRoadMode
