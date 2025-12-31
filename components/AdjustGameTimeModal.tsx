@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { X, Clock, Plus, Minus, Loader2 } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { X, Clock, Plus, Minus, Loader2, GripHorizontal } from 'lucide-react';
 import { TimerConfig } from '../types';
 
 interface AdjustGameTimeModalProps {
@@ -12,6 +12,11 @@ const AdjustGameTimeModal: React.FC<AdjustGameTimeModalProps> = ({ onClose, time
   const [adjustmentMinutes, setAdjustmentMinutes] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+  // Draggable state
+  const [position, setPosition] = useState({ x: window.innerWidth / 2 - 175, y: 100 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   // Calculate original end time
   const originalEndTime = useMemo(() => {
@@ -39,6 +44,29 @@ const AdjustGameTimeModal: React.FC<AdjustGameTimeModalProps> = ({ onClose, time
     return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   }, [timerConfig]);
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('button') && !target?.closest('.drag-handle')) return;
+    
+    e.preventDefault();
+    setIsDragging(true);
+    dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    e.stopPropagation();
+    e.preventDefault();
+    setPosition({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    setIsDragging(false);
+    (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+  };
+
   const handleAddMinute = () => {
     setAdjustmentMinutes(prev => prev + 1);
   };
@@ -59,7 +87,7 @@ const AdjustGameTimeModal: React.FC<AdjustGameTimeModalProps> = ({ onClose, time
       
       setMessage({
         type: 'success',
-        text: `Game time updated! New end time: ${adjustedEndTime.toLocaleTimeString()}`
+        text: `Game time updated!`
       });
 
       setTimeout(() => {
@@ -69,7 +97,7 @@ const AdjustGameTimeModal: React.FC<AdjustGameTimeModalProps> = ({ onClose, time
       console.error('Error updating game time:', error);
       setMessage({
         type: 'error',
-        text: 'Failed to update game time. Please try again.'
+        text: 'Failed to update game time.'
       });
     } finally {
       setIsUpdating(false);
@@ -78,103 +106,92 @@ const AdjustGameTimeModal: React.FC<AdjustGameTimeModalProps> = ({ onClose, time
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in pointer-events-auto"
-      onClick={onClose}
+      className="absolute z-[1200] pointer-events-auto touch-none"
+      style={{ left: position.x, top: position.y }}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
     >
-      <div
-        className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700 pointer-events-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        
+      <div className="bg-cyan-900 border-2 border-cyan-700 rounded-xl shadow-2xl cursor-move group relative w-[350px]">
+        {/* Drag Handle */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-cyan-200 opacity-0 group-hover:opacity-100 transition-opacity bg-cyan-800 rounded-full px-2 border border-cyan-600 pointer-events-none drag-handle">
+          <GripHorizontal className="w-3 h-3" />
+        </div>
+
         {/* Header */}
-        <div className="p-6 border-b border-gray-700 bg-gradient-to-r from-blue-900/30 to-cyan-900/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Clock className="w-6 h-6 text-cyan-400" />
-              <h2 className="text-xl font-black text-white uppercase tracking-wider">ADJUST GAME TIME</h2>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-700 rounded-lg transition-colors">
-              <X className="w-5 h-5 text-gray-400" />
-            </button>
+        <div className="p-3 border-b border-cyan-700 bg-cyan-800/50 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-cyan-300" />
+            <h2 className="text-[10px] font-black text-white uppercase tracking-widest">ADJUST TIME</h2>
           </div>
+          <button onClick={onClose} className="p-1 hover:bg-cyan-700 rounded-lg transition-colors pointer-events-auto">
+            <X className="w-4 h-4 text-cyan-200" />
+          </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-3 space-y-3">
           
           {/* Current Playtime */}
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-            <p className="text-xs text-gray-400 font-bold uppercase mb-2">Current Playtime</p>
-            <p className="text-2xl font-black text-cyan-400">{currentPlaytime}</p>
+          <div className="bg-cyan-950/50 rounded-lg p-2 border border-cyan-700">
+            <p className="text-[8px] text-cyan-300 font-bold uppercase mb-1">Current Playtime</p>
+            <p className="text-lg font-black text-cyan-400">{currentPlaytime}</p>
           </div>
 
           {/* Original End Time */}
-          <div className="bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-            <p className="text-xs text-gray-400 font-bold uppercase mb-2">Original End Time</p>
-            <p className="text-lg font-black text-white">
+          <div className="bg-cyan-950/50 rounded-lg p-2 border border-cyan-700">
+            <p className="text-[8px] text-cyan-300 font-bold uppercase mb-1">Original End</p>
+            <p className="text-sm font-black text-white">
               {originalEndTime?.toLocaleTimeString('en-US', { 
                 hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit',
+                minute: '2-digit',
                 hour12: true 
               })}
-            </p>
-            <p className="text-[10px] text-gray-500 mt-1">
-              {originalEndTime?.toLocaleDateString()}
             </p>
           </div>
 
           {/* Time Adjustment */}
-          <div className="space-y-3">
-            <p className="text-xs text-gray-400 font-bold uppercase">Adjust Time (minutes)</p>
-            <div className="flex items-center justify-center gap-4 bg-gray-800/50 rounded-lg p-4 border border-gray-700">
+          <div className="space-y-2">
+            <p className="text-[8px] text-cyan-300 font-bold uppercase">Adjust (minutes)</p>
+            <div className="flex items-center justify-center gap-2 bg-cyan-950/50 rounded-lg p-2 border border-cyan-700">
               <button
                 onClick={handleRemoveMinute}
                 disabled={isUpdating}
-                className="p-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                className="p-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 text-white rounded-lg transition-colors pointer-events-auto"
               >
-                <Minus className="w-6 h-6" />
+                <Minus className="w-4 h-4" />
               </button>
               
-              <div className="text-center">
-                <p className="text-5xl font-black text-orange-400">{adjustmentMinutes.toString().padStart(3, ' ')}</p>
-                <p className="text-xs text-gray-400 font-bold mt-2">MINUTES</p>
+              <div className="text-center min-w-[60px]">
+                <p className="text-3xl font-black text-orange-400">{adjustmentMinutes > 0 ? '+' : ''}{adjustmentMinutes}</p>
+                <p className="text-[8px] text-cyan-300 font-bold">MIN</p>
               </div>
               
               <button
                 onClick={handleAddMinute}
                 disabled={isUpdating}
-                className="p-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                className="p-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg transition-colors pointer-events-auto"
               >
-                <Plus className="w-6 h-6" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {/* Adjusted End Time */}
-          <div className="bg-gradient-to-r from-green-900/20 to-cyan-900/20 rounded-lg p-4 border border-green-700/50">
-            <p className="text-xs text-gray-400 font-bold uppercase mb-2">Adjusted End Time</p>
-            <p className="text-lg font-black text-green-400">
+          <div className="bg-gradient-to-r from-green-900/30 to-cyan-900/30 rounded-lg p-2 border border-green-700/50">
+            <p className="text-[8px] text-cyan-300 font-bold uppercase mb-1">New End Time</p>
+            <p className="text-sm font-black text-green-400">
               {adjustedEndTime?.toLocaleTimeString('en-US', { 
                 hour: '2-digit', 
-                minute: '2-digit', 
-                second: '2-digit',
+                minute: '2-digit',
                 hour12: true 
               })}
             </p>
-            <p className="text-[10px] text-gray-500 mt-1">
-              {adjustedEndTime?.toLocaleDateString()}
-            </p>
-            {adjustmentMinutes !== 0 && (
-              <p className={`text-sm font-bold mt-2 ${adjustmentMinutes > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {adjustmentMinutes > 0 ? '+' : ''}{adjustmentMinutes} minutes
-              </p>
-            )}
           </div>
 
           {/* Status Message */}
           {message && (
-            <div className={`p-3 rounded-lg text-sm font-bold text-center ${
+            <div className={`p-2 rounded-lg text-[10px] font-bold text-center ${
               message.type === 'success' 
                 ? 'bg-green-900/30 border border-green-600 text-green-300' 
                 : 'bg-red-900/30 border border-red-600 text-red-300'
@@ -185,22 +202,22 @@ const AdjustGameTimeModal: React.FC<AdjustGameTimeModalProps> = ({ onClose, time
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-700 bg-gray-800/50 flex gap-3">
+        <div className="p-3 border-t border-cyan-700 bg-cyan-950/50 flex gap-2">
           <button
             onClick={onClose}
-            className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-colors uppercase tracking-wider text-sm"
+            className="flex-1 py-2 bg-cyan-700 hover:bg-cyan-600 text-white font-bold rounded-lg transition-colors uppercase tracking-wider text-[10px] pointer-events-auto"
           >
             Cancel
           </button>
           <button
             onClick={handleUpdate}
             disabled={isUpdating || adjustmentMinutes === 0}
-            className="flex-1 py-3 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white font-bold rounded-lg transition-colors uppercase tracking-wider text-sm flex items-center justify-center gap-2"
+            className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-bold rounded-lg transition-colors uppercase tracking-wider text-[10px] flex items-center justify-center gap-1 pointer-events-auto"
           >
             {isUpdating ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                UPDATING...
+                <Loader2 className="w-3 h-3 animate-spin" />
+                ...
               </>
             ) : (
               'UPDATE'
