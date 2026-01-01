@@ -280,9 +280,27 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         saveToolbarPositions();
     };
 
-    const activePlayground = game.playgrounds?.find(p => p.id === activePlaygroundId) || game.playgrounds?.[0];
+    // Initialize active playground
+    useEffect(() => {
+        if (!activePlaygroundId && game.playgrounds && game.playgrounds.length > 0) {
+            setActivePlaygroundId(game.playgrounds[0].id);
+        } else if (!game.playgrounds || game.playgrounds.length === 0) {
+            // Auto-create if none exists
+            const newPg: Playground = {
+                id: `pg-${Date.now()}`,
+                title: 'Global 1',
+                buttonVisible: true,
+                iconId: 'default',
+                location: { lat: 0, lng: 0 },
+                orientationLock: 'landscape'
+            };
+            onUpdateGame({ ...game, playgrounds: [newPg] });
+            setActivePlaygroundId(newPg.id);
+        }
+    }, [game.playgrounds]);
 
     // CRITICAL NULL CHECK: Prevent crash if no playground exists
+    const activePlayground = game.playgrounds?.find(p => p.id === activePlaygroundId) || game.playgrounds?.[0];
     if (!activePlayground) {
         return (
             <div style={{
@@ -330,7 +348,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const playgroundPoints = game.points.filter(p => p.playgroundId === activePlayground.id);
 
     useEffect(() => {
-        if (!activePlayground) return;
         if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
             setEditorOrientation(activePlayground.orientationLock);
         } else {
