@@ -643,9 +643,20 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
   const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
 
-  // Filter logic for Game Ended state
+  // Filter logic for Fog of War and Game Ended state
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
+
+      // FOG OF WAR MODE: Show only what the selected team can see
+      if (fogOfWarEnabled && selectedTeamId) {
+          // In fog of war, only show points that are visible to this team:
+          // 1. Points that are unlocked (isUnlocked = true), OR
+          // 2. Points that have been completed by this team
+          const isCompletedByTeam = selectedTeamCompletedPointIds.includes(p.id);
+          const isVisible = p.isUnlocked || isCompletedByTeam;
+
+          if (!isVisible) return false;
+      }
 
       // If game ended, only show Info points (points == 0) or if explicitly flagged (if we add 'isInfo' later)
       // Assuming 0 points means 'Info'
