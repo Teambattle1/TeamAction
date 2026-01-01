@@ -108,6 +108,7 @@ const GameApp: React.FC = () => {
   const [showTaskId, setShowTaskId] = useState(true);
   const [showTaskTitle, setShowTaskTitle] = useState(true);
   const [showTaskActions, setShowTaskActions] = useState(true);
+  const [showTeamPaths, setShowTeamPaths] = useState(false);
   const [currentDangerZone, setCurrentDangerZone] = useState<DangerZone | null>(null);
   const [activeDangerZone, setActiveDangerZone] = useState<DangerZone | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
