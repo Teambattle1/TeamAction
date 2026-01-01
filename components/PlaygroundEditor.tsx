@@ -618,7 +618,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         // Update game with snapped points
         onUpdateGame({
             ...game,
-            points: game.points.map(p => {
+            points: game.points?.map(p => {
                 const snapped = snappedPoints.find(sp => sp.id === p.id);
                 return snapped ? { ...p, playgroundPosition: snapped.playgroundPosition } : p;
             })
