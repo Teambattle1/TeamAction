@@ -266,6 +266,13 @@ export interface GamePoint {
   timeBombAutoFail?: boolean; // If true, task auto-fails on expiry; if false, just applies penalty
   timeBombStartedAt?: number; // Timestamp when timer started (per team, stored in team data)
 
+  // Multi-Team Collaboration
+  multiTeamEnabled?: boolean; // If true, requires multiple teams in proximity
+  multiTeamRequiredCount?: number; // Number of teams required (e.g., 2, 3, 4)
+  multiTeamRadius?: number; // Distance in meters within which all teams must be (default: 50m)
+  multiTeamCompletionMode?: 'all' | 'first'; // 'all' = all teams complete together, 'first' = first team to satisfy triggers
+  multiTeamActiveTeams?: string[]; // Team IDs currently in proximity (tracked in real-time)
+
   // Structural
   isSectionHeader?: boolean;
 }
