@@ -1094,6 +1094,79 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                 </div>
             )}
 
+            {/* LAYERS Toolbar - EDIT and INSTRUCTOR modes only */}
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
+                <div className="absolute bottom-24 left-4 z-[1100] pointer-events-auto">
+                    <div className="bg-cyan-600 border-2 border-cyan-500 rounded-xl shadow-2xl p-2">
+                        <div className="flex flex-col gap-1">
+                            <div className="text-center mb-1">
+                                <h3 className="text-[9px] font-black uppercase tracking-widest text-white flex items-center gap-1 justify-center">
+                                    <Filter className="w-3 h-3" />
+                                    LAYERS
+                                </h3>
+                            </div>
+                            <div className="grid grid-cols-2 gap-1">
+                                {/* Map Layer */}
+                                <button
+                                    onClick={onToggleMapLayer}
+                                    className={`px-2 py-1.5 rounded-lg transition-all border flex flex-col items-center justify-center text-xs ${
+                                        showMapLayer !== false
+                                            ? 'bg-black text-white border-gray-800 shadow-lg'
+                                            : 'bg-cyan-700 text-cyan-100 border-cyan-600 hover:bg-cyan-800'
+                                    }`}
+                                    title="Toggle Map Layer"
+                                >
+                                    <Globe className="w-4 h-4 mb-0.5" />
+                                    <span className="text-[7px] font-black uppercase">MAP</span>
+                                </button>
+
+                                {/* Zone Layer */}
+                                <button
+                                    onClick={onToggleZoneLayer}
+                                    className={`px-2 py-1.5 rounded-lg transition-all border flex flex-col items-center justify-center text-xs ${
+                                        showZoneLayer !== false
+                                            ? 'bg-black text-white border-gray-800 shadow-lg'
+                                            : 'bg-cyan-700 text-cyan-100 border-cyan-600 hover:bg-cyan-800'
+                                    }`}
+                                    title="Toggle Zone Layer (Danger Zones)"
+                                >
+                                    <Skull className="w-4 h-4 mb-0.5" />
+                                    <span className="text-[7px] font-black uppercase">ZONES</span>
+                                </button>
+
+                                {/* Task Layer */}
+                                <button
+                                    onClick={onToggleTaskLayer}
+                                    className={`px-2 py-1.5 rounded-lg transition-all border flex flex-col items-center justify-center text-xs ${
+                                        showTaskLayer !== false
+                                            ? 'bg-black text-white border-gray-800 shadow-lg'
+                                            : 'bg-cyan-700 text-cyan-100 border-cyan-600 hover:bg-cyan-800'
+                                    }`}
+                                    title="Toggle Task Layer (Task Pins)"
+                                >
+                                    <Target className="w-4 h-4 mb-0.5" />
+                                    <span className="text-[7px] font-black uppercase">TASKS</span>
+                                </button>
+
+                                {/* Live Layer */}
+                                <button
+                                    onClick={onToggleLiveLayer}
+                                    className={`px-2 py-1.5 rounded-lg transition-all border flex flex-col items-center justify-center text-xs ${
+                                        showLiveLayer !== false
+                                            ? 'bg-black text-white border-gray-800 shadow-lg'
+                                            : 'bg-cyan-700 text-cyan-100 border-cyan-600 hover:bg-cyan-800'
+                                    }`}
+                                    title="Toggle Live Layer (Team Positions)"
+                                >
+                                    <Users className="w-4 h-4 mb-0.5" />
+                                    <span className="text-[7px] font-black uppercase">LIVE</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Bottom Bar Logic ... */}
             {!isSkiMode && (
                 <div className="flex justify-between items-end pointer-events-none">
