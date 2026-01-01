@@ -237,7 +237,9 @@ const GameManager: React.FC<GameManagerProps> = ({
       const ad = getGameSessionDate(a).getTime();
       const bd = getGameSessionDate(b).getTime();
       if (ad !== bd) return bd - ad;
-      return a.name.localeCompare(b.name);
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB);
     });
 
     return {
