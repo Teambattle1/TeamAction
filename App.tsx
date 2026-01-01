@@ -1843,6 +1843,8 @@ const GameApp: React.FC = () => {
             onStartSimulation={handleStartSimulation}
             onToggleSnapToRoad={handleToggleSnapToRoad}
             snapToRoadMode={snapToRoadMode}
+            showTeamPaths={showTeamPaths}
+            onToggleTeamPaths={() => setShowTeamPaths(!showTeamPaths)}
         />
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
