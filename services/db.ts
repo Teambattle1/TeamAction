@@ -1086,7 +1086,7 @@ export const deleteCustomMapStyle = async (styleId: string): Promise<boolean> =>
 };
 
 // --- MEDIA SUBMISSIONS (Live Approval) ---
-export const getMediaSubmissions = async (gameId: string): Promise<import('../types').MediaSubmission[]> => {
+export const getMediaSubmissions = async (gameId: string): Promise<MediaSubmission[]> => {
     try {
         const { data, error } = await supabase
             .from('media_submissions')
@@ -1118,7 +1118,7 @@ export const getMediaSubmissions = async (gameId: string): Promise<import('../ty
     }
 };
 
-export const submitMediaForReview = async (submission: Omit<import('../types').MediaSubmission, 'id' | 'status' | 'submittedAt'>): Promise<string | null> => {
+export const submitMediaForReview = async (submission: Omit<MediaSubmission, 'id' | 'status' | 'submittedAt'>): Promise<string | null> => {
     try {
         const { data, error } = await supabase
             .from('media_submissions')
