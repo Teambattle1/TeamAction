@@ -2970,8 +2970,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         </div>
 
                         {/* Content */}
-                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {/* MAP Section */}
+                        <div className={`p-6 ${isAddingTaskList ? 'grid grid-cols-1' : 'grid grid-cols-1 md:grid-cols-2'} gap-6`}>
+                          {/* MAP Section - Only show when not adding from playzone editor */}
+                          {!isAddingTaskList && (
                           <div>
                             <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 pb-2 border-b border-slate-700">MAP</h3>
                             <button
@@ -3045,6 +3046,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                               </div>
                             </button>
                           </div>
+                          )}
 
                           {/* PLAYZONES Section */}
                           <div>
