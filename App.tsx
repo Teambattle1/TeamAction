@@ -1630,6 +1630,11 @@ const GameApp: React.FC = () => {
                     }))}
                 />
             )}
+            {showMapStyleLibrary && (
+                <MapStyleLibrary
+                    onClose={() => setShowMapStyleLibrary(false)}
+                />
+            )}
 
             {showSupabaseDiagnostic && (
                 <SupabaseDiagnostic
