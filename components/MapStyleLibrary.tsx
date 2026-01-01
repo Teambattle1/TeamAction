@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Eye, Map as MapIcon, Globe, Layers, Snowflake, Mountain, ScrollText, Settings, Check, AlertTriangle, Edit2, Upload, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Trash2, Eye, Map as MapIcon, Globe, Layers, Snowflake, Mountain, ScrollText, Settings, Check, AlertTriangle, Edit2, Upload, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { MapStyleId } from '../types';
 import * as db from '../services/db';
+import { uploadImage } from '../services/storage';
 
 interface MapStyleLibraryProps {
     onClose: () => void;
