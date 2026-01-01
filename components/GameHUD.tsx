@@ -190,6 +190,17 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
     // SHOW toolbar - right side, top
     const [showToolboxPos, setShowToolboxPos] = useState({ x: window.innerWidth - 180, y: 10 });
     const [isDraggingShowBox, setIsDraggingShowBox] = useState(false);
+
+    // QR Scanner - floating button on game playing area
+    const [qrScannerPos, setQRScannerPos] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+    const [isDraggingQRScanner, setIsDraggingQRScanner] = useState(false);
+    const [isQRScannerActive, setIsQRScannerActive] = useState(false);
+    const [qrScannedValue, setQRScannedValue] = useState<string | null>(null);
+    const qrScannerDragOffset = useRef({ x: 0, y: 0 });
+    const qrVideoRef = useRef<HTMLVideoElement>(null);
+    const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+    const qrStreamRef = useRef<MediaStream | null>(null);
+    const qrScanIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const showDragOffset = useRef({ x: 0, y: 0 });
 
     // Toolbar Position Persistence
