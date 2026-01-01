@@ -7,7 +7,7 @@ import {
     Layers, Globe, Trash2, Bold, Italic, Underline, Link as LinkIcon, Info,
     Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2,
     Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
-    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus
+    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus, Wand2
 } from 'lucide-react';
 import { searchLogoUrl, generateAiLogo } from '../services/ai';
 import { uploadImage } from '../services/storage';
