@@ -5,7 +5,7 @@ import { uploadImage } from '../services/storage'; // IMPORTED
 import {
     X, Plus, Search, Layers, Library, Edit2, Trash2, ArrowLeft, Save,
     ImageIcon, Upload, Filter, Tag, LayoutList, RefreshCw, Check, Copy,
-    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings, Loader2
+    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings, Loader2, Sparkles
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import AiTaskGenerator from './AiTaskGenerator';
@@ -61,6 +61,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     // Modals
     const [showAiGen, setShowAiGen] = useState(initialModal === 'AI');
     const [showLoquiz, setShowLoquiz] = useState(initialModal === 'LOQUIZ');
+    const [showAiGenForList, setShowAiGenForList] = useState(false);
 
     // View State
     const [libraryViewMode, setLibraryViewMode] = useState<'grid' | 'list'>('list');
@@ -1187,12 +1188,20 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-gray-500 uppercase text-xs tracking-widest">Tasks ({editingList.tasks.length})</h3>
-                                    <button 
-                                        onClick={() => setIsSelectingForCurrentList(true)}
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-indigo-700 shadow-md flex items-center gap-2"
-                                    >
-                                        <Library className="w-4 h-4" /> Add From Library
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setIsSelectingForCurrentList(true)}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-indigo-700 shadow-md flex items-center gap-2 transition-all"
+                                        >
+                                            <Library className="w-4 h-4" /> Add From Library
+                                        </button>
+                                        <button
+                                            onClick={() => setShowAiGenForList(true)}
+                                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-xs font-bold uppercase tracking-wide shadow-md flex items-center gap-2 transition-all"
+                                        >
+                                            <Sparkles className="w-4 h-4" /> AI Tasks
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-3">
@@ -1231,8 +1240,21 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     ))}
                                     {editingList.tasks.length === 0 && (
                                         <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-400">
-                                            <p className="text-xs font-bold uppercase">List is empty</p>
-                                            <button onClick={() => setIsSelectingForCurrentList(true)} className="mt-2 text-blue-500 hover:underline text-xs font-bold uppercase">Click to add tasks</button>
+                                            <p className="text-sm font-bold uppercase mb-4">List is empty</p>
+                                            <div className="flex gap-3 justify-center">
+                                                <button
+                                                    onClick={() => setIsSelectingForCurrentList(true)}
+                                                    className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all shadow-lg"
+                                                >
+                                                    <Library className="w-4 h-4" /> Browse Library
+                                                </button>
+                                                <button
+                                                    onClick={() => setShowAiGenForList(true)}
+                                                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-xl text-xs font-bold uppercase tracking-wide flex items-center gap-2 transition-all shadow-lg"
+                                                >
+                                                    <Sparkles className="w-4 h-4" /> Generate with AI
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -1865,7 +1887,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
             {/* AI Generator Modal */}
             {showAiGen && (
-                <AiTaskGenerator 
+                <AiTaskGenerator
                     onClose={() => setShowAiGen(false)}
                     onAddTasks={(tasks) => {}}
                     onAddToLibrary={async (tasks) => {
@@ -1874,6 +1896,41 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                         setShowAiGen(false);
                     }}
                     targetMode='LIBRARY'
+                />
+            )}
+
+            {/* AI Generator for Task List Editor */}
+            {showAiGenForList && editingList && (
+                <AiTaskGenerator
+                    onClose={() => setShowAiGenForList(false)}
+                    onAddTasks={(tasks) => {}}
+                    onAddTasksToList={(listId, tasks) => {
+                        // Add AI-generated tasks to the current editing list
+                        setEditingList({
+                            ...editingList,
+                            tasks: [...editingList.tasks, ...tasks]
+                        });
+                        setShowAiGenForList(false);
+                        setNotification({ message: `✨ ${tasks.length} AI-generated tasks added to list!`, type: 'success' });
+                    }}
+                    onCreateListWithTasks={(name, tasks) => {
+                        // Alternative: Replace current list with new AI-generated one
+                        setEditingList({
+                            ...editingList,
+                            name: name,
+                            description: `AI-generated tasks about ${name}`,
+                            tasks: tasks
+                        });
+                        setShowAiGenForList(false);
+                        setNotification({ message: `✨ List updated with ${tasks.length} AI tasks!`, type: 'success' });
+                    }}
+                    onAddToLibrary={async (tasks) => {
+                        // Optionally also save to library
+                        for (const t of tasks) await db.saveTemplate(t);
+                        await loadLibrary(true);
+                    }}
+                    taskLists={taskLists}
+                    targetMode='LIST'
                 />
             )}
 
