@@ -249,17 +249,63 @@ const guessDomain = (query: string): string => {
 export const searchLogoUrl = async (query: string): Promise<string | null> => {
     console.log('[Logo Search] Starting search for:', query);
 
-    // Generate best domain guess
-    const domain = guessDomain(query);
-    console.log('[Logo Search] Guessed domain:', domain);
+    try {
+        // Try multiple approaches in order
 
-    // Return Clearbit URL
-    // The browser will handle loading - if it fails, the img onError handler will try Google favicon
-    // This avoids CORS issues from pre-flight verification
-    const logoUrl = `https://logo.clearbit.com/${domain}`;
+        // 1. Try using the company name with an API that searches for logos
+        // Use Google Favicon service as primary (most reliable)
+        const domain = guessDomain(query);
 
-    console.log('[Logo Search] Using Clearbit logo:', logoUrl);
-    return logoUrl;
+        // Use Google Favicon API (public, no auth needed)
+        // Returns actual favicons from websites
+        const logoUrl = `https://www.google.com/s2/favicons?sz=256&domain=${domain}`;
+
+        console.log('[Logo Search] Using Google Favicon for domain:', domain);
+        console.log('[Logo Search] Logo URL:', logoUrl);
+
+        return logoUrl;
+    } catch (error) {
+        console.error('[Logo Search] Error:', error);
+        return null;
+    }
+};
+
+export const generateAiLogo = async (companyName: string, style: string = 'professional'): Promise<string | null> => {
+    try {
+        const key = ensureApiKey();
+        const ai = new GoogleGenAI({ apiKey: key });
+
+        const prompt = `Create a professional company logo for "${companyName}". Style: ${style}. Generate a simple, memorable vector-style logo suitable for business use. Logo should be centered and work well as a square icon.`;
+
+        console.log('[AI Logo] Generating logo for:', companyName);
+
+        const response = await makeRequestWithRetry<GenerateContentResponse>(
+            () => ai.models.generateContent({
+                model: 'gemini-2.5-flash-image',
+                contents: prompt,
+            }),
+            'generateAiLogo'
+        );
+
+        if (response.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
+            const imageData = response.candidates[0].content.parts[0].inlineData;
+            const logoUrl = `data:${imageData.mimeType};base64,${imageData.data}`;
+            console.log('[AI Logo] Successfully generated logo');
+            return logoUrl;
+        }
+
+        console.warn('[AI Logo] No image data in response');
+        return null;
+    } catch (error: any) {
+        console.error('[AI Logo] Error generating logo:', error);
+
+        // Check if it's a missing API key error
+        if (error?.message?.includes('AI API Key missing')) {
+            throw error; // Re-throw to let caller handle API key modal
+        }
+
+        return null;
+    }
 };
 
 // Generate a mood-based audio vignette using Web Audio API
