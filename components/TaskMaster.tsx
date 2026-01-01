@@ -829,9 +829,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                 {task.title}
                             </h4>
                             <p
-                                className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1"
-                                onMouseEnter={() => handleTaskMouseEnter(task)}
-                                onMouseLeave={handleTaskMouseLeave}
+                                className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1 cursor-pointer hover:text-gray-300 transition-colors"
+                                onClick={() => handleTaskQuestionClick(task)}
                             >
                                 {task.task.question}
                             </p>
