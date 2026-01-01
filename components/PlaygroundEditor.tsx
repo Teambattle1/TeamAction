@@ -112,6 +112,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [bulkIconMode, setBulkIconMode] = useState(false);
     const [bulkIconTargets, setBulkIconTargets] = useState<Set<string>>(new Set());
 
+    // Playzone selection for task/AI import
+    const [showPlayzoneSelector, setShowPlayzoneSelector] = useState(false);
+    const [pendingTasksToAdd, setPendingTasksToAdd] = useState<TaskTemplate[]>([]);
+    const [isAddingAITasks, setIsAddingAITasks] = useState(false);
+
     // AI Background Generation
     const [showAiBackgroundPrompt, setShowAiBackgroundPrompt] = useState(false);
     const [aiBackgroundPromptValue, setAiBackgroundPromptValue] = useState('');
