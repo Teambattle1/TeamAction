@@ -87,11 +87,19 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
       if (e.key === 'ArrowRight') nextSlide();
       if (e.key === 'ArrowLeft') previousSlide();
       if (e.key === 'Escape') exitPresentation();
+
+      // Spacebar reveals top 3 positions one by one when on ranking slide
+      if (e.key === ' ' && showRankingSlide) {
+        e.preventDefault();
+        if (revealedTop3 < 3) {
+          setRevealedTop3(prev => prev + 1);
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [presentationMode, selectedMedia]);
+  }, [presentationMode, selectedMedia, showRankingSlide, revealedTop3]);
 
   // Presentation Mode View
   if (presentationMode && selectedMedia.length > 0) {
