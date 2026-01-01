@@ -4,7 +4,7 @@ import {
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin, Gauge, Map
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin, Gauge, Map, KeyRound
 } from 'lucide-react';
 import { Game, AuthUser } from '../types';
 import './InitialLandingStyles.css';
@@ -433,12 +433,12 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           color="bg-purple-500"
                           onClick={() => onAction('USERS')}
                       />
-                      <NavCard 
-                          title="DATABASE" 
-                          subtitle="SYSTEM MAINTENANCE" 
-                          icon={Database} 
+                      <NavCard
+                          title="AI SETTINGS"
+                          subtitle="SYSTEM MAINTENANCE"
+                          icon={KeyRound}
                           color="bg-blue-600"
-                          onClick={() => onAction('DATABASE')} 
+                          onClick={() => onAction('DATABASE')}
                       />
                       <NavCard
                           title="QR CODES"
@@ -462,7 +462,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           onClick={() => onAction('MAP_STYLES')}
                       />
                       <NavCard
-                          title="DIAGNOSTICS"
+                          title="SUPABASE"
                           subtitle="DATABASE & CONNECTION"
                           icon={Gauge}
                           color="bg-green-600"
