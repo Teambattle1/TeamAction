@@ -844,6 +844,74 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                 </div>
             )}
 
+            {/* Fog of War / God Mode Toggle - PLAY and INSTRUCTOR modes only */}
+            {(mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) && onToggleFogOfWar && teams && teams.length > 0 && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1200] pointer-events-auto">
+                    <div className="bg-indigo-600 border-2 border-indigo-500 rounded-xl shadow-2xl p-2">
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={onToggleFogOfWar}
+                                className={`px-4 py-2 rounded-lg transition-all border-2 flex items-center gap-2 font-black uppercase text-xs ${
+                                    fogOfWarEnabled
+                                        ? 'bg-indigo-800 border-indigo-600 text-indigo-200'
+                                        : 'bg-black border-gray-800 text-white shadow-lg'
+                                }`}
+                                title={fogOfWarEnabled ? 'God Mode Active - See All' : 'Fog of War - View as Team'}
+                            >
+                                {fogOfWarEnabled ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                {fogOfWarEnabled ? 'FOG OF WAR' : 'GOD MODE'}
+                            </button>
+
+                            {fogOfWarEnabled && (
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowFogOfWarMenu(!showFogOfWarMenu)}
+                                        className="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 border-2 border-indigo-600 text-white rounded-lg font-black uppercase text-xs flex items-center gap-2 transition-colors"
+                                    >
+                                        <Users className="w-4 h-4" />
+                                        {selectedTeamForFogOfWar ? teams.find(t => t.id === selectedTeamForFogOfWar)?.name || 'Select Team' : 'Select Team'}
+                                        <ChevronDown className="w-3 h-3" />
+                                    </button>
+
+                                    {showFogOfWarMenu && (
+                                        <div className="absolute top-full mt-2 left-0 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden min-w-[200px] max-h-[300px] overflow-y-auto">
+                                            <div className="p-2 bg-slate-800 border-b border-slate-700">
+                                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Select Team View</p>
+                                            </div>
+                                            {teams.map((team) => (
+                                                <button
+                                                    key={team.id}
+                                                    onClick={() => {
+                                                        onSelectTeamForFogOfWar?.(team.id);
+                                                        setShowFogOfWarMenu(false);
+                                                    }}
+                                                    className={`w-full px-4 py-2 text-left text-sm font-bold transition-colors ${
+                                                        selectedTeamForFogOfWar === team.id
+                                                            ? 'bg-indigo-600 text-white'
+                                                            : 'text-slate-300 hover:bg-slate-800'
+                                                    }`}
+                                                >
+                                                    {team.name}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => {
+                                                    onSelectTeamForFogOfWar?.(null);
+                                                    setShowFogOfWarMenu(false);
+                                                }}
+                                                className="w-full px-4 py-2 text-left text-sm font-bold text-slate-500 hover:bg-slate-800 transition-colors border-t border-slate-700"
+                                            >
+                                                Clear Selection
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Draggable PINS Toolbar (Measure, Scores, Relocate) - Only for GPS-based games */}
             {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && (
                 <div
