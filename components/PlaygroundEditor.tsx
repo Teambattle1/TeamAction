@@ -411,7 +411,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const updatePointDirectly = (pointId: string, updates: Partial<GamePoint>) => {
         onUpdateGame({
             ...game,
-            points: game.points.map(p => p.id === pointId ? { ...p, ...updates } : p)
+            points: game.points?.map(p => p.id === pointId ? { ...p, ...updates } : p)
         });
     };
 
