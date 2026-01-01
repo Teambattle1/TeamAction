@@ -1536,6 +1536,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
                 )}
 
+                {isBackgroundLocked && (
+                    <div className="absolute top-40 left-6 bg-red-900/80 border border-red-500 rounded-lg p-3 text-[9px] text-red-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
+                        🔒 Background is LOCKED - dragging disabled
+                    </div>
+                )}
+
                 {/* Draggable SHOW Toolbar */}
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
