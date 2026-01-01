@@ -129,6 +129,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showPlayzoneSelector, setShowPlayzoneSelector] = useState(false);
     const [pendingTasksToAdd, setPendingTasksToAdd] = useState<TaskTemplate[]>([]);
     const [isAddingAITasks, setIsAddingAITasks] = useState(false);
+    const [isAddingTaskList, setIsAddingTaskList] = useState(false);
 
     // AI Background Generation
     const [showAiBackgroundPrompt, setShowAiBackgroundPrompt] = useState(false);
