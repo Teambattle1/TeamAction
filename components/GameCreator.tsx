@@ -47,8 +47,6 @@ const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: 
     { id: 'treasure', label: 'Treasure', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.9] contrast-110 brightness-95 hue-rotate-30', icon: ScrollText },
     // Desert map style
     { id: 'desert', label: 'Desert', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'saturate-150 hue-rotate-15 brightness-110 contrast-105', icon: Mountain },
-    // Ancient map style
-    { id: 'ancient', label: 'Ancient', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.8] contrast-115 brightness-85', icon: ScrollText },
     // Clean/minimal style
     { id: 'clean', label: 'Clean', preview: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/13/4285/2722.png', icon: Globe },
 ];
