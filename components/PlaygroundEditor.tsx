@@ -2058,11 +2058,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     (source.logic.onOpen?.some((a: any) => a.targetId === point.id || a === point.id))
                                 )
                             );
+                            // Use visual position while dragging, otherwise use game state position
+                            const displayX = isDraggingThis && dragVisualPosition ? dragVisualPosition.x : (point.playgroundPosition?.x || 50);
+                            const displayY = isDraggingThis && dragVisualPosition ? dragVisualPosition.y : (point.playgroundPosition?.y || 50);
+
                             return (
                                 <div
                                     key={point.id}
                                     className={`absolute transform -translate-x-1/2 -translate-y-1/2 group ${isDraggingThis ? 'cursor-grabbing' : isMarkMode ? 'cursor-pointer' : 'cursor-grab'}`}
-                                    style={{ left: `${point.playgroundPosition?.x || 50}%`, top: `${point.playgroundPosition?.y || 50}%` }}
+                                    style={{ left: `${displayX}%`, top: `${displayY}%` }}
                                     onMouseDown={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
