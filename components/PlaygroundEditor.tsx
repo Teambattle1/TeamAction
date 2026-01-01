@@ -894,6 +894,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         };
 
         setDraggingTaskId(point.id);
+        setDragVisualPosition(null); // Start with game state position
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     };
 
