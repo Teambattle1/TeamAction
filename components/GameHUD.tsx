@@ -158,15 +158,15 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
     const saveDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isAdminRef = useRef(false);
 
-    const DEFAULT_POSITIONS_VERSION = 2;
+    const DEFAULT_POSITIONS_VERSION = 3;
 
-    // Default positions (universal) - Updated to match PICTURE 2 editor screen layout
+    // Default positions (universal) - All toolbars stacked vertically on right side
     const DEFAULT_POSITIONS = {
-        tools: { x: 330, y: 10 },
-        location: { x: 470, y: 10 },
-        mapmode: { x: window.innerWidth - 220, y: 10 },
+        show: { x: window.innerWidth - 180, y: 10 },
         pins: { x: window.innerWidth - 180, y: 75 },
-        show: { x: window.innerWidth - 180, y: 140 }
+        tools: { x: window.innerWidth - 180, y: 140 },
+        mapmode: { x: window.innerWidth - 180, y: 205 },
+        location: { x: window.innerWidth - 180, y: 270 }
     };
 
     // Load toolbar positions on mount and reset on new game (admin users only)
