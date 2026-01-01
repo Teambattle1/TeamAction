@@ -44,6 +44,14 @@ const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: 
     { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
     { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', icon: Mountain },
     { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', className: 'saturate-115 brightness-108', icon: Snowflake },
+    // Ancient/Treasure map style
+    { id: 'treasure', label: 'Treasure', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.9] contrast-110 brightness-95 hue-rotate-30', icon: ScrollText },
+    // Desert map style
+    { id: 'desert', label: 'Desert', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'saturate-150 hue-rotate-15 brightness-110 contrast-105', icon: Mountain },
+    // Ancient map style
+    { id: 'ancient', label: 'Ancient', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.8] contrast-115 brightness-85', icon: ScrollText },
+    // Clean/minimal style
+    { id: 'clean', label: 'Clean', preview: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/13/4285/2722.png', icon: Globe },
 ];
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
