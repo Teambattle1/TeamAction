@@ -236,6 +236,10 @@ const MAP_LAYERS: Record<string, { url: string; attribution: string, className?:
   norwegian: { url: 'https://tiles.openskimap.org/map/{z}/{x}/{y}.png', attribution: '&copy; OpenSkiMap, OpenStreetMap contributors, Norwegian Mapping Authority', className: 'map-filter-nordic' },
   // Historic: Using OSM as base but we will apply CSS sepia filter in component
   historic: { url: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', className: 'map-filter-historic' },
+  // Treasure: Ancient treasure map style with strong sepia and vintage look
+  treasure: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', className: 'map-filter-treasure' },
+  // Desert: Warm sandy desert tones
+  desert: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', className: 'map-filter-desert' },
   // Google Custom placeholder - uses dark by default but allows saving custom JSON
   google_custom: { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CartoDB' }
 };
