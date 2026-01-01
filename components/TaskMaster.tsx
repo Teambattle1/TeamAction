@@ -303,6 +303,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         }
     };
 
+    const handleTaskQuestionClick = (task: TaskTemplate) => {
+        // Show task view immediately on click
+        setHoveredTask(task);
+        setShowPreview(true);
+    };
+
     const handleClosePreview = () => {
         setShowPreview(false);
         setHoveredTask(null);
