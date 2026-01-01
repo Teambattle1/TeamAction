@@ -264,6 +264,7 @@ export const generateAiLogo = async (companyName: string, style: string = 'profe
         const prompt = `Create a professional company logo for "${companyName}". Style: ${style}. Generate a simple, memorable vector-style logo suitable for business use. Logo should be centered and work well as a square icon.`;
 
         console.log('[AI Logo] Generating logo for:', companyName);
+        console.log('[AI Logo] Using model: gemini-2.5-flash-image');
 
         const response = await makeRequestWithRetry<GenerateContentResponse>(
             () => ai.models.generateContent({
@@ -272,6 +273,12 @@ export const generateAiLogo = async (companyName: string, style: string = 'profe
             })
         );
 
+        console.log('[AI Logo] Response received:', {
+            hasCandidates: !!response.candidates,
+            finishReason: response.candidates?.[0]?.finishReason,
+            hasInlineData: !!response.candidates?.[0]?.content?.parts?.[0]?.inlineData
+        });
+
         if (response.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
             const imageData = response.candidates[0].content.parts[0].inlineData;
             const logoUrl = `data:${imageData.mimeType};base64,${imageData.data}`;
@@ -279,10 +286,15 @@ export const generateAiLogo = async (companyName: string, style: string = 'profe
             return logoUrl;
         }
 
-        console.warn('[AI Logo] No image data in response');
+        console.warn('[AI Logo] No image data in response. Candidates:', response.candidates);
         return null;
     } catch (error: any) {
         console.error('[AI Logo] Error generating logo:', error);
+        console.error('[AI Logo] Error details:', {
+            message: error?.message,
+            status: error?.status,
+            errorDetails: error?.errorDetails
+        });
 
         // Check if it's a missing API key error
         if (error?.message?.includes('AI API Key missing')) {
