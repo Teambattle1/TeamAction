@@ -115,6 +115,14 @@ const GameApp: React.FC = () => {
   const [fogOfWarEnabled, setFogOfWarEnabled] = useState(false);
   const [selectedTeamForFogOfWar, setSelectedTeamForFogOfWar] = useState<string | null>(null);
   const [teamsForFogOfWar, setTeamsForFogOfWar] = useState<Team[]>([]);
+  const [showRemoteOverride, setShowRemoteOverride] = useState(false);
+
+  // Layer toggles (all default to true/visible)
+  const [showMapLayer, setShowMapLayer] = useState(true);
+  const [showZoneLayer, setShowZoneLayer] = useState(true);
+  const [showTaskLayer, setShowTaskLayer] = useState(true);
+  const [showLiveLayer, setShowLiveLayer] = useState(true);
+
   const [currentDangerZone, setCurrentDangerZone] = useState<DangerZone | null>(null);
   const [activeDangerZone, setActiveDangerZone] = useState<DangerZone | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
