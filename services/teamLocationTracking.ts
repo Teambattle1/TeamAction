@@ -151,7 +151,9 @@ export const fetchTeamHistory = async (gameId: string): Promise<TeamHistory[]> =
         .order('timestamp', { ascending: true });
 
       if (locError || attemptsError) {
-        console.error('[TeamTracking] Error fetching history:', locError || attemptsError);
+        const err = locError || attemptsError;
+        const errorMessage = err?.message || JSON.stringify(err);
+        console.error('[TeamTracking] Error fetching history:', errorMessage);
         continue;
       }
 
