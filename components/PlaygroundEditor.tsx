@@ -1876,6 +1876,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         e.preventDefault();
                                         e.stopPropagation();
                                     }}
+                                    onMouseEnter={() => setHoveredTaskId(point.id)}
+                                    onMouseLeave={() => setHoveredTaskId(null)}
                                     onPointerDown={(e) => {
                                         if (isMarkMode && !isDraggingThis) {
                                             e.preventDefault();
