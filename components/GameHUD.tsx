@@ -602,9 +602,10 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             topToolbarPos,
             viewSwitcherPos,
             pinsToolboxPos,
-            showToolboxPos
+            showToolboxPos,
+            qrScannerPos
         })
-    }), [locationToolboxPos, topToolbarPos, viewSwitcherPos, pinsToolboxPos, showToolboxPos]);
+    }), [locationToolboxPos, topToolbarPos, viewSwitcherPos, pinsToolboxPos, showToolboxPos, qrScannerPos]);
 
     return (
         <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 sm:p-6 z-[1000]">
