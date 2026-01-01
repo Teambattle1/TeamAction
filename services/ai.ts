@@ -204,27 +204,6 @@ export const generateAiBackground = async (keywords: string, zoneName?: string):
     }
 };
 
-// Smart domain inference from company name
-const inferCompanyDomain = (query: string): string => {
-    const normalized = query.toLowerCase().trim();
-
-    // Remove common legal suffixes (A/S, Inc, LLC, Ltd, etc.)
-    let cleaned = normalized
-        .replace(/\s+(a\/s|aps|as|inc|llc|ltd|limited|corp|corporation|gmbh|ab|og|da|company|group|ltd\.|co\.|corp\.)\s*$/i, '')
-        .trim();
-
-    // For multi-word names, try hyphenated format first (coca-cola for "Coca Cola")
-    const words = cleaned.split(/\s+/).filter(w => w.length > 0);
-
-    if (words.length > 1) {
-        // Multi-word: prefer hyphenated (coca-cola.com is more common than cocacola.com)
-        return words.join('-') + '.com';
-    }
-
-    // Single word: just add .com
-    return cleaned + '.com';
-};
-
 export const searchLogoUrl = async (query: string): Promise<string | null> => {
     console.log('[Logo Search] Starting search for:', query);
 
@@ -233,21 +212,40 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
     }
 
     try {
-        // Infer the most likely domain for the company
-        const domain = inferCompanyDomain(query);
+        // Get Supabase project URL from localStorage (set by the app during init)
+        const supabaseUrl = typeof window !== 'undefined' ? localStorage.getItem('SUPABASE_URL') : null;
 
-        // Use Google Favicon API - it's simple, reliable, and doesn't have CORS issues
-        // It automatically finds favicons even if the exact domain might be slightly off
-        const logoUrl = `https://www.google.com/s2/favicons?sz=256&domain=${encodeURIComponent(domain)}`;
+        if (!supabaseUrl) {
+            console.warn('[Logo Search] Supabase URL not available, using fallback');
+            return null;
+        }
 
-        console.log('[Logo Search] Using domain:', domain);
-        console.log('[Logo Search] Logo URL:', logoUrl);
+        // Call the Edge Function for server-side logo search (no CORS issues)
+        const response = await fetch(
+            `${supabaseUrl}/functions/v1/search-logo`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query.trim() })
+            }
+        );
 
-        // Return the URL directly - Google Favicon is pretty good at finding logos
-        // Even if the domain is slightly off, it returns a reasonable default
-        return logoUrl;
+        if (!response.ok) {
+            console.error('[Logo Search] Edge Function error:', response.status);
+            return null;
+        }
+
+        const data = await response.json();
+
+        if (data.logoUrl) {
+            console.log('[Logo Search] Found logo via', data.source || 'unknown source');
+            return data.logoUrl;
+        }
+
+        console.log('[Logo Search] No logo found');
+        return null;
     } catch (error) {
-        console.error('[Logo Search] Error:', error);
+        console.error('[Logo Search] Error calling Edge Function:', error);
         return null;
     }
 };
