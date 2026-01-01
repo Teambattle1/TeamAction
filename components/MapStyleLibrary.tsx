@@ -82,6 +82,8 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
     const [newStyleName, setNewStyleName] = useState('');
     const [newStyleJson, setNewStyleJson] = useState('');
     const [newStylePreview, setNewStylePreview] = useState('');
+    const [newStylePreviewFile, setNewStylePreviewFile] = useState<File | null>(null);
+    const [addingStyle, setAddingStyle] = useState(false);
 
     useEffect(() => {
         loadCustomStyles();
