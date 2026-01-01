@@ -564,18 +564,19 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
     } catch (e) {
         logError('fetchLibrary', e);
         console.warn('[DB Service] Initial fetch failed for fetchLibrary. Check database connection and table permissions.');
-        // Try fallback: fetch a smaller batch without chunking as last resort
+        // Try fallback: fetch fewer items with longer timeout
         try {
-            console.warn('[DB Service] Attempting fetchLibrary fallback (small batch)...');
+            console.warn('[DB Service] Attempting fetchLibrary fallback (minimal batch)...');
             const { data, error } = await Promise.race([
-                supabase.from('library').select('id, data').limit(100).order('id', { ascending: false }),
+                supabase.from('library').select('id, data').limit(50).order('created_at', { ascending: false }),
                 new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Fallback query timeout after 10s')), 10000)
+                    setTimeout(() => reject(new Error('Fallback query timeout after 20s')), 20000)
                 )
             ]) as Promise<{ data: any[] | null; error: any }>;
 
             if (error) throw error;
             if (!data) return [];
+            console.log(`[DB Service] Fallback fetch returned ${data.length} library items`);
             return data.map((row: any) => {
                 const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
                 return { ...rowData, id: row.id };
