@@ -103,6 +103,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [isMarkMode, setIsMarkMode] = useState(false);
     const [markedTaskIds, setMarkedTaskIds] = useState<Set<string>>(new Set());
     const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+    const [showQRScanner, setShowQRScanner] = useState(true);
     const [showTaskMaster, setShowTaskMaster] = useState(false);
     const [taskMasterTab, setTaskMasterTab] = useState<'LIBRARY' | 'LISTS'>('LIBRARY');
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
