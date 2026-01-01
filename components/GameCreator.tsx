@@ -2413,6 +2413,16 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                 </div>
             </div>
         )}
+
+        {/* Gemini API Key Modal */}
+        <GeminiApiKeyModal
+            isOpen={showGeminiKeyModal}
+            onClose={() => setShowGeminiKeyModal(false)}
+            onSave={() => {
+                // Retry logo generation after API key is saved
+                handleGenerateAiLogo();
+            }}
+        />
     </div>
   );
 };
