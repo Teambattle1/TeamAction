@@ -66,8 +66,9 @@ export const recordTeamLocation = async (
       isImpossibleTravel: data?.is_impossible_travel || false,
     };
   } catch (error: any) {
-    console.error('[TeamTracking] Exception recording location:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error?.message || JSON.stringify(error);
+    console.error('[TeamTracking] Exception recording location:', errorMessage);
+    return { success: false, error: errorMessage };
   }
 };
 
