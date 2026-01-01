@@ -260,6 +260,7 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                   onClick={() => onAction('CREATE_ELIMINATION_GAME')}
                   delay={100}
                   scale={0.75}
+                  badge="BETA"
               />
           </div>
       </div>
