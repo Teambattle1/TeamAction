@@ -86,6 +86,9 @@ const GameApp: React.FC = () => {
   const [showMapStyleLibrary, setShowMapStyleLibrary] = useState(false);
   const [showQRCodesTool, setShowQRCodesTool] = useState(false);
   const [gameStatsTeams, setGameStatsTeams] = useState<Team[]>([]);
+  const [showClientLobby, setShowClientLobby] = useState(false);
+  const [showClientGameChooser, setShowClientGameChooser] = useState(false);
+  const [clientGameId, setClientGameId] = useState<string | null>(null);
 
   const playableGames = useMemo(() => games.filter(g => !g.isGameTemplate), [games]);
   const gameTemplates = useMemo(() => games.filter(g => g.isGameTemplate), [games]);
@@ -1655,6 +1658,9 @@ const GameApp: React.FC = () => {
                             case 'CLIENT_PORTAL':
                                 setDashboardTab('client');
                                 setShowDashboard(true);
+                                break;
+                            case 'CLIENT':
+                                setShowClientGameChooser(true);
                                 break;
                         }
                     });
