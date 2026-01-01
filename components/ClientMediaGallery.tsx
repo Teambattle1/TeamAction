@@ -311,42 +311,48 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
           />
         )}
 
-        {/* Large Task Text for Projector (Bottom Overlay) */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-20 pb-6 px-8">
-          <div className="max-w-5xl mx-auto text-center">
-            <p className="text-5xl md:text-6xl lg:text-7xl font-black text-white uppercase tracking-wide leading-tight drop-shadow-2xl">
-              {currentMedia.pointTitle}
-            </p>
-            <div className="mt-4 flex items-center justify-center gap-6 text-xl md:text-2xl font-bold text-gray-300">
-              <span className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
-                {currentMedia.teamName}
-              </span>
-              <span className="text-gray-500">•</span>
-              <span className="text-gray-400">
-                {currentSlideIndex + 1} / {selectedMedia.length}
-              </span>
+        {/* Large Task Text for Projector (Bottom Overlay) - Only for media slides */}
+        {!showRankingSlide && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-20 pb-6 px-8">
+            <div className="max-w-5xl mx-auto text-center">
+              <p className="text-5xl md:text-6xl lg:text-7xl font-black text-white uppercase tracking-wide leading-tight drop-shadow-2xl">
+                {currentMedia.pointTitle}
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-6 text-xl md:text-2xl font-bold text-gray-300">
+                <span className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-teal-500 rounded-full"></div>
+                  {currentMedia.teamName}
+                </span>
+                <span className="text-gray-500">•</span>
+                <span className="text-gray-400">
+                  {currentSlideIndex + 1} / {selectedMedia.length}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Navigation */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 p-4">
-          <button
-            onClick={previousSlide}
-            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full transition-all"
-          >
-            <ChevronLeft className="w-6 h-6 text-white" />
-          </button>
-        </div>
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 p-4">
-          <button
-            onClick={nextSlide}
-            className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full transition-all"
-          >
-            <ChevronRight className="w-6 h-6 text-white" />
-          </button>
-        </div>
+        {/* Navigation - Only for media slides */}
+        {!showRankingSlide && (
+          <>
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 p-4">
+              <button
+                onClick={previousSlide}
+                className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full transition-all"
+              >
+                <ChevronLeft className="w-6 h-6 text-white" />
+              </button>
+            </div>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 p-4">
+              <button
+                onClick={nextSlide}
+                className="p-3 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full transition-all"
+              >
+                <ChevronRight className="w-6 h-6 text-white" />
+              </button>
+            </div>
+          </>
+        )}
 
       </div>
     );
