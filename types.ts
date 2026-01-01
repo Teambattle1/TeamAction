@@ -258,6 +258,14 @@ export interface GamePoint {
   proximityRevealRadius?: number; // Distance in meters at which task becomes visible (default: 100m)
   proximityStaysVisible?: boolean; // If true, task stays visible after discovery (default: true)
 
+  // Time-Bomb (Countdown Timer)
+  timeBombEnabled?: boolean; // If true, task has a countdown timer
+  timeBombDuration?: number; // Duration in seconds (e.g., 300 = 5 minutes)
+  timeBombStartTrigger?: 'onUnlock' | 'onActivate' | 'manual'; // When the timer starts
+  timeBombPenalty?: number; // Score penalty if timer expires (negative points)
+  timeBombAutoFail?: boolean; // If true, task auto-fails on expiry; if false, just applies penalty
+  timeBombStartedAt?: number; // Timestamp when timer started (per team, stored in team data)
+
   // Structural
   isSectionHeader?: boolean;
 }
