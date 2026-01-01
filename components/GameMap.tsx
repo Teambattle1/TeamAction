@@ -593,6 +593,7 @@ const DangerZoneMarker = React.memo(({ zone, onClick, onMove, mode, isHovered }:
 const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     userLocation: propLocation,
     points = [],
+    currentTeam = null,
     teams = [],
     teamTrails = {},
     pointLabels = {},
@@ -642,10 +643,10 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     showTaskLayer = true, // Toggle task pins visibility
     showLiveLayer = true // Toggle live team positions visibility
 }, ref) => {
-  // NOTE: We do NOT consume useLocation() here directly to avoid re-rendering the entire MapContainer.
-  // Instead, we use the UserLocationMarker child component for the live dot.
-  // propLocation is used for "Center" logic only initially or if provided (instructor mode).
-  
+  // Get user location from context for proximity filtering
+  const { userLocation: ctxLocation } = useLocation();
+  const activeUserLocation = propLocation || ctxLocation;
+
   const center = propLocation || { lat: 55.6761, lng: 12.5683 };
   const [highlightedRouteId, setHighlightedRouteId] = useState<string | null>(null);
   const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
