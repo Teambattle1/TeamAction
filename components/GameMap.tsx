@@ -624,7 +624,9 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     hoveredDangerZoneId,
     gameEnded = false, // Destructure new prop
     returnPath,
-    showUserLocation = true // Default true
+    showUserLocation = true, // Default true
+    teamHistory = [], // Team movement history data
+    showTeamPaths = false // Toggle for team path visibility
 }, ref) => {
   // NOTE: We do NOT consume useLocation() here directly to avoid re-rendering the entire MapContainer.
   // Instead, we use the UserLocationMarker child component for the live dot.
