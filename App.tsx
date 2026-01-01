@@ -1794,6 +1794,9 @@ const GameApp: React.FC = () => {
                         ? teamsForFogOfWar.find(t => t.id === selectedTeamForFogOfWar)?.completedPointIds || []
                         : []
                 }
+                showZoneLayer={showZoneLayer}
+                showTaskLayer={showTaskLayer}
+                showLiveLayer={showLiveLayer}
             />
             </div>
         )}
