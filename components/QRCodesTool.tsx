@@ -89,6 +89,7 @@ const getPointQrValue = (p: GamePoint) => {
 
 const QRCodesTool: React.FC<QRCodesToolProps> = ({ games, activeGameId, onSelectGame, onClose }) => {
   const [search, setSearch] = useState('');
+  const [gameTab, setGameTab] = useState<GameStatusTab>('TODAY');
   const [selectedGameId, setSelectedGameId] = useState<string | null>(activeGameId);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [downloading, setDownloading] = useState(false);
