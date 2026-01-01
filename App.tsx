@@ -112,6 +112,7 @@ const GameApp: React.FC = () => {
   const [showTeamPaths, setShowTeamPaths] = useState(false);
   const [fogOfWarEnabled, setFogOfWarEnabled] = useState(false);
   const [selectedTeamForFogOfWar, setSelectedTeamForFogOfWar] = useState<string | null>(null);
+  const [teamsForFogOfWar, setTeamsForFogOfWar] = useState<Team[]>([]);
   const [currentDangerZone, setCurrentDangerZone] = useState<DangerZone | null>(null);
   const [activeDangerZone, setActiveDangerZone] = useState<DangerZone | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
