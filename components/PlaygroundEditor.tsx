@@ -12,6 +12,7 @@ import { uploadImage } from '../services/storage'; // IMPORTED
 import { generateAiImage, generateAiBackground, searchLogoUrl } from '../services/ai';
 import * as db from '../services/db';
 import { snapPointsToRoad, isPointInBox } from '../utils/mapbox';
+import jsQR from 'jsqr';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
 import TaskMaster from './TaskMaster';
