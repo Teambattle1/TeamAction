@@ -527,18 +527,28 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                                     <span className="text-white">{headerContent.brandingParts?.[0]?.text}</span>
                                     <span className="text-orange-500">{headerContent.brandingParts?.[1]?.text}</span>
                                 </h1>
-                                <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
-                                    {headerContent.subtitle}
-                                </p>
+                                <div className="flex flex-col items-center gap-1">
+                                    <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
+                                        {headerContent.subtitle}
+                                    </p>
+                                    <p className="text-[9px] font-bold text-slate-600 tracking-[0.1em] uppercase">
+                                        v{version}
+                                    </p>
+                                </div>
                             </>
                         ) : (
                             <>
                                 <h1 className="text-4xl md:text-6xl font-black tracking-tighter leading-none mb-2 text-white drop-shadow-[0_5px_10px_rgba(0,0,0,0.8)]">
                                     {headerContent.title}
                                 </h1>
-                                <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
-                                    {headerContent.subtitle}
-                                </p>
+                                <div className="flex flex-col items-center gap-1">
+                                    <p className="text-xs font-black text-slate-500 tracking-[0.8em] uppercase ml-2">
+                                        {headerContent.subtitle}
+                                    </p>
+                                    <p className="text-[9px] font-bold text-slate-600 tracking-[0.1em] uppercase">
+                                        v{version}
+                                    </p>
+                                </div>
                             </>
                         )}
                     </div>
