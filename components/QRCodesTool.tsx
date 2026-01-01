@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, Search, QrCode, Download, CheckSquare, Square, AlertTriangle, MapPin, Zap, Radio, Smartphone } from 'lucide-react';
+import { X, Search, QrCode, Download, CheckSquare, Square, AlertTriangle, MapPin, Zap, Radio, Smartphone, CalendarDays, Clock3, CheckCircle2 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { jsPDF } from 'jspdf';
 import { Game, GamePoint, PointActivationType } from '../types';
