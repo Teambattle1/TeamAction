@@ -17,7 +17,7 @@ import {
   Palette, Bold, Italic, Underline, MonitorPlay, Speaker, MapPin,
   Settings, Zap, MessageSquare, Clock, Globe, Lock, Check, Wand2, Hash,
   Edit2, MousePointerClick, EyeOff, Eye, Maximize, Smartphone, Monitor, QrCode, Download, Map as MapIcon, Info,
-  ListOrdered, Wifi
+  ListOrdered, Wifi, Users
 } from 'lucide-react';
 
 interface TaskEditorProps {
@@ -114,6 +114,10 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     timeBombStartTrigger: point.timeBombStartTrigger || 'onUnlock',
     timeBombPenalty: point.timeBombPenalty || -100,
     timeBombAutoFail: point.timeBombAutoFail || false,
+    multiTeamEnabled: point.multiTeamEnabled || false,
+    multiTeamRequiredCount: point.multiTeamRequiredCount || 2,
+    multiTeamRadius: point.multiTeamRadius || 50,
+    multiTeamCompletionMode: point.multiTeamCompletionMode || 'all',
     task: {
         type: 'text',
         options: [],
