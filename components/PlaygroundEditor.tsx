@@ -430,7 +430,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const applyBulkIcon = () => {
         if (!bulkIconSourceId || bulkIconTargets.size === 0) return;
 
-        const sourceTask = game.points.find(p => p.id === bulkIconSourceId);
+        const sourceTask = game.points?.find(p => p.id === bulkIconSourceId);
         if (!sourceTask) return;
 
         const iconPayload = {
