@@ -440,7 +440,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         onUpdateGame({
             ...game,
-            points: game.points.map(p =>
+            points: game.points?.map(p =>
                 bulkIconTargets.has(p.id) ? { ...p, ...iconPayload } : p
             )
         });
