@@ -106,6 +106,9 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     isHiddenBeforeScan: point.isHiddenBeforeScan || false,
     isLocationLocked: point.isLocationLocked || false,
     radiusMeters: point.radiusMeters || 30, // Ensure radius default
+    proximityTriggerEnabled: point.proximityTriggerEnabled || false,
+    proximityRevealRadius: point.proximityRevealRadius || 100,
+    proximityStaysVisible: point.proximityStaysVisible !== false, // Default true
     task: {
         type: 'text',
         options: [],
