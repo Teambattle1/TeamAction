@@ -1084,3 +1084,102 @@ export const deleteCustomMapStyle = async (styleId: string): Promise<boolean> =>
         return false;
     }
 };
+
+// --- MEDIA SUBMISSIONS (Live Approval) ---
+export const getMediaSubmissions = async (gameId: string): Promise<import('../types').MediaSubmission[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('media_submissions')
+            .select('*')
+            .eq('game_id', gameId)
+            .order('submitted_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Transform snake_case to camelCase
+        return (data || []).map(item => ({
+            id: item.id,
+            gameId: item.game_id,
+            teamId: item.team_id,
+            teamName: item.team_name,
+            pointId: item.point_id,
+            pointTitle: item.point_title,
+            mediaUrl: item.media_url,
+            mediaType: item.media_type,
+            submittedAt: item.submitted_at,
+            status: item.status,
+            reviewedBy: item.reviewed_by,
+            reviewedAt: item.reviewed_at,
+            reviewComment: item.review_comment
+        }));
+    } catch (e) {
+        logError('getMediaSubmissions', e);
+        return [];
+    }
+};
+
+export const submitMediaForReview = async (submission: Omit<import('../types').MediaSubmission, 'id' | 'status' | 'submittedAt'>): Promise<string | null> => {
+    try {
+        const { data, error } = await supabase
+            .from('media_submissions')
+            .insert({
+                game_id: submission.gameId,
+                team_id: submission.teamId,
+                team_name: submission.teamName,
+                point_id: submission.pointId,
+                point_title: submission.pointTitle,
+                media_url: submission.mediaUrl,
+                media_type: submission.mediaType,
+                status: 'pending',
+                submitted_at: Date.now()
+            })
+            .select('id')
+            .single();
+
+        if (error) throw error;
+        return data?.id || null;
+    } catch (e) {
+        logError('submitMediaForReview', e);
+        return null;
+    }
+};
+
+export const approveMediaSubmission = async (submissionId: string, reviewerName: string, comment?: string): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('media_submissions')
+            .update({
+                status: 'approved',
+                reviewed_by: reviewerName,
+                reviewed_at: Date.now(),
+                review_comment: comment || null
+            })
+            .eq('id', submissionId);
+
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        logError('approveMediaSubmission', e);
+        return false;
+    }
+};
+
+export const rejectMediaSubmission = async (submissionId: string, reviewerName: string, comment: string): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('media_submissions')
+            .update({
+                status: 'rejected',
+                reviewed_by: reviewerName,
+                reviewed_at: Date.now(),
+                review_comment: comment
+            })
+            .eq('id', submissionId);
+
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        logError('rejectMediaSubmission', e);
+        return false;
+    }
+};
