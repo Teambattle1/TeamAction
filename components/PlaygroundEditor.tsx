@@ -2900,7 +2900,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                       // Add the pending tasks to the selected playzone
                                       // Filter out duplicates (by title match)
                                       const newTasksToAdd = pendingTasksToAdd.filter(t =>
-                                        !game.points.some(p => p.title === t.title)
+                                        !game.points?.some(p => p.title === t.title)
                                       );
 
                                       if (newTasksToAdd.length === 0) {
