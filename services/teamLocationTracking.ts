@@ -188,8 +188,9 @@ export const fetchTeamHistory = async (gameId: string): Promise<TeamHistory[]> =
     }
 
     return teamHistories;
-  } catch (error) {
-    console.error('[TeamTracking] Exception fetching team history:', error);
+  } catch (error: any) {
+    const errorMessage = error?.message || JSON.stringify(error);
+    console.error('[TeamTracking] Exception fetching team history:', errorMessage);
     return [];
   }
 };
