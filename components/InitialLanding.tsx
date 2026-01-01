@@ -4,12 +4,12 @@ import {
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin, Gauge
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin, Gauge, Map
 } from 'lucide-react';
 import { Game, AuthUser } from '../types';
 
 interface InitialLandingProps {
-  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'CREATE_GAME' | 'CREATE_MAP_GAME' | 'CREATE_PLAYZONE_GAME' | 'CREATE_ELIMINATION_GAME' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR' | 'MANAGE_TEAMS' | 'GAMESTATS') => void;
+  onAction: (action: 'USERS' | 'TEAMS' | 'GAMES' | 'CREATE_GAME' | 'CREATE_MAP_GAME' | 'CREATE_PLAYZONE_GAME' | 'CREATE_ELIMINATION_GAME' | 'TASKS' | 'TASKLIST' | 'TEAMZONE' | 'EDIT_GAME' | 'PLAY' | 'TEMPLATES' | 'PLAYGROUNDS' | 'DASHBOARD' | 'TAGS' | 'ADMIN' | 'CLIENT_PORTAL' | 'QR_CODES' | 'CHAT' | 'TEAM_LOBBY' | 'DATABASE' | 'DELETE_GAMES' | 'TEAMS_MAP_VIEW' | 'PREVIEW_TEAM' | 'PREVIEW_INSTRUCTOR' | 'MANAGE_TEAMS' | 'GAMESTATS' | 'MAP_STYLES' | 'DIAGNOSTICS') => void;
   version: string;
   games: Game[];
   activeGameId: string | null;
@@ -400,6 +400,13 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                           icon={BarChart3}
                           color="bg-cyan-500"
                           onClick={() => onAction('GAMESTATS')}
+                      />
+                      <NavCard
+                          title="MAP STYLES"
+                          subtitle="CUSTOM MAP LIBRARY"
+                          icon={Map}
+                          color="bg-purple-600"
+                          onClick={() => onAction('MAP_STYLES')}
                       />
                       <NavCard
                           title="DIAGNOSTICS"
