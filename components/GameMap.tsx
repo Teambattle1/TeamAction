@@ -652,9 +652,17 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
   const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
 
-  // Filter logic for Fog of War and Game Ended state
+  // Filter logic for Fog of War, Game Ended state, and Proximity Triggers
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
+
+      // PROXIMITY TRIGGERS: Check if task should be visible based on distance
+      if (mode === GameMode.PLAY) {
+          const isVisibleByProximity = isTaskVisibleByProximity(p, activeUserLocation, currentTeam, mode.toString());
+          if (!isVisibleByProximity) {
+              return false;
+          }
+      }
 
       // FOG OF WAR MODE: Show only what the selected team can see
       if (fogOfWarEnabled && selectedTeamId) {
