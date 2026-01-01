@@ -1895,8 +1895,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             {showAiGenForList && editingList && (
                 <AiTaskGenerator
                     onClose={() => setShowAiGenForList(false)}
-                    onAddTasks={(tasks) => {}}
-                    onAddTasksToList={(listId, tasks) => {
+                    onAddTasks={(tasks) => {
                         // Add AI-generated tasks to the current editing list
                         setEditingList({
                             ...editingList,
@@ -1905,19 +1904,31 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                         setShowAiGenForList(false);
                         setNotification({ message: `✨ ${tasks.length} AI-generated tasks added to list!`, type: 'success' });
                     }}
+                    onAddTasksToList={(listId, tasks) => {
+                        // Add AI-generated tasks to a specific list
+                        const updatedLists = taskLists.map(l =>
+                            l.id === listId ? { ...l, tasks: [...l.tasks, ...tasks] } : l
+                        );
+                        onUpdateTaskLists(updatedLists);
+                        setShowAiGenForList(false);
+                        setNotification({ message: `✨ ${tasks.length} AI-generated tasks added!`, type: 'success' });
+                    }}
                     onCreateListWithTasks={(name, tasks) => {
-                        // Alternative: Replace current list with new AI-generated one
-                        setEditingList({
-                            ...editingList,
+                        // Create a new list with AI-generated tasks
+                        const newList: TaskList = {
+                            id: `list_${Date.now()}`,
                             name: name,
                             description: `AI-generated tasks about ${name}`,
-                            tasks: tasks
-                        });
+                            tasks: tasks,
+                            imageUrl: '',
+                            createdAt: new Date().toISOString()
+                        };
+                        onUpdateTaskLists([...taskLists, newList]);
                         setShowAiGenForList(false);
-                        setNotification({ message: `✨ List updated with ${tasks.length} AI tasks!`, type: 'success' });
+                        setNotification({ message: `✨ New list "${name}" created with ${tasks.length} AI tasks!`, type: 'success' });
                     }}
                     onAddToLibrary={async (tasks) => {
-                        // Optionally also save to library
+                        // Save to library
                         for (const t of tasks) await db.saveTemplate(t);
                         await loadLibrary(true);
                     }}
