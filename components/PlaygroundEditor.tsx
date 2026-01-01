@@ -39,6 +39,7 @@ interface PlaygroundEditorProps {
   onUpdateTaskLists: (lists: TaskList[]) => void; // Update task lists
   taskLibrary: TaskTemplate[]; // Task library for TaskMaster
   onUpdateTaskLibrary: (library: TaskTemplate[]) => void; // Update task library
+  onOpenGameSettings?: () => void; // Open game settings
 }
 
 const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
