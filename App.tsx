@@ -1923,6 +1923,33 @@ const GameApp: React.FC = () => {
             />
         )}
 
+        {/* Remote Override Modal - Emergency controls for Game Master */}
+        {showRemoteOverride && activeGame && (
+            <RemoteOverrideModal
+                isOpen={showRemoteOverride}
+                onClose={() => setShowRemoteOverride(false)}
+                gameId={activeGame.id}
+                teams={teamsForFogOfWar}
+                tasks={activeGame.points || []}
+                onJumpToLocation={(loc) => mapRef.current?.jumpTo(loc)}
+                onTaskForceComplete={async (teamId, taskId) => {
+                    // Update team's completed points
+                    const team = teamsForFogOfWar.find(t => t.id === teamId);
+                    if (team) {
+                        const updatedCompletedIds = [...(team.completedPointIds || []), taskId];
+                        await db.updateTeam(teamId, {
+                            ...team,
+                            completedPointIds: updatedCompletedIds,
+                        });
+
+                        // Refresh teams list
+                        const updatedTeams = await db.fetchTeams(activeGame.id);
+                        setTeamsForFogOfWar(updatedTeams);
+                    }
+                }}
+            />
+        )}
+
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
             <EditorDrawer 
                 onClose={() => setMode(GameMode.PLAY)}
