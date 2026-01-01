@@ -903,7 +903,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             const snappedLocations = await snapPointsToRoad(originalPoints);
 
             // Update the game with snapped locations
-            const updatedPoints = game.points.map(point => {
+            const updatedPoints = game.points?.map(point => {
                 const taskIndex = tasksToSnap.findIndex(t => t.id === point.id);
                 if (taskIndex >= 0) {
                     return {
