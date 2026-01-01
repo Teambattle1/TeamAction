@@ -105,8 +105,9 @@ export const recordTaskAttempt = async (
 
     return { success: true };
   } catch (error: any) {
-    console.error('[TeamTracking] Exception recording task attempt:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error?.message || JSON.stringify(error);
+    console.error('[TeamTracking] Exception recording task attempt:', errorMessage);
+    return { success: false, error: errorMessage };
   }
 };
 
