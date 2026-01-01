@@ -3000,8 +3000,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     initialPlaygroundId={activePlayground?.id || null}
                     targetMode="GAME"
                     onAddTasks={(tasks, targetPlaygroundId) => {
-                        // If no specific playzone selected, show playzone selector
-                        if (!targetPlaygroundId && game.playgrounds && game.playgrounds.length > 1) {
+                        // If no specific playzone selected, show selector to choose MAP or PLAYZONE
+                        if (!targetPlaygroundId) {
                             setPendingTasksToAdd(tasks);
                             setIsAddingAITasks(true);
                             setShowPlayzoneSelector(true);
