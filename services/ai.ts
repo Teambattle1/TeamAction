@@ -212,10 +212,14 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
     }
 
     try {
-        // Get Supabase URL from localStorage, env, or use default
+        // Get Supabase URL and anon key from localStorage, env, or use defaults
         const supabaseUrl = typeof window !== 'undefined'
             ? (localStorage.getItem('SUPABASE_URL') || 'https://yktaxljydisfjyqhbnja.supabase.co')
             : 'https://yktaxljydisfjyqhbnja.supabase.co';
+
+        const supabaseAnonKey = typeof window !== 'undefined'
+            ? (localStorage.getItem('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrdGF4bGp5ZGlzZmp5cWhibmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMzQ2ODYsImV4cCI6MjA4MTcxMDY4Nn0.XeTW4vHGbEm6C7U94zMLsZiDB80cyvuqYbSRNX8oyQI')
+            : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrdGF4bGp5ZGlzZmp5cWhibmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMzQ2ODYsImV4cCI6MjA4MTcxMDY4Nn0.XeTW4vHGbEm6C7U94zMLsZiDB80cyvuqYbSRNX8oyQI';
 
         console.log('[Logo Search] Using Supabase URL:', supabaseUrl);
 
@@ -224,13 +228,16 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
             `${supabaseUrl}/functions/v1/search-logo`,
             {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${supabaseAnonKey}`
+                },
                 body: JSON.stringify({ query: query.trim() })
             }
         );
 
         if (!response.ok) {
-            console.error('[Logo Search] Edge Function error:', response.status);
+            console.error('[Logo Search] Edge Function error:', response.status, await response.text());
             return null;
         }
 
