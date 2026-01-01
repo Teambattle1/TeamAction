@@ -1819,7 +1819,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                                     return [
                                         ...getTargetIds(source.logic?.onCorrect).map((targetId) => {
-                                            const target = game.points.find(p => p.id === targetId);
+                                            const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
                                             const targetY = (target.playgroundPosition?.y || 50);
@@ -1838,7 +1838,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             );
                                         }),
                                         ...getTargetIds(source.logic?.onIncorrect).map((targetId) => {
-                                            const target = game.points.find(p => p.id === targetId);
+                                            const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
                                             const targetY = (target.playgroundPosition?.y || 50);
@@ -1857,7 +1857,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             );
                                         }),
                                         ...getTargetIds(source.logic?.onOpen).map((targetId) => {
-                                            const target = game.points.find(p => p.id === targetId);
+                                            const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
                                             const targetX = (target.playgroundPosition?.x || 50);
                                             const targetY = (target.playgroundPosition?.y || 50);
