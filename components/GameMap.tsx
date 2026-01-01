@@ -637,6 +637,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     showUserLocation = true, // Default true
     teamHistory = [], // Team movement history data
     showTeamPaths = false, // Toggle for team path visibility
+    gameStartTime, // Timestamp when game/team started
     fogOfWarEnabled = false, // Fog of War mode
     selectedTeamId = null, // Team ID for fog of war
     selectedTeamCompletedPointIds = [], // Completed points for selected team
