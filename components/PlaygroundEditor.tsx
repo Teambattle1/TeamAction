@@ -1677,14 +1677,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 </div>
 
                 {/* Draggable TOOLS Toolbar */}
-                {onStartSimulation && !isTemplateMode && (
-                    <div
-                        className="absolute z-[1100] pointer-events-auto touch-none"
-                        style={{ left: toolsToolbarPos.x, top: toolsToolbarPos.y }}
-                        onPointerDown={handleToolsPointerDown}
-                        onPointerMove={handleToolsPointerMove}
-                        onPointerUp={handleToolsPointerUp}
-                    >
+                {/* Draggable TOOLS Toolbar */}
+                <div
+                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    style={{ left: toolsToolbarPos.x, top: toolsToolbarPos.y }}
+                    onPointerDown={handleToolsPointerDown}
+                    onPointerMove={handleToolsPointerMove}
+                    onPointerUp={handleToolsPointerUp}
+                >
                         <div className="bg-black/40 backdrop-blur-sm border border-orange-500/30 rounded-lg shadow-2xl p-2 cursor-move group relative">
                             <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-2 border border-orange-500/30 pointer-events-none">
                                 <GripHorizontal className="w-3 h-3" />
@@ -1764,8 +1764,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                </div>
 
                 {/* Canvas Area */}
                 <div
