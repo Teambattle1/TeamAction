@@ -7,7 +7,8 @@ import {
     Layers, Globe, Trash2, Bold, Italic, Underline, Link as LinkIcon, Info,
     Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2,
     Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
-    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus, Wand2
+    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus, Wand2,
+    Copy, Monitor
 } from 'lucide-react';
 import { searchLogoUrl, generateAiLogo } from '../services/ai';
 import { uploadImage } from '../services/storage';
@@ -118,6 +119,7 @@ const TABS = [
     { id: 'DESIGN', label: 'Game Setup', icon: PenTool },
     { id: 'TASKS', label: 'Tasks', icon: List },
     { id: 'PLAYGROUNDS', label: 'Zones', icon: LayoutGrid },
+    { id: 'CLIENT', label: 'Client', icon: Monitor },
     { id: 'SETTINGS', label: 'Settings', icon: Settings },
     { id: 'LOGS', label: 'Logs', icon: ScrollText },
 ];
