@@ -60,20 +60,22 @@ const NavCard = ({
   </button>
 );
 
-const MapPinButton = ({ 
-    title, 
-    icon: Icon, 
-    gradient, 
+const MapPinButton = ({
+    title,
+    icon: Icon,
+    gradient,
     onClick,
     delay,
-    scale = 1
-}: { 
-    title: string; 
-    icon: any; 
-    gradient: string; 
+    scale = 1,
+    badge
+}: {
+    title: string;
+    icon: any;
+    gradient: string;
     onClick: () => void;
     delay: number;
     scale?: number;
+    badge?: string;
 }) => (
     <div 
         className="flex flex-col items-center gap-6 group cursor-pointer perspective-1000" 
