@@ -213,65 +213,88 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
     }
 
     const normalizedQuery = query.trim();
-
-    // Strategy 1: Try Clearbit Logo API (works for domains)
-    // Common company domains mapping
     const domainGuess = guessDomain(normalizedQuery);
-    if (domainGuess) {
-        console.log('[Logo Search] Trying Clearbit with domain:', domainGuess);
-        const clearbitUrl = `https://logo.clearbit.com/${domainGuess}`;
 
-        try {
-            // Test if the logo exists by attempting to load it
-            const testResult = await testImageUrl(clearbitUrl);
-            if (testResult) {
-                console.log('[Logo Search] ✅ Found REAL logo via Clearbit');
-                return clearbitUrl;
-            }
-        } catch (e) {
-            console.log('[Logo Search] Clearbit failed for domain:', domainGuess);
-        }
+    if (!domainGuess) {
+        console.log('[Logo Search] Could not guess domain for:', query);
+        return null;
     }
 
-    // Strategy 2: Try Brandfetch API (free tier, no auth required for search)
-    try {
-        console.log('[Logo Search] Trying Brandfetch API...');
-        const brandfetchUrl = `https://api.brandfetch.io/v2/search/${encodeURIComponent(normalizedQuery)}`;
+    console.log('[Logo Search] Guessed domain:', domainGuess);
 
-        const response = await fetch(brandfetchUrl);
+    // Strategy 1: Try Clearbit via CORS proxy
+    try {
+        console.log('[Logo Search] Trying Clearbit via proxy...');
+        const clearbitUrl = `https://logo.clearbit.com/${domainGuess}`;
+
+        // Use CORS proxy to fetch the image
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(clearbitUrl)}`;
+
+        const response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'image/*' }
+        });
+
         if (response.ok) {
-            const data = await response.json();
-            if (data && data.length > 0 && data[0].icon) {
-                console.log('[Logo Search] ✅ Found REAL logo via Brandfetch');
-                return data[0].icon;
+            // Convert to blob and create local data URL
+            const blob = await response.blob();
+            if (blob.size > 0 && blob.type.startsWith('image/')) {
+                const dataUrl = await blobToDataUrl(blob);
+                console.log('[Logo Search] ✅ Found REAL logo via Clearbit');
+                return dataUrl;
             }
         }
     } catch (e) {
-        console.log('[Logo Search] Brandfetch API failed');
+        console.log('[Logo Search] Clearbit proxy failed:', e);
     }
 
-    // Strategy 3: Try Logo.dev API (free, no auth required)
-    if (domainGuess) {
-        try {
-            console.log('[Logo Search] Trying Logo.dev...');
-            const logoDevUrl = `https://img.logo.dev/${domainGuess}?token=pk_X-cat2mFSGWUhXZee1f8rQ`;
+    // Strategy 2: Try Google's S2 Favicon service (CORS-friendly)
+    try {
+        console.log('[Logo Search] Trying Google Favicon service...');
+        const googleUrl = `https://www.google.com/s2/favicons?domain=${domainGuess}&sz=256`;
 
-            const testResult = await testImageUrl(logoDevUrl);
-            if (testResult) {
-                console.log('[Logo Search] ✅ Found REAL logo via Logo.dev');
-                return logoDevUrl;
+        const response = await fetch(googleUrl);
+        if (response.ok) {
+            const blob = await response.blob();
+            if (blob.size > 100) { // Ensure it's not a tiny default icon
+                const dataUrl = await blobToDataUrl(blob);
+                console.log('[Logo Search] ✅ Found logo via Google Favicon');
+                return dataUrl;
             }
-        } catch (e) {
-            console.log('[Logo Search] Logo.dev failed');
         }
+    } catch (e) {
+        console.log('[Logo Search] Google Favicon failed:', e);
     }
 
-    // Strategy 4: Google Favicon API as last resort
-    if (domainGuess) {
-        console.log('[Logo Search] Falling back to Google Favicon...');
-        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domainGuess}&sz=128`;
-        console.log('[Logo Search] ⚠️ Found favicon (may be low quality)');
-        return faviconUrl;
+    // Strategy 3: Try DuckDuckGo favicon service (no CORS issues)
+    try {
+        console.log('[Logo Search] Trying DuckDuckGo icon service...');
+        const duckUrl = `https://icons.duckduckgo.com/ip3/${domainGuess}.ico`;
+
+        const response = await fetch(duckUrl);
+        if (response.ok) {
+            const blob = await response.blob();
+            if (blob.size > 100) {
+                const dataUrl = await blobToDataUrl(blob);
+                console.log('[Logo Search] ✅ Found logo via DuckDuckGo');
+                return dataUrl;
+            }
+        }
+    } catch (e) {
+        console.log('[Logo Search] DuckDuckGo failed:', e);
+    }
+
+    // Strategy 4: Direct Clearbit without proxy (might work for some sites)
+    try {
+        console.log('[Logo Search] Trying direct Clearbit...');
+        const clearbitDirect = `https://logo.clearbit.com/${domainGuess}`;
+        const testResult = await testImageUrl(clearbitDirect);
+        if (testResult) {
+            console.log('[Logo Search] ✅ Found REAL logo via direct Clearbit');
+            return clearbitDirect;
+        }
+    } catch (e) {
+        console.log('[Logo Search] Direct Clearbit failed:', e);
     }
 
     console.log('[Logo Search] ❌ No logo found on internet for:', query);
@@ -343,13 +366,24 @@ const guessDomain = (companyName: string): string | null => {
 const testImageUrl = (url: string): Promise<boolean> => {
     return new Promise((resolve) => {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
         img.onload = () => resolve(true);
         img.onerror = () => resolve(false);
 
         // Set a timeout to avoid hanging
-        setTimeout(() => resolve(false), 5000);
+        setTimeout(() => resolve(false), 3000);
 
         img.src = url;
+    });
+};
+
+// Helper: Convert blob to data URL
+const blobToDataUrl = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
     });
 };
 
@@ -358,7 +392,49 @@ export const generateAiLogo = async (companyName: string, style: string = 'profe
         console.log('[AI Logo] 🎨 Generating AI logo for:', companyName);
         console.log('[AI Logo] Style:', style);
 
-        // Generate a professional branded SVG logo
+        // Try to use Gemini AI to generate actual logo image
+        const key = getApiKey();
+
+        if (key) {
+            try {
+                const ai = new GoogleGenAI({ apiKey: key });
+
+                const prompt = `Create a professional, modern company logo for "${companyName}".
+                    Design requirements:
+                    - Clean, minimalist design
+                    - Professional corporate look
+                    - Use company name or relevant symbolism
+                    - Bold colors and clear shapes
+                    - Square format, white or transparent background
+                    - High contrast, suitable for web use
+                    Style: ${style}, vector art style`;
+
+                console.log('[AI Logo] Calling Gemini AI to generate logo image...');
+
+                const response = await makeRequestWithRetry<GenerateContentResponse>(() =>
+                    ai.models.generateContent({
+                        model: 'gemini-2.5-flash-image',
+                        contents: prompt,
+                    })
+                );
+
+                // Extract image from response
+                if (response.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
+                    const inlineData = response.candidates[0].content.parts[0].inlineData;
+                    console.log('[AI Logo] ✅ Generated AI logo image successfully');
+                    return `data:${inlineData.mimeType};base64,${inlineData.data}`;
+                } else {
+                    console.warn('[AI Logo] No image in AI response, falling back to SVG');
+                }
+            } catch (aiError) {
+                console.warn('[AI Logo] Gemini AI failed, falling back to SVG:', aiError);
+            }
+        } else {
+            console.log('[AI Logo] No API key found, using SVG fallback');
+        }
+
+        // Fallback: Generate a professional branded SVG logo
+        console.log('[AI Logo] Generating SVG fallback logo...');
         const initials = companyName
             .split(/\s+/)
             .map(word => word[0])
@@ -409,16 +485,10 @@ export const generateAiLogo = async (companyName: string, style: string = 'profe
         </svg>`;
 
         const logoUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
-        console.log('[AI Logo] ✅ Generated professional AI brand logo');
+        console.log('[AI Logo] ✅ Generated SVG logo');
         return logoUrl;
     } catch (error: any) {
         console.error('[AI Logo] Error generating logo:', error);
-
-        // Check if it's a missing API key error
-        if (error?.message?.includes('AI API Key missing')) {
-            throw error; // Re-throw to let caller handle API key modal
-        }
-
         return null;
     }
 };
