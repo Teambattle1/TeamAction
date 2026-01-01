@@ -818,7 +818,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (isOverDeleteZone) {
             onUpdateGame({
                 ...game,
-                points: game.points.filter(p => p.id !== id)
+                points: game.points?.filter(p => p.id !== id)
             });
             setSelectedTaskId(null);
         } else {
