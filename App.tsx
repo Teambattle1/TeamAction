@@ -1847,6 +1847,7 @@ const GameApp: React.FC = () => {
                 onPointHover={(point) => setMapHoveredPointId(point?.id || null)}
                 teamHistory={demoTeamHistory}
                 showTeamPaths={showTeamPaths}
+                gameStartTime={teamsForFogOfWar.length > 0 && teamsForFogOfWar[0]?.startedAt ? teamsForFogOfWar[0].startedAt : activeGame?.createdAt}
                 fogOfWarEnabled={fogOfWarEnabled}
                 selectedTeamId={selectedTeamForFogOfWar}
                 selectedTeamCompletedPointIds={
