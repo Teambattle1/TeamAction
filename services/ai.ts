@@ -212,51 +212,145 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
         return null;
     }
 
-    try {
-        // Get Supabase URL and anon key from localStorage, env, or use defaults
-        const supabaseUrl = typeof window !== 'undefined'
-            ? (localStorage.getItem('SUPABASE_URL') || 'https://yktaxljydisfjyqhbnja.supabase.co')
-            : 'https://yktaxljydisfjyqhbnja.supabase.co';
+    const normalizedQuery = query.trim();
 
-        const supabaseAnonKey = typeof window !== 'undefined'
-            ? (localStorage.getItem('SUPABASE_ANON_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrdGF4bGp5ZGlzZmp5cWhibmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMzQ2ODYsImV4cCI6MjA4MTcxMDY4Nn0.XeTW4vHGbEm6C7U94zMLsZiDB80cyvuqYbSRNX8oyQI')
-            : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrdGF4bGp5ZGlzZmp5cWhibmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxMzQ2ODYsImV4cCI6MjA4MTcxMDY4Nn0.XeTW4vHGbEm6C7U94zMLsZiDB80cyvuqYbSRNX8oyQI';
+    // Strategy 1: Try Clearbit Logo API (works for domains)
+    // Common company domains mapping
+    const domainGuess = guessDomain(normalizedQuery);
+    if (domainGuess) {
+        console.log('[Logo Search] Trying Clearbit with domain:', domainGuess);
+        const clearbitUrl = `https://logo.clearbit.com/${domainGuess}`;
 
-        console.log('[Logo Search] Calling Supabase Edge Function...');
-
-        // Call the Edge Function for server-side logo search
-        const response = await fetch(
-            `${supabaseUrl}/functions/v1/search-logo`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${supabaseAnonKey}`
-                },
-                body: JSON.stringify({ query: query.trim() })
+        try {
+            // Test if the logo exists by attempting to load it
+            const testResult = await testImageUrl(clearbitUrl);
+            if (testResult) {
+                console.log('[Logo Search] ✅ Found REAL logo via Clearbit');
+                return clearbitUrl;
             }
-        );
-
-        if (!response.ok) {
-            console.error('[Logo Search] Edge Function error:', response.status);
-            console.log('[Logo Search] No logo found on internet');
-            return null;
+        } catch (e) {
+            console.log('[Logo Search] Clearbit failed for domain:', domainGuess);
         }
-
-        const data = await response.json();
-
-        if (data.logoUrl) {
-            console.log('[Logo Search] ✅ Found REAL logo from internet via', data.source);
-            return data.logoUrl;
-        }
-
-        console.log('[Logo Search] ❌ No logo found on internet for:', query);
-        return null;
-    } catch (error) {
-        console.error('[Logo Search] Error calling Edge Function:', error);
-        console.log('[Logo Search] ❌ Failed to search internet for logo');
-        return null;
     }
+
+    // Strategy 2: Try Brandfetch API (free tier, no auth required for search)
+    try {
+        console.log('[Logo Search] Trying Brandfetch API...');
+        const brandfetchUrl = `https://api.brandfetch.io/v2/search/${encodeURIComponent(normalizedQuery)}`;
+
+        const response = await fetch(brandfetchUrl);
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0 && data[0].icon) {
+                console.log('[Logo Search] ✅ Found REAL logo via Brandfetch');
+                return data[0].icon;
+            }
+        }
+    } catch (e) {
+        console.log('[Logo Search] Brandfetch API failed');
+    }
+
+    // Strategy 3: Try Logo.dev API (free, no auth required)
+    if (domainGuess) {
+        try {
+            console.log('[Logo Search] Trying Logo.dev...');
+            const logoDevUrl = `https://img.logo.dev/${domainGuess}?token=pk_X-cat2mFSGWUhXZee1f8rQ`;
+
+            const testResult = await testImageUrl(logoDevUrl);
+            if (testResult) {
+                console.log('[Logo Search] ✅ Found REAL logo via Logo.dev');
+                return logoDevUrl;
+            }
+        } catch (e) {
+            console.log('[Logo Search] Logo.dev failed');
+        }
+    }
+
+    // Strategy 4: Google Favicon API as last resort
+    if (domainGuess) {
+        console.log('[Logo Search] Falling back to Google Favicon...');
+        const faviconUrl = `https://www.google.com/s2/favicons?domain=${domainGuess}&sz=128`;
+        console.log('[Logo Search] ⚠️ Found favicon (may be low quality)');
+        return faviconUrl;
+    }
+
+    console.log('[Logo Search] ❌ No logo found on internet for:', query);
+    return null;
+};
+
+// Helper: Guess domain from company name
+const guessDomain = (companyName: string): string | null => {
+    const normalized = companyName.toLowerCase().trim();
+
+    // Common company domain mappings
+    const knownDomains: Record<string, string> = {
+        'coca cola': 'coca-cola.com',
+        'coca-cola': 'coca-cola.com',
+        'google': 'google.com',
+        'microsoft': 'microsoft.com',
+        'apple': 'apple.com',
+        'amazon': 'amazon.com',
+        'facebook': 'facebook.com',
+        'meta': 'meta.com',
+        'twitter': 'twitter.com',
+        'x': 'x.com',
+        'netflix': 'netflix.com',
+        'spotify': 'spotify.com',
+        'adobe': 'adobe.com',
+        'nike': 'nike.com',
+        'adidas': 'adidas.com',
+        'mcdonalds': 'mcdonalds.com',
+        'starbucks': 'starbucks.com',
+        'tesla': 'tesla.com',
+        'samsung': 'samsung.com',
+        'sony': 'sony.com',
+        'intel': 'intel.com',
+        'ibm': 'ibm.com',
+        'oracle': 'oracle.com',
+        'salesforce': 'salesforce.com',
+        'slack': 'slack.com',
+        'zoom': 'zoom.us',
+        'dropbox': 'dropbox.com',
+        'airbnb': 'airbnb.com',
+        'uber': 'uber.com',
+        'lyft': 'lyft.com',
+        'paypal': 'paypal.com',
+        'visa': 'visa.com',
+        'mastercard': 'mastercard.com',
+    };
+
+    // Check if we have a known mapping
+    if (knownDomains[normalized]) {
+        return knownDomains[normalized];
+    }
+
+    // Otherwise, create a simple domain guess
+    // Remove common suffixes and special characters
+    const cleanName = normalized
+        .replace(/\s+(inc|llc|ltd|corp|corporation|company|co)\b/gi, '')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .trim();
+
+    if (cleanName) {
+        return `${cleanName}.com`;
+    }
+
+    return null;
+};
+
+// Helper: Test if an image URL is valid
+const testImageUrl = (url: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+
+        // Set a timeout to avoid hanging
+        setTimeout(() => resolve(false), 5000);
+
+        img.src = url;
+    });
 };
 
 export const generateAiLogo = async (companyName: string, style: string = 'professional'): Promise<string | null> => {
