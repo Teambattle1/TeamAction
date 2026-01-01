@@ -111,13 +111,53 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
         <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
           <div className="flex items-center justify-between">
             <div className="text-white">
-              <p className="font-bold">{currentMedia.teamName}</p>
-              <p className="text-sm text-gray-400">{currentMedia.pointTitle}</p>
+              {!showRankingSlide ? (
+                <>
+                  <p className="font-bold">{currentMedia.teamName}</p>
+                  <p className="text-sm text-gray-400">{currentMedia.pointTitle}</p>
+                </>
+              ) : (
+                <>
+                  <p className="font-bold flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-amber-400" />
+                    FINAL RANKINGS
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    {revealedTop3 === 0 && 'Press SPACEBAR or REVEAL TOP 3 to unveil winners'}
+                    {revealedTop3 === 1 && 'Press SPACEBAR for 2nd place'}
+                    {revealedTop3 === 2 && 'Press SPACEBAR for 1st place'}
+                    {revealedTop3 === 3 && 'All winners revealed!'}
+                  </p>
+                </>
+              )}
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-white font-bold">
-                {currentSlideIndex + 1} / {selectedMedia.length}
-              </span>
+              {!showRankingSlide && (
+                <>
+                  <span className="text-white font-bold">
+                    {currentSlideIndex + 1} / {selectedMedia.length}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setShowRankingSlide(true);
+                      setRevealedTop3(0);
+                    }}
+                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold transition-colors flex items-center gap-2"
+                  >
+                    <Trophy className="w-5 h-5" />
+                    REVEAL RANKING
+                  </button>
+                </>
+              )}
+              {showRankingSlide && revealedTop3 < 3 && (
+                <button
+                  onClick={() => setRevealedTop3(prev => prev + 1)}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold transition-colors flex items-center gap-2 animate-pulse"
+                >
+                  <Trophy className="w-5 h-5" />
+                  REVEAL TOP 3
+                </button>
+              )}
               <button
                 onClick={exitPresentation}
                 className="p-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
