@@ -1375,15 +1375,23 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                 {/* Activation Type Filter */}
                                 <div className="w-full sm:w-auto">
                                     <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
-                                        <div className="flex items-center justify-between">
+                                        <button
+                                            onClick={() => setActivationFiltersCollapsed(!activationFiltersCollapsed)}
+                                            className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
+                                        >
                                             <p className="text-[9px] font-bold text-slate-400 uppercase">🔧 Activation Filters</p>
-                                            <span className="text-[8px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">
-                                                {getFilteredAndSortedLibrary().length} / {library.length}
-                                            </span>
-                                        </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[8px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">
+                                                    {getFilteredAndSortedLibrary().length} / {library.length}
+                                                </span>
+                                                <span className="text-slate-400 text-xs font-bold">{activationFiltersCollapsed ? '▶' : '▼'}</span>
+                                            </div>
+                                        </button>
 
-                                        {/* Activation Stats Summary */}
-                                        {getActivationStats().withActivations > 0 && (
+                                        {!activationFiltersCollapsed && (
+                                            <>
+                                                {/* Activation Stats Summary */}
+                                                {getActivationStats().withActivations > 0 && (
                                             <div className="bg-slate-800/50 rounded border border-slate-700 p-2 text-[8px] space-y-1">
                                                 <p className="font-bold text-slate-300">Activation Statistics:</p>
                                                 <div className="flex justify-between text-slate-400">
@@ -1442,16 +1450,18 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             </>
                                         )}
 
-                                        {(Object.keys(activationFilters).some(type => activationFilters[type]) || showOnlyWithActivations) && (
-                                            <button
-                                                onClick={() => {
-                                                    setActivationFilters({});
-                                                    setShowOnlyWithActivations(false);
-                                                }}
-                                                className="mt-2 w-full text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase py-1.5 bg-slate-800/50 rounded border border-purple-500/30 hover:border-purple-500/60 transition-all"
-                                            >
-                                                ✕ CLEAR ALL FILTERS
-                                            </button>
+                                                {(Object.keys(activationFilters).some(type => activationFilters[type]) || showOnlyWithActivations) && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setActivationFilters({});
+                                                            setShowOnlyWithActivations(false);
+                                                        }}
+                                                        className="mt-2 w-full text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase py-1.5 bg-slate-800/50 rounded border border-purple-500/30 hover:border-purple-500/60 transition-all"
+                                                    >
+                                                        ✕ CLEAR ALL FILTERS
+                                                    </button>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>
