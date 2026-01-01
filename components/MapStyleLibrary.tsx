@@ -619,9 +619,36 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
             {/* Add New Modal */}
             {showAddModal && (
                 <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-10">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-lg w-full">
+                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                         <h3 className="text-xl font-black text-white uppercase tracking-widest mb-4">Add Custom Map Style</h3>
-                        
+
+                        {/* External Map Sources Links */}
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 mb-6">
+                            <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+                                <ExternalLink className="w-4 h-4" />
+                                Find Map Styles From External Sources
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {EXTERNAL_MAP_SOURCES.map((source) => (
+                                    <a
+                                        key={source.url}
+                                        href={source.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-cyan-500 rounded-lg text-left transition-all group"
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-bold text-white group-hover:text-cyan-400 transition-colors">{source.name}</p>
+                                                <p className="text-[10px] text-slate-400">{source.description}</p>
+                                            </div>
+                                            <ExternalLink className="w-4 h-4 text-slate-500 group-hover:text-cyan-400 transition-colors flex-shrink-0 ml-2" />
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-2">Style Name</label>
