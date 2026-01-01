@@ -3132,8 +3132,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                       }
                                     }}
                                     className="w-full p-3 bg-orange-900/40 hover:bg-orange-800/60 border-2 border-orange-500/50 hover:border-orange-500 rounded-lg transition-colors text-left"
+                                    type="button"
                                   >
-                                    <div className="font-bold text-white uppercase tracking-widest text-sm">{playzone.title || `Playzone ${game.playgrounds.indexOf(playzone) + 1}`}</div>
+                                    <div className="font-bold text-white uppercase tracking-widest text-sm">{playzone.title || `Playzone ${game.playgrounds?.indexOf(playzone) + 1}`}</div>
                                     <div className="text-[10px] text-slate-400 mt-1">
                                       {uniquePlaygroundPoints.filter(p => p.playgroundId === playzone.id).length} tasks
                                     </div>
