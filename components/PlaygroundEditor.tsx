@@ -154,6 +154,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const backgroundRef = useRef<HTMLDivElement>(null);
 
     const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+    const [dragVisualPosition, setDragVisualPosition] = useState<{ x: number; y: number } | null>(null);
     const dragTaskRef = useRef<{
         id: string | null;
         offsetX: number;
