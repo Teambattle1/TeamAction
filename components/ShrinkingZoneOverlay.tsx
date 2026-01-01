@@ -18,27 +18,22 @@ const ShrinkingZoneOverlay: React.FC<ShrinkingZoneOverlayProps> = ({
   const [isOutsideZone, setIsOutsideZone] = useState(false);
   const [damageAccumulated, setDamageAccumulated] = useState(0);
 
-  // Calculate distance between two coordinates (Haversine formula)
-  const calculateDistance = (coord1: Coordinate, coord2: Coordinate): number => {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (coord1.lat * Math.PI) / 180;
-    const φ2 = (coord2.lat * Math.PI) / 180;
-    const Δφ = ((coord2.lat - coord1.lat) * Math.PI) / 180;
-    const Δλ = ((coord2.lng - coord1.lng) * Math.PI) / 180;
+  // Check if user is outside zone and apply damage
+  useEffect(() => {
+    if (!userLocation) return;
+
+    // Use haversineMeters from geo utils
+    const R = 6371e3;
+    const φ1 = (userLocation.lat * Math.PI) / 180;
+    const φ2 = (zone.currentCenter.lat * Math.PI) / 180;
+    const Δφ = ((zone.currentCenter.lat - userLocation.lat) * Math.PI) / 180;
+    const Δλ = ((zone.currentCenter.lng - userLocation.lng) * Math.PI) / 180;
 
     const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
               Math.cos(φ1) * Math.cos(φ2) *
               Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
-
-  // Check if user is outside zone and apply damage
-  useEffect(() => {
-    if (!userLocation) return;
-
-    const distance = calculateDistance(userLocation, zone.currentCenter);
+    const distance = R * c;
     const isOutside = distance > zone.currentRadius;
     setIsOutsideZone(isOutside);
 
