@@ -457,7 +457,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
         games.forEach(game => {
             // Count how many times this task appears in the game's points
-            const taskCount = game.points.filter(p => {
+            const taskCount = (game.points || []).filter(p => {
                 // Check if point was created from this template or has the same title/question
                 return p.task.question === sourceTask.task.question;
             }).length;
@@ -473,7 +473,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         if (!sourceTask) return [];
 
         return taskLists.filter(list =>
-            list.tasks.some(t =>
+            (list.tasks || []).some(t =>
                 t.id === taskId || (t.title === sourceTask.title && t.task?.question === sourceTask.task?.question)
             )
         );
