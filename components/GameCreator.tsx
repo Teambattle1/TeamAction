@@ -460,6 +460,29 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       }
   };
 
+  const handleGenerateAiLogo = async () => {
+      if (!clientName.trim()) return;
+      setIsGeneratingAiLogo(true);
+      try {
+          const url = await generateAiLogo(clientName, 'professional');
+          if (url) {
+              setClientLogo(url);
+          } else {
+              alert("Failed to generate logo. Please try again or upload one manually.");
+          }
+      } catch (error: any) {
+          // Check if it's an API key error
+          if (error?.message?.includes('API Key missing')) {
+              setShowGeminiKeyModal(true);
+          } else {
+              console.error('Error generating logo:', error);
+              alert("Failed to generate logo. Please try again or upload one manually.");
+          }
+      } finally {
+          setIsGeneratingAiLogo(false);
+      }
+  };
+
   const handleTaskBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
