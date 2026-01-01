@@ -463,13 +463,17 @@ const GameApp: React.FC = () => {
   // Generate demo team history data (for testing/demo purposes)
   // TODO: Replace with actual team history from database
   const demoTeamHistory = useMemo(() => {
-      if (!activeGame || !showTeamPaths) return [];
+      if (!activeGame || selectedTeamPaths.length === 0) return [];
 
       // Use first point as center, or default to Copenhagen
       const gameCenter = activeGame.points?.[0]?.location || { lat: 55.6761, lng: 12.5683 };
 
-      return generateDemoTeamHistory(gameCenter, 3);
-  }, [activeGame, showTeamPaths]);
+      // Generate history for all teams, then filter by selected
+      const allHistory = generateDemoTeamHistory(gameCenter, Math.max(teamsForFogOfWar.length, 3));
+
+      // Filter to only show selected team paths
+      return allHistory.filter(history => selectedTeamPaths.includes(history.teamId));
+  }, [activeGame, selectedTeamPaths, teamsForFogOfWar]);
 
 
   const ensureSession = (callback: () => void) => {
