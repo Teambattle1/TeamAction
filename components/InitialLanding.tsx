@@ -20,30 +20,71 @@ interface InitialLandingProps {
 
 type CategoryView = 'HOME' | 'SETTINGS' | 'CREATE' | 'CREATE_GAME_SUBMENU' | 'EDIT_MENU' | 'PLAY_MENU' | 'PLAY_TEAMS_MENU' | 'GAMES' | 'TEAMS' | 'TASKS' | 'ADMIN' | 'PREVIEW_SELECT';
 
-const NavCard = ({ 
-  title, 
-  subtitle, 
-  icon: Icon, 
-  color, 
-  onClick 
-}: { 
-  title: string; 
-  subtitle: string; 
-  icon: any; 
-  color: string; 
-  onClick: () => void 
+const NavCard = ({
+  title,
+  subtitle,
+  icon: Icon,
+  color,
+  onClick
+}: {
+  title: string;
+  subtitle: string;
+  icon: any;
+  color: string;
+  onClick: () => void
 }) => (
-  <button 
+  <button
     onClick={onClick}
-    className="group relative bg-slate-900 border border-slate-800 rounded-[1.5rem] p-5 text-left transition-all hover:scale-[1.05] active:scale-95 hover:border-white/20 hover:bg-slate-850 shadow-xl overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-2xl"
+    className="group relative bg-slate-900/80 border border-slate-800 rounded-[1.5rem] p-5 text-left transition-all hover:scale-[1.05] active:scale-95 hover:border-white/20 shadow-xl overflow-hidden flex flex-col h-full cursor-pointer hover:shadow-2xl backdrop-blur-sm"
   >
-    <div className={`absolute -top-4 -right-4 w-24 h-24 rounded-full blur-3xl opacity-5 transition-opacity group-hover:opacity-15 ${color}`} />
-    
+    {/* Adventure map background layers */}
+    <div className="absolute inset-0 opacity-30 pointer-events-none bg-[radial-gradient(circle_at_20%_15%,rgba(255,255,255,0.08),transparent_50%),radial-gradient(circle_at_80%_70%,rgba(249,115,22,0.10),transparent_55%),radial-gradient(circle_at_55%_95%,rgba(34,197,94,0.07),transparent_60%)]" />
+    <div className="absolute inset-0 opacity-15 pointer-events-none bg-[linear-gradient(transparent_0,transparent_22px,rgba(255,255,255,0.05)_22px,rgba(255,255,255,0.05)_23px,transparent_23px)] bg-[length:100%_46px]" />
+
+    {/* Soft color glow */}
+    <div className={`absolute -top-6 -right-6 w-28 h-28 rounded-full blur-3xl opacity-[0.08] transition-opacity group-hover:opacity-[0.16] ${color}`} />
+
+    {/* Route line */}
+    <svg className="absolute inset-0 w-full h-full opacity-25 pointer-events-none" viewBox="0 0 200 140" preserveAspectRatio="none">
+      <path
+        d="M-10 95 C 35 65, 55 125, 100 95 C 145 65, 165 110, 220 70"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+        className="text-white/10"
+      />
+      <path
+        d="M-10 95 C 35 65, 55 125, 100 95 C 145 65, 165 110, 220 70"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        className="text-white/20"
+        strokeDasharray="4 10"
+      />
+    </svg>
+
+    {/* Pin drops (points) */}
+    <div className="absolute inset-0 pointer-events-none">
+      <MapPin className={`absolute top-3 right-3 w-5 h-5 rotate-12 opacity-25 ${color.replace('bg-', 'text-')}`} />
+      <MapPin className="absolute bottom-4 right-10 w-4 h-4 -rotate-12 opacity-20 text-emerald-400" />
+      <MapPin className="absolute top-12 left-5 w-4 h-4 rotate-6 opacity-20 text-amber-400" />
+    </div>
+
     <div className="relative z-10 flex flex-col h-full">
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all group-hover:scale-110 group-hover:rotate-3 duration-300 ${color} bg-opacity-20 border border-current`}>
-        <Icon className={`w-6 h-6 ${color.replace('bg-', 'text-')}`} />
+      <div className="flex items-start justify-between gap-4">
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-all group-hover:scale-110 group-hover:rotate-3 duration-300 ${color} bg-opacity-20 border border-current`}>
+          <Icon className={`w-6 h-6 ${color.replace('bg-', 'text-')}`} />
+        </div>
+
+        <div className="mt-1 flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400/70 shadow-[0_0_10px_rgba(34,211,238,0.35)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-orange-400/70 shadow-[0_0_10px_rgba(251,146,60,0.35)]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400/70 shadow-[0_0_10px_rgba(52,211,153,0.35)]" />
+        </div>
       </div>
-      
+
       <div className="flex-1">
         <h3 className="text-lg font-black text-white uppercase tracking-wider mb-1 group-hover:text-orange-500 transition-colors">
           {title}
@@ -52,7 +93,7 @@ const NavCard = ({
           {subtitle}
         </p>
       </div>
-      
+
       <div className="mt-6 flex items-center gap-1 text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] group-hover:text-white transition-colors group-hover:translate-x-1">
         ACCESS MODULE <ChevronRight className="w-3 h-3" />
       </div>
