@@ -114,6 +114,9 @@ interface GameMapProps {
   showUserLocation?: boolean; // New prop for user location visibility
   teamHistory?: import('../types/teamHistory').TeamHistory[]; // NEW: Team movement history
   showTeamPaths?: boolean; // NEW: Toggle for team path visibility
+  fogOfWarEnabled?: boolean; // NEW: Fog of War mode
+  selectedTeamId?: string | null; // NEW: Team ID for fog of war perspective
+  selectedTeamCompletedPointIds?: string[]; // NEW: Completed points for selected team
 }
 
 // Internal component to handle user location updates without re-rendering the whole map
