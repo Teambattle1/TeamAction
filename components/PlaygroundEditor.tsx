@@ -3,9 +3,9 @@ import { Game, Playground, GamePoint, IconId, TaskTemplate, TaskList } from '../
 import {
     X, Plus, LayoutGrid, Globe, Map as MapIcon, ArrowLeft, Trash2, Edit2,
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut,
-    Maximize, Lock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
+    Maximize, Lock, Unlock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
     Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight,
-    Wand2, Zap, CheckCircle, XCircle, GripHorizontal, Navigation, AlertTriangle, QrCode
+    Wand2, Zap, CheckCircle, XCircle, GripHorizontal, Navigation, AlertTriangle, QrCode, Target
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { uploadImage } from '../services/storage'; // IMPORTED
