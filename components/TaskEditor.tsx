@@ -149,6 +149,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   const [expandedActivations, setExpandedActivations] = useState<Record<string, boolean>>({
     click: false,
     location: false,
+    proximity: false,
     qr: false,
     nfc: false,
     ibeacon: false
