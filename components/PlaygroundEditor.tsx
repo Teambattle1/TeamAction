@@ -2381,7 +2381,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <p className="text-[9px] text-slate-600 mt-2">Use the buttons above to add your first task</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
+                                    <div className="space-y-1.5">
                                         {uniquePlaygroundPoints.map((point, index) => {
                                             const hasActions = point.logic && (point.logic.onOpen?.length || point.logic.onCorrect?.length || point.logic.onIncorrect?.length);
                                             const isMarked = markedTaskIds.has(point.id);
