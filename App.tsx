@@ -44,6 +44,8 @@ import SupabaseDiagnostic from './components/SupabaseDiagnostic';
 import SupabaseToolsModal from './components/SupabaseToolsModal';
 import ImpossibleTravelWarnings from './components/ImpossibleTravelWarnings';
 import RemoteOverrideModal from './components/RemoteOverrideModal';
+import ClientLobby from './components/ClientLobby';
+import ClientGameChooser from './components/ClientGameChooser';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
@@ -1704,6 +1706,30 @@ const GameApp: React.FC = () => {
                 <SupabaseToolsModal
                     onClose={() => setShowSupabaseDiagnostic(false)}
                 />
+            )}
+
+            {/* CLIENT ZONE */}
+            {showClientGameChooser && (
+                <ClientGameChooser
+                    onClose={() => setShowClientGameChooser(false)}
+                    onSelectGame={(gameId) => {
+                        setClientGameId(gameId);
+                        setShowClientGameChooser(false);
+                        setShowClientLobby(true);
+                    }}
+                />
+            )}
+
+            {showClientLobby && clientGameId && (
+                <div className="fixed inset-0 z-[9998]">
+                    <ClientLobby
+                        gameId={clientGameId}
+                        onBack={() => {
+                            setShowClientLobby(false);
+                            setClientGameId(null);
+                        }}
+                    />
+                </div>
             )}
 
             {renderModals()}
