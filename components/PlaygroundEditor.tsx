@@ -749,14 +749,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             e.preventDefault();
             const scaleAmount = -e.deltaY * 0.001;
             setZoom(z => Math.max(0.2, Math.min(5, z * (1 + scaleAmount))));
-        } else {
-            // Pan
+        } else if (!isBackgroundLocked) {
+            // Pan (only if background is not locked)
             setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
         }
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (dragTaskRef.current.id) return;
+        if (isBackgroundLocked) return;
         setIsDragging(true);
         setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     };
@@ -770,6 +771,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     const handleMouseUp = () => {
         setIsDragging(false);
+    };
+
+    const handleCenterBackground = () => {
+        setPan({ x: 0, y: 0 });
+        setZoom(1);
     };
 
     if (!activePlayground) return null;
