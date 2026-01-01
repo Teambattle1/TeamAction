@@ -3030,6 +3030,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 setShowPlayzoneSelector(false);
                                 setPendingTasksToAdd([]);
                                 setIsAddingAITasks(false);
+                                setIsAddingTaskList(false);
                                 if (isAddingAITasks) {
                                   setShowAiTaskGenerator(false);
                                 } else {
