@@ -23,6 +23,7 @@ export interface GameHUDHandle {
         viewSwitcherPos: { x: number; y: number };
         pinsToolboxPos: { x: number; y: number };
         showToolboxPos: { x: number; y: number };
+        qrScannerPos: { x: number; y: number };
     };
 }
 
