@@ -696,15 +696,49 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
 
                             <div>
                                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-2">
-                                    Preview Image URL (Optional)
+                                    Preview Image (Optional)
                                 </label>
-                                <input
-                                    type="text"
-                                    value={newStylePreview}
-                                    onChange={(e) => setNewStylePreview(e.target.value)}
-                                    placeholder="https://..."
-                                    className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 outline-none"
-                                />
+                                <div className="space-y-3">
+                                    {/* File Upload */}
+                                    <div className="border-2 border-dashed border-slate-700 rounded-lg p-3 text-center hover:border-purple-500 transition-colors">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setNewStylePreviewFile(file);
+                                                    setNewStylePreview('');
+                                                }
+                                            }}
+                                            className="hidden"
+                                            id="preview-file-input"
+                                        />
+                                        <label htmlFor="preview-file-input" className="cursor-pointer block">
+                                            <Upload className="w-6 h-6 text-slate-500 mx-auto mb-1" />
+                                            <p className="text-xs text-white font-bold">Click to upload or drag & drop</p>
+                                            <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, GIF</p>
+                                        </label>
+                                    </div>
+
+                                    {newStylePreviewFile && (
+                                        <p className="text-xs text-purple-400">✓ Selected: {newStylePreviewFile.name}</p>
+                                    )}
+
+                                    {/* URL Alternative */}
+                                    {!newStylePreviewFile && (
+                                        <>
+                                            <div className="text-xs text-slate-400">OR</div>
+                                            <input
+                                                type="text"
+                                                value={newStylePreview}
+                                                onChange={(e) => setNewStylePreview(e.target.value)}
+                                                placeholder="https://example.com/preview.png"
+                                                className="w-full p-3 bg-slate-800 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 outline-none"
+                                            />
+                                        </>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
