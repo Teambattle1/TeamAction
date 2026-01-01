@@ -745,13 +745,31 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
                         <div className="flex gap-3 mt-6">
                             <button
                                 onClick={handleAddStyle}
-                                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg text-white font-bold uppercase tracking-wide transition-colors"
+                                disabled={addingStyle}
+                                className="flex-1 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:cursor-not-allowed rounded-lg text-white font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2"
                             >
-                                Add Style
+                                {addingStyle ? (
+                                    <>
+                                        <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                                        Adding...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="w-4 h-4" />
+                                        Add Style
+                                    </>
+                                )}
                             </button>
                             <button
-                                onClick={() => setShowAddModal(false)}
-                                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-lg text-white font-bold uppercase tracking-wide transition-colors"
+                                onClick={() => {
+                                    setShowAddModal(false);
+                                    setNewStyleName('');
+                                    setNewStyleJson('');
+                                    setNewStylePreview('');
+                                    setNewStylePreviewFile(null);
+                                }}
+                                disabled={addingStyle}
+                                className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 rounded-lg text-white font-bold uppercase tracking-wide transition-colors"
                             >
                                 Cancel
                             </button>
