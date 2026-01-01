@@ -8,6 +8,7 @@ import { teamSync } from './services/teamSync';
 import { LocationProvider, useLocation } from './contexts/LocationContext';
 import { haversineMeters, isWithinRadius, isValidCoordinate } from './utils/geo';
 import { snapPointsToRoad, isPointInBox } from './utils/mapbox';
+import { generateDemoTeamHistory } from './services/teamHistoryDemo';
 import GameMap, { GameMapHandle } from './components/GameMap';
 import GameHUD from './components/GameHUD';
 import GameManager from './components/GameManager';
