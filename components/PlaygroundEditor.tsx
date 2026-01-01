@@ -283,7 +283,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Get active playground
     const activePlayground = game.playgrounds?.find(p => p.id === activePlaygroundId) || game.playgrounds?.[0];
     const isOrientationLocked = !!activePlayground?.orientationLock && activePlayground.orientationLock !== 'none';
-    const playgroundPoints = activePlayground ? game.points.filter(p => p.playgroundId === activePlayground.id) : [];
+    const playgroundPoints = activePlayground && game.points ? game.points.filter(p => p.playgroundId === activePlayground.id) : [];
 
     useEffect(() => {
         if (!activePlayground) return;
