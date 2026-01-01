@@ -228,7 +228,36 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'team_locations') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.team_locations;
     END IF;
+
+    -- Enable realtime for media submissions (for live approval feed)
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'media_submissions') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.media_submissions;
+    END IF;
 END $$;
+
+-- 9. MEDIA SUBMISSIONS (for Live Approval of Photo/Video Tasks)
+CREATE TABLE IF NOT EXISTS public.media_submissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    game_id TEXT NOT NULL,
+    team_id TEXT NOT NULL,
+    team_name TEXT NOT NULL,
+    point_id TEXT NOT NULL,
+    point_title TEXT NOT NULL,
+    media_url TEXT NOT NULL,
+    media_type TEXT NOT NULL CHECK (media_type IN ('photo', 'video')),
+    submitted_at BIGINT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    reviewed_by TEXT,
+    reviewed_at BIGINT,
+    review_comment TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+ALTER TABLE public.media_submissions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public media_submissions access" ON public.media_submissions;
+CREATE POLICY "Public media_submissions access" ON public.media_submissions FOR ALL USING (true) WITH CHECK (true);
+
+-- Index for fast queries by game and status
+CREATE INDEX IF NOT EXISTS idx_media_submissions_game_status ON public.media_submissions(game_id, status);
 
 NOTIFY pgrst, 'reload config';`;
 
