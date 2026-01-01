@@ -12,6 +12,7 @@ import { ICON_COMPONENTS } from '../utils/icons';
 import { parseGPX } from '../utils/gpx';
 import { timeService } from '../services/time';
 import * as db from '../services/db';
+import jsQR from 'jsqr';
 
 // ... Imports ...
 
