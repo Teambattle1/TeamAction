@@ -9,7 +9,7 @@ import {
     Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
     Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus
 } from 'lucide-react';
-import { searchLogoUrl } from '../services/ai';
+import { searchLogoUrl, generateAiLogo } from '../services/ai';
 import { uploadImage } from '../services/storage';
 import { fetchUniqueTags, countMapStyleUsage, replaceMapStyleInGames, fetchCustomMapStyles, saveCustomMapStyle, deleteCustomMapStyle } from '../services/db';
 import { resizeImage } from '../utils/image';
