@@ -967,8 +967,8 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 />
             ))}
 
-            {/* Teams (Instructor Mode OR Captain View of Teammates) */}
-            {teams && teams.map((t) => {
+            {/* Teams (Instructor Mode OR Captain View of Teammates) - Toggle with Layer Control */}
+            {showLiveLayer && teams && teams.map((t) => {
                 // If it's a "teammate" view (GameMode.PLAY for captain), use simpler icon
                 if (mode === GameMode.PLAY && t.team.id === 'teammates') {
                     return (
