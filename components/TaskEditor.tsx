@@ -109,6 +109,11 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     proximityTriggerEnabled: point.proximityTriggerEnabled || false,
     proximityRevealRadius: point.proximityRevealRadius || 100,
     proximityStaysVisible: point.proximityStaysVisible !== false, // Default true
+    timeBombEnabled: point.timeBombEnabled || false,
+    timeBombDuration: point.timeBombDuration || 300, // Default 5 minutes
+    timeBombStartTrigger: point.timeBombStartTrigger || 'onUnlock',
+    timeBombPenalty: point.timeBombPenalty || -100,
+    timeBombAutoFail: point.timeBombAutoFail || false,
     task: {
         type: 'text',
         options: [],
