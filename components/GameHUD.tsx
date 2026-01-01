@@ -963,12 +963,26 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     >
                                         <GitBranch className="w-4 h-4" />
                                     </button>
+
+                                    {/* Team Paths Button - EDIT MODE ONLY */}
+                                    {mode === GameMode.EDIT && onToggleTeamPaths && (
+                                        <button
+                                            onClick={onToggleTeamPaths}
+                                            className={`w-10 h-10 rounded-lg transition-all border flex items-center justify-center group/toolbar relative ${showTeamPaths ? 'bg-black text-white border-gray-800 shadow-lg shadow-black/50' : 'bg-purple-700 text-purple-100 border-purple-600 hover:bg-purple-800 hover:text-white'}`}
+                                            title="Toggle Team Movement Paths"
+                                        >
+                                            <RouteIcon className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="flex gap-1 text-center">
                                     <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">ORDER ID</div>
                                     <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">TITLE</div>
                                     <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">SCORES</div>
                                     <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">ACTIONS</div>
+                                    {mode === GameMode.EDIT && onToggleTeamPaths && (
+                                        <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">PATH</div>
+                                    )}
                                 </div>
                             </div>
                         </div>
