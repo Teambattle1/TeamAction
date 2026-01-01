@@ -261,14 +261,10 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
 
 export const generateAiLogo = async (companyName: string, style: string = 'professional'): Promise<string | null> => {
     try {
-        console.log('[AI Logo] Generating logo for:', companyName);
+        console.log('[AI Logo] 🎨 Generating AI logo for:', companyName);
         console.log('[AI Logo] Style:', style);
 
-        // Generate a professional SVG logo with:
-        // 1. Company initials as primary design
-        // 2. Color gradient based on company name
-        // 3. Professional styling
-
+        // Generate a professional branded SVG logo
         const initials = companyName
             .split(/\s+/)
             .map(word => word[0])
@@ -276,44 +272,50 @@ export const generateAiLogo = async (companyName: string, style: string = 'profe
             .substring(0, 2)
             .toUpperCase();
 
-        // Color palette for professional logos
-        const professionalColors = [
-            { bg: '#2C3E50', accent: '#3498DB' },  // Blue-gray
-            { bg: '#27AE60', accent: '#2ECC71' },  // Green
-            { bg: '#8E44AD', accent: '#9B59B6' },  // Purple
-            { bg: '#E74C3C', accent: '#C0392B' },  // Red
-            { bg: '#F39C12', accent: '#E67E22' },  // Orange
-            { bg: '#1ABC9C', accent: '#16A085' },  // Teal
-            { bg: '#34495E', accent: '#2C3E50' },  // Dark gray
-            { bg: '#D35400', accent: '#BA4A00' },  // Dark orange
+        // Color palette - professional and diverse
+        const brandColors = [
+            { bg: '#FF6B6B', accent: '#D63031' },  // Red/Coral
+            { bg: '#4ECDC4', accent: '#1ABC9C' },  // Teal
+            { bg: '#45B7D1', accent: '#0984E3' },  // Sky Blue
+            { bg: '#FFA07A', accent: '#FF7675' },  // Salmon
+            { bg: '#98D8C8', accent: '#6C5CE7' },  // Mint
+            { bg: '#F7DC6F', accent: '#F39C12' },  // Gold
+            { bg: '#BB8FCE', accent: '#A29BFE' },  // Purple
+            { bg: '#85C1E2', accent: '#74B9FF' },  // Light Blue
+            { bg: '#F8B88B', accent: '#FF7675' },  // Peach
+            { bg: '#52C9A8', accent: '#00B894' },  // Green
         ];
 
-        const colorIndex = companyName.charCodeAt(0) % professionalColors.length;
-        const colors = professionalColors[colorIndex];
+        const colorIndex = companyName.charCodeAt(0) % brandColors.length;
+        const colors = brandColors[colorIndex];
 
-        // SVG with professional design
+        // Professional SVG logo with gradients and styling
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
             <defs>
-                <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" style="stop-color:${colors.bg};stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:${colors.accent};stop-opacity:0.9" />
+                    <stop offset="100%" style="stop-color:${colors.accent};stop-opacity:1" />
                 </linearGradient>
-                <filter id="shadow">
-                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
                 </filter>
             </defs>
-            <!-- Background circle -->
-            <circle cx="128" cy="128" r="120" fill="url(#bgGrad)" filter="url(#shadow)"/>
-            <!-- Inner ring -->
-            <circle cx="128" cy="128" r="110" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
-            <!-- Text -->
-            <text x="128" y="145" font-size="72" font-weight="bold" font-family="'Arial', 'Helvetica', sans-serif" fill="white" text-anchor="middle" letter-spacing="2">${initials}</text>
-            <!-- Bottom accent line -->
-            <rect x="80" y="165" width="96" height="3" rx="1.5" fill="white" opacity="0.6"/>
+            <!-- Background -->
+            <rect width="256" height="256" fill="${colors.bg}"/>
+            <!-- Main circle -->
+            <circle cx="128" cy="128" r="110" fill="url(#logoGrad)" filter="url(#glow)"/>
+            <!-- Accent ring -->
+            <circle cx="128" cy="128" r="100" fill="none" stroke="white" stroke-width="2" opacity="0.4"/>
+            <!-- Initials text -->
+            <text x="128" y="150" font-size="80" font-weight="900" font-family="'Segoe UI', 'Arial', sans-serif" fill="white" text-anchor="middle" dominant-baseline="middle" letter-spacing="3">${initials}</text>
         </svg>`;
 
         const logoUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
-        console.log('[AI Logo] Successfully generated professional SVG logo');
+        console.log('[AI Logo] ✅ Generated professional AI brand logo');
         return logoUrl;
     } catch (error: any) {
         console.error('[AI Logo] Error generating logo:', error);
