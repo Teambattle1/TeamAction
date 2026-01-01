@@ -253,6 +253,11 @@ export interface GamePoint {
   // Event Logic
   logic?: TaskLogic;
   
+  // Proximity Triggers (Discovery Mechanic)
+  proximityTriggerEnabled?: boolean; // If true, task is invisible until team gets close
+  proximityRevealRadius?: number; // Distance in meters at which task becomes visible (default: 100m)
+  proximityStaysVisible?: boolean; // If true, task stays visible after discovery (default: true)
+
   // Structural
   isSectionHeader?: boolean;
 }
