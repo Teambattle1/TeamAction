@@ -25,7 +25,6 @@ const MAP_LABELS: Record<MapStyleId, string> = {
     clean: 'Clean',
     winter: 'Winter',
     ski: 'Ski Map',
-    norwegian: 'Norwegian',
     historic: 'Historic',
     treasure: 'Treasure',
     desert: 'Desert',
