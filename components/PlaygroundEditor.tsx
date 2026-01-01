@@ -3072,13 +3072,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 <TaskMaster
                     onClose={() => setShowTaskMaster(false)}
                     onImportTasks={(tasks) => {
-                        // Show playzone selector if multiple playgrounds exist
-                        if (game.playgrounds && game.playgrounds.length > 1) {
-                            setPendingTasksToAdd(tasks);
-                            setIsAddingAITasks(false);
-                            setShowPlayzoneSelector(true);
-                            return;
-                        }
+                        // Show selector to choose between MAP and PLAYZONES
+                        setPendingTasksToAdd(tasks);
+                        setIsAddingAITasks(false);
+                        setShowPlayzoneSelector(true);
+                        return;
 
                         // Otherwise, add directly to the active playzone
                         const baseOrder = uniquePlaygroundPoints.length;
