@@ -1842,6 +1842,40 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         </button>
                                         <span className={`text-[8px] font-black uppercase tracking-widest ${isBackgroundLocked ? 'text-red-400' : 'text-slate-500'}`}>LOCK</span>
                                     </div>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                setShowTaskMaster(true);
+                                                setTaskMasterTab('LISTS');
+                                                setIsAddingTaskList(true);
+                                            }}
+                                            className="p-2 rounded transition-all cursor-pointer pointer-events-auto bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white shadow-lg"
+                                            title="Add Task List to playzone/game"
+                                            type="button"
+                                        >
+                                            <Library className="w-4 h-4" />
+                                        </button>
+                                        <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">ADD LIST</span>
+                                    </div>
+                                    {onOpenGameSettings && (
+                                        <div className="flex flex-col items-center gap-0.5">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    onOpenGameSettings();
+                                                }}
+                                                className="p-2 rounded transition-all cursor-pointer pointer-events-auto bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white shadow-lg"
+                                                title="Open Game Settings"
+                                                type="button"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                            </button>
+                                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">SETTINGS</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
