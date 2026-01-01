@@ -92,6 +92,9 @@ interface GameHUDProps {
     // Snap to Road Props
     onToggleSnapToRoad?: () => void;
     snapToRoadMode?: boolean;
+    // Team History Props
+    showTeamPaths?: boolean;
+    onToggleTeamPaths?: () => void;
 }
 
 const MAP_STYLES_LIST: { id: MapStyleId; label: string; icon: any; preview?: string; className?: string }[] = [
