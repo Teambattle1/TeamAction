@@ -635,7 +635,10 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     showTeamPaths = false, // Toggle for team path visibility
     fogOfWarEnabled = false, // Fog of War mode
     selectedTeamId = null, // Team ID for fog of war
-    selectedTeamCompletedPointIds = [] // Completed points for selected team
+    selectedTeamCompletedPointIds = [], // Completed points for selected team
+    showZoneLayer = true, // Toggle danger zones visibility
+    showTaskLayer = true, // Toggle task pins visibility
+    showLiveLayer = true // Toggle live team positions visibility
 }, ref) => {
   // NOTE: We do NOT consume useLocation() here directly to avoid re-rendering the entire MapContainer.
   // Instead, we use the UserLocationMarker child component for the live dot.
