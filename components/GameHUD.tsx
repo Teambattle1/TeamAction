@@ -802,6 +802,20 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                         <div className="text-[8px] font-black text-green-400 uppercase tracking-widest leading-tight whitespace-nowrap">PLAY</div>
                                     </div>
                                 )}
+
+                                {/* Remote Override Button - EDIT and INSTRUCTOR modes */}
+                                {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && onOpenRemoteOverride && (
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={onOpenRemoteOverride}
+                                            className="w-10 h-10 rounded-lg transition-all border flex flex-col items-center justify-center group/toolbar relative bg-orange-800 border-orange-600 text-orange-300 hover:bg-orange-700 hover:text-white"
+                                            title="Remote Override (Emergency Controls)"
+                                        >
+                                            <Zap className="w-4 h-4" />
+                                        </button>
+                                        <div className="text-[8px] font-black text-orange-400 uppercase tracking-widest leading-tight whitespace-nowrap">OVERRIDE</div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
