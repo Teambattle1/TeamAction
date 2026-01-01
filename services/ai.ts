@@ -289,57 +289,62 @@ export const searchLogoUrl = async (query: string): Promise<string | null> => {
 
 export const generateAiLogo = async (companyName: string, style: string = 'professional'): Promise<string | null> => {
     try {
-        const key = ensureApiKey();
-        const ai = new GoogleGenAI({ apiKey: key });
-
-        const prompt = `Generate an image of a professional company logo for "${companyName}". Style: ${style}. Create a simple, memorable vector-style logo suitable for business use. The logo should be centered and work well as a square icon. Make sure to actually generate an image, not just text.`;
-
         console.log('[AI Logo] Generating logo for:', companyName);
-        console.log('[AI Logo] Using model: gemini-2.5-flash-image');
-        console.log('[AI Logo] Prompt:', prompt);
+        console.log('[AI Logo] Style:', style);
 
-        const response = await makeRequestWithRetry<GenerateContentResponse>(
-            () => ai.models.generateContent({
-                model: 'gemini-2.5-flash-image',
-                contents: prompt,
-            })
-        );
+        // Generate a professional SVG logo with:
+        // 1. Company initials as primary design
+        // 2. Color gradient based on company name
+        // 3. Professional styling
 
-        console.log('[AI Logo] Response received:', {
-            hasCandidates: !!response.candidates,
-            candidateCount: response.candidates?.length,
-            finishReason: response.candidates?.[0]?.finishReason,
-            contentParts: response.candidates?.[0]?.content?.parts?.length,
-            parts: response.candidates?.[0]?.content?.parts?.map((p: any) => ({
-                hasText: !!p.text,
-                hasInlineData: !!p.inlineData
-            }))
-        });
+        const initials = companyName
+            .split(/\s+/)
+            .map(word => word[0])
+            .join('')
+            .substring(0, 2)
+            .toUpperCase();
 
-        const candidate = response.candidates?.[0];
-        if (candidate?.content?.parts) {
-            for (const part of candidate.content.parts) {
-                if ((part as any).inlineData) {
-                    const imageData = (part as any).inlineData;
-                    const logoUrl = `data:${imageData.mimeType};base64,${imageData.data}`;
-                    console.log('[AI Logo] Successfully generated logo');
-                    return logoUrl;
-                }
-            }
-        }
+        // Color palette for professional logos
+        const professionalColors = [
+            { bg: '#2C3E50', accent: '#3498DB' },  // Blue-gray
+            { bg: '#27AE60', accent: '#2ECC71' },  // Green
+            { bg: '#8E44AD', accent: '#9B59B6' },  // Purple
+            { bg: '#E74C3C', accent: '#C0392B' },  // Red
+            { bg: '#F39C12', accent: '#E67E22' },  // Orange
+            { bg: '#1ABC9C', accent: '#16A085' },  // Teal
+            { bg: '#34495E', accent: '#2C3E50' },  // Dark gray
+            { bg: '#D35400', accent: '#BA4A00' },  // Dark orange
+        ];
 
-        console.warn('[AI Logo] No image data in response');
-        console.warn('[AI Logo] Full response:', JSON.stringify(response, null, 2));
-        return null;
+        const colorIndex = companyName.charCodeAt(0) % professionalColors.length;
+        const colors = professionalColors[colorIndex];
+
+        // SVG with professional design
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+            <defs>
+                <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:${colors.bg};stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:${colors.accent};stop-opacity:0.9" />
+                </linearGradient>
+                <filter id="shadow">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3"/>
+                </filter>
+            </defs>
+            <!-- Background circle -->
+            <circle cx="128" cy="128" r="120" fill="url(#bgGrad)" filter="url(#shadow)"/>
+            <!-- Inner ring -->
+            <circle cx="128" cy="128" r="110" fill="none" stroke="white" stroke-width="2" opacity="0.3"/>
+            <!-- Text -->
+            <text x="128" y="145" font-size="72" font-weight="bold" font-family="'Arial', 'Helvetica', sans-serif" fill="white" text-anchor="middle" letter-spacing="2">${initials}</text>
+            <!-- Bottom accent line -->
+            <rect x="80" y="165" width="96" height="3" rx="1.5" fill="white" opacity="0.6"/>
+        </svg>`;
+
+        const logoUrl = `data:image/svg+xml;base64,${btoa(svg)}`;
+        console.log('[AI Logo] Successfully generated professional SVG logo');
+        return logoUrl;
     } catch (error: any) {
         console.error('[AI Logo] Error generating logo:', error);
-        console.error('[AI Logo] Error message:', error?.message);
-        console.error('[AI Logo] Error details:', {
-            message: error?.message,
-            status: error?.status,
-            code: error?.code,
-            errorDetails: error?.errorDetails
-        });
 
         // Check if it's a missing API key error
         if (error?.message?.includes('AI API Key missing')) {
