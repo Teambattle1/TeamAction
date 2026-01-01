@@ -122,11 +122,111 @@ ALTER TABLE public.playground_library ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public playground library access" ON public.playground_library;
 CREATE POLICY "Public playground library access" ON public.playground_library FOR ALL USING (true) WITH CHECK (true);
 
--- 8. REALTIME
+-- 8. TEAM LOCATION TRACKING (for Team History Map & Impossible Travel Detection)
+CREATE TABLE IF NOT EXISTS public.team_locations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT now(),
+    accuracy DECIMAL(6, 2),
+    speed DECIMAL(6, 2), -- meters per second
+    is_impossible_travel BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.team_locations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public team_locations access" ON public.team_locations;
+CREATE POLICY "Public team_locations access" ON public.team_locations FOR ALL USING (true) WITH CHECK (true);
+
+-- Index for fast queries by team and game
+CREATE INDEX IF NOT EXISTS idx_team_locations_team_game ON public.team_locations(team_id, game_id, timestamp DESC);
+
+-- 9. TASK ATTEMPTS (for Team History Map)
+CREATE TABLE IF NOT EXISTS public.task_attempts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    team_id TEXT NOT NULL,
+    game_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    task_title TEXT,
+    latitude DECIMAL(10, 8) NOT NULL,
+    longitude DECIMAL(11, 8) NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('CORRECT', 'WRONG', 'SUBMITTED')),
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT now(),
+    answer JSONB,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.task_attempts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public task_attempts access" ON public.task_attempts;
+CREATE POLICY "Public task_attempts access" ON public.task_attempts FOR ALL USING (true) WITH CHECK (true);
+
+-- Index for fast queries
+CREATE INDEX IF NOT EXISTS idx_task_attempts_team_game ON public.task_attempts(team_id, game_id, timestamp DESC);
+
+-- 10. IMPOSSIBLE TRAVEL DETECTION FUNCTION
+CREATE OR REPLACE FUNCTION detect_impossible_travel()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+    prev_location RECORD;
+    distance_meters DECIMAL;
+    time_diff_seconds DECIMAL;
+    calculated_speed DECIMAL;
+    max_walking_speed DECIMAL := 2.5; -- 2.5 m/s ≈ 9 km/h (fast walk/jog)
+BEGIN
+    -- Get previous location for this team
+    SELECT latitude, longitude, timestamp, speed
+    INTO prev_location
+    FROM public.team_locations
+    WHERE team_id = NEW.team_id AND game_id = NEW.game_id AND id != NEW.id
+    ORDER BY timestamp DESC
+    LIMIT 1;
+
+    IF prev_location IS NOT NULL THEN
+        -- Calculate distance using Haversine formula (approximate)
+        distance_meters := 6371000 * acos(
+            cos(radians(prev_location.latitude)) *
+            cos(radians(NEW.latitude)) *
+            cos(radians(NEW.longitude) - radians(prev_location.longitude)) +
+            sin(radians(prev_location.latitude)) *
+            sin(radians(NEW.latitude))
+        );
+
+        -- Calculate time difference in seconds
+        time_diff_seconds := EXTRACT(EPOCH FROM (NEW.timestamp - prev_location.timestamp));
+
+        -- Calculate speed (m/s)
+        IF time_diff_seconds > 0 THEN
+            calculated_speed := distance_meters / time_diff_seconds;
+            NEW.speed := calculated_speed;
+
+            -- Flag if speed exceeds maximum walking speed
+            IF calculated_speed > max_walking_speed THEN
+                NEW.is_impossible_travel := true;
+            END IF;
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+-- Trigger to automatically detect impossible travel
+DROP TRIGGER IF EXISTS trigger_detect_impossible_travel ON public.team_locations;
+CREATE TRIGGER trigger_detect_impossible_travel
+    BEFORE INSERT ON public.team_locations
+    FOR EACH ROW
+    EXECUTE FUNCTION detect_impossible_travel();
+
+-- 11. REALTIME
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'teams') THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.teams;
+    END IF;
+
+    -- Enable realtime for team locations (for live tracking)
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'team_locations') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.team_locations;
     END IF;
 END $$;
 
