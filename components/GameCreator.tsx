@@ -433,10 +433,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       if (!clientName.trim()) return;
       setIsSearchingLogo(true);
       const url = await searchLogoUrl(clientName);
-      if (url) {
+      if (url && url.trim()) {
           setClientLogo(url);
       } else {
-          alert("No logo found for this name. Try uploading one.");
+          setClientLogo(''); // Clear any existing logo
+          alert("No logo found for this name. Try uploading one or using AI Generate.");
       }
       setIsSearchingLogo(false);
   };
