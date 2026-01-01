@@ -190,6 +190,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (game.toolbarPositions?.editorToolsPos) {
             setToolsToolbarPos(game.toolbarPositions.editorToolsPos);
         }
+        if (game.toolbarPositions?.editorQRScannerPos) {
+            setQRScannerPos(game.toolbarPositions.editorQRScannerPos);
+        }
     }, [game.id]);
 
     // Save toolbar positions to game
