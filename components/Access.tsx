@@ -76,6 +76,58 @@ const Access: React.FC<AccessProps> = ({ onGameSelected, onBack }) => {
     }
   };
 
+  const handleQRScan = async (scannedData: string) => {
+    setShowQRScanner(false);
+
+    // Try to extract game ID or access code from QR data
+    // QR could contain:
+    // 1. A game ID directly (e.g., "game-1234567890")
+    // 2. An access code (e.g., "GAME2026")
+    // 3. A URL with code parameter (e.g., "?code=GAME2026")
+
+    let gameIdOrCode = scannedData.trim().toUpperCase();
+
+    // Check if it's a URL with code parameter
+    if (scannedData.includes('code=')) {
+      const codeMatch = scannedData.match(/code=([^&]+)/);
+      if (codeMatch) {
+        gameIdOrCode = codeMatch[1];
+      }
+    }
+
+    // Check if it looks like a game ID (starts with "game-")
+    if (gameIdOrCode.toLowerCase().startsWith('game-')) {
+      // It's a game ID - fetch and select directly
+      setIsValidating(true);
+      try {
+        const games = await db.fetchGames();
+        const game = games.find(g => g.id === gameIdOrCode.toLowerCase());
+        if (game) {
+          setValidGame(game);
+          setAccessCode('');
+          setValidationError(null);
+        } else {
+          setValidationError('Game not found. Please try again.');
+          setValidGame(null);
+        }
+      } catch (error) {
+        console.error('Error fetching game:', error);
+        setValidationError('Failed to fetch game. Please try again.');
+        setValidGame(null);
+      } finally {
+        setIsValidating(false);
+      }
+    } else {
+      // Assume it's an access code
+      setAccessCode(gameIdOrCode);
+      setValidationError(null);
+      setValidGame(null);
+
+      // Auto-validate the code
+      handleValidateCode(gameIdOrCode);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[5000] bg-[#0a0e1a] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
