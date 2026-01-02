@@ -761,56 +761,41 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                       title="Drag to move fields"
                     />
 
-                    {/* Game ID Search Field (Orange Border) */}
-                    <div className="relative flex items-center bg-slate-900/50 backdrop-blur-md px-4 py-3 border-2 border-orange-500/60 border-t-0 border-b-0 h-16 animate-in fade-in slide-in-from-right-4 duration-500 delay-50">
-                        <Search className="absolute left-4 w-4 h-4 text-slate-500 pointer-events-none" />
-                        <input
-                            type="text"
-                            placeholder="GAME ID"
-                            value={gameSearchQuery}
-                            onChange={(e) => setGameSearchQuery(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    if (gameSearchQuery.trim()) {
-                                        const searchId = gameSearchQuery.replace(/[\[\]]/g, '').trim();
-                                        const found = games.find(g => {
-                                            const gId = getGameDisplayId(g.id);
-                                            return gId === searchId || g.id === searchId || g.name.toLowerCase().includes(searchId.toLowerCase());
-                                        });
-                                        if (found) {
-                                            onSelectGame(found.id);
-                                            setGameSearchQuery('');
-                                        } else {
-                                            setShowGameMenu(true);
-                                        }
-                                    }
-                                }
-                            }}
-                            className="w-full pl-11 pr-8 py-0 bg-transparent text-white text-xs focus:outline-none placeholder-slate-500 transition-all h-full"
-                        />
-                        {gameSearchQuery && (
+                    {/* Session Selector with GOTO Button (Orange to Blue Border) */}
+                    <div className="relative flex items-center gap-2 bg-slate-900/50 backdrop-blur-md px-4 py-3 rounded-xl border-2 border-gradient-orange-blue border-t-0 h-16 transition-all animate-in fade-in slide-in-from-right-4 duration-500 delay-50">
+                        {/* Gradient border effect using box-shadow */}
+                        <style>{`
+                          .border-gradient-orange-blue {
+                            border: 2px solid;
+                            border-image: linear-gradient(to right, rgb(249, 115, 22, 0.6), rgb(59, 130, 246, 0.6)) 1;
+                          }
+                        `}</style>
+                        <button
+                            onClick={() => setShowGameMenu(!showGameMenu)}
+                            className="flex items-center gap-2 flex-1 text-left hover:opacity-80 transition-opacity"
+                        >
+                            <span className="text-xs font-black text-white tracking-widest uppercase leading-none truncate">
+                                {activeGame ? `[${getGameDisplayId(activeGame.id)}] ${activeGame.name}` : "SELECT SESSION"}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 transition-transform shrink-0 text-slate-400 ${showGameMenu ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {/* GOTO Button */}
+                        {activeGame && (
                             <button
-                                onClick={() => setGameSearchQuery('')}
-                                className="absolute right-3 p-1 hover:bg-slate-700 rounded transition-colors"
+                                onClick={() => {
+                                    setShowGameMenu(false);
+                                    onSelectGame(activeGame.id);
+                                    onAction('EDIT_GAME');
+                                }}
+                                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-blue-600 hover:from-orange-500 hover:to-blue-500 text-white rounded-lg font-black text-[10px] tracking-wide uppercase transition-all hover:scale-105 active:scale-95 shrink-0"
+                                title="Go to game editor"
                             >
-                                <XIcon className="w-4 h-4 text-slate-400 hover:text-white" />
+                                <span>GOTO</span>
+                                <ExternalLink className="w-3 h-3" />
                             </button>
                         )}
                     </div>
-
-                    {/* Divider */}
-                    <div className="h-px bg-gradient-to-r from-orange-500/60 to-blue-500/60" />
-
-                    {/* Session Selector (Blue Border) */}
-                    <button
-                        onClick={() => setShowGameMenu(!showGameMenu)}
-                        className="flex items-center justify-between bg-slate-900/50 backdrop-blur-md px-4 py-3 rounded-b-xl border-2 border-blue-500/60 border-t-0 h-16 transition-all w-full hover:bg-slate-800/50 animate-in fade-in slide-in-from-right-4 duration-500 delay-100"
-                    >
-                        <span className="text-xs font-black text-white tracking-widest uppercase leading-none truncate max-w-[200px]">
-                            {activeGame ? `[${getGameDisplayId(activeGame.id)}] ${activeGame.name}` : "SELECT SESSION"}
-                        </span>
-                        <ChevronDown className={`w-4 h-4 transition-transform shrink-0 text-slate-400 ${showGameMenu ? 'rotate-180' : ''}`} />
-                    </button>
 
                     {/* Dropdown Menu */}
                     {showGameMenu && (
