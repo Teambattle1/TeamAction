@@ -158,6 +158,16 @@ export interface TaskLogic {
 }
 // --------------------
 
+// Device-specific layout configuration for playgrounds
+export interface DeviceLayout {
+  orientationLock: 'portrait' | 'landscape' | 'none';
+  qrScannerPos?: { x: number; y: number }; // SCAN QR button position
+  iconPositions?: Record<string, { x: number; y: number }>; // Per-icon positions by point ID
+  buttonVisible?: boolean; // Device-specific button visibility
+  buttonLabel?: string; // Device-specific label
+  iconScale?: number; // Device-specific icon scale (1.0 = 100%)
+}
+
 export interface Playground {
   id: string;
   title: string;
