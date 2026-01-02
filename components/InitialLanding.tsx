@@ -241,6 +241,8 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   const [fieldsPosition, setFieldsPosition] = useState({ top: 16, right: 16 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [showGeminiWarning, setShowGeminiWarning] = useState(false);
+  const [hasCheckedGeminiKey, setHasCheckedGeminiKey] = useState(false);
   const fieldsContainerRef = React.useRef<HTMLDivElement>(null);
   const activeGame = games.find(g => g.id === activeGameId);
 
