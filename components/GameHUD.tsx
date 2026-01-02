@@ -1760,6 +1760,18 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                 </div>
             )}
 
+            {/* Orientation Lock Indicator - PLAY mode only */}
+            {mode === GameMode.PLAY && isOrientationLocked && (
+                <div className="fixed top-4 left-4 z-[9998] pointer-events-none animate-in fade-in slide-in-from-left-4">
+                    <div className="bg-red-600/95 backdrop-blur-sm border-2 border-red-400 rounded-xl px-4 py-2 shadow-2xl flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-white" />
+                        <span className="text-xs font-black text-white uppercase tracking-wider">
+                            Orientation Locked
+                        </span>
+                    </div>
+                </div>
+            )}
+
             {/* Adjust Game Time Modal */}
             {showAdjustGameTime && (
                 <AdjustGameTimeModal
