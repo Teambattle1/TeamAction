@@ -330,7 +330,7 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                     INSTRUCTOR DASHBOARD
                 </h1>
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">
-                    GAME: <span className="text-white">{liveGame.name}</span>
+                    GAME: <span className="text-orange-400 font-black">[{getGameDisplayId(liveGame.id)}]</span> <span className="text-white">{liveGame.name}</span>
                 </p>
             </div>
             
