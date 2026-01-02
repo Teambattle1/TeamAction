@@ -3355,7 +3355,18 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         });
                         setShowActionModal(false);
                     }}
-                    onStartDrawMode={() => {}}
+                    onStartDrawMode={(trigger) => {
+                        // Enter draw mode: highlight source, allow clicking targets
+                        setDrawMode({
+                            active: true,
+                            trigger,
+                            sourceTaskId: selectedTask.id,
+                            mousePosition: null
+                        });
+                        setShowActionModal(false);
+                        // Show toast/instruction
+                        console.log(`Draw mode activated for ${trigger}. Click tasks to connect.`);
+                    }}
                 />
             )}
 
