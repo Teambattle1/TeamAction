@@ -1718,8 +1718,17 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                 handleShowAddToModal(selectedTasks);
                                             }}
                                             className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
                                         >
                                             <Plus className="w-4 h-4" /> ADD TO
+                                        </button>
+                                        <button
+                                            onClick={handleBulkCopySelected}
+                                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
+                                            title="Create copies of the selected tasks"
+                                        >
+                                            <Copy className="w-4 h-4" /> COPY
                                         </button>
                                         <button
                                             onClick={() => setShowBulkDeleteConfirm(true)}
