@@ -688,6 +688,49 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setBulkSelectionMode(false);
     };
 
+    const handleBulkEditColorScheme = () => {
+        const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+        if (selectedTasks.length === 0) return;
+
+        // Use the first selected task's color scheme as initial, or undefined
+        const initialScheme = selectedTasks[0].colorScheme;
+        setEditingColorScheme(initialScheme);
+        setColorSchemeTaskIds(selectedTemplateIds);
+        setShowColorSchemeEditor(true);
+    };
+
+    const handleSaveColorScheme = async (scheme: TaskColorScheme) => {
+        // Apply color scheme to all selected tasks
+        const updatedLibrary = library.map(task => {
+            if (colorSchemeTaskIds.includes(task.id)) {
+                return { ...task, colorScheme: scheme };
+            }
+            return task;
+        });
+
+        setLibrary(updatedLibrary);
+        onUpdateTaskLibrary(updatedLibrary);
+
+        // Update in database
+        for (const taskId of colorSchemeTaskIds) {
+            const task = updatedLibrary.find(t => t.id === taskId);
+            if (task) {
+                await db.saveTemplate(task);
+            }
+        }
+
+        setShowColorSchemeEditor(false);
+        setColorSchemeTaskIds([]);
+        setEditingColorScheme(undefined);
+
+        // Show notification
+        setNotification({
+            message: `Color scheme applied to ${colorSchemeTaskIds.length} task${colorSchemeTaskIds.length > 1 ? 's' : ''}`,
+            type: 'success'
+        });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
     const handleBulkAddToGame = async (game: Game) => {
         const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
 
