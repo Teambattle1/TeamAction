@@ -152,7 +152,23 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const qrScannerResizeStart = useRef({ width: 0, height: 0, x: 0, y: 0 });
 
     // Device-specific layout management
-    const [selectedDevice, setSelectedDevice] = useState<DeviceType>('mobile'); // Changed default to mobile
+    // Smart device initialization: desktop for new playgrounds, last used for existing
+    const [selectedDevice, setSelectedDevice] = useState<DeviceType>(() => {
+        // Check if this is a new playground (no tasks yet)
+        const playgroundId = game.playgrounds?.[0]?.id || activePlaygroundId;
+        const playgroundTasks = game.points?.filter(p => p.playgroundId === playgroundId) || [];
+        const isNewPlayground = playgroundTasks.length === 0;
+
+        if (isNewPlayground) {
+            // New playground: start with desktop mode
+            return 'desktop';
+        } else {
+            // Existing playground: load last used device from localStorage
+            const storageKey = `playzone_device_${playgroundId}`;
+            const savedDevice = localStorage.getItem(storageKey);
+            return (savedDevice as DeviceType) || 'desktop';
+        }
+    });
     const [deviceLayoutsCache, setDeviceLayoutsCache] = useState<Record<DeviceType, any> | null>(null);
     const orientationDragOffset = useRef({ x: 0, y: 0 });
     const showDragOffset = useRef({ x: 0, y: 0 });
