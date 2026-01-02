@@ -5,7 +5,7 @@ import { uploadImage } from '../services/storage'; // IMPORTED
 import {
     X, Plus, Search, Layers, Library, Edit2, Trash2, ArrowLeft, Save,
     ImageIcon, Upload, Filter, Tag, LayoutList, RefreshCw, Check, Copy,
-    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings, Loader2, Sparkles
+    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings, Loader2, Sparkles, LayoutGrid
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import AiTaskGenerator from './AiTaskGenerator';
@@ -31,6 +31,7 @@ interface TaskMasterProps {
     initialModal?: 'AI' | 'LOQUIZ' | null;
     onDeleteTagGlobally?: (tagName: string) => Promise<void>;
     onRenameTagGlobally?: (oldTag: string, newTag: string) => Promise<void>;
+    isPlayzoneEditor?: boolean; // When used inside Playzone Editor, show playzone/game placement actions for Task Lists
 }
 
 const TaskMaster: React.FC<TaskMasterProps> = ({
@@ -46,7 +47,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     initialTab = 'LIBRARY',
     initialModal = null,
     onDeleteTagGlobally,
-    onRenameTagGlobally
+    onRenameTagGlobally,
+    isPlayzoneEditor = false
 }) => {
     const [tab, setTab] = useState<'LIBRARY' | 'LISTS' | 'TAGS' | 'CLIENT'>(initialTab);
     const [library, setLibrary] = useState<TaskTemplate[]>(cachedLibrary || []); // Initialize with cache or empty array
