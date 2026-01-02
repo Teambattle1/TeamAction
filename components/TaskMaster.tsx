@@ -1802,16 +1802,17 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                                     })}
                                                                 </div>
 
-                                                                {(Object.keys(activationFilters).some(type => activationFilters[type]) || showOnlyWithActivations) && (
+                                                                {(Object.keys(activationFilters).some(type => activationFilters[type]) || showOnlyWithActivations || showOnlyInvalidAnswers) && (
                                                                     <button
                                                                         onClick={() => {
                                                                             setActivationFilters({});
                                                                             setShowOnlyWithActivations(false);
+                                                                            setShowOnlyInvalidAnswers(false);
                                                                         }}
                                                                         className="mt-2 w-full text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase py-1.5 bg-slate-800/50 rounded border border-purple-500/30 hover:border-purple-500/60 transition-all"
                                                                         type="button"
                                                                     >
-                                                                        ✕ CLEAR ACTIVATION FILTERS
+                                                                        ✕ CLEAR ALL FILTERS
                                                                     </button>
                                                                 )}
                                                             </div>
