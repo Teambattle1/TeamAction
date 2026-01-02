@@ -98,7 +98,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     }>({ active: false, trigger: null, sourceTaskId: null, mousePosition: null });
 
     const editorRootRef = useRef<HTMLDivElement>(null);
-    const canvasRef = useRef<HTMLDivElement>(null);
+    const drawCanvasRef = useRef<HTMLDivElement>(null);
 
     const getDefaultEditorToolbarPositions = () => {
         const rootWidth = editorRootRef.current?.getBoundingClientRect().width || (typeof window !== 'undefined' ? window.innerWidth : 1200);
