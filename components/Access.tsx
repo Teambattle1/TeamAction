@@ -82,6 +82,9 @@ const Access: React.FC<AccessProps> = ({ onGameSelected, onBack }) => {
 
   const handlePlayGame = () => {
     if (validGame) {
+      // Store selected language in localStorage for the game session
+      localStorage.setItem(`game_${validGame.id}_language`, selectedLanguage);
+
       // Clear URL params
       window.history.replaceState({}, '', window.location.pathname);
       onGameSelected(validGame.id);
