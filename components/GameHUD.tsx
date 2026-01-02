@@ -991,7 +991,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
 
 
             {/* Draggable Location Search Toolbox - Only for GPS-based games */}
-            {mode === GameMode.EDIT && activeGame?.gameMode !== 'playzone' && (
+            {mode === GameMode.EDIT && activeGame?.gameMode !== 'playzone' && !hideMapToolbars && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: locationToolboxPos.x, top: locationToolboxPos.y }}
@@ -1084,7 +1084,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* Draggable Top Toolbar (Chat, Measure, Settings) */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && !hideMapToolbars && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: topToolbarPos.x, top: topToolbarPos.y }}
@@ -1196,7 +1196,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* Draggable View Switcher (Editor, Instructor, Team) - Hide for PLAYZONE to avoid map confusion */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && !hideMapToolbars && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: viewSwitcherPos.x, top: viewSwitcherPos.y }}
@@ -1314,7 +1314,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* Draggable PINS Toolbar (Measure, Scores, Relocate) - Only for GPS-based games */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && !hideMapToolbars && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: pinsToolboxPos.x, top: pinsToolboxPos.y }}
@@ -1387,7 +1387,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* SHOW Toolbar (Task ID, Title, Scores) - Independent */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && !hideMapToolbars && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: showToolboxPos.x, top: showToolboxPos.y }}
@@ -1574,7 +1574,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* LAYERS Toolbar - EDIT and INSTRUCTOR modes only */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !hideMapToolbars && (
                 <div className="absolute bottom-24 left-4 z-[1100] pointer-events-auto">
                     <div className="bg-cyan-600 border-2 border-cyan-500 rounded-xl shadow-2xl p-2">
                         <div className="flex flex-col gap-1">
