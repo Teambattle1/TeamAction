@@ -3001,7 +3001,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         style={{
                             transform: selectedDevice === 'tablet' && editorOrientation === 'portrait' ? 'scale(0.72)' : 'scale(1)',
                             transformOrigin: 'center center',
-                            transition: 'transform 0.3s ease-out'
+                            transition: 'transform 0.3s ease-out',
+                            width: selectedDevice === 'desktop' ? '100%' : 'auto',
+                            height: selectedDevice === 'desktop' ? '100%' : 'auto'
                         }}
                     >
                         {/* Device Frame Container - Responsive to Selected Device */}
