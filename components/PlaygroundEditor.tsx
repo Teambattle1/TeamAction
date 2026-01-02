@@ -2888,13 +2888,49 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </button>
 
                             {/* Task Title */}
-                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-2">
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-3">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TASK TITLE</label>
                                 <input
                                     value={selectedTask.title}
                                     onChange={(e) => updateTask({ title: e.target.value })}
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white outline-none focus:border-orange-500"
                                 />
+
+                                {/* Task Action Buttons */}
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-700">
+                                    {/* SETTINGS Button (Orange) */}
+                                    <button
+                                        onClick={() => {
+                                            setSettingsModalTaskId(selectedTask.id);
+                                            setShowTaskSettingsModal(true);
+                                        }}
+                                        className="py-2 bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 hover:text-orange-300 border border-orange-600/40 hover:border-orange-500 rounded-lg font-bold uppercase tracking-wider text-[9px] flex flex-col items-center justify-center gap-1 transition-all"
+                                        title="Open task settings"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        <span>SETTINGS</span>
+                                    </button>
+
+                                    {/* ACTIONS Button (Green) */}
+                                    <button
+                                        onClick={() => setShowActionModal(true)}
+                                        className="py-2 bg-green-600/20 hover:bg-green-600/40 text-green-400 hover:text-green-300 border border-green-600/40 hover:border-green-500 rounded-lg font-bold uppercase tracking-wider text-[9px] flex flex-col items-center justify-center gap-1 transition-all"
+                                        title="Set up if/then logic and actions"
+                                    >
+                                        <Zap className="w-4 h-4" />
+                                        <span>ACTIONS</span>
+                                    </button>
+
+                                    {/* VIEW Button (Blue) */}
+                                    <button
+                                        onClick={() => setShowTaskViewModal(true)}
+                                        className="py-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-300 border border-blue-600/40 hover:border-blue-500 rounded-lg font-bold uppercase tracking-wider text-[9px] flex flex-col items-center justify-center gap-1 transition-all"
+                                        title="Preview task view"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        <span>VIEW</span>
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Task Status Markers Toggle */}
