@@ -2609,8 +2609,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 {/* Orientation Lock Warning - HIDDEN - Now shown inline in left drawer */}
 
                 {isBackgroundLocked && (
-                    <div className="absolute top-40 left-6 bg-red-900/80 border border-red-500 rounded-lg p-3 text-[9px] text-red-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
-                        🔒 Background is LOCKED - dragging disabled
+                    <div className="absolute top-4 left-4 bg-red-900/90 border-2 border-red-500 rounded-xl p-4 text-[10px] text-red-100 uppercase font-black tracking-widest shadow-2xl max-w-xs pointer-events-auto z-50 backdrop-blur-sm">
+                        🔒 BACKGROUND IS LOCKED - DRAGGING DISABLED
                     </div>
                 )}
 
