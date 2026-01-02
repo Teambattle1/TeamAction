@@ -2956,6 +2956,37 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     onChange={(e) => updateTask({ textLabelScale: parseFloat(e.target.value) })}
                                     className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
                                 />
+
+                                {/* Bulk Apply to Marked Tasks */}
+                                {markedTaskIds.size > 0 && (
+                                    <div className="pt-2 border-t border-slate-700 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <p className="text-[8px] text-orange-400 font-bold uppercase tracking-wider">
+                                                    {markedTaskIds.size} {markedTaskIds.size === 1 ? 'task' : 'tasks'} marked
+                                                </p>
+                                                <p className="text-[7px] text-slate-500 mt-0.5">
+                                                    Apply current size to all selected
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const currentScale = selectedTask.textLabelScale || 1;
+                                                    const updatedPoints = game.points.map(p =>
+                                                        markedTaskIds.has(p.id) ? { ...p, textLabelScale: currentScale } : p
+                                                    );
+                                                    onUpdateGame({ ...game, points: updatedPoints });
+                                                    alert(`Applied ${Math.round(currentScale * 100)}% text size to ${markedTaskIds.size} task(s)`);
+                                                }}
+                                                className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1 shadow-lg"
+                                                title={`Apply ${Math.round((selectedTask.textLabelScale || 1) * 100)}% to ${markedTaskIds.size} selected task(s)`}
+                                            >
+                                                <Check className="w-3 h-3" />
+                                                APPLY
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Icon Editor */}
