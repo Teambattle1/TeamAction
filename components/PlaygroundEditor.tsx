@@ -2076,6 +2076,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         )}
                     </div>
 
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
+
                     {/* LAYOUT Section */}
                     <div>
                         <button
