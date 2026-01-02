@@ -240,14 +240,32 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   const handleGenerateImage = async () => {
       const prompt = editedPoint.task.question.replace(/<[^>]*>?/gm, '') + " " + editedPoint.title;
       if (!prompt.trim()) return;
+
       setIsGeneratingImage(true);
-      const img = await generateAiImage(prompt);
-      if (img) {
-          // Upload AI Image to Storage for persistence
-          const url = await uploadImage(img);
-          setEditedPoint(prev => ({ ...prev, task: { ...prev.task, imageUrl: url || img } }));
+      try {
+          console.log('[TaskEditor] Generating AI illustration for:', prompt);
+          const img = await generateAiImage(prompt);
+
+          if (img) {
+              console.log('[TaskEditor] Illustration generated successfully');
+              // Upload AI Image to Storage for persistence
+              const url = await uploadImage(img);
+              setEditedPoint(prev => ({ ...prev, task: { ...prev.task, imageUrl: url || img } }));
+          } else {
+              console.warn('[TaskEditor] AI returned null');
+              alert('⚠️ Image generation failed\n\nPlease check your Gemini API key in the settings or try again with a different prompt.');
+          }
+      } catch (error: any) {
+          console.error('[TaskEditor] Error generating image:', error);
+          const errorMessage = error?.message || '';
+          if (errorMessage.includes('AI API Key missing')) {
+              alert('Gemini API Key is missing. Please set your API key in Local Storage or contact an administrator.\n\nGet a free API key at https://aistudio.google.com/app/apikey');
+          } else {
+              alert('Error generating image. Please try again.\n\n' + errorMessage);
+          }
+      } finally {
+          setIsGeneratingImage(false);
       }
-      setIsGeneratingImage(false);
   };
 
   const handleGenerateIcon = async () => {
@@ -256,14 +274,27 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
 
       setIsGeneratingImage(true);
       try {
-          const prompt = `A simple, flat vector icon representing: "${keyword}". Minimalist design, solid color, white background, high contrast, suitable for a map pin.`;
-          const img = await generateAiImage(prompt, 'icon');
+          const promptText = `A simple, flat vector icon representing: "${keyword}". Minimalist design, solid color, white background, high contrast, suitable for a map pin.`;
+          console.log('[TaskEditor] Generating AI icon for:', keyword);
+
+          const img = await generateAiImage(promptText, 'icon');
+
           if (img) {
+              console.log('[TaskEditor] Icon generated successfully');
               const url = await uploadImage(img);
               setEditedPoint(prev => ({ ...prev, iconUrl: url || img }));
+          } else {
+              console.warn('[TaskEditor] AI returned null');
+              alert('⚠️ Icon generation failed\n\nPlease check your Gemini API key or try again.');
           }
-      } catch (e) {
-          console.error(e);
+      } catch (error: any) {
+          console.error('[TaskEditor] Error generating icon:', error);
+          const errorMessage = error?.message || '';
+          if (errorMessage.includes('AI API Key missing')) {
+              alert('Gemini API Key is missing. Please set your API key in Local Storage.\n\nGet a free API key at https://aistudio.google.com/app/apikey');
+          } else {
+              alert('Error generating icon. Please try again.\n\n' + errorMessage);
+          }
       } finally {
           setIsGeneratingImage(false);
       }
