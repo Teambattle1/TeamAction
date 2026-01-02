@@ -2102,6 +2102,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <p><strong>💡 How it works:</strong></p>
                               <p>• <strong>Global Defaults:</strong> Set in System Tools (Admin) → applies to all games</p>
                               <p>• <strong>Game Override:</strong> Configure game-specific sounds here to override defaults</p>
+                              <p>• <strong>Custom Upload:</strong> Upload your own MP3/WAV files or choose from common sounds</p>
                               <p>• <strong>Auto-Play:</strong> Sounds play automatically when players answer tasks</p>
                               <p>• <strong>Volume Control:</strong> Set volume to 80% on game load (recommended)</p>
                           </div>
