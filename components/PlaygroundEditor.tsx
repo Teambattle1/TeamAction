@@ -223,16 +223,37 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         }
     }, [game.id, selectedDevice]);
 
-    // Save toolbar positions to game
+    // Save toolbar positions to game (device-aware)
     const saveToolbarPositions = () => {
+        const existingPos = game.toolbarPositions || {};
+
+        // Save per-device positions
         const updatedGame = {
             ...game,
             toolbarPositions: {
-                ...game.toolbarPositions,
+                ...existingPos,
+                // Keep default positions for backward compatibility
                 editorOrientationPos: orientationToolbarPos,
                 editorShowPos: showToolbarPos,
                 editorToolsPos: toolsToolbarPos,
-                editorQRScannerPos: qrScannerPos
+                editorQRScannerPos: qrScannerPos,
+                // Save device-specific positions
+                editorOrientationPosPerDevice: {
+                    ...(existingPos.editorOrientationPosPerDevice || {}),
+                    [selectedDevice]: orientationToolbarPos,
+                },
+                editorShowPosPerDevice: {
+                    ...(existingPos.editorShowPosPerDevice || {}),
+                    [selectedDevice]: showToolbarPos,
+                },
+                editorToolsPosPerDevice: {
+                    ...(existingPos.editorToolsPosPerDevice || {}),
+                    [selectedDevice]: toolsToolbarPos,
+                },
+                editorQRScannerPosPerDevice: {
+                    ...(existingPos.editorQRScannerPosPerDevice || {}),
+                    [selectedDevice]: qrScannerPos,
+                },
             }
         };
         onUpdateGame(updatedGame);
