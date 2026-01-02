@@ -678,6 +678,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const handleQRScanClick = async () => {
         // In simulation mode, show scanner
         if (isSimulationActive) {
+            console.log('🎮 Simulation Mode: Opening QR Scanner');
             setIsQRScannerActive(!isQRScannerActive);
             return;
         }
@@ -689,7 +690,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Handle QR scan result
     const handleQRScan = (data: string) => {
         setQRScannedValue(data);
-        console.log('QR Code scanned in editor:', data);
+        console.log('📷 QR Code scanned:', data);
+        // TODO: In simulation mode, you could use the scanned data to trigger actions
+        // For example, navigate to a task, update score, etc.
     };
 
     // Cleanup on unmount
