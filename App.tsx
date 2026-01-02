@@ -48,6 +48,7 @@ import ImpossibleTravelWarnings from './components/ImpossibleTravelWarnings';
 import RemoteOverrideModal from './components/RemoteOverrideModal';
 import ClientLobby from './components/ClientLobby';
 import ClientGameChooser from './components/ClientGameChooser';
+import Access from './components/Access';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
@@ -93,6 +94,7 @@ const GameApp: React.FC = () => {
   const [showClientLobby, setShowClientLobby] = useState(false);
   const [showClientGameChooser, setShowClientGameChooser] = useState(false);
   const [clientGameId, setClientGameId] = useState<string | null>(null);
+  const [showAccess, setShowAccess] = useState(false);
 
   const playableGames = useMemo(() => games.filter(g => !g.isGameTemplate), [games]);
   const gameTemplates = useMemo(() => games.filter(g => g.isGameTemplate), [games]);
