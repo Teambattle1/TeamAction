@@ -17,6 +17,8 @@ const Access: React.FC<AccessProps> = ({ onGameSelected, onBack }) => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validGame, setValidGame] = useState<Game | null>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('English');
+  const [availableLanguages, setAvailableLanguages] = useState<Language[]>(['English']);
 
   // Check URL params for code (from QR scan)
   useEffect(() => {
