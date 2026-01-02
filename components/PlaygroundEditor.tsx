@@ -224,24 +224,36 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Load toolbar positions from game (device-aware)
     useEffect(() => {
         const pos = game.toolbarPositions;
+        const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
 
-        // Try device-specific positions first, fall back to default
+        // Default positions - spread out horizontally at bottom
+        const defaultOrientationPos = { x: 20, y: windowHeight - 120 };
+        const defaultShowPos = { x: 300, y: windowHeight - 120 };
+        const defaultToolsPos = { x: 580, y: windowHeight - 120 };
+
+        // Try device-specific positions first, fall back to default, then to hardcoded defaults
         if (pos?.editorOrientationPosPerDevice?.[selectedDevice]) {
             setOrientationToolbarPos(pos.editorOrientationPosPerDevice[selectedDevice]);
         } else if (pos?.editorOrientationPos) {
             setOrientationToolbarPos(pos.editorOrientationPos);
+        } else {
+            setOrientationToolbarPos(defaultOrientationPos);
         }
 
         if (pos?.editorShowPosPerDevice?.[selectedDevice]) {
             setShowToolbarPos(pos.editorShowPosPerDevice[selectedDevice]);
         } else if (pos?.editorShowPos) {
             setShowToolbarPos(pos.editorShowPos);
+        } else {
+            setShowToolbarPos(defaultShowPos);
         }
 
         if (pos?.editorToolsPosPerDevice?.[selectedDevice]) {
             setToolsToolbarPos(pos.editorToolsPosPerDevice[selectedDevice]);
         } else if (pos?.editorToolsPos) {
             setToolsToolbarPos(pos.editorToolsPos);
+        } else {
+            setToolsToolbarPos(defaultToolsPos);
         }
 
         if (pos?.editorQRScannerPosPerDevice?.[selectedDevice]) {
