@@ -153,6 +153,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   const [hoveredTaskType, setHoveredTaskType] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [tagError, setTagError] = useState(false);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [qrCodeDuplicateWarning, setQrCodeDuplicateWarning] = useState(false);
 
   // Map picker modal state
@@ -270,14 +272,19 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
       }
   };
 
-  const handleAddTag = () => {
-      const trimmedInput = tagInput.trim();
-      if (!trimmedInput || editedPoint.tags?.includes(trimmedInput)) {
+  const handleAddTag = (value?: string) => {
+      const trimmedInput = (value ?? tagInput).trim();
+      const existing = editedPoint.tags || [];
+
+      const hasDuplicate = existing.some(t => t.toLowerCase() === trimmedInput.toLowerCase());
+      if (!trimmedInput || hasDuplicate) {
           setTagError(true);
           return;
       }
+
       setEditedPoint(prev => ({ ...prev, tags: [...(prev.tags || []), trimmedInput] }));
       setTagInput('');
+      setShowTagSuggestions(false);
       setTagError(false);
   };
 
