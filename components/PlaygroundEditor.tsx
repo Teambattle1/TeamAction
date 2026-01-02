@@ -161,6 +161,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [taskMasterTab, setTaskMasterTab] = useState<'LIBRARY' | 'LISTS'>('LIBRARY');
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
     const [editingTitleValue, setEditingTitleValue] = useState('');
+    const [taskSortMode, setTaskSortMode] = useState<'order' | 'actions'>('order');
     const [bulkIconSourceId, setBulkIconSourceId] = useState<string | null>(null);
     const [bulkIconMode, setBulkIconMode] = useState(false);
     const [bulkIconTargets, setBulkIconTargets] = useState<Set<string>>(new Set());
@@ -3594,6 +3595,33 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             )}
 
+                            {/* Task Sort Control */}
+                            <div className="mb-3 flex items-center gap-2">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sort By:</label>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => setTaskSortMode('order')}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                            taskSortMode === 'order'
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        Task Order
+                                    </button>
+                                    <button
+                                        onClick={() => setTaskSortMode('actions')}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                            taskSortMode === 'actions'
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        Actions
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Tasks List */}
                             <div className="space-y-3">
                                 {uniquePlaygroundPoints.length === 0 ? (
@@ -3603,10 +3631,55 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     </div>
                                 ) : (
                                     <div className="space-y-1">
-                                        {uniquePlaygroundPoints.map((point, index) => {
-                                            const hasActions = point.logic && (point.logic.onOpen?.length || point.logic.onCorrect?.length || point.logic.onIncorrect?.length);
+                                        {(() => {
+                                            // Calculate which tasks are targets of actions
+                                            const taskActionInfo = uniquePlaygroundPoints.map(point => {
+                                                // Source actions (this task has actions pointing to others)
+                                                const hasSourceOnOpen = point.logic?.onOpen?.length > 0;
+                                                const hasSourceOnCorrect = point.logic?.onCorrect?.length > 0;
+                                                const hasSourceOnIncorrect = point.logic?.onIncorrect?.length > 0;
+
+                                                // Target actions (other tasks have actions pointing to this task)
+                                                const hasTargetOnOpen = uniquePlaygroundPoints.some(p =>
+                                                    p.id !== point.id && p.logic?.onOpen?.some((a: any) => (a.targetId || a) === point.id)
+                                                );
+                                                const hasTargetOnCorrect = uniquePlaygroundPoints.some(p =>
+                                                    p.id !== point.id && p.logic?.onCorrect?.some((a: any) => (a.targetId || a) === point.id)
+                                                );
+                                                const hasTargetOnIncorrect = uniquePlaygroundPoints.some(p =>
+                                                    p.id !== point.id && p.logic?.onIncorrect?.some((a: any) => (a.targetId || a) === point.id)
+                                                );
+
+                                                const actionCount =
+                                                    (hasSourceOnOpen ? 1 : 0) +
+                                                    (hasSourceOnCorrect ? 1 : 0) +
+                                                    (hasSourceOnIncorrect ? 1 : 0) +
+                                                    (hasTargetOnOpen ? 1 : 0) +
+                                                    (hasTargetOnCorrect ? 1 : 0) +
+                                                    (hasTargetOnIncorrect ? 1 : 0);
+
+                                                return {
+                                                    point,
+                                                    hasSourceOnOpen,
+                                                    hasSourceOnCorrect,
+                                                    hasSourceOnIncorrect,
+                                                    hasTargetOnOpen,
+                                                    hasTargetOnCorrect,
+                                                    hasTargetOnIncorrect,
+                                                    actionCount
+                                                };
+                                            });
+
+                                            // Sort based on mode
+                                            const sortedTasks = taskSortMode === 'actions'
+                                                ? [...taskActionInfo].sort((a, b) => b.actionCount - a.actionCount)
+                                                : taskActionInfo;
+
+                                            return sortedTasks.map(({ point, hasSourceOnOpen, hasSourceOnCorrect, hasSourceOnIncorrect, hasTargetOnOpen, hasTargetOnCorrect, hasTargetOnIncorrect }, index) => {
+                                            const hasActions = hasSourceOnOpen || hasSourceOnCorrect || hasSourceOnIncorrect;
                                             const isMarked = markedTaskIds.has(point.id);
                                             const isHovered = hoveredTaskId === point.id;
+                                            const isSourceTask = taskSortMode === 'actions' && hasActions;
                                             return (
                                                 <div
                                                     key={point.id}
@@ -3747,24 +3820,51 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                     )}
 
                                                     {/* Action indicators - tri-color system */}
-                                                    {showTaskActions && hasActions && (
-                                                        <div className="flex items-center gap-1 flex-shrink-0">
-                                                            {point.logic?.onOpen?.length > 0 && (
+                                                    {showTaskActions && (
+                                                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                            {/* SOURCE indicators (this task triggers actions) */}
+                                                            {hasSourceOnOpen && (
                                                                 <div
-                                                                    className="w-2 h-2 rounded-full bg-yellow-400 border border-yellow-600"
-                                                                    title="When Opened action"
+                                                                    className={`w-2 h-2 rounded-full bg-yellow-400 border-2 border-yellow-600 ${isSourceTask ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-slate-800' : ''}}`}
+                                                                    title="SOURCE: When Opened action"
                                                                 />
                                                             )}
-                                                            {point.logic?.onCorrect?.length > 0 && (
+                                                            {hasSourceOnCorrect && (
                                                                 <div
-                                                                    className="w-2 h-2 rounded-full bg-green-400 border border-green-600"
-                                                                    title="If Correct action"
+                                                                    className={`w-2 h-2 rounded-full bg-green-400 border-2 border-green-600 ${isSourceTask ? 'ring-2 ring-green-400 ring-offset-1 ring-offset-slate-800' : ''}}`}
+                                                                    title="SOURCE: If Correct action"
                                                                 />
                                                             )}
-                                                            {point.logic?.onIncorrect?.length > 0 && (
+                                                            {hasSourceOnIncorrect && (
                                                                 <div
-                                                                    className="w-2 h-2 rounded-full bg-red-400 border border-red-600"
-                                                                    title="If Incorrect action"
+                                                                    className={`w-2 h-2 rounded-full bg-red-400 border-2 border-red-600 ${isSourceTask ? 'ring-2 ring-red-400 ring-offset-1 ring-offset-slate-800' : ''}}`}
+                                                                    title="SOURCE: If Incorrect action"
+                                                                />
+                                                            )}
+
+                                                            {/* Divider if both source and target */}
+                                                            {(hasSourceOnOpen || hasSourceOnCorrect || hasSourceOnIncorrect) &&
+                                                             (hasTargetOnOpen || hasTargetOnCorrect || hasTargetOnIncorrect) && (
+                                                                <div className="w-px h-3 bg-slate-600" />
+                                                            )}
+
+                                                            {/* TARGET indicators (other tasks point to this task) */}
+                                                            {hasTargetOnOpen && (
+                                                                <div
+                                                                    className="w-2 h-2 rounded-full bg-yellow-400/40 border border-yellow-500"
+                                                                    title="TARGET: Unlocked by 'When Opened' action"
+                                                                />
+                                                            )}
+                                                            {hasTargetOnCorrect && (
+                                                                <div
+                                                                    className="w-2 h-2 rounded-full bg-green-400/40 border border-green-500"
+                                                                    title="TARGET: Unlocked by 'If Correct' action"
+                                                                />
+                                                            )}
+                                                            {hasTargetOnIncorrect && (
+                                                                <div
+                                                                    className="w-2 h-2 rounded-full bg-red-400/40 border border-red-500"
+                                                                    title="TARGET: Unlocked by 'If Incorrect' action"
                                                                 />
                                                             )}
                                                         </div>
@@ -3774,7 +3874,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                     <Edit2 className="w-3.5 h-3.5 text-slate-500 group-hover:text-orange-500 transition-colors flex-shrink-0" />
                                                 </div>
                                             );
-                                        })}
+                                        });
+                                        })()}
                                     </div>
                                 )}
                             </div>
