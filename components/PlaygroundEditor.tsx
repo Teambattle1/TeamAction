@@ -3390,11 +3390,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             : 'border-slate-900 group-hover:scale-110'
                                     } ${point.isCompleted ? 'bg-green-500' : isActionTarget ? 'bg-slate-400/40' : 'bg-white'} ${isActionTarget && !isDrawTarget ? 'opacity-50' : ''}`}
                                     style={{ width: displaySize, height: displaySize }}>
-                                        {/* Display completed icon if task is completed and has completedIconUrl, otherwise show regular icon */}
-                                        {(point.isCompleted && point.completedIconUrl) ? (
+                                        {/* Display icon based on answer status: solved icon if correct, unsolved if incorrect */}
+                                        {((point.isCompleted && !((point as any).answeredIncorrectly)) && point.completedIconUrl) ? (
+                                            // Correct answer - show solved icon
                                             <img
                                                 src={point.completedIconUrl}
-                                                alt={`${point.title} (Completed)`}
+                                                alt={`${point.title} (Solved)`}
                                                 className={`object-cover object-center rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
                                                 style={{
                                                     width: `${(point.iconImageScale || 0.9) * 100}%`,
@@ -3402,6 +3403,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                 }}
                                             />
                                         ) : point.iconUrl ? (
+                                            // Unsolved or incorrect answer - show regular icon
                                             <img
                                                 src={point.iconUrl}
                                                 alt={point.title}
@@ -3412,7 +3414,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                 }}
                                             />
                                         ) : (
-                                            <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : isActionTarget ? 'text-slate-400' : 'text-slate-900'}`} />
+                                            <Icon className={`w-6 h-6 ${point.isCompleted && !((point as any).answeredIncorrectly) ? 'text-white' : isActionTarget ? 'text-slate-400' : 'text-slate-900'}`} />
                                         )}
 
                                         {/* OK/Wrong Answer Marker - Green Check (correct) or Red X (wrong) */}
