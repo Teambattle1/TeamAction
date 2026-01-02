@@ -274,7 +274,7 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
         {/* GAME SELECTOR MODAL */}
         {showGameSelector && selectedTemplateForGame && (
             <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-in fade-in">
-                <div className="bg-slate-900 border-2 border-purple-600 rounded-2xl shadow-2xl p-8 max-w-3xl w-full max-h-[85vh] overflow-y-auto animate-in zoom-in-95">
+                <div className="bg-slate-900 border-2 border-purple-600 rounded-2xl shadow-2xl p-8 max-w-3xl w-full max-h-[85vh] overflow-y-auto animate-in zoom-in-95 flex flex-col">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-12 h-12 bg-purple-600/20 border border-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
                             <Plus className="w-6 h-6 text-purple-500" />
@@ -285,106 +285,90 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
                         </div>
                     </div>
 
-                    {gamesLoading ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-3" />
-                            <span className="text-xs font-bold text-slate-400 uppercase">LOADING GAMES...</span>
-                        </div>
-                    ) : games.length === 0 ? (
-                        <div className="text-center py-8">
-                            <p className="text-sm text-slate-400">No games available. Create a game first.</p>
-                        </div>
-                    ) : (
-                        <div className="space-y-6 mb-6">
-                            {/* TODAY */}
-                            {(() => {
-                                const today = games.filter(g => {
-                                    const gameDate = new Date(g.createdAt);
-                                    const now = new Date();
-                                    return gameDate.toDateString() === now.toDateString() || g.state === 'active';
-                                });
-                                return today.length > 0 ? (
-                                    <div>
-                                        <h3 className="text-sm font-black text-purple-400 uppercase tracking-widest mb-3">TODAY</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {today.map(game => (
-                                                <button
-                                                    key={game.id}
-                                                    onClick={() => confirmAddToGame(game)}
-                                                    className="text-left p-4 bg-purple-900/30 hover:bg-purple-900/50 border border-purple-600/50 hover:border-purple-500 rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/20 group"
-                                                >
-                                                    <h3 className="font-bold text-white uppercase text-sm mb-1 group-hover:text-purple-300 transition-colors">{game.name}</h3>
-                                                    <p className="text-xs text-slate-400 mb-2">{game.points?.length || 0} tasks • {game.playgrounds?.length || 0} zones</p>
-                                                    <p className="text-xs text-slate-500">
-                                                        {game.client?.name ? `By ${game.client.name}` : 'No client assigned'}
-                                                    </p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ) : null;
-                            })()}
+                    {/* TAB BAR */}
+                    <div className="flex gap-3 mb-6 border-b border-slate-800">
+                        <button
+                            onClick={() => setActiveTab('TODAY')}
+                            className={`px-6 py-3 font-black uppercase text-xs tracking-widest border-b-2 transition-all ${
+                                activeTab === 'TODAY'
+                                    ? 'border-purple-500 text-purple-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            TODAY
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('PLANNED')}
+                            className={`px-6 py-3 font-black uppercase text-xs tracking-widest border-b-2 transition-all ${
+                                activeTab === 'PLANNED'
+                                    ? 'border-blue-500 text-blue-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            PLANNED
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('COMPLETED')}
+                            className={`px-6 py-3 font-black uppercase text-xs tracking-widest border-b-2 transition-all ${
+                                activeTab === 'COMPLETED'
+                                    ? 'border-green-500 text-green-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            COMPLETED
+                        </button>
+                    </div>
 
-                            {/* PLANNED */}
-                            {(() => {
-                                const planned = games.filter(g => {
-                                    const gameDate = new Date(g.createdAt);
-                                    const now = new Date();
-                                    return gameDate.toDateString() !== now.toDateString() && gameDate > now && g.state !== 'active' && g.state !== 'ended';
-                                });
-                                return planned.length > 0 ? (
-                                    <div>
-                                        <h3 className="text-sm font-black text-blue-400 uppercase tracking-widest mb-3">PLANNED</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {planned.map(game => (
-                                                <button
-                                                    key={game.id}
-                                                    onClick={() => confirmAddToGame(game)}
-                                                    className="text-left p-4 bg-blue-900/30 hover:bg-blue-900/50 border border-blue-600/50 hover:border-blue-500 rounded-lg transition-all hover:shadow-lg hover:shadow-blue-500/20 group"
-                                                >
-                                                    <h3 className="font-bold text-white uppercase text-sm mb-1 group-hover:text-blue-300 transition-colors">{game.name}</h3>
-                                                    <p className="text-xs text-slate-400 mb-2">{game.points?.length || 0} tasks • {game.playgrounds?.length || 0} zones</p>
-                                                    <p className="text-xs text-slate-500">
-                                                        {game.client?.name ? `By ${game.client.name}` : 'No client assigned'}
-                                                    </p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ) : null;
-                            })()}
+                    {/* CONTENT */}
+                    <div className="flex-1 mb-6">
+                        {gamesLoading ? (
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-3" />
+                                <span className="text-xs font-bold text-slate-400 uppercase">LOADING GAMES...</span>
+                            </div>
+                        ) : games.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-sm text-slate-400">No games available. Create a game first.</p>
+                            </div>
+                        ) : getActiveTabGames().length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-sm text-slate-400">
+                                    No {activeTab.toLowerCase()} games available.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {getActiveTabGames().map(game => {
+                                    const tabColorMap = {
+                                        'TODAY': { bg: 'bg-purple-900/30', hover: 'hover:bg-purple-900/50', border: 'border-purple-600/50 hover:border-purple-500', text: 'group-hover:text-purple-300', shadow: 'hover:shadow-purple-500/20' },
+                                        'PLANNED': { bg: 'bg-blue-900/30', hover: 'hover:bg-blue-900/50', border: 'border-blue-600/50 hover:border-blue-500', text: 'group-hover:text-blue-300', shadow: 'hover:shadow-blue-500/20' },
+                                        'COMPLETED': { bg: 'bg-green-900/30', hover: 'hover:bg-green-900/50', border: 'border-green-600/50 hover:border-green-500', text: 'group-hover:text-green-300', shadow: 'hover:shadow-green-500/20' }
+                                    };
+                                    const colors = tabColorMap[activeTab];
 
-                            {/* COMPLETED */}
-                            {(() => {
-                                const completed = games.filter(g => g.state === 'ended');
-                                return completed.length > 0 ? (
-                                    <div>
-                                        <h3 className="text-sm font-black text-green-400 uppercase tracking-widest mb-3">COMPLETED</h3>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {completed.map(game => (
-                                                <button
-                                                    key={game.id}
-                                                    onClick={() => confirmAddToGame(game)}
-                                                    className="text-left p-4 bg-green-900/30 hover:bg-green-900/50 border border-green-600/50 hover:border-green-500 rounded-lg transition-all hover:shadow-lg hover:shadow-green-500/20 group"
-                                                >
-                                                    <h3 className="font-bold text-white uppercase text-sm mb-1 group-hover:text-green-300 transition-colors">{game.name}</h3>
-                                                    <p className="text-xs text-slate-400 mb-2">{game.points?.length || 0} tasks • {game.playgrounds?.length || 0} zones</p>
-                                                    <p className="text-xs text-slate-500">
-                                                        {game.client?.name ? `By ${game.client.name}` : 'No client assigned'}
-                                                    </p>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ) : null;
-                            })()}
-                        </div>
-                    )}
+                                    return (
+                                        <button
+                                            key={game.id}
+                                            onClick={() => confirmAddToGame(game)}
+                                            className={`text-left p-4 ${colors.bg} ${colors.hover} border ${colors.border} rounded-lg transition-all hover:shadow-lg ${colors.shadow} group`}
+                                        >
+                                            <h3 className={`font-bold text-white uppercase text-sm mb-1 ${colors.text} transition-colors`}>{game.name}</h3>
+                                            <p className="text-xs text-slate-400 mb-2">{game.points?.length || 0} tasks • {game.playgrounds?.length || 0} zones</p>
+                                            <p className="text-xs text-slate-500">
+                                                {game.client?.name ? `By ${game.client.name}` : 'No client assigned'}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
                     <button
                         onClick={() => {
                             setShowGameSelector(false);
                             setSelectedTemplateForGame(null);
+                            setActiveTab('TODAY');
                         }}
                         className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors"
                     >
