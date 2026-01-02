@@ -2476,8 +2476,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     const sourceTask = uniquePlaygroundPoints.find(p => p.id === drawMode.sourceTaskId);
                                     if (!sourceTask) return null;
 
-                                    const sourceX = sourceTask.playgroundPosition?.x || 50;
-                                    const sourceY = sourceTask.playgroundPosition?.y || 50;
+                                    const sourcePos = getDevicePosition(sourceTask);
+                                    const sourceX = sourcePos.x;
+                                    const sourceY = sourcePos.y;
                                     const mouseX = drawMode.mousePosition.x;
                                     const mouseY = drawMode.mousePosition.y;
 
