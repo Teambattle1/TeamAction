@@ -75,7 +75,7 @@ const Access: React.FC<AccessProps> = ({ onGameSelected, onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[5000] bg-[#0a0e1a] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Header */}
         <div className="text-center mb-8">
