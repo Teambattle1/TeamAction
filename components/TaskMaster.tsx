@@ -1117,7 +1117,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1">
-                                            {task.tags.map((tag, index) => {
+                                            {Array.isArray(task.tags) && task.tags.map((tag, index) => {
                                                 const tagKey = tag.toLowerCase();
                                                 const tagColor = tagColors[tagKey] || '#64748b';
                                                 // Calculate brightness to decide text color (white or black)
@@ -1139,6 +1139,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                     </span>
                                                 );
                                             })}
+                                            {(!Array.isArray(task.tags) || task.tags.length === 0) && (
+                                                <span className="text-[9px] text-slate-500">-</span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
