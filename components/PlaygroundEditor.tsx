@@ -14,6 +14,7 @@ import { generateAiImage, generateAiBackground, searchLogoUrl } from '../service
 import * as db from '../services/db';
 import { snapPointsToRoad, isPointInBox } from '../utils/mapbox';
 import jsQR from 'jsqr';
+import { getGlobalCorrectSound, getGlobalIncorrectSound, getGlobalVolume } from '../utils/sounds';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
 import TaskMaster from './TaskMaster';
