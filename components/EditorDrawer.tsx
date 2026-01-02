@@ -288,7 +288,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onStartSimulation,
   onShowPlayzoneChoice
 }) => {
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [isExpanded, setIsExpanded] = useState(initialExpanded); 
   const [isSaved, setIsSaved] = useState(false);
   const [isRoutesCollapsed, setIsRoutesCollapsed] = useState(true);
