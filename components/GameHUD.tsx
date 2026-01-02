@@ -127,6 +127,9 @@ interface GameHUDProps {
     // Playground Hover Props
     hoveredPlaygroundId?: string | null;
     onHoverPlayground?: (id: string | null) => void;
+    // Drawer State Props
+    collapsedSections?: Record<string, boolean>;
+    onCollapsedSectionsChange?: (sections: Record<string, boolean>) => void;
 }
 
 const MAP_STYLES_LIST: { id: MapStyleId; label: string; icon: any; preview?: string; className?: string }[] = [
