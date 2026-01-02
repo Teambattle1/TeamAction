@@ -231,9 +231,16 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   const activeGame = games.find(g => g.id === activeGameId);
 
   const filteredGames = useMemo(() => {
-    if (!gameSearchQuery.trim()) return games;
-    return games.filter(game => matchesGameSearch(game.name, game.id, gameSearchQuery));
-  }, [games, gameSearchQuery]);
+    const now = new Date();
+    let filtered = games;
+
+    // Apply status tab filter
+    filtered = filtered.filter(game => getGameStatusTab(game, now) === statusTab);
+
+    // Apply search filter
+    if (!gameSearchQuery.trim()) return filtered;
+    return filtered.filter(game => matchesGameSearch(game.name, game.id, gameSearchQuery));
+  }, [games, gameSearchQuery, statusTab]);
 
   const filteredGamesForCreate = useMemo(() => {
     if (!createMenuSearchQuery.trim()) return games;
