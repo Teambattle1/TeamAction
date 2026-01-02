@@ -372,6 +372,36 @@ const GameApp: React.FC = () => {
       return () => clearInterval(interval);
   }, [userLocation, activeGame, mode]);
 
+  // --- COOLDOWN TIMER ---
+  useEffect(() => {
+      if (taskCooldowns.size === 0) return;
+
+      const interval = setInterval(() => {
+          const now = Date.now();
+          const newCooldowns = new Map(taskCooldowns);
+          let hasExpiredCooldowns = false;
+
+          // Check for expired cooldowns
+          taskCooldowns.forEach((endTime, taskId) => {
+              if (now >= endTime) {
+                  newCooldowns.delete(taskId);
+                  hasExpiredCooldowns = true;
+                  // Vibrate when cooldown expires
+                  if (navigator.vibrate) {
+                      navigator.vibrate(200);
+                  }
+              }
+          });
+
+          // Update state if any cooldowns expired
+          if (hasExpiredCooldowns) {
+              setTaskCooldowns(newCooldowns);
+          }
+      }, 1000); // Check every second
+
+      return () => clearInterval(interval);
+  }, [taskCooldowns]);
+
   // --- MEMOIZED DATA ---
   const currentGameObj = mode === GameMode.SIMULATION ? simulatedGame : activeGame;
 
