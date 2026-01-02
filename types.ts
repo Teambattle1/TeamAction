@@ -302,6 +302,7 @@ export interface GamePoint {
   devicePositions?: Record<DeviceType, { x: number; y: number }>; // NEW: device-specific positions
   playgroundScale?: number;
   textLabelScale?: number; // NEW: text label size scale (0.5 to 2.0, default 1.0)
+  iconImageScale?: number; // Image size within the icon circle (0.5 to 1.5, default 0.9)
   isHiddenBeforeScan?: boolean; 
 
   // Appearance
