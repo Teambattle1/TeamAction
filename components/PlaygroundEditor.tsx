@@ -1569,7 +1569,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 </button>
 
                 {/* Top Overlay Bar - Title, Zone Tabs (centered), and Home */}
-                <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 z-10">
                     <div className="p-4 flex items-center gap-4 relative">
                         {/* Left: Title */}
                         <div className="hidden flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm border border-orange-500/30 rounded-xl px-4 py-2 shadow-xl pointer-events-auto flex-shrink-0">
