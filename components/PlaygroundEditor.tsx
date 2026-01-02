@@ -2467,14 +2467,28 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     onPointerCancel={handleTaskPointerUp}
                                 >
                                     <div className={`rounded-full flex items-center justify-center border-4 shadow-xl transition-all relative ${
-                                        hoveredTaskId === point.id
+                                        isDrawSource && drawMode.trigger === 'onCorrect'
+                                            ? 'border-green-500 shadow-green-500/70 scale-125 animate-pulse'
+                                            : isDrawSource && drawMode.trigger === 'onIncorrect'
+                                            ? 'border-red-500 shadow-red-500/70 scale-125 animate-pulse'
+                                            : isDrawSource && drawMode.trigger === 'onOpen'
+                                            ? 'border-amber-500 shadow-amber-500/70 scale-125 animate-pulse'
+                                            : isHoveredTarget && drawMode.trigger === 'onCorrect'
+                                            ? 'border-green-400 shadow-green-400/70 scale-125 ring-4 ring-green-400/30'
+                                            : isHoveredTarget && drawMode.trigger === 'onIncorrect'
+                                            ? 'border-red-400 shadow-red-400/70 scale-125 ring-4 ring-red-400/30'
+                                            : isHoveredTarget && drawMode.trigger === 'onOpen'
+                                            ? 'border-amber-400 shadow-amber-400/70 scale-125 ring-4 ring-amber-400/30'
+                                            : isDrawTarget
+                                            ? 'border-slate-500 opacity-60'
+                                            : hoveredTaskId === point.id
                                             ? 'border-orange-400 shadow-orange-400/70 scale-125'
                                             : isMarked
                                             ? 'border-orange-400 shadow-orange-400/70 scale-120 animate-pulse'
                                             : isSelected
                                             ? 'border-orange-500 shadow-orange-500/50 scale-125'
                                             : 'border-slate-900 group-hover:scale-110'
-                                    } ${point.isCompleted ? 'bg-green-500' : isActionTarget ? 'bg-slate-400/40' : 'bg-white'} ${isActionTarget ? 'opacity-50' : ''}`}
+                                    } ${point.isCompleted ? 'bg-green-500' : isActionTarget ? 'bg-slate-400/40' : 'bg-white'} ${isActionTarget && !isDrawTarget ? 'opacity-50' : ''}`}
                                     style={{ width: displaySize, height: displaySize }}>
                                         {point.iconUrl ? (
                                             <img src={point.iconUrl} alt={point.title} className={`w-2/3 h-2/3 object-contain ${isActionTarget ? 'opacity-50' : ''}`} />
