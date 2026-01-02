@@ -848,19 +848,29 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                                 {/* Game List */}
                                 <div className="overflow-y-auto">
                                     {filteredGames.length === 0 && <div className="p-6 text-xs text-slate-500 font-bold text-center uppercase tracking-widest">NO GAMES FOUND</div>}
-                                    {filteredGames.map(game => (
-                                        <button
-                                            key={game.id}
-                                            onClick={() => { onSelectGame(game.id); setShowGameMenu(false); setGameSearchQuery(''); }}
-                                            className={`w-full text-left px-5 py-4 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-between ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
-                                        >
-                                            <span className="truncate flex items-center gap-2">
-                                                <span className="text-orange-400 font-black">[{getGameDisplayId(game.id)}]</span>
-                                                <span>{game.name}</span>
-                                            </span>
-                                            {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange] shrink-0" />}
-                                        </button>
-                                    ))}
+                                    {filteredGames.map(game => {
+                                        const badge = getGameModeBadge(game.gameMode);
+                                        return (
+                                            <button
+                                                key={game.id}
+                                                onClick={() => { onSelectGame(game.id); setShowGameMenu(false); setGameSearchQuery(''); }}
+                                                className={`w-full text-left px-5 py-3 text-xs border-b border-slate-800 hover:bg-slate-800 transition-colors flex flex-col gap-2 ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="truncate flex items-center gap-2 flex-1">
+                                                        <span className="text-orange-400 font-black shrink-0">[{getGameDisplayId(game.id)}]</span>
+                                                        <span className="font-bold truncate">{game.name}</span>
+                                                    </span>
+                                                    {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange] shrink-0" />}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-1 rounded-md text-[9px] font-black tracking-wide border ${badge.bgColor} ${badge.textColor} border-slate-700`}>
+                                                        {badge.label}
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
