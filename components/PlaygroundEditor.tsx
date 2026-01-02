@@ -1674,6 +1674,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             setSimulationScore(0);
                             setSimulationTeam(null);
                             setActiveSimulationTaskId(null);
+                            setShowRanking(false);
+
+                            // Stop background music
+                            if (simulationBgAudioRef.current) {
+                                simulationBgAudioRef.current.pause();
+                                simulationBgAudioRef.current.currentTime = 0;
+                                simulationBgAudioRef.current = null;
+                            }
                         }}
                         className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 border-2 border-white/30"
                     >
