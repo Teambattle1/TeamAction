@@ -163,6 +163,9 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   // Map picker modal state
   const [showMapPicker, setShowMapPicker] = useState(false);
 
+  // Color scheme editor state
+  const [showColorSchemeEditor, setShowColorSchemeEditor] = useState(false);
+
   // Collapse/expand states for activation sections
   const [expandedActivations, setExpandedActivations] = useState<Record<string, boolean>>({
     click: false,
