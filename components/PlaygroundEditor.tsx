@@ -3746,6 +3746,59 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 )}
                             </div>
 
+                            {/* Icon Image Size Slider - NEW */}
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                        <ImageIcon className="w-3 h-3" /> ICON IMAGE SIZE
+                                    </label>
+                                    <span className="text-[10px] font-bold text-purple-400">{Math.round((selectedTask.iconImageScale || 0.9) * 100)}%</span>
+                                </div>
+                                <p className="text-[8px] text-slate-400">
+                                    Adjust the size of the picture inside the icon circle
+                                </p>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="1.5"
+                                    step="0.05"
+                                    value={selectedTask.iconImageScale || 0.9}
+                                    onChange={(e) => updateTask({ iconImageScale: parseFloat(e.target.value) })}
+                                    className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                />
+
+                                {/* Bulk Apply to Marked Tasks */}
+                                {markedTaskIds.size > 0 && (
+                                    <div className="pt-2 border-t border-slate-700 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <p className="text-[8px] text-orange-400 font-bold uppercase tracking-wider">
+                                                    {markedTaskIds.size} {markedTaskIds.size === 1 ? 'task' : 'tasks'} marked
+                                                </p>
+                                                <p className="text-[7px] text-slate-500 mt-0.5">
+                                                    Apply current image size to all selected
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const currentScale = selectedTask.iconImageScale || 0.9;
+                                                    const updatedPoints = game.points.map(p =>
+                                                        markedTaskIds.has(p.id) ? { ...p, iconImageScale: currentScale } : p
+                                                    );
+                                                    onUpdateGame({ ...game, points: updatedPoints });
+                                                    alert(`Applied ${Math.round(currentScale * 100)}% image size to ${markedTaskIds.size} task(s)`);
+                                                }}
+                                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1 shadow-lg"
+                                                title={`Apply ${Math.round((selectedTask.iconImageScale || 0.9) * 100)}% to ${markedTaskIds.size} selected task(s)`}
+                                            >
+                                                <Check className="w-3 h-3" />
+                                                APPLY
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Icon Editor - Dual State */}
                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-3">
                                 {/* UNSOLVED ICON Section */}
