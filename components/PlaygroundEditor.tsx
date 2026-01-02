@@ -1052,6 +1052,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (taskIconInputRef.current) taskIconInputRef.current.value = '';
     };
 
+    const handleCompletedTaskIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && selectedTask) {
+            const url = await uploadImage(file);
+            if (url) updateTask({ completedIconUrl: url });
+        }
+        if (completedTaskIconInputRef.current) completedTaskIconInputRef.current.value = '';
+    };
+
     const handleGenerateTaskIcon = async (prompt: string) => {
         if (!prompt.trim()) {
             alert('Please enter a description for the icon');
