@@ -1327,7 +1327,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* Draggable PINS Toolbar (Measure, Scores, Relocate) - Only for GPS-based games */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && !hideMapToolbars && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && activeGame?.gameMode !== 'playzone' && visibleToolbars['pins'] && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: pinsToolboxPos.x, top: pinsToolboxPos.y }}
