@@ -1756,6 +1756,16 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                                     <span>Only With Activations</span>
                                                                 </label>
 
+                                                                <label className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400 mb-3 p-2 bg-red-900/20 rounded border border-red-500/50">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={showOnlyInvalidAnswers}
+                                                                        onChange={(e) => setShowOnlyInvalidAnswers(e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-red-600 bg-slate-800 cursor-pointer accent-red-600"
+                                                                    />
+                                                                    <span className="text-red-400">⚠️ Only With Invalid Answers</span>
+                                                                </label>
+
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {getUsedActivationsInLibrary().map(activation => {
                                                                         const badgeColors: Record<string, string> = {
