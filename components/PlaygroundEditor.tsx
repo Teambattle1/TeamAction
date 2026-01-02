@@ -1096,17 +1096,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const rows: GamePoint[][] = [];
 
         const sortedByY = [...markedPoints].sort((a, b) => {
-            const aY = a.playgroundPosition?.y || 50;
-            const bY = b.playgroundPosition?.y || 50;
+            const aY = getDevicePosition(a).y;
+            const bY = getDevicePosition(b).y;
             return aY - bY;
         });
 
         sortedByY.forEach(point => {
-            const pointY = point.playgroundPosition?.y || 50;
+            const pointY = getDevicePosition(point).y;
             let foundRow = false;
 
             for (const row of rows) {
-                const rowY = row[0]?.playgroundPosition?.y || 50;
+                const rowY = getDevicePosition(row[0]).y;
                 if (Math.abs(pointY - rowY) <= rowTolerance) {
                     row.push(point);
                     foundRow = true;
@@ -1122,10 +1122,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         // Within each row, sort by X and distribute horizontally
         const PADDING = 5;
         const snappedMarkedPoints = rows.flatMap((row, rowIndex) => {
-            const baseY = row[0].playgroundPosition?.y || 50;
+            const baseY = getDevicePosition(row[0]).y;
             const sortedByX = [...row].sort((a, b) => {
-                const aX = a.playgroundPosition?.x || 50;
-                const bX = b.playgroundPosition?.x || 50;
+                const aX = getDevicePosition(a).x;
+                const bX = getDevicePosition(b).x;
                 return aX - bX;
             });
 
