@@ -1635,6 +1635,21 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     return (
         <div className="fixed inset-0 z-[5000] bg-[#0f172a] text-white flex flex-row overflow-hidden font-sans animate-in fade-in">
 
+            {/* Top-Right Settings Clockwheel - Fixed Position */}
+            {!isSimulationActive && onOpenGameSettings && (
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onOpenGameSettings();
+                    }}
+                    className="absolute top-6 right-6 z-[6000] p-4 bg-gradient-to-br from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-full shadow-2xl border-2 border-orange-400/50 transition-all hover:scale-110 pointer-events-auto group"
+                    title="Open Game Settings - Configure game rules, timing, and appearance"
+                >
+                    <Settings className="w-6 h-6" />
+                </button>
+            )}
+
             {/* Simulation Mode Banner - Absolute Positioned */}
             {isSimulationActive && (
                 <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between z-[6000] bg-purple-600 border-b-4 border-purple-500 animate-in slide-in-from-top-4">
