@@ -1060,11 +1060,52 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                       </button>
                                   </div>
                               </div>
-                           </div>
+                          </div>
 
-                           {/* TIME-BOMB CONFIGURATION */}
-                           <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-6 rounded-2xl border-2 border-red-200 dark:border-red-800">
-                               <div className="flex items-start gap-4 mb-4">
+                          {/* ANSWER VALIDATION SETTINGS */}
+                          <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em] flex items-center gap-1">
+                                      Max Attempts <Info className="w-3 h-3" title="Number of attempts allowed (0 = unlimited, default 1)" />
+                                  </label>
+                                  <div className="flex">
+                                      <input
+                                          type="number"
+                                          min="0"
+                                          max="99"
+                                          value={editedPoint.settings?.maxAttempts ?? 1}
+                                          onChange={(e) => setEditedPoint({...editedPoint, settings: {...editedPoint.settings, maxAttempts: parseInt(e.target.value) || 1 }})}
+                                          className="w-full px-4 py-3 border-2 border-r-0 dark:border-gray-700 rounded-l-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium outline-none focus:border-orange-500 transition-all text-sm"
+                                          placeholder="1"
+                                      />
+                                      <span className="bg-gray-100 dark:bg-gray-700 border-2 dark:border-gray-700 border-l-0 rounded-r-xl px-3 flex items-center text-[10px] font-bold text-gray-500 uppercase">TRIES</span>
+                                  </div>
+                                  <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-1">0 = unlimited attempts</p>
+                              </div>
+
+                              <div>
+                                  <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-[0.2em] flex items-center gap-1">
+                                      Match Tolerance <Info className="w-3 h-3" title="How close the text answer needs to be (0-100%, default 80%)" />
+                                  </label>
+                                  <div className="flex">
+                                      <input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          value={editedPoint.settings?.matchTolerance ?? 80}
+                                          onChange={(e) => setEditedPoint({...editedPoint, settings: {...editedPoint.settings, matchTolerance: parseInt(e.target.value) || 80 }})}
+                                          className="w-full px-4 py-3 border-2 border-r-0 dark:border-gray-700 rounded-l-xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white font-medium outline-none focus:border-orange-500 transition-all text-sm"
+                                          placeholder="80"
+                                      />
+                                      <span className="bg-gray-100 dark:bg-gray-700 border-2 dark:border-gray-700 border-l-0 rounded-r-xl px-3 flex items-center text-[10px] font-bold text-gray-500 uppercase">%</span>
+                                  </div>
+                                  <p className="text-[9px] text-gray-500 dark:text-gray-400 mt-1">100% = exact match only</p>
+                              </div>
+                          </div>
+
+                          {/* TIME-BOMB CONFIGURATION */}
+                          <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-6 rounded-2xl border-2 border-red-200 dark:border-red-800">
+                              <div className="flex items-start gap-4 mb-4">
                                    <div className="w-12 h-12 bg-red-600 text-white rounded-xl flex items-center justify-center flex-shrink-0">
                                        <Clock className="w-6 h-6" />
                                    </div>
