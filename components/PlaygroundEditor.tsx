@@ -2392,6 +2392,57 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </svg>
                         )}
 
+                        {/* Temporary Draw Line - Shows line from source to mouse cursor */}
+                        {drawMode.active && drawMode.sourceTaskId && drawMode.mousePosition && (
+                            <svg
+                                className="absolute inset-0 w-full h-full pointer-events-none"
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                {(() => {
+                                    const sourceTask = uniquePlaygroundPoints.find(p => p.id === drawMode.sourceTaskId);
+                                    if (!sourceTask) return null;
+
+                                    const sourceX = sourceTask.playgroundPosition?.x || 50;
+                                    const sourceY = sourceTask.playgroundPosition?.y || 50;
+                                    const mouseX = drawMode.mousePosition.x;
+                                    const mouseY = drawMode.mousePosition.y;
+
+                                    const lineColor = drawMode.trigger === 'onCorrect'
+                                        ? '#10b981'
+                                        : drawMode.trigger === 'onIncorrect'
+                                        ? '#ef4444'
+                                        : '#f59e0b';
+
+                                    return (
+                                        <>
+                                            {/* Animated line */}
+                                            <line
+                                                x1={sourceX}
+                                                y1={sourceY}
+                                                x2={mouseX}
+                                                y2={mouseY}
+                                                stroke={lineColor}
+                                                strokeWidth="0.5"
+                                                strokeDasharray="2,2"
+                                                opacity="0.9"
+                                                className="animate-pulse"
+                                            />
+                                            {/* End point circle */}
+                                            <circle
+                                                cx={mouseX}
+                                                cy={mouseY}
+                                                r="1"
+                                                fill={lineColor}
+                                                opacity="0.7"
+                                            />
+                                        </>
+                                    );
+                                })()}
+                            </svg>
+                        )}
+
                         {/* Tasks on Canvas */}
                         {uniquePlaygroundPoints.map((point, index) => {
                             const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
