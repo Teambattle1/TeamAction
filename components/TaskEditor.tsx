@@ -2339,7 +2339,16 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                                                                </span>
                                                                            )}
                                                                        </div>
-                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.correctMessage}</p>
+                                                                       {translation.feedback.correctMessageApproved === false ? (
+                                                                           <input
+                                                                               type="text"
+                                                                               value={translation.feedback.correctMessage}
+                                                                               onChange={(e) => handleUpdateTranslationField(language, 'correctMessage', e.target.value)}
+                                                                               className="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-orange-500 focus:outline-none"
+                                                                           />
+                                                                       ) : (
+                                                                           <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.correctMessage}</p>
+                                                                       )}
                                                                    </div>
 
                                                                    <div className={`p-3 rounded-lg ${translation.feedback.incorrectMessageApproved === false ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'}`}>
@@ -2359,7 +2368,16 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                                                                </span>
                                                                            )}
                                                                        </div>
-                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.incorrectMessage}</p>
+                                                                       {translation.feedback.incorrectMessageApproved === false ? (
+                                                                           <input
+                                                                               type="text"
+                                                                               value={translation.feedback.incorrectMessage}
+                                                                               onChange={(e) => handleUpdateTranslationField(language, 'incorrectMessage', e.target.value)}
+                                                                               className="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-orange-500 focus:outline-none"
+                                                                           />
+                                                                       ) : (
+                                                                           <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.incorrectMessage}</p>
+                                                                       )}
                                                                    </div>
 
                                                                    {translation.feedback.hint && (
@@ -2380,7 +2398,16 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                                                                    </span>
                                                                                )}
                                                                            </div>
-                                                                           <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.hint}</p>
+                                                                           {translation.feedback.hintApproved === false ? (
+                                                                               <textarea
+                                                                                   value={translation.feedback.hint}
+                                                                                   onChange={(e) => handleUpdateTranslationField(language, 'hint', e.target.value)}
+                                                                                   className="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-orange-500 focus:outline-none resize-none"
+                                                                                   rows={2}
+                                                                               />
+                                                                           ) : (
+                                                                               <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.hint}</p>
+                                                                           )}
                                                                        </div>
                                                                    )}
                                                                </div>
