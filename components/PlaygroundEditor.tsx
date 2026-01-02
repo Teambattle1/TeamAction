@@ -782,8 +782,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             const isNewPlayground = playgroundTasks.length === 0;
 
             if (isNewPlayground) {
-                // New playground: use desktop mode
-                setSelectedDevice('desktop');
+                // New playground: start with tablet mode (default for new playzone games)
+                setSelectedDevice('tablet');
             } else {
                 // Existing playground: load last used device from localStorage
                 const storageKey = `playzone_device_${activePlayground.id}`;
