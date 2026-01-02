@@ -588,8 +588,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
               );
           case 'text':
               return (
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     disabled={isDisabled}
                     value={answer}
                     onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
@@ -597,6 +597,101 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:text-gray-500"
                     autoFocus={!isInstructor && !isEditMode}
                 />
+              );
+          case 'boolean':
+              return (
+                  <div className="flex gap-3">
+                      <button
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => { setAnswer('true'); setErrorMsg(null); }}
+                          className={`flex-1 p-4 rounded-xl border-2 font-bold text-sm uppercase transition-all ${
+                              answer === 'true'
+                              ? 'border-green-600 bg-green-50 dark:bg-green-900/50 text-green-900 dark:text-green-200'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                      >
+                          ✓ TRUE
+                      </button>
+                      <button
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => { setAnswer('false'); setErrorMsg(null); }}
+                          className={`flex-1 p-4 rounded-xl border-2 font-bold text-sm uppercase transition-all ${
+                              answer === 'false'
+                              ? 'border-red-600 bg-red-50 dark:bg-red-900/50 text-red-900 dark:text-red-200'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                      >
+                          ✗ FALSE
+                      </button>
+                  </div>
+              );
+          case 'checkbox':
+          case 'multi_select_dropdown':
+              return (
+                  <div className="space-y-2">
+                      {options?.map((opt, idx) => (
+                          <label
+                              key={idx}
+                              className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                  selectedOptions.includes(opt)
+                                  ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/50'
+                                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              }`}
+                          >
+                              <input
+                                  type="checkbox"
+                                  disabled={isDisabled}
+                                  checked={selectedOptions.includes(opt)}
+                                  onChange={(e) => {
+                                      setErrorMsg(null);
+                                      if (e.target.checked) {
+                                          setSelectedOptions([...selectedOptions, opt]);
+                                      } else {
+                                          setSelectedOptions(selectedOptions.filter(o => o !== opt));
+                                      }
+                                  }}
+                                  className="w-5 h-5 rounded border-2 border-gray-300 text-orange-600 focus:ring-orange-500 focus:ring-2 disabled:bg-gray-100"
+                              />
+                              <span className="flex-1 text-gray-800 dark:text-gray-200">{opt}</span>
+                          </label>
+                      ))}
+                  </div>
+              );
+          case 'dropdown':
+              return (
+                  <select
+                      disabled={isDisabled}
+                      value={answer}
+                      onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                      <option value="">Select an answer...</option>
+                      {options?.map((opt, idx) => (
+                          <option key={idx} value={opt}>{opt}</option>
+                      ))}
+                  </select>
+              );
+          case 'slider':
+              return (
+                  <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{range?.min || 0}</span>
+                          <span className="text-2xl font-black text-orange-600 dark:text-orange-400">{sliderValue}</span>
+                          <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{range?.max || 100}</span>
+                      </div>
+                      <input
+                          type="range"
+                          disabled={isDisabled}
+                          min={range?.min || 0}
+                          max={range?.max || 100}
+                          step={range?.step || 1}
+                          value={sliderValue}
+                          onChange={(e) => { setSliderValue(parseInt(e.target.value)); setErrorMsg(null); }}
+                          className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-600 disabled:opacity-50"
+                      />
+                  </div>
               );
           default: return null;
       }
