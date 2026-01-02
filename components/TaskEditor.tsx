@@ -2262,7 +2262,16 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                                                        </span>
                                                                    )}
                                                                </div>
-                                                               <p className="text-sm text-gray-700 dark:text-gray-300" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(translation.question) }} />
+                                                               {translation.questionApproved === false ? (
+                                                                   <textarea
+                                                                       value={translation.question}
+                                                                       onChange={(e) => handleUpdateTranslationField(language, 'question', e.target.value)}
+                                                                       className="w-full px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:border-orange-500 focus:outline-none resize-none"
+                                                                       rows={3}
+                                                                   />
+                                                               ) : (
+                                                                   <p className="text-sm text-gray-700 dark:text-gray-300" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(translation.question) }} />
+                                                               )}
                                                            </div>
 
                                                            {/* Options Field (if exists) */}
