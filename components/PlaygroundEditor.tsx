@@ -2099,13 +2099,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     onMouseUp={snapToRoadMode ? handleSnapToRoadEnd : handleMouseUp}
                     onMouseLeave={snapToRoadMode ? undefined : handleMouseUp}
                 >
-                    {/* Tablet Frame Container */}
-                    <div className={`relative border-8 border-slate-950 rounded-3xl overflow-hidden flex-shrink-0 ${
-                        editorOrientation === 'landscape'
-                            ? 'w-[1024px] h-[768px]'
-                            : 'w-[768px] h-[1024px]'
-                    }`}
+                    {/* Device Frame Container - Responsive to Selected Device */}
+                    <div className={`relative border-8 border-slate-950 rounded-3xl overflow-hidden flex-shrink-0`}
                     style={{
+                        width: viewportDims.width,
+                        height: viewportDims.height,
                         boxShadow: '0 0 0 12px #1f2937, 0 0 0 16px #000000, inset 0 0 0 1px #444'
                     }}>
                         {/* Device Notch/Speaker */}
