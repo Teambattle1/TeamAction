@@ -151,9 +151,8 @@ const GameApp: React.FC = () => {
       for (const game of migratedGames) {
         await db.saveGame(game);
       }
-      for (const template of migratedLibrary) {
-        await db.saveTemplate(template);
-      }
+      const { ok: migratedOk } = await db.saveTemplates(migratedLibrary);
+      if (!migratedOk) console.error('[App] Failed to persist migrated library templates');
     };
     init();
   }, []);
@@ -825,9 +824,9 @@ const GameApp: React.FC = () => {
       };
 
       const updatedLib = renameInTasks(taskLibrary);
-      for (const t of updatedLib) {
-          if (t.tags?.includes(newTag)) await db.saveTemplate(t);
-      }
+      const templatesToSave = updatedLib.filter(t => t.tags?.includes(newTag));
+      const { ok: templatesOk } = await db.saveTemplates(templatesToSave);
+      if (!templatesOk) console.error('[App] Failed to persist library tag rename');
       setTaskLibrary(updatedLib);
 
       const updatedLists = taskLists.map(list => ({
@@ -859,7 +858,8 @@ const GameApp: React.FC = () => {
       };
 
       const updatedLib = removeInTasks(taskLibrary);
-      for (const t of updatedLib) await db.saveTemplate(t);
+      const { ok: updatedLibOk } = await db.saveTemplates(updatedLib);
+      if (!updatedLibOk) console.error('[App] Failed to persist library tag delete');
       setTaskLibrary(updatedLib);
 
       const updatedLists = taskLists.map(list => ({
