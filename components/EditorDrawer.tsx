@@ -436,7 +436,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
         className="absolute right-full top-1/2 -translate-y-1/2 bg-orange-600 hover:bg-orange-700 w-8 h-24 rounded-l-xl shadow-lg border-y border-l border-orange-600 text-white transition-all flex items-center justify-center pointer-events-auto"
         title={isExpanded ? "Collapse List" : "Expand List"}
       >
-        {isExpanded ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
+        {isExpanded ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
       </button>
 
       <button
