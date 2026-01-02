@@ -259,6 +259,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         }
     }, [game.playgrounds]);
 
+    const didSeedEditorToolbarPositionsRef = useRef(false);
+
     // Load toolbar positions from game (device-aware)
     useEffect(() => {
         const pos = game.toolbarPositions;
@@ -299,7 +301,65 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         } else if (pos?.editorQRScannerPos) {
             setQRScannerPos(pos.editorQRScannerPos);
         }
-    }, [game.id, selectedDevice]);
+    }, [game.id, game.toolbarPositions, selectedDevice]);
+
+    // Ensure NEW playzone games/templates get persisted default toolbar positions (so they never stack)
+    useEffect(() => {
+        if (didSeedEditorToolbarPositionsRef.current) return;
+
+        const pos = game.toolbarPositions;
+        const hasEditorToolbarPositions = !!(
+            pos?.editorOrientationPos ||
+            pos?.editorShowPos ||
+            pos?.editorToolsPos ||
+            pos?.editorOrientationPosPerDevice ||
+            pos?.editorShowPosPerDevice ||
+            pos?.editorToolsPosPerDevice
+        );
+
+        if (hasEditorToolbarPositions) {
+            didSeedEditorToolbarPositionsRef.current = true;
+            return;
+        }
+
+        const defaults = getDefaultEditorToolbarPositions();
+
+        const updatedToolbarPositions = {
+            ...(pos || {}),
+            editorOrientationPos: defaults.orientation,
+            editorShowPos: defaults.show,
+            editorToolsPos: defaults.tools,
+            editorOrientationPosPerDevice: {
+                ...(pos?.editorOrientationPosPerDevice || {}),
+                mobile: defaults.orientation,
+                tablet: defaults.orientation,
+                desktop: defaults.orientation,
+            },
+            editorShowPosPerDevice: {
+                ...(pos?.editorShowPosPerDevice || {}),
+                mobile: defaults.show,
+                tablet: defaults.show,
+                desktop: defaults.show,
+            },
+            editorToolsPosPerDevice: {
+                ...(pos?.editorToolsPosPerDevice || {}),
+                mobile: defaults.tools,
+                tablet: defaults.tools,
+                desktop: defaults.tools,
+            },
+        };
+
+        // Immediately update local state (so the UI is correct even before parent re-renders)
+        setOrientationToolbarPos(defaults.orientation);
+        setShowToolbarPos(defaults.show);
+        setToolsToolbarPos(defaults.tools);
+
+        didSeedEditorToolbarPositionsRef.current = true;
+        onUpdateGame({
+            ...game,
+            toolbarPositions: updatedToolbarPositions,
+        });
+    }, [game.id]);
 
     // Save toolbar positions to game (device-aware)
     const saveToolbarPositions = () => {
@@ -1663,7 +1723,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             )}
                             {saveStatus === 'idle' && (
                                 <>
-                                    <Save className="w-4 h-4" />
+                                    <Save className="w-4 h-4 translate-x-0.5" />
                                     {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
                                 </>
                             )}
