@@ -19,6 +19,7 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
   const [showGameSelector, setShowGameSelector] = useState(false);
   const [selectedTemplateForGame, setSelectedTemplateForGame] = useState<PlaygroundTemplate | null>(null);
   const [gamesLoading, setGamesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'TODAY' | 'PLANNED' | 'COMPLETED'>('TODAY');
 
   useEffect(() => {
     loadTemplates();
