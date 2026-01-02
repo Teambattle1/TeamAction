@@ -2694,23 +2694,47 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">TOOLS</span>
                                 <div className="flex gap-3">
-                                    {onStartSimulation && (
-                                        <div className="flex flex-col items-center gap-0.5">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    onStartSimulation();
-                                                }}
-                                                className="px-3 py-2 rounded transition-all cursor-pointer pointer-events-auto bg-purple-600 text-white shadow-lg hover:bg-purple-700 hover:shadow-xl active:scale-95 flex items-center gap-2"
-                                                title="Start Simulation Mode - Play the game with all tasks and rules enabled"
-                                                type="button"
-                                            >
-                                                <PlayCircle className="w-4 h-4" />
-                                                <span className="text-xs font-black uppercase tracking-wider">SIMULATOR</span>
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <button
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+
+                                                if (isSimulationActive) {
+                                                    // Stop simulation
+                                                    setIsSimulationActive(false);
+                                                    setSimulationScore(0);
+                                                    setSimulationTeam(null);
+                                                    setActiveSimulationTaskId(null);
+                                                } else {
+                                                    // Start simulation
+                                                    const testTeam = {
+                                                        id: 'sim-test-team',
+                                                        gameId: game.id,
+                                                        name: 'TEST',
+                                                        joinCode: 'TEST00',
+                                                        score: 0,
+                                                        members: [{ name: 'Simulator', deviceId: 'sim-device', photo: '' }],
+                                                        updatedAt: new Date().toISOString()
+                                                    };
+                                                    setSimulationTeam(testTeam);
+                                                    setSimulationScore(0);
+                                                    setIsSimulationActive(true);
+                                                    setShowRanking(true);
+                                                }
+                                            }}
+                                            className={`px-3 py-2 rounded transition-all cursor-pointer pointer-events-auto shadow-lg hover:shadow-xl active:scale-95 flex items-center gap-2 ${
+                                                isSimulationActive
+                                                    ? 'bg-red-600 text-white hover:bg-red-700'
+                                                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                                            }`}
+                                            title={isSimulationActive ? 'Stop Simulation Mode' : 'Start Simulation Mode - Play the game with all tasks and rules enabled'}
+                                            type="button"
+                                        >
+                                            {isSimulationActive ? <X className="w-4 h-4" /> : <PlayCircle className="w-4 h-4" />}
+                                            <span className="text-xs font-black uppercase tracking-wider">{isSimulationActive ? 'STOP SIM' : 'SIMULATOR'}</span>
+                                        </button>
+                                    </div>
                                     {onOpenGameSettings && (
                                         <div className="flex flex-col items-center gap-0.5">
                                             <button
