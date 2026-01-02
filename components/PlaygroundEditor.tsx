@@ -1012,10 +1012,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         // Sort points by current Y position (top to bottom), then X (left to right)
         const sortedPoints = [...uniquePlaygroundPoints].sort((a, b) => {
-            const aY = a.playgroundPosition?.y || 50;
-            const bY = b.playgroundPosition?.y || 50;
-            const aX = a.playgroundPosition?.x || 50;
-            const bX = b.playgroundPosition?.x || 50;
+            const aPosget = getDevicePosition(a);
+            const bPos = getDevicePosition(b);
+            const aY = aPos.y;
+            const bY = bPos.y;
+            const aX = aPos.x;
+            const bX = bPos.x;
 
             // Group into rows (every 15% difference = new row)
             const rowDiff = Math.abs(aY - bY);
