@@ -560,7 +560,8 @@ export interface Game {
   taskConfig?: GameTaskConfiguration; // New Task Configuration
   mapConfig?: MapConfiguration; // New Map Configuration
   defaultTaskColorScheme?: TaskColorScheme; // Default color scheme for all tasks in this game
-  
+  soundSettings?: SoundSettings; // Game-specific sound overrides (uses global sounds if not set)
+
   // Game Lifecycle / End Game
   state?: 'active' | 'ending' | 'ended';
   endingAt?: number; // Timestamp when game will end (during countdown)
