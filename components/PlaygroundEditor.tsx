@@ -837,6 +837,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         }
     }, [taskSortMode, activePlayground?.id]);
 
+    // Load and save zoom level
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_zoom_${activePlayground.id}`;
+            const savedZoom = localStorage.getItem(storageKey);
+            if (savedZoom) {
+                setZoom(parseFloat(savedZoom));
+            }
+        }
+    }, [activePlayground?.id]);
+
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_zoom_${activePlayground.id}`;
+            localStorage.setItem(storageKey, zoom.toString());
+        }
+    }, [zoom, activePlayground?.id]);
+
     // Auto-collapse all source tasks on mount when in actions mode
     useEffect(() => {
         if (activePlayground && taskSortMode === 'actions') {
