@@ -1163,14 +1163,45 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             );
                                         })()}
                                     </td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-4 py-3">
                                         {!selectionMode && !bulkSelectionMode && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleShowAddToModal([task]); }}
-                                                className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors"
-                                            >
-                                                USE
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                {/* Color Scheme Lock Toggle */}
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        const updatedTask = { ...task, isColorSchemeLocked: !task.isColorSchemeLocked };
+                                                        const updatedLibrary = library.map(t => t.id === task.id ? updatedTask : t);
+                                                        setLibrary(updatedLibrary);
+                                                        onUpdateTaskLibrary(updatedLibrary);
+                                                        await db.saveTemplate(updatedTask);
+                                                    }}
+                                                    className={`p-1.5 rounded transition-all ${
+                                                        task.isColorSchemeLocked
+                                                            ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                                            : 'bg-slate-700 hover:bg-slate-600 text-slate-400'
+                                                    }`}
+                                                    title={task.isColorSchemeLocked ? 'Color scheme locked (won\'t be overridden in games)' : 'Color scheme unlocked'}
+                                                >
+                                                    {task.isColorSchemeLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                                </button>
+
+                                                {/* Color Scheme Indicator */}
+                                                {task.colorScheme && (
+                                                    <div
+                                                        className="w-3 h-3 rounded-full border border-white/30"
+                                                        style={{ backgroundColor: task.colorScheme.backgroundColor }}
+                                                        title="Has custom color scheme"
+                                                    />
+                                                )}
+
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleShowAddToModal([task]); }}
+                                                    className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors"
+                                                >
+                                                    USE
+                                                </button>
+                                            </div>
                                         )}
                                     </td>
                                 </tr>
