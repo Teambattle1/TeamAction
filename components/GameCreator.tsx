@@ -539,6 +539,70 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       setTemplateImages(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const handleUploadCorrectSound = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Validate audio file
+      if (!file.type.startsWith('audio/')) {
+          alert('Please upload an audio file (MP3, WAV, etc.)');
+          return;
+      }
+
+      setIsUploadingCorrectSound(true);
+      try {
+          const url = await uploadImage(file, 'game-assets');
+          if (url) {
+              setSoundSettings({
+                  ...soundSettings,
+                  correctAnswerSound: url
+              });
+          } else {
+              alert('Failed to upload sound file');
+          }
+      } catch (error) {
+          console.error('Upload error:', error);
+          alert('Failed to upload sound file');
+      } finally {
+          setIsUploadingCorrectSound(false);
+          if (correctSoundInputRef.current) {
+              correctSoundInputRef.current.value = '';
+          }
+      }
+  };
+
+  const handleUploadIncorrectSound = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Validate audio file
+      if (!file.type.startsWith('audio/')) {
+          alert('Please upload an audio file (MP3, WAV, etc.)');
+          return;
+      }
+
+      setIsUploadingIncorrectSound(true);
+      try {
+          const url = await uploadImage(file, 'game-assets');
+          if (url) {
+              setSoundSettings({
+                  ...soundSettings,
+                  incorrectAnswerSound: url
+              });
+          } else {
+              alert('Failed to upload sound file');
+          }
+      } catch (error) {
+          console.error('Upload error:', error);
+          alert('Failed to upload sound file');
+      } finally {
+          setIsUploadingIncorrectSound(false);
+          if (incorrectSoundInputRef.current) {
+              incorrectSoundInputRef.current.value = '';
+          }
+      }
+  };
+
   const handleTagInputChange = (val: string) => {
       setTagInput(val);
       if (val.trim()) {
