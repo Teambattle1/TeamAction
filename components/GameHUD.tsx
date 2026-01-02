@@ -197,10 +197,15 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
 
     // QR Scanner - floating button on game playing area
     const [qrScannerPos, setQRScannerPos] = useState({ x: window.innerWidth - 80, y: window.innerHeight - 100 });
+    const [qrScannerSize, setQRScannerSize] = useState({ width: 140, height: 48 });
+    const [qrScannerColor, setQRScannerColor] = useState('#f97316'); // Orange-500
     const [isDraggingQRScanner, setIsDraggingQRScanner] = useState(false);
+    const [isResizingQRScanner, setIsResizingQRScanner] = useState(false);
+    const [showQRColorPicker, setShowQRColorPicker] = useState(false);
     const [isQRScannerActive, setIsQRScannerActive] = useState(false);
     const [qrScannedValue, setQRScannedValue] = useState<string | null>(null);
     const qrScannerDragOffset = useRef({ x: 0, y: 0 });
+    const qrScannerResizeStart = useRef({ width: 0, height: 0, x: 0, y: 0 });
     const qrVideoRef = useRef<HTMLVideoElement>(null);
     const qrCanvasRef = useRef<HTMLCanvasElement>(null);
     const qrStreamRef = useRef<MediaStream | null>(null);
