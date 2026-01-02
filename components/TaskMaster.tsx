@@ -1897,6 +1897,14 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             <Plus className="w-4 h-4" /> ADD TO
                                         </button>
                                         <button
+                                            onClick={() => setShowBulkTagModal(true)}
+                                            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
+                                            title="Add tags to selected tasks"
+                                        >
+                                            <Tag className="w-4 h-4" /> ADD TAGS
+                                        </button>
+                                        <button
                                             onClick={handleBulkEditColorScheme}
                                             className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
                                             type="button"
