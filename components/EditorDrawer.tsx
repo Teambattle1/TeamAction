@@ -499,24 +499,47 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                         {activeGame.playgrounds.map((playground) => {
                             const Icon = ICON_COMPONENTS[playground.iconId];
                             const playgroundPoints = allPoints.filter(p => p.playgroundId === playground.id);
+                            const isHovered = hoveredPlaygroundId === playground.id;
                             return (
                                 <button
                                     key={playground.id}
                                     onClick={() => onOpenPlaygroundEditor && onOpenPlaygroundEditor(playground.id)}
-                                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-md transition-all active:scale-[0.98] text-left group"
+                                    onMouseEnter={() => onHoverPlayground?.(playground.id)}
+                                    onMouseLeave={() => onHoverPlayground?.(null)}
+                                    className={`p-3 rounded-lg transition-all active:scale-[0.98] text-left group ${
+                                        isHovered
+                                            ? 'bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-500 ring-2 ring-orange-400 shadow-lg'
+                                            : 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 border border-gray-200 dark:border-gray-700 hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-md'
+                                    }`}
                                 >
                                     <div className="flex items-start justify-between mb-2">
-                                        <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                                            isHovered
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                                        } group-hover:scale-110 transition-transform`}>
                                             <Icon className="w-4 h-4" />
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 mb-1">
-                                        <div className="w-4 h-4 bg-orange-500 rounded-md flex items-center justify-center flex-shrink-0">
+                                        <div className={`w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${
+                                            isHovered
+                                                ? 'bg-orange-600'
+                                                : 'bg-orange-500'
+                                        }`}>
                                             <MapPin className="w-2.5 h-2.5 text-white" />
                                         </div>
-                                        <h3 className="text-xs font-bold text-gray-800 dark:text-gray-100 truncate">{playground.title}</h3>
+                                        <h3 className={`text-xs font-bold truncate transition-colors ${
+                                            isHovered
+                                                ? 'text-orange-700 dark:text-orange-400'
+                                                : 'text-gray-800 dark:text-gray-100'
+                                        }`}>{playground.title}</h3>
                                     </div>
-                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{playgroundPoints.length} task{playgroundPoints.length !== 1 ? 's' : ''}</p>
+                                    <p className={`text-[10px] transition-colors ${
+                                        isHovered
+                                            ? 'text-orange-600 dark:text-orange-400'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    }`}>{playgroundPoints.length} task{playgroundPoints.length !== 1 ? 's' : ''}</p>
                                 </button>
                             );
                         })}
