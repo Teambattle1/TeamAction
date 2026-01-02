@@ -932,6 +932,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
                             >
                                 {isSimulation ? 'SUBMIT (SIMULATION)' : 'Submit to Team'}
                             </button>
+
+                            {/* Show Correct Answer at bottom in Simulation Mode */}
+                            {isSimulation && (
+                                <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
+                                    <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2">
+                                        📋 Correct Answer (Simulation):
+                                    </p>
+                                    <p className="text-purple-900 dark:text-purple-200 font-bold text-lg">
+                                        {point.task.type === 'slider' ?
+                                            (point.task.range?.correctValue !== undefined ? `${point.task.range.correctValue}` : point.task.answer || "Not specified") :
+                                            point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown' ?
+                                            point.task.correctAnswers?.join(', ') || point.task.answer || "Not specified" :
+                                            point.task.answer || point.task.correctAnswers?.[0] || "Not specified"}
+                                    </p>
+                                </div>
+                            )}
                             </form>
                         )
                     )
