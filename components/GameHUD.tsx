@@ -1597,7 +1597,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* LAYERS Toolbar - EDIT and INSTRUCTOR modes only */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && !hideMapToolbars && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && visibleToolbars['layers'] && (
                 <div className="absolute bottom-24 left-4 z-[1100] pointer-events-auto">
                     <div className="bg-cyan-600 border-2 border-cyan-500 rounded-xl shadow-2xl p-2">
                         <div className="flex flex-col gap-1">
