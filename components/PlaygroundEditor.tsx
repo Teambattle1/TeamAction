@@ -1601,6 +1601,66 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <GripHorizontal className="w-3 h-3" />
                         </div>
                         <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">DEVICE</span>
+                            <div className="flex gap-2 border-r border-orange-500/30 pr-2">
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedDevice('mobile');
+                                        }}
+                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
+                                            selectedDevice === 'mobile'
+                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Mobile (375×812)"
+                                        type="button"
+                                    >
+                                        <Smartphone className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[7px] font-black uppercase tracking-widest whitespace-nowrap ${selectedDevice === 'mobile' ? 'text-blue-300' : 'text-slate-500'}`}>MOBILE</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedDevice('tablet');
+                                        }}
+                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
+                                            selectedDevice === 'tablet'
+                                                ? 'bg-cyan-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Tablet (1024×768)"
+                                        type="button"
+                                    >
+                                        <Tablet className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[7px] font-black uppercase tracking-widest ${selectedDevice === 'tablet' ? 'text-cyan-300' : 'text-slate-500'}`}>TABLET</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedDevice('desktop');
+                                        }}
+                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
+                                            selectedDevice === 'desktop'
+                                                ? 'bg-purple-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Desktop (1920×1080)"
+                                        type="button"
+                                    >
+                                        <Monitor className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[7px] font-black uppercase tracking-widest ${selectedDevice === 'desktop' ? 'text-purple-300' : 'text-slate-500'}`}>DESKTOP</span>
+                                </div>
+                            </div>
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">ORIENTATION</span>
                             <div className="flex gap-3">
                                 <div className="flex flex-col items-center gap-0.5">
