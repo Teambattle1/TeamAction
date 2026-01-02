@@ -51,6 +51,7 @@ import ClientGameChooser from './components/ClientGameChooser';
 import Access from './components/Access';
 import PlayzoneSelector from './components/PlayzoneSelector';
 import TranslationsManager from './components/TranslationsManager';
+import MediaManager from './components/MediaManager';
 import { getConfiguredLanguagesForGame, validateTaskTranslations } from './utils/translationValidation';
 
 // Inner App Component that consumes LocationContext
@@ -98,6 +99,7 @@ const GameApp: React.FC = () => {
   const [showClientLobby, setShowClientLobby] = useState(false);
   const [showClientGameChooser, setShowClientGameChooser] = useState(false);
   const [clientGameId, setClientGameId] = useState<string | null>(null);
+  const [showMediaManager, setShowMediaManager] = useState(false);
   const [showAccess, setShowAccess] = useState(false);
   const [showPlayzoneChoiceModal, setShowPlayzoneChoiceModal] = useState(false);
   const [showPlayzoneSelector, setShowPlayzoneSelector] = useState(false);
