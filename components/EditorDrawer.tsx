@@ -704,16 +704,18 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                     {/* --- PLAYGROUNDS --- */}
                     {playgroundGroups.map(pg => (
                         <SortableContext key={pg.id} items={pg.points.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                            <ZoneSection 
+                            <ZoneSection
                                 id={`zone-pg-${pg.id}`}
-                                title={pg.title} 
-                                icon={Gamepad2} 
-                                count={pg.points.length} 
-                                isCollapsed={!!collapsedZones[pg.id]} 
+                                title={pg.title}
+                                icon={Gamepad2}
+                                count={pg.points.length}
+                                isCollapsed={!!collapsedZones[pg.id]}
                                 onToggle={() => toggleZone(pg.id)}
                                 activeMenu={activeAddMenu === pg.id}
                                 onSetActiveMenu={(open) => setActiveAddMenu(open ? pg.id : null)}
                                 onAdd={(type) => onAddTask && onAddTask(type, pg.id)}
+                                isHovered={hoveredPlaygroundId === pg.id}
+                                onHover={onHoverPlayground}
                             >
                                 <div className="space-y-1">
                                     {pg.points.length === 0 && <div className="text-[10px] text-gray-400 italic p-2">No tasks in this playground. Add items here.</div>}
