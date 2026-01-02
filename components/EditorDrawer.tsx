@@ -54,6 +54,9 @@ interface EditorDrawerProps {
   onStartSimulation?: () => void; // New prop
   // Playzone Props
   onShowPlayzoneChoice?: () => void;
+  // Playground Hover Props
+  hoveredPlaygroundId?: string | null;
+  onHoverPlayground?: (id: string | null) => void;
 }
 
 const SortablePointItem: React.FC<{
