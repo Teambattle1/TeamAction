@@ -2110,6 +2110,232 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                            </div>
                        </div>
                    )}
+
+                   {activeTab === 'LANGUAGES' && (
+                       <div className="space-y-6">
+                           <div>
+                               <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">MANAGE TRANSLATIONS</label>
+                               <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                                   Add translations to make this task available in multiple languages. AI will translate the content for you.
+                               </p>
+
+                               {/* Current Translations */}
+                               {editedPoint.task.translations && Object.keys(editedPoint.task.translations).length > 0 && (
+                                   <div className="mb-6">
+                                       <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">
+                                           AVAILABLE TRANSLATIONS ({Object.keys(editedPoint.task.translations).length})
+                                       </label>
+                                       <div className="space-y-4">
+                                           {Object.entries(editedPoint.task.translations).map(([language, translation]) => {
+                                               const allApproved =
+                                                   translation.questionApproved !== false &&
+                                                   (translation.options ? translation.optionsApproved !== false : true) &&
+                                                   (translation.answer ? translation.answerApproved !== false : true) &&
+                                                   (translation.correctAnswers ? translation.correctAnswersApproved !== false : true) &&
+                                                   (translation.feedback ? (
+                                                       translation.feedback.correctMessageApproved !== false &&
+                                                       translation.feedback.incorrectMessageApproved !== false &&
+                                                       translation.feedback.hintApproved !== false
+                                                   ) : true);
+
+                                               return (
+                                                   <div
+                                                       key={language}
+                                                       className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-white dark:bg-gray-800"
+                                                   >
+                                                       <div className="flex items-center justify-between mb-4">
+                                                           <div className="flex items-center gap-3">
+                                                               <Globe className="w-5 h-5 text-blue-500" />
+                                                               <span className="text-sm font-black uppercase">{language}</span>
+                                                               {!allApproved && (
+                                                                   <span className="bg-red-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black uppercase">
+                                                                       NEEDS REVIEW
+                                                                   </span>
+                                                               )}
+                                                               {allApproved && (
+                                                                   <span className="bg-green-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black uppercase flex items-center gap-1">
+                                                                       <CheckCircle className="w-3 h-3" /> APPROVED
+                                                                   </span>
+                                                               )}
+                                                           </div>
+                                                           <button
+                                                               type="button"
+                                                               onClick={() => handleRemoveTranslation(language)}
+                                                               className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                                                               title="Remove translation"
+                                                           >
+                                                               <Trash2 className="w-4 h-4" />
+                                                           </button>
+                                                       </div>
+
+                                                       {/* Question Field */}
+                                                       <div className="space-y-3">
+                                                           <div className={`p-3 rounded-lg ${translation.questionApproved === false ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'}`}>
+                                                               <div className="flex items-center justify-between mb-2">
+                                                                   <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase">Question</label>
+                                                                   {translation.questionApproved === false ? (
+                                                                       <button
+                                                                           type="button"
+                                                                           onClick={() => handleApproveTranslationField(language, 'question')}
+                                                                           className="bg-green-600 hover:bg-green-700 text-white text-[8px] px-2 py-1 rounded font-black uppercase flex items-center gap-1 transition-colors"
+                                                                       >
+                                                                           <Check className="w-3 h-3" /> APPROVE
+                                                                       </button>
+                                                                   ) : (
+                                                                       <span className="text-[8px] text-green-600 dark:text-green-400 font-black flex items-center gap-1">
+                                                                           <CheckCircle className="w-3 h-3" /> APPROVED
+                                                                       </span>
+                                                                   )}
+                                                               </div>
+                                                               <p className="text-sm text-gray-700 dark:text-gray-300" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(translation.question) }} />
+                                                           </div>
+
+                                                           {/* Options Field (if exists) */}
+                                                           {translation.options && translation.options.length > 0 && (
+                                                               <div className={`p-3 rounded-lg ${translation.optionsApproved === false ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'}`}>
+                                                                   <div className="flex items-center justify-between mb-2">
+                                                                       <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase">Options</label>
+                                                                       {translation.optionsApproved === false ? (
+                                                                           <button
+                                                                               type="button"
+                                                                               onClick={() => handleApproveTranslationField(language, 'options')}
+                                                                               className="bg-green-600 hover:bg-green-700 text-white text-[8px] px-2 py-1 rounded font-black uppercase flex items-center gap-1 transition-colors"
+                                                                           >
+                                                                               <Check className="w-3 h-3" /> APPROVE
+                                                                           </button>
+                                                                       ) : (
+                                                                           <span className="text-[8px] text-green-600 dark:text-green-400 font-black flex items-center gap-1">
+                                                                               <CheckCircle className="w-3 h-3" /> APPROVED
+                                                                           </span>
+                                                                       )}
+                                                                   </div>
+                                                                   <ul className="space-y-1">
+                                                                       {translation.options.map((opt, idx) => (
+                                                                           <li key={idx} className="text-sm text-gray-700 dark:text-gray-300">• {opt}</li>
+                                                                       ))}
+                                                                   </ul>
+                                                               </div>
+                                                           )}
+
+                                                           {/* Feedback Field (if exists) */}
+                                                           {translation.feedback && (
+                                                               <div className="space-y-2">
+                                                                   <div className={`p-3 rounded-lg ${translation.feedback.correctMessageApproved === false ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'}`}>
+                                                                       <div className="flex items-center justify-between mb-2">
+                                                                           <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase">Correct Message</label>
+                                                                           {translation.feedback.correctMessageApproved === false ? (
+                                                                               <button
+                                                                                   type="button"
+                                                                                   onClick={() => handleApproveTranslationField(language, 'correctMessage')}
+                                                                                   className="bg-green-600 hover:bg-green-700 text-white text-[8px] px-2 py-1 rounded font-black uppercase flex items-center gap-1 transition-colors"
+                                                                               >
+                                                                                   <Check className="w-3 h-3" /> APPROVE
+                                                                               </button>
+                                                                           ) : (
+                                                                               <span className="text-[8px] text-green-600 dark:text-green-400 font-black flex items-center gap-1">
+                                                                                   <CheckCircle className="w-3 h-3" /> APPROVED
+                                                                               </span>
+                                                                           )}
+                                                                       </div>
+                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.correctMessage}</p>
+                                                                   </div>
+
+                                                                   <div className={`p-3 rounded-lg ${translation.feedback.incorrectMessageApproved === false ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'}`}>
+                                                                       <div className="flex items-center justify-between mb-2">
+                                                                           <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase">Incorrect Message</label>
+                                                                           {translation.feedback.incorrectMessageApproved === false ? (
+                                                                               <button
+                                                                                   type="button"
+                                                                                   onClick={() => handleApproveTranslationField(language, 'incorrectMessage')}
+                                                                                   className="bg-green-600 hover:bg-green-700 text-white text-[8px] px-2 py-1 rounded font-black uppercase flex items-center gap-1 transition-colors"
+                                                                               >
+                                                                                   <Check className="w-3 h-3" /> APPROVE
+                                                                               </button>
+                                                                           ) : (
+                                                                               <span className="text-[8px] text-green-600 dark:text-green-400 font-black flex items-center gap-1">
+                                                                                   <CheckCircle className="w-3 h-3" /> APPROVED
+                                                                               </span>
+                                                                           )}
+                                                                       </div>
+                                                                       <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.incorrectMessage}</p>
+                                                                   </div>
+
+                                                                   {translation.feedback.hint && (
+                                                                       <div className={`p-3 rounded-lg ${translation.feedback.hintApproved === false ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700' : 'bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700'}`}>
+                                                                           <div className="flex items-center justify-between mb-2">
+                                                                               <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase">Hint</label>
+                                                                               {translation.feedback.hintApproved === false ? (
+                                                                                   <button
+                                                                                       type="button"
+                                                                                       onClick={() => handleApproveTranslationField(language, 'hint')}
+                                                                                       className="bg-green-600 hover:bg-green-700 text-white text-[8px] px-2 py-1 rounded font-black uppercase flex items-center gap-1 transition-colors"
+                                                                                   >
+                                                                                       <Check className="w-3 h-3" /> APPROVE
+                                                                                   </button>
+                                                                               ) : (
+                                                                                   <span className="text-[8px] text-green-600 dark:text-green-400 font-black flex items-center gap-1">
+                                                                                       <CheckCircle className="w-3 h-3" /> APPROVED
+                                                                                   </span>
+                                                                               )}
+                                                                           </div>
+                                                                           <p className="text-sm text-gray-700 dark:text-gray-300">{translation.feedback.hint}</p>
+                                                                       </div>
+                                                                   )}
+                                                               </div>
+                                                           )}
+                                                       </div>
+                                                   </div>
+                                               );
+                                           })}
+                                       </div>
+                                   </div>
+                               )}
+
+                               {/* Add New Translation */}
+                               <div className="space-y-3">
+                                   <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">ADD NEW LANGUAGE</label>
+                                   <div className="flex gap-2">
+                                       <select
+                                           value={selectedTranslationLanguage}
+                                           onChange={(e) => setSelectedTranslationLanguage(e.target.value)}
+                                           disabled={isTranslating}
+                                           className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-bold focus:outline-none focus:border-blue-500 transition-all disabled:opacity-50"
+                                       >
+                                           <option value="">Select a language...</option>
+                                           {['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew']
+                                               .filter(lang => !editedPoint.task.translations?.[lang as any])
+                                               .map(lang => (
+                                                   <option key={lang} value={lang}>{lang}</option>
+                                               ))
+                                           }
+                                       </select>
+
+                                       <button
+                                           type="button"
+                                           onClick={() => handleAddTranslation(selectedTranslationLanguage)}
+                                           disabled={!selectedTranslationLanguage || isTranslating}
+                                           className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                       >
+                                           {isTranslating ? (
+                                               <>
+                                                   <Loader2 className="w-4 h-4 animate-spin" />
+                                                   TRANSLATING...
+                                               </>
+                                           ) : (
+                                               <>
+                                                   <Wand2 className="w-4 h-4" />
+                                                   AI TRANSLATE
+                                               </>
+                                           )}
+                                       </button>
+                                   </div>
+                                   <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
+                                       💡 AI will automatically translate all task content to the selected language. You can review and approve each field.
+                                   </p>
+                               </div>
+                           </div>
+                       </div>
+                   )}
                </div>
 
                {/* FOOTER */}
