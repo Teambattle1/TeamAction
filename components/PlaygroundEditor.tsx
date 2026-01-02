@@ -2791,17 +2791,37 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             {/* Copy Task Button */}
                             <button
                                 onClick={() => {
+                                    const now = Date.now();
+                                    const nextOrder = Math.max(0, ...game.points.map(p => (typeof p.order === 'number' ? p.order : 0))) + 1;
+
+                                    const originalPos = selectedTask.playgroundPosition;
+                                    const copiedPos = originalPos
+                                        ? {
+                                            x: Math.min(98, Math.round(((originalPos.x || 50) + 2) * 10) / 10),
+                                            y: Math.min(98, Math.round(((originalPos.y || 50) + 2) * 10) / 10)
+                                        }
+                                        : undefined;
+
                                     // Create a copy of the selected task with a new ID
-                                    const newTask = { ...selectedTask, id: `task-${Date.now()}` };
+                                    const newTask: GamePoint = {
+                                        ...selectedTask,
+                                        id: `task-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                                        title: `Copy of ${selectedTask.title}`,
+                                        order: nextOrder,
+                                        isCompleted: false,
+                                        isUnlocked: true,
+                                        playgroundPosition: copiedPos
+                                    };
+
                                     onUpdateGame({
                                         ...game,
                                         points: [...game.points, newTask]
                                     });
-                                    navigator.clipboard.writeText(JSON.stringify(newTask));
-                                    alert(`Task "${selectedTask.title}" copied! You can paste it in another game.`);
+                                    setSelectedTaskId(newTask.id);
                                 }}
                                 className="w-full py-3 bg-green-600/20 hover:bg-green-600/40 text-green-400 hover:text-green-300 border border-green-600/40 hover:border-green-500 rounded-lg font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all"
-                                title="Copy this task to clipboard and duplicate in current zone"
+                                title="Create a copy of this task in the current game"
+                                type="button"
                             >
                                 <Copy className="w-4 h-4" /> COPY TASK
                             </button>
