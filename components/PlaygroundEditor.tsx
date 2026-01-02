@@ -2250,7 +2250,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 <div
                     ref={canvasRef}
                     className={`flex-1 overflow-hidden relative bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:40px_40px] [background-position:center] flex items-center justify-center p-8 ${
-                        snapToRoadMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+                        snapToRoadMode ? 'cursor-crosshair'
+                        : drawMode.active ? 'cursor-crosshair'
+                        : 'cursor-grab active:cursor-grabbing'
                     }`}
                     onWheel={snapToRoadMode ? undefined : handleWheel}
                     onMouseDown={snapToRoadMode ? handleSnapToRoadStart : handleMouseDown}
