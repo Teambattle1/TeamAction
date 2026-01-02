@@ -2943,13 +2943,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             : isDrawSource && drawMode.trigger === 'onIncorrect'
                                             ? 'border-red-500 shadow-red-500/70 scale-125 animate-pulse'
                                             : isDrawSource && drawMode.trigger === 'onOpen'
-                                            ? 'border-amber-500 shadow-amber-500/70 scale-125 animate-pulse'
+                                            ? 'border-yellow-500 shadow-yellow-500/70 scale-125 animate-pulse'
                                             : isHoveredTarget && drawMode.trigger === 'onCorrect'
                                             ? 'border-green-400 shadow-green-400/70 scale-125 ring-4 ring-green-400/30'
                                             : isHoveredTarget && drawMode.trigger === 'onIncorrect'
                                             ? 'border-red-400 shadow-red-400/70 scale-125 ring-4 ring-red-400/30'
                                             : isHoveredTarget && drawMode.trigger === 'onOpen'
-                                            ? 'border-amber-400 shadow-amber-400/70 scale-125 ring-4 ring-amber-400/30'
+                                            ? 'border-yellow-400 shadow-yellow-400/70 scale-125 ring-4 ring-yellow-400/30'
                                             : isDrawTarget
                                             ? 'border-slate-500 opacity-60'
                                             : hoveredTaskId === point.id
