@@ -321,6 +321,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [defaultTaskColorScheme, setDefaultTaskColorScheme] = useState<TaskColorScheme | undefined>(baseGame?.defaultTaskColorScheme);
   const [showColorSchemeEditor, setShowColorSchemeEditor] = useState(false);
 
+  // Sound Settings
+  const [soundSettings, setSoundSettings] = useState<import('../types').SoundSettings | undefined>(baseGame?.soundSettings);
+
   // Config
   const [timerMode, setTimerMode] = useState<TimerMode>(baseGame?.timerConfig?.mode || 'none');
   const [duration, setDuration] = useState<number>(baseGame?.timerConfig?.durationMinutes || 60);
