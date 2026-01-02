@@ -1387,8 +1387,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         selectedDevice,
         editorOrientation,
         viewportDims,
-        playgroundPointsCount: playgroundPoints.length,
-        uniquePointsCount: uniquePlaygroundPoints.length
+        playgroundPointsCount: playgroundPoints.length
     });
 
     const bgStyle: React.CSSProperties = {
