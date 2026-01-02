@@ -1722,11 +1722,20 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            if (!activePlayground) return;
+                                            const newLayouts = { ...activePlayground.deviceLayouts };
                                             if (isOrientationLocked) {
-                                                updatePlayground({ orientationLock: 'none' });
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'none',
+                                                };
                                             } else {
-                                                updatePlayground({ orientationLock: editorOrientation });
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: editorOrientation,
+                                                };
                                             }
+                                            updatePlayground({ deviceLayouts: newLayouts });
                                         }}
                                         className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
                                             isOrientationLocked
