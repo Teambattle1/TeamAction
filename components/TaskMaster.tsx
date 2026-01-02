@@ -1790,6 +1790,14 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             <Plus className="w-4 h-4" /> ADD TO
                                         </button>
                                         <button
+                                            onClick={handleBulkEditColorScheme}
+                                            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
+                                            title="Edit color scheme for selected tasks"
+                                        >
+                                            <Palette className="w-4 h-4" /> COLOUR SCHEME
+                                        </button>
+                                        <button
                                             onClick={handleBulkCopySelected}
                                             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
                                             type="button"
