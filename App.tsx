@@ -6,6 +6,7 @@ import { supabase } from './lib/supabase';
 import { authService } from './services/auth';
 import { teamSync } from './services/teamSync';
 import { LocationProvider, useLocation } from './contexts/LocationContext';
+import { TagColorsProvider } from './contexts/TagColorsContext';
 import { haversineMeters, isWithinRadius, isValidCoordinate } from './utils/geo';
 import { snapPointsToRoad, isPointInBox } from './utils/mapbox';
 import { generateDemoTeamHistory } from './services/teamHistoryDemo';
@@ -2242,9 +2243,11 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary componentName="TeamChallenge App">
       <OfflineIndicator />
-      <LocationProvider>
-        <GameApp />
-      </LocationProvider>
+      <TagColorsProvider>
+        <LocationProvider>
+          <GameApp />
+        </LocationProvider>
+      </TagColorsProvider>
     </ErrorBoundary>
   );
 };
