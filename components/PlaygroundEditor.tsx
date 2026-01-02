@@ -5305,7 +5305,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                           task: t.task,
                                           location: { lat: 0, lng: 0 },
                                           radiusMeters,
-                                          activationTypes: ['radius'],
+                                          activationTypes: t.activationTypes || ['click'],
                                           manualUnlockCode: undefined,
                                           playgroundId: playzone.id,
                                           devicePositions: {
@@ -5536,7 +5536,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     task: t.task,
                                     location: { lat: 0, lng: 0 },
                                     radiusMeters,
-                                    activationTypes: ['radius'],
+                                    activationTypes: t.activationTypes || ['click'],
                                     manualUnlockCode: undefined,
                                     playgroundId: targetPlaygroundId,
                                     devicePositions: {
