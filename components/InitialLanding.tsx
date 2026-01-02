@@ -187,7 +187,13 @@ const MapPinButton = ({
 const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, games, activeGameId, onSelectGame, authUser, onLogout }) => {
   const [view, setView] = useState<CategoryView>('HOME');
   const [showGameMenu, setShowGameMenu] = useState(false);
+  const [gameSearchQuery, setGameSearchQuery] = useState('');
   const activeGame = games.find(g => g.id === activeGameId);
+
+  const filteredGames = useMemo(() => {
+    if (!gameSearchQuery.trim()) return games;
+    return games.filter(game => matchesGameSearch(game.name, game.id, gameSearchQuery));
+  }, [games, gameSearchQuery]);
 
   // Dynamic Header Content
   const getHeaderContent = () => {
