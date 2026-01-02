@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import LocationSearch from './LocationSearch';
 import AdjustGameTimeModal from './AdjustGameTimeModal';
+import QRScannerModal from './QRScannerModal';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { parseGPX } from '../utils/gpx';
 import { timeService } from '../services/time';
@@ -733,68 +734,14 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             setShowQRColorPicker(true);
             return;
         }
-        if (isQRScannerActive) {
-            // Stop scanning
-            if (qrStreamRef.current) {
-                qrStreamRef.current.getTracks().forEach(track => track.stop());
-            }
-            if (qrScanIntervalRef.current) {
-                clearInterval(qrScanIntervalRef.current);
-            }
-            setIsQRScannerActive(false);
-            setQRScannedValue(null);
-            return;
-        }
+        // Toggle scanner modal
+        setIsQRScannerActive(!isQRScannerActive);
+    };
 
-        // Start scanning
-        setIsQRScannerActive(true);
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'environment',
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            });
-
-            qrStreamRef.current = stream;
-
-            if (qrVideoRef.current) {
-                qrVideoRef.current.srcObject = stream;
-                qrVideoRef.current.play();
-
-                qrScanIntervalRef.current = setInterval(() => {
-                    if (qrVideoRef.current && qrCanvasRef.current && qrVideoRef.current.readyState === qrVideoRef.current.HAVE_ENOUGH_DATA) {
-                        const canvas = qrCanvasRef.current;
-                        const ctx = canvas.getContext('2d');
-
-                        if (ctx) {
-                            canvas.width = qrVideoRef.current.videoWidth;
-                            canvas.height = qrVideoRef.current.videoHeight;
-                            ctx.drawImage(qrVideoRef.current, 0, 0);
-
-                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                            const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-                            if (code) {
-                                setQRScannedValue(code.data);
-                                if (qrStreamRef.current) {
-                                    qrStreamRef.current.getTracks().forEach(track => track.stop());
-                                }
-                                if (qrScanIntervalRef.current) {
-                                    clearInterval(qrScanIntervalRef.current);
-                                }
-                                setIsQRScannerActive(false);
-                            }
-                        }
-                    }
-                }, 100);
-            }
-        } catch (error: any) {
-            console.error('QR Scanner: Camera access failed:', error);
-            setIsQRScannerActive(false);
-        }
+    // Handle QR scan result
+    const handleQRScan = (data: string) => {
+        setQRScannedValue(data);
+        console.log('QR Code scanned:', data);
     };
 
     // Cleanup QR scanner on unmount
@@ -1557,74 +1504,13 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                         />
                     )}
 
-                    {/* QR Scanner Video Modal (Hidden Canvas) - PLAY mode only */}
-                    {mode === GameMode.PLAY && isQRScannerActive && (
-                        <div className="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto">
-                            <div className="w-full max-w-md bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border-2 border-orange-500">
-                                {/* Header */}
-                                <div className="bg-orange-600 px-6 py-4 flex items-center justify-between">
-                                    <div>
-                                        <h3 className="text-lg font-black text-white uppercase tracking-widest">QR SCANNER</h3>
-                                        <p className="text-[10px] text-orange-100 font-bold">Point camera at QR code</p>
-                                    </div>
-                                    <button
-                                        onClick={handleQRScanClick}
-                                        className="p-2 hover:bg-orange-700 rounded-lg transition-colors"
-                                        title="Close scanner"
-                                        type="button"
-                                    >
-                                        <X className="w-5 h-5 text-white" />
-                                    </button>
-                                </div>
-
-                                {/* Video Preview */}
-                                <div className="bg-black relative h-80 flex items-center justify-center overflow-hidden">
-                                    <video
-                                        ref={qrVideoRef}
-                                        className="w-full h-full object-cover"
-                                        style={{ transform: 'scaleX(-1)' }}
-                                    />
-                                    <canvas ref={qrCanvasRef} style={{ display: 'none' }} />
-
-                                    {/* Scanning Overlay */}
-                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <div className="w-64 h-64 border-4 border-orange-400/60 rounded-xl shadow-lg animate-pulse" />
-                                    </div>
-
-                                    {/* Corner Indicators */}
-                                    <div className="absolute top-4 left-4 w-8 h-8 border-t-4 border-l-4 border-green-400" />
-                                    <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-green-400" />
-                                    <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-green-400" />
-                                    <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-green-400" />
-                                </div>
-
-                                {/* Status Messages */}
-                                {qrScannedValue && (
-                                    <div className="bg-green-500/20 border-t border-green-500 px-6 py-4 space-y-3">
-                                        <div>
-                                            <p className="text-[10px] text-green-200 font-black uppercase tracking-wider mb-1">QR Code Detected!</p>
-                                            <p className="text-xs text-green-100 font-mono bg-black/40 p-2 rounded-lg break-all">{qrScannedValue}</p>
-                                        </div>
-                                        <button
-                                            onClick={() => {
-                                                setIsQRScannerActive(false);
-                                                setQRScannedValue(null);
-                                            }}
-                                            className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-bold uppercase text-xs rounded-lg transition-colors"
-                                            type="button"
-                                        >
-                                            Close Scanner
-                                        </button>
-                                    </div>
-                                )}
-
-                                {!qrScannedValue && (
-                                    <div className="px-6 py-4 border-t border-slate-700 text-center bg-slate-950/50">
-                                        <p className="text-xs text-slate-300 font-bold">Scanning for QR codes...</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                    {/* QR Scanner Modal - PLAY and INSTRUCTOR modes */}
+                    {(mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) && (
+                        <QRScannerModal
+                            isOpen={isQRScannerActive}
+                            onClose={() => setIsQRScannerActive(false)}
+                            onScan={handleQRScan}
+                        />
                     )}
                 </div>
             )}
