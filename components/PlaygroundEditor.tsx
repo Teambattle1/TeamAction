@@ -5219,6 +5219,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         points: [...game.points, ...newPoints]
                                       });
 
+                                      // Save templates to library and sync to Supabase
+                                      (async () => {
+                                        const { ok } = await db.saveTemplates(newTasksToAdd);
+                                        if (!ok) {
+                                          console.error('[PlaygroundEditor] Failed to save tasks to library');
+                                        } else {
+                                          console.log('[PlaygroundEditor] Tasks saved to library:', newTasksToAdd.length);
+                                        }
+                                      })();
+
                                       // Reset state
                                       setShowPlayzoneSelector(false);
                                       setPendingTasksToAdd([]);
