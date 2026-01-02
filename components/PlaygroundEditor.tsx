@@ -1694,6 +1694,20 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
+                        {/* Game Settings Clockwheel */}
+                        {onOpenGameSettings && (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onOpenGameSettings();
+                                }}
+                                className="text-orange-500 hover:text-orange-400 transition-all p-2 hover:scale-110"
+                                title="Open Game Settings"
+                            >
+                                <Settings className="w-5 h-5" />
+                            </button>
+                        )}
                         <button
                             onClick={toggleAllSections}
                             className="text-slate-400 hover:text-orange-400 transition-colors p-2"
