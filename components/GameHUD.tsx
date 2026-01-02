@@ -952,6 +952,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                 }}
                 onToggleChat={onToggleChat}
                 onEditGameSettings={onEditGameSettings}
+                onOpenGameChooser={onOpenGameChooser}
                 timerConfig={timerConfig}
                 showAdjustGameTime={showAdjustGameTime}
                 onAdjustGameTime={() => setShowAdjustGameTime(true)}
