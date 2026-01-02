@@ -3853,9 +3853,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                             {/* Icon Editor - Dual State */}
                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-3">
-                                {/* UNSOLVED ICON Section */}
+                                {/* INCORRECT ANSWER ICON Section */}
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-red-400 uppercase tracking-widest">🔒 UNSOLVED ICON</label>
+                                    <label className="text-[10px] font-black text-red-400 uppercase tracking-widest">❌ INCORRECT ANSWER</label>
 
                                     {/* Current Icon Preview */}
                                     {selectedTask.iconUrl && (
@@ -3946,9 +3946,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 {/* Divider */}
                                 <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
 
-                                {/* SOLVED ICON Section */}
+                                {/* CORRECT ANSWER ICON Section */}
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-green-400 uppercase tracking-widest">✓ SOLVED ICON</label>
+                                    <label className="text-[10px] font-black text-green-400 uppercase tracking-widest">✅ CORRECT ANSWER</label>
 
                                     {/* Current Completed Icon Preview */}
                                     {selectedTask.completedIconUrl && (
