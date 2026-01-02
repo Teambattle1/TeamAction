@@ -3335,9 +3335,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     style={{ width: displaySize, height: displaySize }}>
                                         {/* Display completed icon if task is completed and has completedIconUrl, otherwise show regular icon */}
                                         {(point.isCompleted && point.completedIconUrl) ? (
-                                            <img src={point.completedIconUrl} alt={`${point.title} (Completed)`} className={`w-[90%] h-[90%] object-cover rounded-full ${isActionTarget ? 'opacity-50' : ''}`} />
+                                            <img
+                                                src={point.completedIconUrl}
+                                                alt={`${point.title} (Completed)`}
+                                                className={`object-cover rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
+                                                style={{
+                                                    width: `${(point.iconImageScale || 0.9) * 100}%`,
+                                                    height: `${(point.iconImageScale || 0.9) * 100}%`
+                                                }}
+                                            />
                                         ) : point.iconUrl ? (
-                                            <img src={point.iconUrl} alt={point.title} className={`w-[90%] h-[90%] object-cover rounded-full ${isActionTarget ? 'opacity-50' : ''}`} />
+                                            <img
+                                                src={point.iconUrl}
+                                                alt={point.title}
+                                                className={`object-cover rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
+                                                style={{
+                                                    width: `${(point.iconImageScale || 0.9) * 100}%`,
+                                                    height: `${(point.iconImageScale || 0.9) * 100}%`
+                                                }}
+                                            />
                                         ) : (
                                             <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : isActionTarget ? 'text-slate-400' : 'text-slate-900'}`} />
                                         )}
