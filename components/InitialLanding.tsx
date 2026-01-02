@@ -655,6 +655,28 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                         </p>
                     </div>
                 )}
+
+                {/* Game Search Field (Top right for EDIT_MENU and PLAY_MENU) */}
+                {(view === 'EDIT_MENU' || view === 'PLAY_MENU') && (
+                    <div className="relative w-72 flex items-center animate-in fade-in slide-in-from-right-4 duration-500">
+                        <Search className="absolute left-3 w-4 h-4 text-slate-500 pointer-events-none" />
+                        <input
+                            type="text"
+                            placeholder="Quick search: game ID or name..."
+                            value={gameSearchQuery}
+                            onChange={(e) => setGameSearchQuery(e.target.value)}
+                            className="w-full pl-11 pr-4 py-2.5 bg-slate-800/60 text-white text-xs rounded-lg border border-slate-600 focus:border-orange-500 focus:bg-slate-800 focus:outline-none placeholder-slate-500 backdrop-blur-sm transition-all"
+                        />
+                        {gameSearchQuery && (
+                            <button
+                                onClick={() => setGameSearchQuery('')}
+                                className="absolute right-3 p-1 hover:bg-slate-700 rounded transition-colors"
+                            >
+                                <XIcon className="w-4 h-4 text-slate-400 hover:text-white" />
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Centered Title & Session Selector Block */}
