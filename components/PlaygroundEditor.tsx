@@ -1517,7 +1517,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest flex items-center gap-1">
                                     <MousePointerClick className="w-3 h-3" /> HUD BUTTON APPEARANCE
                                 </span>
-                                <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-transform ${isHudAppearanceCollapsed ? '-rotate-90' : ''}`} />
+                                <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isHudAppearanceCollapsed ? '-rotate-90' : ''}`} />
                             </button>
 
                             {!isHudAppearanceCollapsed && (
@@ -1638,7 +1638,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
                         >
                             <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">BACKGROUND IMAGE</span>
-                            <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-transform ${isBackgroundImageCollapsed ? '-rotate-90' : ''}`} />
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isBackgroundImageCollapsed ? '-rotate-90' : ''}`} />
                         </button>
 
                         {!isBackgroundImageCollapsed && (
@@ -1753,13 +1753,18 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                     {/* Background Audio Section - At Bottom */}
                     <div>
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                        <button
+                            onClick={() => setIsBackgroundMusicCollapsed(!isBackgroundMusicCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest flex items-center gap-1">
                                 <Music className="w-3 h-3" /> BACKGROUND MUSIC
                             </span>
-                        </div>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isBackgroundMusicCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
 
-                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
+                        {!isBackgroundMusicCollapsed && (
+                            <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
                             {/* Add New Track Button */}
                             <button
                                 onClick={() => audioInputRef.current?.click()}
@@ -1813,6 +1818,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                 </div>
