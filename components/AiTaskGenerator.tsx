@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Wand2, X, Plus, Check, RefreshCw, ThumbsUp, ThumbsDown, Loader2, Sparkles, AlertCircle, Ban, Edit2, Globe, Tag, Image as ImageIcon, Home, Search, Hash, Save, Library, Gamepad2, Map, LayoutGrid, ArrowRight, LayoutList, Settings2, Target, Circle, Palette, MapPin, Music, Play, Square } from 'lucide-react';
 import { TaskTemplate, Playground, TaskList, IconId } from '../types';
 import { generateAiTasks, generateAiImage, searchLogoUrl, generateMoodAudio } from '../services/ai';
 import { ICON_COMPONENTS } from '../utils/icons';
 import GeminiApiKeyModal from './GeminiApiKeyModal';
+import { fetchUniqueTags } from '../services/db';
 
 interface AiTaskGeneratorProps {
   onClose: () => void;
@@ -46,6 +47,8 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
   const [language, setLanguage] = useState('🇩🇰 Danish (Dansk)');
   const [taskCount, setTaskCount] = useState(5);
   const [autoTag, setAutoTag] = useState('');
+  const [existingTags, setExistingTags] = useState<string[]>([]);
+  const [showAutoTagSuggestions, setShowAutoTagSuggestions] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [generatedBuffer, setGeneratedBuffer] = useState<TaskTemplate[]>([]);
@@ -60,6 +63,20 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
   const [batchFinished, setBatchFinished] = useState(false);
   const [showGeminiKeyModal, setShowGeminiKeyModal] = useState(false);
   const [pendingGenerationParams, setPendingGenerationParams] = useState<{topic: string; taskCount: number; language: string; autoTag: string} | null>(null);
+
+  useEffect(() => {
+    fetchUniqueTags().then(tags => setExistingTags(tags)).catch(() => setExistingTags([]));
+  }, []);
+
+  const autoTagSuggestions = useMemo(() => {
+    const q = autoTag.trim().toLowerCase();
+    if (!q) return [];
+
+    return existingTags
+      .filter(t => t.toLowerCase().includes(q))
+      .filter(t => t.toLowerCase() !== q)
+      .slice(0, 8);
+  }, [autoTag, existingTags]);
 
   // Destination State
   const [destinationType, setDestinationType] = useState<'MAP' | 'PLAYGROUND'>(initialPlaygroundId ? 'PLAYGROUND' : 'MAP');
@@ -484,15 +501,34 @@ const AiTaskGenerator: React.FC<AiTaskGeneratorProps> = ({ onClose, onAddTasks, 
                                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-purple-500 text-center"
                                 />
                             </div>
-                            <div>
+                            <div className="relative">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">TAG</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={autoTag}
-                                    onChange={(e) => setAutoTag(e.target.value)}
+                                    onChange={(e) => { setAutoTag(e.target.value); setShowAutoTagSuggestions(true); }}
+                                    onFocus={() => setShowAutoTagSuggestions(true)}
+                                    onBlur={() => window.setTimeout(() => setShowAutoTagSuggestions(false), 150)}
                                     placeholder="Auto-tag..."
                                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-purple-500"
                                 />
+
+                                {showAutoTagSuggestions && autoTagSuggestions.length > 0 && (
+                                    <div className="absolute left-0 right-0 top-full mt-2 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl z-50">
+                                        {autoTagSuggestions.map((suggestion) => (
+                                            <button
+                                                key={suggestion}
+                                                type="button"
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                onClick={() => { setAutoTag(suggestion); setShowAutoTagSuggestions(false); }}
+                                                className="w-full px-3 py-2 text-left text-xs text-white font-bold uppercase hover:bg-slate-800 transition-colors flex items-center gap-2"
+                                            >
+                                                <Hash className="w-3 h-3 text-purple-400" />
+                                                <span className="truncate">{suggestion}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
