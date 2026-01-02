@@ -5,6 +5,8 @@ export interface Coordinate {
 
 export type IconId = 'default' | 'star' | 'flag' | 'trophy' | 'camera' | 'question' | 'skull' | 'treasure' | 'music' | 'nature' | 'world';
 
+export type DeviceType = 'mobile' | 'tablet' | 'desktop';
+
 export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown' | 'timeline';
 
 export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'clean' | 'winter' | 'ski' | 'historic' | 'treasure' | 'desert' | 'google_custom' | 'none';
