@@ -192,23 +192,42 @@ const Access: React.FC<AccessProps> = ({ onGameSelected, onBack }) => {
             {/* Action Buttons */}
             <div className="flex flex-col gap-3">
               {!validGame ? (
-                <button
-                  onClick={() => handleValidateCode()}
-                  disabled={isValidating || !accessCode.trim()}
-                  className="w-full py-4 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-lg uppercase tracking-wide transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
-                >
-                  {isValidating ? (
-                    <>
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                      Validating...
-                    </>
-                  ) : (
-                    <>
-                      <KeyRound className="w-6 h-6" />
-                      Verify Code
-                    </>
-                  )}
-                </button>
+                <>
+                  <button
+                    onClick={() => handleValidateCode()}
+                    disabled={isValidating || !accessCode.trim()}
+                    className="w-full py-4 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-700/50 disabled:cursor-not-allowed text-white rounded-2xl font-black text-lg uppercase tracking-wide transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+                  >
+                    {isValidating ? (
+                      <>
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                        Validating...
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="w-6 h-6" />
+                        Verify Code
+                      </>
+                    )}
+                  </button>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/20" />
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="px-2 bg-gradient-to-br from-orange-600 to-orange-700 text-white/70 font-bold">OR</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowQRScanner(true)}
+                    className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black text-lg uppercase tracking-wide transition-all flex items-center justify-center gap-3 shadow-lg hover:shadow-xl border border-white/10 hover:border-white/20"
+                  >
+                    <Camera className="w-6 h-6" />
+                    Scan Game QR
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={handlePlayGame}
