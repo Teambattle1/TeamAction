@@ -268,6 +268,18 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         }
     }, [game.playgrounds]);
 
+    // ESC key listener for draw mode
+    useEffect(() => {
+        const handleEscKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && drawMode.active) {
+                setDrawMode({ active: false, trigger: null, sourceTaskId: null, mousePosition: null });
+            }
+        };
+
+        window.addEventListener('keydown', handleEscKey);
+        return () => window.removeEventListener('keydown', handleEscKey);
+    }, [drawMode.active]);
+
     const didSeedEditorToolbarPositionsRef = useRef(false);
 
     // Load toolbar positions from game (device-aware)
