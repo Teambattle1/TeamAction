@@ -1380,8 +1380,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const viewportDims = getViewportDimensions();
 
     const bgStyle: React.CSSProperties = {
-        backgroundImage: showBackground && activePlayground.imageUrl ? `url(${activePlayground.imageUrl})` : 'none',
-        backgroundSize: activePlayground.backgroundStyle === 'stretch' ? '100% 100%' : (activePlayground.backgroundStyle === 'cover' ? 'cover' : 'contain'),
+        backgroundImage: showBackground && activePlayground?.imageUrl ? `url(${activePlayground.imageUrl})` : 'none',
+        backgroundSize: activePlayground?.backgroundStyle === 'stretch' ? '100% 100%' : (activePlayground?.backgroundStyle === 'cover' ? 'cover' : 'contain'),
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         width: viewportDims.width,
