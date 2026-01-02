@@ -237,7 +237,6 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   const [view, setView] = useState<CategoryView>('HOME');
   const [showGameMenu, setShowGameMenu] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
-  const [createMenuSearchQuery, setCreateMenuSearchQuery] = useState('');
   const [statusTab, setStatusTab] = useState<GameStatusTab>('TODAY');
   const [fieldsPosition, setFieldsPosition] = useState({ top: 16, right: 16 });
   const [isDragging, setIsDragging] = useState(false);
