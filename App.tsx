@@ -169,6 +169,17 @@ const GameApp: React.FC = () => {
   const [hoveredDangerZoneId, setHoveredDangerZoneId] = useState<string | null>(null); // List → Map
   const [mapHoveredPointId, setMapHoveredPointId] = useState<string | null>(null); // Map → List (reverse)
 
+  // --- DRAWER & TOOLBAR STATE ---
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    mapmode: true,
+    layers: true,
+    location: true,
+    pins: true,
+    show: true,
+    tools: true,
+  });
+  const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': false });
+
   // --- SUPABASE ERROR DETECTION ---
   useEffect(() => {
     const handleSupabaseError = (event: CustomEvent) => {
