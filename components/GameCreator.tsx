@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { searchLogoUrl, generateAiLogo } from '../services/ai';
 import { uploadImage } from '../services/storage';
-import { fetchUniqueTags, countMapStyleUsage, replaceMapStyleInGames, fetchCustomMapStyles, saveCustomMapStyle, deleteCustomMapStyle } from '../services/db';
+import { fetchUniqueTags, fetchTagColors, saveTagColors as saveTagColorsToDb, countMapStyleUsage, replaceMapStyleInGames, fetchCustomMapStyles, saveCustomMapStyle, deleteCustomMapStyle } from '../services/db';
 import { resizeImage } from '../utils/image';
 import GameLogViewer from './GameLogViewer';
 import MeetingPointMapPicker from './MeetingPointMapPicker';
@@ -355,7 +355,22 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       const loadSettings = async () => {
           try {
               const stored = localStorage.getItem('geohunt_tag_colors');
-              if (stored) setTagColors(JSON.parse(stored));
+              let localColors: Record<string, string> = {};
+              if (stored) {
+                  try {
+                      localColors = JSON.parse(stored);
+                      setTagColors(localColors);
+                  } catch (e) {
+                      console.error('[GameCreator] Failed to parse local tag colors', e);
+                  }
+              }
+
+              const remoteColors = await fetchTagColors();
+              if (remoteColors && Object.keys(remoteColors).length > 0) {
+                  const merged = { ...remoteColors, ...localColors };
+                  setTagColors(merged);
+                  localStorage.setItem('geohunt_tag_colors', JSON.stringify(merged));
+              }
 
               // Load map previews (kept in localStorage for standard styles)
               const storedPreviews = localStorage.getItem('geohunt_map_previews');
@@ -400,6 +415,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const saveTagColors = (newColors: Record<string, string>) => {
       setTagColors(newColors);
       localStorage.setItem('geohunt_tag_colors', JSON.stringify(newColors));
+      saveTagColorsToDb(newColors).catch((e) => {
+          console.warn('[GameCreator] Failed to persist tag colors to database', e);
+      });
   };
 
   const handleMapPreviewUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
