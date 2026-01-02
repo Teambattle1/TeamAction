@@ -334,14 +334,36 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                               }
                           }}
                           disabled={isCoolingDown}
-                          onPointerDown={(e) => e.stopPropagation()} 
+                          onPointerDown={(e) => e.stopPropagation()}
                           onMouseEnter={() => mode === GameMode.INSTRUCTOR && setHoveredPointId(point.id)}
                           onMouseLeave={() => mode === GameMode.INSTRUCTOR && setHoveredPointId(null)}
-                          className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 group flex flex-col items-center ${isUnlocked ? 'cursor-pointer hover:scale-110 active:scale-95' : 'cursor-not-allowed opacity-50 grayscale'}`}
+                          className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-all duration-300 group flex flex-col items-center ${
+                              isCoolingDown ? 'cursor-not-allowed opacity-60 grayscale' :
+                              isUnlocked ? 'cursor-pointer hover:scale-110 active:scale-95' :
+                              'cursor-not-allowed opacity-50 grayscale'
+                          }`}
                           style={{ left: `${x}%`, top: `${y}%`, transform: `translate(-50%, -50%) scale(${scale})`, zIndex: isHovered ? 100 : 10 }}
                       >
-                          <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl border-4 relative ${isCompleted ? 'bg-green-500 border-green-300' : isUnlocked ? 'bg-white border-orange-500' : 'bg-slate-700 border-slate-500'}`}>
-                              {isCompleted ? <CheckCircle className="w-8 h-8 text-white" /> : !isUnlocked ? <Lock className="w-6 h-6 text-slate-400" /> : <Icon className="w-8 h-8 text-orange-600" />}
+                          <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-2xl border-4 relative ${
+                              isCoolingDown ? 'bg-gray-400 border-gray-600' :
+                              isCompleted ? 'bg-green-500 border-green-300' :
+                              isUnlocked ? 'bg-white border-orange-500' :
+                              'bg-slate-700 border-slate-500'
+                          }`}>
+                              {isCoolingDown ? (
+                                  <>
+                                      <Icon className="w-8 h-8 text-gray-600 opacity-30" />
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                                          <div className="text-white font-black text-xl">
+                                              {cooldownSecondsRemaining}
+                                          </div>
+                                      </div>
+                                  </>
+                              ) : (
+                                  <>
+                                      {isCompleted ? <CheckCircle className="w-8 h-8 text-white" /> : !isUnlocked ? <Lock className="w-6 h-6 text-slate-400" /> : <Icon className="w-8 h-8 text-orange-600" />}
+                                  </>
+                              )}
                               {mode === GameMode.EDIT && point.isHiddenBeforeScan && <div className="absolute -top-1 -left-1 w-6 h-6 bg-purple-600 rounded-full border-2 border-white flex items-center justify-center shadow-lg"><EyeOff className="w-3 h-3 text-white" /></div>}
                               {mode === GameMode.EDIT && (point.logic?.onOpen?.length || point.logic?.onCorrect?.length) && <div className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full border-2 border-white" />}
                           </div>
