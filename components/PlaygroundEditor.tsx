@@ -487,13 +487,40 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const existingZones = game.playgrounds || [];
         const zoneNumber = existingZones.length + 1;
 
+        // Initialize device layouts with default configurations
+        const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+        const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
+
         const newZone: Playground = {
             id: `pg-${Date.now()}`,
             title: `Global ${zoneNumber}`,
             buttonVisible: true,
             iconId: 'default',
             location: { lat: 0, lng: 0 },
-            orientationLock: 'landscape'
+            orientationLock: 'landscape',
+            deviceLayouts: {
+                mobile: {
+                    orientationLock: 'portrait',
+                    qrScannerPos: { x: 20, y: windowHeight - 100 },
+                    iconPositions: {},
+                    buttonVisible: true,
+                    iconScale: 1.0,
+                },
+                tablet: {
+                    orientationLock: 'landscape',
+                    qrScannerPos: { x: windowWidth - 120, y: windowHeight - 100 },
+                    iconPositions: {},
+                    buttonVisible: true,
+                    iconScale: 1.0,
+                },
+                desktop: {
+                    orientationLock: 'landscape',
+                    qrScannerPos: { x: windowWidth - 120, y: windowHeight - 100 },
+                    iconPositions: {},
+                    buttonVisible: true,
+                    iconScale: 1.0,
+                },
+            },
         };
 
         const updatedPlaygrounds = [...existingZones, newZone];
