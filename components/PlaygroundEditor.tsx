@@ -2448,8 +2448,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             {/* Settings Button */}
                             <button
                                 onClick={() => {
-                                    setTaskEditorTab('SETTINGS');
-                                    setShowTaskMaster(true);
+                                    setSettingsModalTaskId(selectedTask.id);
+                                    setShowTaskSettingsModal(true);
                                 }}
                                 className="w-full py-3 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 hover:text-cyan-300 border border-cyan-600/40 hover:border-cyan-500 rounded-lg font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all"
                                 title="Open task settings"
