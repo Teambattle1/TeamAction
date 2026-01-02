@@ -1971,6 +1971,7 @@ const GameApp: React.FC = () => {
                             case 'DATABASE': setShowDatabaseTools(true); break;
                             case 'DIAGNOSTICS': setShowSupabaseDiagnostic(true); break;
                             case 'TRANSLATIONS': setShowTranslationsManager(true); break;
+                            case 'MEDIA': setShowMediaManager(true); break;
                             case 'GAMESTATS':
                                 setShowGameStats(true);
                                 break;
@@ -2008,6 +2009,12 @@ const GameApp: React.FC = () => {
                     activeGameId={activeGameId}
                     onSelectGame={setActiveGameId}
                     onClose={() => setShowGameStats(false)}
+                />
+            )}
+            {showMediaManager && (
+                <MediaManager
+                    onClose={() => setShowMediaManager(false)}
+                    games={games}
                 />
             )}
             {showMapStyleLibrary && (
