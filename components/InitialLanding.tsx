@@ -259,6 +259,30 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
     }
   }, []);
 
+  // Check Gemini API key on mount and periodically
+  React.useEffect(() => {
+    const checkGeminiKey = () => {
+      try {
+        const key = localStorage.getItem('GEMINI_API_KEY');
+        const hasKey = !!key && key.trim().length > 0;
+        setShowGeminiWarning(!hasKey);
+        setHasCheckedGeminiKey(true);
+      } catch (e) {
+        console.error('Failed to check Gemini API key:', e);
+        setShowGeminiWarning(true);
+        setHasCheckedGeminiKey(true);
+      }
+    };
+
+    // Check immediately
+    checkGeminiKey();
+
+    // Check every 30 seconds
+    const interval = setInterval(checkGeminiKey, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Handle drag start
   const handleDragStart = (e: React.MouseEvent) => {
     if (!fieldsContainerRef.current) return;
