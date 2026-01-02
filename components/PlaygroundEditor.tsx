@@ -1524,6 +1524,34 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     return (
         <div className="fixed inset-0 z-[5000] bg-[#0f172a] text-white flex flex-row overflow-hidden font-sans animate-in fade-in">
 
+            {/* Simulation Mode Banner - Absolute Positioned */}
+            {isSimulationActive && (
+                <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between z-[6000] bg-purple-600 border-b-4 border-purple-500 animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-4">
+                        <PlayCircle className="w-6 h-6 text-white animate-pulse" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-wider text-white">
+                                🎮 SIMULATION MODE ACTIVE
+                            </h3>
+                            <p className="text-sm font-bold text-white/90">
+                                Click tasks to open and solve them. Score: {simulationScore} | Team: {simulationTeam?.name}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setIsSimulationActive(false);
+                            setSimulationScore(0);
+                            setSimulationTeam(null);
+                            setActiveSimulationTaskId(null);
+                        }}
+                        className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 border-2 border-white/30"
+                    >
+                        <X className="w-5 h-5" /> EXIT SIMULATION
+                    </button>
+                </div>
+            )}
+
             {/* Draw Mode Banner - Absolute Positioned */}
             {drawMode.active && drawMode.sourceTaskId && (
                 <div className={`absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between z-[6000] border-b-4 animate-in slide-in-from-top-4 ${
