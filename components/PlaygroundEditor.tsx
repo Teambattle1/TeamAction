@@ -3547,20 +3547,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         <h2 className="text-sm font-black uppercase tracking-widest text-white">TASKS</h2>
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{uniquePlaygroundPoints.length} in zone</p>
                     </div>
-                    {/* Settings Icon - Top Right */}
-                    {onOpenGameSettings && (
-                        <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onOpenGameSettings();
-                            }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-orange-500 hover:text-orange-400 transition-colors hover:scale-110"
-                            title="Open Game Settings"
-                        >
-                            <Settings className="w-4 h-4" />
-                        </button>
-                    )}
                 </div>
 
                 {/* Content - Task Creation or Task Editor */}
