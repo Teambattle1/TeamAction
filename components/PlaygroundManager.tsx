@@ -184,6 +184,57 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
                 )}
             </div>
         </div>
+
+        {/* DELETE WARNING MODAL */}
+        {deleteWarningTemplate && (
+            <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-in fade-in">
+                <div className="bg-slate-900 border-2 border-red-600 rounded-2xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-red-600/20 border border-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="w-6 h-6 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight">DELETE TEMPLATE?</h2>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                        <p className="text-sm text-slate-300">
+                            You are about to <span className="font-bold text-red-400">permanently delete</span> the playzone template:
+                        </p>
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+                            <p className="font-bold text-white text-sm uppercase tracking-wide">{deleteWarningTemplate.title}</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                                {deleteWarningTemplate.tasks.length} tasks • Created {new Date(deleteWarningTemplate.createdAt).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <div className="bg-red-600/10 border border-red-600/30 rounded-lg p-3">
+                            <p className="text-xs font-bold text-red-300 uppercase tracking-wide flex items-center gap-2 mb-2">
+                                <AlertTriangle className="w-4 h-4" /> WARNING
+                            </p>
+                            <ul className="text-xs text-red-200/80 space-y-1">
+                                <li>• This action cannot be undone</li>
+                                <li>• All games using this template will retain their copies</li>
+                                <li>• The template will be removed from the library</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => setDeleteWarningTemplate(null)}
+                            className="py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors"
+                        >
+                            CANCEL
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors shadow-lg shadow-red-600/50 active:scale-95"
+                        >
+                            DELETE PERMANENTLY
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };
