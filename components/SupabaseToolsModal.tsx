@@ -16,6 +16,17 @@ const SupabaseToolsModal: React.FC<SupabaseToolsModalProps> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
 
+  // Generate a simple hash from the SQL code to detect changes
+  const sqlCodeHash = useMemo(() => {
+    let hash = 0;
+    for (let i = 0; i < sqlCode.length; i++) {
+      const char = sqlCode.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return hash.toString();
+  }, [sqlCode]);
+
   const sqlCode = `-- SYSTEM UPDATE SCRIPT
 -- RUN THIS IN SUPABASE SQL EDITOR TO FIX STORAGE AND ATOMIC UPDATES
 
@@ -273,9 +284,13 @@ NOTIFY pgrst, 'reload config';`;
     setSupabaseUrl(url);
     setSupabaseKey(key.substring(0, 20) + '...');
 
+    // Check if the current SQL code has been marked as done
+    const completedHash = localStorage.getItem('supabase_setup_completed_hash');
+    setSetupComplete(completedHash === sqlCodeHash);
+
     runTest();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sqlCodeHash]);
 
   const runTest = async () => {
     setTesting(true);
@@ -487,7 +502,12 @@ NOTIFY pgrst, 'reload config';`;
                         <ExternalLink className="w-3 h-3" /> Open Supabase SQL
                       </a>
                       <button
-                        onClick={() => setSetupComplete(true)}
+                        onClick={() => {
+                          // Save the hash of the current SQL code to localStorage
+                          localStorage.setItem('supabase_setup_completed_hash', sqlCodeHash);
+                          setSetupComplete(true);
+                          setShowSql(false); // Close the SQL panel
+                        }}
                         className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-black uppercase text-[10px] tracking-widest rounded-lg transition-colors flex items-center justify-center gap-2 border border-slate-600"
                       >
                         <Check className="w-3 h-3" /> Mark as Done
