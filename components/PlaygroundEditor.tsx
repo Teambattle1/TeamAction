@@ -1462,7 +1462,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         ? 'bg-green-600 border-green-500'
                         : drawMode.trigger === 'onIncorrect'
                         ? 'bg-red-600 border-red-500'
-                        : 'bg-amber-600 border-amber-500'
+                        : 'bg-yellow-600 border-yellow-500'
                 }`}>
                     <div className="flex items-center gap-4">
                         <PenTool className="w-6 h-6 text-white animate-pulse" />
