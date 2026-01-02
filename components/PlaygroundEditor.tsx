@@ -2715,7 +2715,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <circle cx="1" cy="1" r="0.5" fill="#ef4444" opacity="0.8"/>
                                     </pattern>
                                     <pattern id="action-dots" width="8" height="2" patternUnits="userSpaceOnUse">
-                                        <circle cx="1" cy="1" r="0.5" fill="#f59e0b" opacity="0.8"/>
+                                        <circle cx="1" cy="1" r="0.5" fill="#eab308" opacity="0.8"/>
                                     </pattern>
                                 </defs>
                                 {uniquePlaygroundPoints.flatMap((source) => {
