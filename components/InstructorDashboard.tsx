@@ -9,6 +9,7 @@ import PlaygroundModal from './PlaygroundModal';
 import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { haversineMeters } from '../utils/geo';
+import { getGameDisplayId } from '../utils/gameIdUtils';
 
 interface InstructorDashboardProps {
   game: Game;
