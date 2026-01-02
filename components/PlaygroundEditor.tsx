@@ -2245,7 +2245,53 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 </div>
 
                 {/* Footer Buttons - Fixed at bottom */}
-                <div className="p-5 border-t border-slate-800 flex-shrink-0">
+                <div className="p-5 border-t border-slate-800 flex-shrink-0 space-y-3">
+                    {/* SIMULATOR Button */}
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            if (isSimulationActive) {
+                                // Stop simulation
+                                setIsSimulationActive(false);
+                                setSimulationScore(0);
+                                setSimulationTeam(null);
+                                setActiveSimulationTaskId(null);
+                                setShowRanking(false);
+                            } else {
+                                // Start simulation
+                                const testTeam = {
+                                    id: 'sim-test-team',
+                                    gameId: game.id,
+                                    name: 'TEST',
+                                    joinCode: 'TEST00',
+                                    score: 0,
+                                    members: [{ name: 'Simulator', deviceId: 'sim-device', photo: '' }],
+                                    updatedAt: new Date().toISOString()
+                                };
+                                setSimulationTeam(testTeam);
+                                setSimulationScore(0);
+                                setIsSimulationActive(true);
+                                setShowRanking(true);
+                            }
+                        }}
+                        className={`w-full px-4 py-4 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 font-black uppercase tracking-widest text-xs shadow-lg ${
+                            isSimulationActive
+                                ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/20'
+                                : 'bg-purple-600 text-white hover:bg-purple-700 shadow-purple-500/20'
+                        }`}
+                        title={isSimulationActive ? 'Stop Simulation Mode' : 'Start Simulation Mode - Play the game with all tasks and rules enabled'}
+                        type="button"
+                    >
+                        {isSimulationActive ? <X className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
+                        <span>{isSimulationActive ? 'STOP SIMULATOR' : 'START SIMULATOR'}</span>
+                    </button>
+
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30" />
+
+                    {/* Update/Delete Buttons */}
                     <div className="flex gap-3">
                         <button
                             onClick={async () => {
@@ -2303,15 +2349,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         {activePlayground && (
                             <button
                                 onClick={() => {
-                                    if(window.confirm(`Delete zone "${activePlayground.title}"? This cannot be undone.`)) {
+                                    const zoneName = activePlayground.title || 'this zone';
+                                    const taskCount = game.points.filter(p => p.playgroundId === activePlayground.id).length;
+                                    const confirmMessage = `⚠️ DELETE ZONE: "${zoneName}"?\n\n` +
+                                                         `This will permanently delete:\n` +
+                                                         `• The zone and all its settings\n` +
+                                                         `• ${taskCount} task${taskCount !== 1 ? 's' : ''} inside this zone\n\n` +
+                                                         `This action CANNOT be undone!\n\n` +
+                                                         `Are you absolutely sure?`;
+
+                                    if(window.confirm(confirmMessage)) {
                                         const remaining = game.playgrounds?.filter(p => p.id !== activePlayground.id) || [];
                                         onUpdateGame({ ...game, playgrounds: remaining });
                                         if (remaining.length > 0) setActivePlaygroundId(remaining[0].id);
                                         else setActivePlaygroundId(null);
                                     }
                                 }}
-                                className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border border-red-500"
-                                title="Delete this zone permanently"
+                                className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border-2 border-red-500 shadow-lg shadow-red-500/20"
+                                title="Delete this zone permanently - WARNING: This cannot be undone!"
                             >
                                 <Trash2 className="w-4 h-4" /> DELETE ZONE
                             </button>
