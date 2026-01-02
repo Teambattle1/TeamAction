@@ -1505,6 +1505,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                                     {mode === GameMode.EDIT && onToggleTeamPaths && (
                                         <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">PATH</div>
                                     )}
+                                    <div className="flex-1 text-[7px] font-black text-purple-100 uppercase tracking-widest leading-tight">BARS</div>
                                 </div>
                             </div>
                         </div>
