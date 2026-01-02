@@ -757,6 +757,19 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setShowQRScanner(activePlayground.showQRScanner !== false);
     }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts, selectedDevice, activePlayground?.showTaskScores, activePlayground?.showTaskOrder, activePlayground?.showTaskActions, activePlayground?.showTaskNames, activePlayground?.showTaskStatus, activePlayground?.showBackground, activePlayground?.showQRScanner]);
 
+    // Auto-collapse all source tasks on mount when in actions mode
+    useEffect(() => {
+        if (activePlayground && taskSortMode === 'actions') {
+            const uniquePlaygroundPoints = game.points.filter(p => p.playgroundId === activePlayground.id);
+            const sourceTasks = uniquePlaygroundPoints.filter(p =>
+                p.logic?.onOpen?.length > 0 ||
+                p.logic?.onCorrect?.length > 0 ||
+                p.logic?.onIncorrect?.length > 0
+            );
+            setCollapsedSources(new Set(sourceTasks.map(t => t.id)));
+        }
+    }, [activePlayground?.id, taskSortMode, game.points]);
+
     // Deduplicate to prevent "same key" errors
     const uniquePlaygroundPoints = Array.from(new Map(playgroundPoints.map(p => [p.id, p])).values());
 
