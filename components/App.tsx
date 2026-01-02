@@ -40,6 +40,7 @@ import ErrorBoundary from './ErrorBoundary';
 import OfflineIndicator from './OfflineIndicator';
 import ConnectionStatus from './ConnectionStatus';
 import { PlayCircle, Ruler } from 'lucide-react';
+import { setGlobalVolume } from '../utils/sounds';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
