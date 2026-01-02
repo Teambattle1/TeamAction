@@ -485,7 +485,7 @@ const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [
                               <BarChart2 className="w-6 h-6 text-orange-500" /> GAME STATISTICS
                           </h3>
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                              SESSION: {gamesArr.find(g => g.id === statsGameId)?.name || 'UNKNOWN'}
+                              SESSION: <span className="text-orange-400">[{statsGameId && gamesArr.find(g => g.id === statsGameId) ? getGameDisplayId(statsGameId) : '???'}]</span> {gamesArr.find(g => g.id === statsGameId)?.name || 'UNKNOWN'}
                           </p>
                       </div>
                       <button onClick={() => setShowStatsModal(false)} className="p-2 hover:bg-white/10 rounded-full text-gray-500 hover:text-white">
