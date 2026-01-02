@@ -451,6 +451,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                 viewSwitcherPos,
                 pinsToolboxPos,
                 showToolboxPos,
+                layersToolboxPos,
                 qrScannerPos
             };
 
