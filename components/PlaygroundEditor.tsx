@@ -1638,7 +1638,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             )}
                             {saveStatus === 'idle' && (
                                 <>
-                                    <Save className="w-4 h-4" /> {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
+                                    <Save className="w-4 h-4" />
+                                    {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
                                 </>
                             )}
                         </button>
