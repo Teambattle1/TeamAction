@@ -685,7 +685,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setShowTaskStatus(activePlayground.showTaskStatus !== false);
         setShowBackground(activePlayground.showBackground !== false);
         setShowQRScanner(activePlayground.showQRScanner !== false);
-    }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts, selectedDevice]);
+    }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts, selectedDevice, activePlayground?.showTaskScores, activePlayground?.showTaskOrder, activePlayground?.showTaskActions, activePlayground?.showTaskNames, activePlayground?.showTaskStatus, activePlayground?.showBackground, activePlayground?.showQRScanner]);
 
     // Deduplicate to prevent "same key" errors
     const uniquePlaygroundPoints = Array.from(new Map(playgroundPoints.map(p => [p.id, p])).values());
