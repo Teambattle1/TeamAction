@@ -1352,8 +1352,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setZoom(1);
     };
 
-    if (!activePlayground) return null;
-
     // Calculate viewport dimensions based on device type and orientation
     const getViewportDimensions = () => {
         // Desktop mode: use 100% to fill available space
