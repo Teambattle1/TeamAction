@@ -3031,13 +3031,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     const now = Date.now();
                                     const nextOrder = Math.max(0, ...game.points.map(p => (typeof p.order === 'number' ? p.order : 0))) + 1;
 
-                                    const originalPos = selectedTask.playgroundPosition;
-                                    const copiedPos = originalPos
-                                        ? {
-                                            x: Math.min(98, Math.round(((originalPos.x || 50) + 2) * 10) / 10),
-                                            y: Math.min(98, Math.round(((originalPos.y || 50) + 2) * 10) / 10)
-                                        }
-                                        : undefined;
+                                    const originalPos = getDevicePosition(selectedTask);
+                                    const copiedPos = {
+                                        x: Math.min(98, Math.round((originalPos.x + 2) * 10) / 10),
+                                        y: Math.min(98, Math.round((originalPos.y + 2) * 10) / 10)
+                                    };
 
                                     // Create a copy of the selected task with a new ID
                                     const newTask: GamePoint = {
@@ -3047,7 +3045,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         order: nextOrder,
                                         isCompleted: false,
                                         isUnlocked: true,
-                                        playgroundPosition: copiedPos
+                                        devicePositions: {
+                                            [selectedDevice]: copiedPos
+                                        }
                                     };
 
                                     onUpdateGame({
