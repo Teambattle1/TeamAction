@@ -5,7 +5,7 @@ import {
   Database, Zap, Eye, Loader2, Save
 } from 'lucide-react';
 import { Game, TaskTemplate } from '../types';
-import * as db from '../services/db';
+import { useTagColors } from '../contexts/TagColorsContext';
 
 const TAG_COLORS = [
   '#64748b', '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef', '#f43f5e',
@@ -23,7 +23,7 @@ interface AccountTagsProps {
 }
 
 const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onDeleteTagGlobally, onRenameTagGlobally }) => {
-    const [tagColors, setTagColors] = useState<Record<string, string>>({});
+    const { tagColors, replaceTagColors } = useTagColors();
     const [newTagName, setNewTagName] = useState('');
     const [selectedColor, setSelectedColor] = useState(TAG_COLORS[0]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -38,30 +38,9 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
     const [purgeLabel, setPurgeLabel] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    useEffect(() => {
-        const stored = localStorage.getItem('geohunt_tag_colors');
-        if (stored) {
-            try {
-                setTagColors(JSON.parse(stored));
-            } catch (e) { console.error(e); }
-        }
-
-        const loadFromDb = async () => {
-            const remote = await db.fetchTagColors();
-            if (remote && Object.keys(remote).length > 0) {
-                setTagColors(prev => ({ ...remote, ...prev }));
-            }
-        };
-
-        loadFromDb();
-    }, []);
 
     const saveTags = (newTags: Record<string, string>) => {
-        setTagColors(newTags);
-        localStorage.setItem('geohunt_tag_colors', JSON.stringify(newTags));
-        db.saveTagColors(newTags).catch((e) => {
-            console.warn('[AccountTags] Failed to persist tag colors to database', e);
-        });
+        replaceTagColors(newTags);
     };
 
     // Scan for tags actually used in the system
