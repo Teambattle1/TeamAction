@@ -119,18 +119,53 @@ export const generateAiTasks = async (topic: string, count: number = 5, language
 export const generateAiImage = async (prompt: string, style: string = 'cartoon'): Promise<string | null> => {
     const key = ensureApiKey();
     const ai = new GoogleGenAI({ apiKey: key });
+
+    const fullPrompt = `Simple vector illustration: ${prompt}. Style: ${style}. Minimal background.`;
+
     try {
+        console.log('[AI Image] Generating with Gemini 2.5 Flash Image');
+        console.log('[AI Image] Prompt:', fullPrompt);
+
         const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-2.5-flash-image', 
-            contents: `Simple vector illustration: ${prompt}. Style: ${style}. Minimal background.`,
+            model: 'gemini-2.5-flash-image',
+            contents: fullPrompt,
         }));
-        if (response.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
-            return `data:${response.candidates[0].content.parts[0].inlineData.mimeType};base64,${response.candidates[0].content.parts[0].inlineData.data}`;
+
+        console.log('[AI Image] Response received:', {
+            hasCandidates: !!response.candidates,
+            candidateCount: response.candidates?.length,
+            finishReason: response.candidates?.[0]?.finishReason
+        });
+
+        const candidate = response.candidates?.[0];
+
+        if (candidate?.content?.parts?.[0]?.inlineData) {
+            const inlineData = candidate.content.parts[0].inlineData;
+            console.log('[AI Image] Successfully generated image');
+            return `data:${inlineData.mimeType};base64,${inlineData.data}`;
         }
+
+        console.warn('[AI Image] No image data in response');
+        console.log('[AI Image] Response structure:', {
+            finishReason: candidate?.finishReason,
+            hasSafetyRatings: !!candidate?.safetyRatings,
+            safetyRatings: candidate?.safetyRatings,
+            contentParts: candidate?.content?.parts?.map(p => ({
+                hasText: !!p.text,
+                hasInlineData: !!p.inlineData,
+                text: p.text?.substring(0, 100)
+            }))
+        });
+
         return null;
-    } catch (e) {
-        console.error(e);
-        return null;
+    } catch (e: any) {
+        console.error('[AI Image] Error generating:', e);
+        console.error('[AI Image] Error details:', {
+            message: e.message,
+            status: e.status,
+            errorDetails: e.errorDetails
+        });
+        throw e; // Re-throw to allow caller to handle
     }
 };
 
