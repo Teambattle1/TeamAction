@@ -45,6 +45,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [hintRevealed, setHintRevealed] = useState(false);
   const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
 
   // Voting State
   const [isVoting, setIsVoting] = useState(false);
