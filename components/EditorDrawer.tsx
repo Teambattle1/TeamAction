@@ -426,7 +426,6 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
       points: allPoints.filter(p => p.playgroundId === pg.id)
   })) || [];
 
-  const isFiltered = filterState.mode !== 'ALL';
 
   return (
     <div
