@@ -8,7 +8,7 @@ import {
     Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2,
     Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
     Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus, Wand2,
-    Copy, Monitor, Volume2, KeyRound, QrCode
+    Copy, Monitor, Volume2, KeyRound, QrCode, Download
 } from 'lucide-react';
 import { searchLogoUrl, generateAiLogo } from '../services/ai';
 import { uploadImage } from '../services/storage';
@@ -2139,6 +2139,89 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <p>• <strong>Custom Upload:</strong> Upload your own MP3/WAV files or choose from common sounds</p>
                               <p>• <strong>Auto-Play:</strong> Sounds play automatically when players answer tasks</p>
                               <p>• <strong>Volume Control:</strong> Set volume to 80% on game load (recommended)</p>
+                          </div>
+                      </div>
+                  </div>
+              );
+          case 'ACCESS':
+              return (
+                  <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-blue-900/30 to-cyan-900/30 border border-blue-700/50 p-6 rounded-2xl">
+                          <div className="flex items-center gap-3 mb-2">
+                              <KeyRound className="w-6 h-6 text-blue-400" />
+                              <h3 className="text-xl font-black text-white uppercase">Game Access</h3>
+                          </div>
+                          <p className="text-sm text-slate-300">
+                              Configure how players access and join this game
+                          </p>
+                      </div>
+
+                      {/* GAMECODE Section */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
+                          <div>
+                              <div className="flex items-center justify-between mb-3">
+                                  <label className="text-sm font-bold text-white uppercase">Game Access Code</label>
+                                  <span className="bg-slate-800 text-slate-400 px-2 py-1 rounded text-[9px] uppercase font-bold">Optional</span>
+                              </div>
+                              <input
+                                  type="text"
+                                  value={accessCode}
+                                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                                  placeholder="e.g., GAME2026"
+                                  maxLength={20}
+                                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white text-lg font-bold uppercase tracking-widest outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-center"
+                              />
+                              <p className="text-xs text-slate-500 mt-2">
+                                  Players will enter this code on the access page to join the game (not case-sensitive)
+                              </p>
+                          </div>
+
+                          {/* QR Code Display */}
+                          {qrCodeDataUrl && (
+                              <div className="pt-6 border-t border-slate-800">
+                                  <div className="flex items-center justify-between mb-3">
+                                      <label className="text-sm font-bold text-white uppercase flex items-center gap-2">
+                                          <QrCode className="w-5 h-5 text-blue-400" />
+                                          Game QR Code
+                                      </label>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-4 bg-white p-6 rounded-xl">
+                                      <img
+                                          src={qrCodeDataUrl}
+                                          alt="Game Access QR Code"
+                                          className="w-64 h-64"
+                                      />
+                                      <div className="text-center">
+                                          <p className="text-sm font-bold text-slate-900 mb-1">{accessCode}</p>
+                                          <p className="text-xs text-slate-600">Scan to join the game</p>
+                                      </div>
+                                  </div>
+                                  <button
+                                      onClick={() => {
+                                          const link = document.createElement('a');
+                                          link.download = `game-qr-${accessCode}.png`;
+                                          link.href = qrCodeDataUrl;
+                                          link.click();
+                                      }}
+                                      className="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm uppercase tracking-wide transition-colors flex items-center justify-center gap-2"
+                                  >
+                                      <Download className="w-4 h-4" />
+                                      Download QR Code
+                                  </button>
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Info Card */}
+                      <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+                          <div className="text-xs text-blue-300 leading-relaxed space-y-1">
+                              <p><strong>💡 How it works:</strong></p>
+                              <p>• <strong>Access Code:</strong> Set a unique code for players to join your game</p>
+                              <p>• <strong>QR Code:</strong> Automatically generated when you set an access code</p>
+                              <p>• <strong>Player Entry:</strong> Players can scan the QR or enter the code on the access page</p>
+                              <p>• <strong>Case-Insensitive:</strong> Codes are not case-sensitive when players enter them</p>
+                              <p>• <strong>Access Link:</strong> Players access via [Your Domain]/access</p>
                           </div>
                       </div>
                   </div>
