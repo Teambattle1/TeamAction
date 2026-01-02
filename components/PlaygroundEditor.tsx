@@ -1254,8 +1254,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const rect = backgroundRef.current?.getBoundingClientRect();
         if (!rect) return;
 
-        const currentX = point.playgroundPosition?.x ?? 50;
-        const currentY = point.playgroundPosition?.y ?? 50;
+        const devicePos = getDevicePosition(point);
+        const currentX = devicePos.x;
+        const currentY = devicePos.y;
 
         const centerX = rect.left + (currentX / 100) * rect.width;
         const centerY = rect.top + (currentY / 100) * rect.height;
