@@ -2819,7 +2819,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         ? '#10b981'
                                         : drawMode.trigger === 'onIncorrect'
                                         ? '#ef4444'
-                                        : '#f59e0b';
+                                        : '#eab308';
 
                                     return (
                                         <>
