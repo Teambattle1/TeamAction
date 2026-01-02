@@ -86,6 +86,9 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
     const [newStylePreviewFile, setNewStylePreviewFile] = useState<File | null>(null);
     const [addingStyle, setAddingStyle] = useState(false);
 
+    // Confirmation modal state
+    const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; type?: 'custom' | 'builtin'; styleId?: string; styleName?: string }>({ isOpen: false });
+
     useEffect(() => {
         loadCustomStyles();
     }, []);
