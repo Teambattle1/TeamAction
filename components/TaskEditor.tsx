@@ -1716,15 +1716,19 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                        <label className="block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-3">CURRENT TAGS ({editedPoint.tags.length})</label>
                                        <div className="flex flex-wrap gap-2">
                                            {editedPoint.tags.map((tag, idx) => (
-                                               <div key={`${tag}-${idx}`} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-lg px-3 py-2">
-                                                   <span className="text-sm font-bold text-blue-900 dark:text-blue-100">{tag}</span>
+                                               <div
+                                                   key={`${tag}-${idx}`}
+                                                   className="flex items-center gap-2 border border-black/10 dark:border-white/10 rounded-lg px-3 py-2 bg-[var(--tag-bg)] text-[var(--tag-fg)]"
+                                                   style={getTagChipVars(tag)}
+                                               >
+                                                   <span className="text-sm font-black">{tag}</span>
                                                    <button
                                                        type="button"
                                                        onClick={() => setEditedPoint({
                                                            ...editedPoint,
                                                            tags: editedPoint.tags.filter((_, i) => i !== idx)
                                                        })}
-                                                       className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+                                                       className="opacity-80 hover:opacity-100 transition-opacity"
                                                        title="Remove tag"
                                                    >
                                                        <X className="w-4 h-4" />
