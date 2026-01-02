@@ -1765,6 +1765,7 @@ const GameApp: React.FC = () => {
                           setShowGameCreator(true);
                       }
                   }}
+                  onExportGameToLibrary={handleExportGameToLibrary}
               />
           )}
           {showChatDrawer && activeGameId && (
