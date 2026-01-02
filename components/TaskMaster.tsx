@@ -175,9 +175,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     // Load tag colors from Supabase system settings (fallback to localStorage)
     useEffect(() => {
         const stored = localStorage.getItem('geohunt_tag_colors');
+        let localColors: Record<string, string> = {};
+
         if (stored) {
             try {
-                setTagColors(JSON.parse(stored));
+                localColors = JSON.parse(stored);
+                setTagColors(localColors);
             } catch (e) {
                 console.error('[TaskMaster] Error loading tag colors from localStorage:', e);
             }
@@ -186,8 +189,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         const loadRemote = async () => {
             const remote = await db.fetchTagColors();
             if (remote && Object.keys(remote).length > 0) {
-                setTagColors(prev => ({ ...remote, ...prev }));
-                localStorage.setItem('geohunt_tag_colors', JSON.stringify({ ...remote, ...(stored ? (JSON.parse(stored) as any) : {}) }));
+                const merged = { ...remote, ...localColors };
+                setTagColors(merged);
+                localStorage.setItem('geohunt_tag_colors', JSON.stringify(merged));
             }
         };
 
