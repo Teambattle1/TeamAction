@@ -1805,10 +1805,6 @@ const GameApp: React.FC = () => {
                             case 'CLIENT':
                                 setShowClientGameChooser(true);
                                 break;
-                            case 'ACCESS':
-                                setShowAccess(true);
-                                setShowLanding(false);
-                                break;
                         }
                     });
                 }}
