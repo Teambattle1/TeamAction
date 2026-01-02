@@ -30,7 +30,7 @@ interface TaskEditorProps {
   onClose: () => void;
   onClone?: (point: GamePoint) => void;
   isTemplateMode?: boolean;
-  requestedTab?: 'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | null;
+  requestedTab?: 'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | 'LANGUAGES' | null;
   gameMode?: 'standard' | 'playzone';
 }
 
@@ -152,7 +152,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     tags: point.tags || []
   });
 
-  const [activeTab, setActiveTab] = useState<'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS'>(requestedTab || 'GENERAL');
+  const [activeTab, setActiveTab] = useState<'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | 'LANGUAGES'>(requestedTab || 'GENERAL');
   const [showTaskTypeTooltip, setShowTaskTypeTooltip] = useState(false);
   const [hoveredTaskType, setHoveredTaskType] = useState<string | null>(null);
   const [tagInput, setTagInput] = useState('');
@@ -672,6 +672,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        {id: 'SETTINGS', label: 'Config', icon: SlidersHorizontal},
                        {id: 'ACTIVATION', label: 'Activation', icon: Lock},
                        {id: 'TAGS', label: 'Tags', icon: Tag},
+                       {id: 'LANGUAGES', label: 'Languages', icon: Globe},
                    ].map(tab => (
                        <button
                            key={tab.id}
