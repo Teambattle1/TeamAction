@@ -512,8 +512,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             orientationLock: 'landscape',
             deviceLayouts: {
                 mobile: {
-                    orientationLock: 'portrait',
-                    qrScannerPos: { x: 20, y: windowHeight - 100 },
+                    orientationLock: 'landscape',
+                    qrScannerPos: { x: windowWidth - 120, y: windowHeight - 100 },
                     iconPositions: {},
                     buttonVisible: true,
                     iconScale: 1.0,
