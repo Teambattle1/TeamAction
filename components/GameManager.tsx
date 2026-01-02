@@ -440,7 +440,9 @@ const GameManager: React.FC<GameManagerProps> = ({
                   }`}
                 >
                   <div>
-                    <h3 className="font-bold text-gray-800 dark:text-white uppercase">{template.name}</h3>
+                    <h3 className="font-bold text-gray-800 dark:text-white uppercase">
+                      <span className="text-purple-600 dark:text-purple-400 font-black">[{getGameDisplayId(template.id)}]</span> {template.name}
+                    </h3>
                     <p className="text-xs text-gray-500">
                       {new Date(template.createdAt).toLocaleDateString()} • {template.points.length} Tasks
                     </p>
