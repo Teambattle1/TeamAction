@@ -89,10 +89,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showBackground, setShowBackground] = useState(true);
     const [isBackgroundLocked, setIsBackgroundLocked] = useState(false);
 
-    // Toolbar positions (draggable)
-    const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 240, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
-    const [showToolbarPos, setShowToolbarPos] = useState({ x: 520, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
-    const [toolsToolbarPos, setToolsToolbarPos] = useState({ x: 820, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
+    // Toolbar positions (draggable) - Default spread-out positions to avoid overlap
+    const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
+    const [showToolbarPos, setShowToolbarPos] = useState({ x: 300, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
+    const [toolsToolbarPos, setToolsToolbarPos] = useState({ x: 580, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
     const [qrScannerPos, setQRScannerPos] = useState({ x: 85, y: 85 }); // Percentage-based positioning (85%, 85%)
     const [isDraggingOrientation, setIsDraggingOrientation] = useState(false);
     const [isDraggingShow, setIsDraggingShow] = useState(false);
