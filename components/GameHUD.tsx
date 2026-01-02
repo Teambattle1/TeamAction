@@ -212,6 +212,9 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
     const qrScanIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const showDragOffset = useRef({ x: 0, y: 0 });
 
+    // Orientation lock state
+    const [isOrientationLocked, setIsOrientationLocked] = useState(false);
+
     // Toolbar Position Persistence
     const saveDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isAdminRef = useRef(false);
@@ -227,6 +230,57 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
         location: { x: window.innerWidth - 180, y: 270 },
         qr: { x: window.innerWidth - 80, y: window.innerHeight - 100 }
     };
+
+    // Orientation lock function
+    const toggleOrientationLock = async () => {
+        const device = detectDeviceTypeWithUA();
+        if (!targetPlaygroundId || !playgrounds) return;
+
+        const playground = playgrounds.find(p => p.id === targetPlaygroundId);
+        if (!playground) return;
+
+        // Get the orientation to lock from playground settings
+        const deviceLayout = playground.deviceLayouts?.[device];
+        const orientationSetting = deviceLayout?.orientationLock || playground.orientationLock || 'none';
+
+        if (orientationSetting === 'none') {
+            console.warn('No orientation setting configured for this playground');
+            return;
+        }
+
+        try {
+            if (!isOrientationLocked) {
+                // Lock orientation
+                if ('orientation' in screen && 'lock' in screen.orientation) {
+                    await (screen.orientation as any).lock(orientationSetting === 'portrait' ? 'portrait-primary' : 'landscape-primary');
+                    setIsOrientationLocked(true);
+                } else {
+                    console.warn('Screen Orientation API not supported');
+                }
+            } else {
+                // Unlock orientation
+                if ('orientation' in screen && 'unlock' in screen.orientation) {
+                    (screen.orientation as any).unlock();
+                    setIsOrientationLocked(false);
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to lock/unlock orientation:', error);
+        }
+    };
+
+    // Auto-unlock orientation when leaving playground or component unmounts
+    useEffect(() => {
+        return () => {
+            if (isOrientationLocked && 'orientation' in screen && 'unlock' in screen.orientation) {
+                try {
+                    (screen.orientation as any).unlock();
+                } catch (error) {
+                    console.warn('Failed to unlock orientation on cleanup:', error);
+                }
+            }
+        };
+    }, [isOrientationLocked]);
 
     // Detect device type and load device-specific layout
     useEffect(() => {
