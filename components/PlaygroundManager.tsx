@@ -27,13 +27,46 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
     setLoading(false);
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (template: PlaygroundTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      
-      if (confirm('Are you sure you want to delete this global playzone template?')) {
-          await db.deletePlaygroundTemplate(id);
-          setTemplates(prev => prev.filter(t => t.id !== id));
+      setDeleteWarningTemplate(template);
+  };
+
+  const confirmDelete = async () => {
+      if (!deleteWarningTemplate) return;
+
+      try {
+          await db.deletePlaygroundTemplate(deleteWarningTemplate.id);
+          setTemplates(prev => prev.filter(t => t.id !== deleteWarningTemplate.id));
+          setDeleteWarningTemplate(null);
+      } catch (error) {
+          console.error('Error deleting template:', error);
+          alert('Failed to delete template');
+      }
+  };
+
+  const handleCopy = async (template: PlaygroundTemplate, e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      try {
+          const newTemplate: PlaygroundTemplate = {
+              ...template,
+              id: `tpl-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              title: `${template.title} (Copy)`,
+              createdAt: Date.now(),
+          };
+
+          await db.savePlaygroundTemplate(newTemplate);
+          setTemplates(prev => [newTemplate, ...prev]);
+
+          // Show copy feedback
+          setCopiedId(template.id);
+          setTimeout(() => setCopiedId(null), 2000);
+      } catch (error) {
+          console.error('Error copying template:', error);
+          alert('Failed to copy template');
       }
   };
 
