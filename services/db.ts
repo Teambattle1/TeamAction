@@ -608,6 +608,13 @@ export const updateMemberPhoto = async (teamId: string, memberDeviceId: string, 
 
 // --- LIBRARY & LISTS ---
 export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
+    const normalizeTemplate = (template: any): TaskTemplate => {
+        return {
+            ...template,
+            tags: Array.isArray(template.tags) ? template.tags : []
+        };
+    };
+
     try {
         const rows = await fetchInChunks(
             (offset, limit) => supabase.from('library').select('id, data').range(offset, offset + limit - 1),
@@ -618,7 +625,7 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
         return rows.map((row: any) => {
             // Handle both direct data objects and stringified JSON
             const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-            return { ...rowData, id: row.id };
+            return normalizeTemplate({ ...rowData, id: row.id });
         });
     } catch (e) {
         logError('fetchLibrary', e);
@@ -638,7 +645,7 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
             console.log(`[DB Service] Fallback fetch returned ${data.length} library items`);
             return data.map((row: any) => {
                 const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-                return { ...rowData, id: row.id };
+                return normalizeTemplate({ ...rowData, id: row.id });
             });
         } catch (fallbackError) {
             logError('fetchLibrary[fallback]', fallbackError);
