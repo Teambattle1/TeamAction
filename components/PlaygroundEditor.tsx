@@ -1721,13 +1721,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     <button
                                         onClick={() => {
                                             setEditorOrientation('portrait');
-                                            if (isOrientationLocked && activePlayground) {
+                                            if (activePlayground) {
                                                 const newLayouts = { ...activePlayground.deviceLayouts };
-                                                newLayouts[selectedDevice] = {
-                                                    ...newLayouts[selectedDevice],
-                                                    orientationLock: 'portrait',
-                                                };
-                                                updatePlayground({ deviceLayouts: newLayouts });
+                                                // If already locked, update the lock to the new orientation
+                                                if (isOrientationLocked) {
+                                                    newLayouts[selectedDevice] = {
+                                                        ...newLayouts[selectedDevice],
+                                                        orientationLock: 'portrait',
+                                                    };
+                                                    updatePlayground({ deviceLayouts: newLayouts });
+                                                }
                                             }
                                         }}
                                         className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
@@ -1743,13 +1746,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     <button
                                         onClick={() => {
                                             setEditorOrientation('landscape');
-                                            if (isOrientationLocked && activePlayground) {
+                                            if (activePlayground) {
                                                 const newLayouts = { ...activePlayground.deviceLayouts };
-                                                newLayouts[selectedDevice] = {
-                                                    ...newLayouts[selectedDevice],
-                                                    orientationLock: 'landscape',
-                                                };
-                                                updatePlayground({ deviceLayouts: newLayouts });
+                                                // If already locked, update the lock to the new orientation
+                                                if (isOrientationLocked) {
+                                                    newLayouts[selectedDevice] = {
+                                                        ...newLayouts[selectedDevice],
+                                                        orientationLock: 'landscape',
+                                                    };
+                                                    updatePlayground({ deviceLayouts: newLayouts });
+                                                }
                                             }
                                         }}
                                         className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
