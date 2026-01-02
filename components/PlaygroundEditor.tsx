@@ -3372,7 +3372,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             <img
                                                 src={point.completedIconUrl}
                                                 alt={`${point.title} (Completed)`}
-                                                className={`object-cover rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
+                                                className={`object-contain ${isActionTarget ? 'opacity-50' : ''}`}
                                                 style={{
                                                     width: `${(point.iconImageScale || 0.9) * 100}%`,
                                                     height: `${(point.iconImageScale || 0.9) * 100}%`
@@ -3382,7 +3382,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             <img
                                                 src={point.iconUrl}
                                                 alt={point.title}
-                                                className={`object-cover rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
+                                                className={`object-contain ${isActionTarget ? 'opacity-50' : ''}`}
                                                 style={{
                                                     width: `${(point.iconImageScale || 0.9) * 100}%`,
                                                     height: `${(point.iconImageScale || 0.9) * 100}%`
