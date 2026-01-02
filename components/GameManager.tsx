@@ -103,7 +103,8 @@ const GameSummaryCard: React.FC<{
   isActive: boolean;
   onPrimaryAction: () => void;
   onDelete: () => void;
-}> = ({ game, isActive, onPrimaryAction, onDelete }) => {
+  onSettings?: () => void;
+}> = ({ game, isActive, onPrimaryAction, onDelete, onSettings }) => {
   // CRITICAL: Guard against undefined/null game data - must be first check
   if (!game || typeof game !== 'object') {
     console.error('[GameSummaryCard] Invalid game data:', game);
