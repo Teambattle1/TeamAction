@@ -29,8 +29,8 @@ interface TaskMasterProps {
     activeGame?: Game | null;  // Active game to add tasks to
     initialTab?: 'LIBRARY' | 'LISTS' | 'TAGS' | 'CLIENT';
     initialModal?: 'AI' | 'LOQUIZ' | null;
-    onDeleteTagGlobally?: (tagName: string) => Promise<void>;
-    onRenameTagGlobally?: (oldTag: string, newTag: string) => Promise<void>;
+    onDeleteTagGlobally?: (tagName: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
+    onRenameTagGlobally?: (oldTag: string, newTag: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
     isPlayzoneEditor?: boolean; // When used inside Playzone Editor, show playzone/game placement actions for Task Lists
 }
 
