@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { getGameModeIcon } from '../utils/gameModeIcons';
 import { getGameDisplayId, formatGameNameWithId } from '../utils/gameIdUtils';
+import ConfirmationModal from './ConfirmationModal';
 
 interface GameManagerProps {
   games: Game[];
