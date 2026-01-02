@@ -212,10 +212,23 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     },
                 },
             };
-            onUpdateGame({ ...game, playgrounds: [newPg] });
+
+            // Initialize default toolbar positions for new games
+            const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
+            const defaultToolbarPositions = {
+                editorOrientationPos: { x: 20, y: windowHeight - 120 },
+                editorShowPos: { x: 300, y: windowHeight - 120 },
+                editorToolsPos: { x: 580, y: windowHeight - 120 },
+            };
+
+            onUpdateGame({
+                ...game,
+                playgrounds: [newPg],
+                toolbarPositions: defaultToolbarPositions
+            });
             setActivePlaygroundId(newPg.id);
 
-            // Open drawers by default for new games
+            // Drawers open by default (already set in useState, but kept for clarity)
             setIsDrawerOpen(true);
             setIsTasksDrawerOpen(true);
         }
