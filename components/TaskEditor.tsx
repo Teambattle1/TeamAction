@@ -947,17 +947,45 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                        {id: 'ACTIVATION', label: 'Activation', icon: Lock},
                        {id: 'TAGS', label: 'Tags', icon: Tag},
                        {id: 'LANGUAGES', label: 'Languages', icon: Globe},
-                   ].map(tab => (
-                       <button
-                           key={tab.id}
-                           type="button"
-                           onClick={() => setActiveTab(tab.id as any)}
-                           className={`flex-1 py-3 text-[10px] font-black uppercase flex flex-col items-center gap-1 border-b-2 transition-all ${activeTab === tab.id ? 'border-orange-600 text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-                       >
-                           <tab.icon className="w-4 h-4" />
-                           {tab.label}
-                       </button>
-                   ))}
+                   ].map(tab => {
+                       // Count unapproved translations for Languages tab badge
+                       let unapprovedCount = 0;
+                       if (tab.id === 'LANGUAGES' && editedPoint.task.translations) {
+                           Object.values(editedPoint.task.translations).forEach((translation: any) => {
+                               const isApproved =
+                                   translation.questionApproved === true &&
+                                   (translation.options ? translation.optionsApproved === true : true) &&
+                                   (translation.answer ? translation.answerApproved === true : true) &&
+                                   (translation.correctAnswers ? translation.correctAnswersApproved === true : true) &&
+                                   (translation.feedback ? (
+                                       (translation.feedback.correctMessage ? translation.feedback.correctMessageApproved === true : true) &&
+                                       (translation.feedback.incorrectMessage ? translation.feedback.incorrectMessageApproved === true : true) &&
+                                       (translation.feedback.hint ? translation.feedback.hintApproved === true : true)
+                                   ) : true);
+
+                               if (!isApproved) unapprovedCount++;
+                           });
+                       }
+
+                       return (
+                           <button
+                               key={tab.id}
+                               type="button"
+                               onClick={() => setActiveTab(tab.id as any)}
+                               className={`flex-1 py-3 text-[10px] font-black uppercase flex flex-col items-center gap-1 border-b-2 transition-all relative ${activeTab === tab.id ? 'border-orange-600 text-orange-600 dark:text-orange-400 bg-white dark:bg-gray-800' : 'border-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                           >
+                               <tab.icon className="w-4 h-4" />
+                               <span className="flex items-center gap-1">
+                                   {tab.label}
+                                   {tab.id === 'LANGUAGES' && unapprovedCount > 0 && (
+                                       <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded-full font-black ml-1">
+                                           NEW
+                                       </span>
+                                   )}
+                               </span>
+                           </button>
+                       );
+                   })}
                </div>
 
                {/* SCROLLABLE CONTENT */}
