@@ -158,12 +158,12 @@ const ToolbarsDrawer: React.FC<ToolbarsDrawerProps> = ({
 
     // Use prop if provided, otherwise use local state
     const visibleToolbars = visibleToolbarsProp || {
-        mapmode: true,
-        layers: true,
-        location: true,
-        pins: true,
-        show: true,
-        tools: true,
+        mapmode: false,
+        layers: false,
+        location: false,
+        pins: false,
+        show: false,
+        tools: false,
     };
 
     const toggleSection = (section: string) => {
