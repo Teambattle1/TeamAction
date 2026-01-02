@@ -4193,6 +4193,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </button>
                             </div>
 
+                            {/* Export to Library Button */}
+                            <button
+                                onClick={handleExportGameToLibrary}
+                                className="w-full py-3 bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 hover:text-orange-300 border border-orange-600/40 hover:border-orange-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all"
+                                title="Export all tasks to Global Library and sync to Supabase"
+                            >
+                                <Download className="w-4 h-4" /> EXPORT TO LIBRARY
+                            </button>
+
                             {/* Divider */}
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-4"></div>
 
