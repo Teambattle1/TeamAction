@@ -89,10 +89,35 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showBackground, setShowBackground] = useState(true);
     const [isBackgroundLocked, setIsBackgroundLocked] = useState(false);
 
+    const editorRootRef = useRef<HTMLDivElement>(null);
+
+    const getDefaultEditorToolbarPositions = () => {
+        const rootWidth = editorRootRef.current?.getBoundingClientRect().width || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+        // Default: top row under the header (matches the desired "Picture 2" desktop layout)
+        const y = 88;
+
+        // Approximate widths (used only to compute non-overlapping start X positions)
+        const gap = 14;
+        const orientationW = 470;
+        const showW = 320;
+        const toolsW = 320;
+
+        const totalW = orientationW + showW + toolsW + gap * 2;
+        const startX = Math.max(20, Math.round((rootWidth - totalW) / 2));
+
+        return {
+            orientation: { x: startX, y },
+            show: { x: startX + orientationW + gap, y },
+            tools: { x: startX + orientationW + gap + showW + gap, y },
+        };
+    };
+
     // Toolbar positions (draggable) - Default spread-out positions to avoid overlap
-    const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 20, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
-    const [showToolbarPos, setShowToolbarPos] = useState({ x: 300, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
-    const [toolsToolbarPos, setToolsToolbarPos] = useState({ x: 580, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
+    const initialToolbarDefaults = getDefaultEditorToolbarPositions();
+    const [orientationToolbarPos, setOrientationToolbarPos] = useState(initialToolbarDefaults.orientation);
+    const [showToolbarPos, setShowToolbarPos] = useState(initialToolbarDefaults.show);
+    const [toolsToolbarPos, setToolsToolbarPos] = useState(initialToolbarDefaults.tools);
     const [qrScannerPos, setQRScannerPos] = useState({ x: 85, y: 85 }); // Percentage-based positioning (85%, 85%)
     const [isDraggingOrientation, setIsDraggingOrientation] = useState(false);
     const [isDraggingShow, setIsDraggingShow] = useState(false);
@@ -214,12 +239,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             };
 
             // Initialize default toolbar positions for new games
-            const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
-            const defaultToolbarPositions = {
-                editorOrientationPos: { x: 20, y: windowHeight - 120 },
-                editorShowPos: { x: 300, y: windowHeight - 120 },
-                editorToolsPos: { x: 580, y: windowHeight - 120 },
-            };
+        const defaultPos = getDefaultEditorToolbarPositions();
+        const defaultToolbarPositions = {
+            editorOrientationPos: defaultPos.orientation,
+            editorShowPos: defaultPos.show,
+            editorToolsPos: defaultPos.tools,
+        };
 
             onUpdateGame({
                 ...game,
@@ -237,12 +262,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Load toolbar positions from game (device-aware)
     useEffect(() => {
         const pos = game.toolbarPositions;
-        const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
 
-        // Default positions - spread out horizontally at bottom
-        const defaultOrientationPos = { x: 20, y: windowHeight - 120 };
-        const defaultShowPos = { x: 300, y: windowHeight - 120 };
-        const defaultToolsPos = { x: 580, y: windowHeight - 120 };
+        // Default positions - spread out horizontally on the top row
+        const defaults = getDefaultEditorToolbarPositions();
+        const defaultOrientationPos = defaults.orientation;
+        const defaultShowPos = defaults.show;
+        const defaultToolsPos = defaults.tools;
 
         // Try device-specific positions first, fall back to default, then to hardcoded defaults
         if (pos?.editorOrientationPosPerDevice?.[selectedDevice]) {
@@ -1693,14 +1718,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                         {/* Center: Zone Tabs - Centered in Editor Window */}
                         <div className="absolute left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto pointer-events-auto hide-scrollbar">
-                            {/* ADD NEW Button First */}
-                            <button
-                                onClick={addNewZone}
-                                className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 bg-green-600 hover:bg-green-700 text-white shadow-lg border-2 border-green-500 flex items-center gap-2"
-                                title="Add a new zone to the game"
-                            >
-                                <Plus className="w-4 h-4" /> ADD NEW
-                            </button>
+                            {/* ADD NEW Button First (hide when editing/creating playzone templates) */}
+                            {!isTemplateMode && (
+                                <button
+                                    onClick={addNewZone}
+                                    className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 bg-green-600 hover:bg-green-700 text-white shadow-lg border-2 border-green-500 flex items-center gap-2"
+                                    title="Add a new zone to the game"
+                                >
+                                    <Plus className="w-4 h-4" /> ADD NEW
+                                </button>
+                            )}
 
                             {/* Zone Tabs */}
                             {game.playgrounds?.map((pg, index) => {
