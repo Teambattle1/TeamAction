@@ -427,13 +427,13 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   const isFiltered = filterState.mode !== 'ALL';
 
   return (
-    <div 
-        className={`fixed top-0 left-0 bottom-0 z-[2100] w-full sm:w-[320px] bg-white dark:bg-gray-900 shadow-2xl flex flex-col border-r border-gray-200 dark:border-gray-800 pointer-events-auto transition-transform duration-300 ease-in-out ${isExpanded ? 'translate-x-0' : '-translate-x-full'}`}
+    <div
+        className={`fixed top-0 right-0 bottom-0 z-[2100] w-full sm:w-[320px] bg-white dark:bg-gray-900 shadow-2xl flex flex-col border-l border-gray-200 dark:border-gray-800 pointer-events-auto transition-transform duration-300 ease-in-out ${isExpanded ? 'translate-x-0' : 'translate-x-full'}`}
     >
-      {/* Toggle Button moved to the Right of the Left Drawer */}
-      <button 
+      {/* Toggle Button - Orange Arrow Handle */}
+      <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute left-full top-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 w-8 h-24 rounded-r-xl shadow-lg border-y border-r border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-orange-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center pointer-events-auto"
+        className="absolute right-full top-1/2 -translate-y-1/2 bg-orange-600 hover:bg-orange-700 w-8 h-24 rounded-l-xl shadow-lg border-y border-l border-orange-600 text-white transition-all flex items-center justify-center pointer-events-auto"
         title={isExpanded ? "Collapse List" : "Expand List"}
       >
         {isExpanded ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
