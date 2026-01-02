@@ -16,17 +16,7 @@ const SupabaseToolsModal: React.FC<SupabaseToolsModalProps> = ({ onClose }) => {
   const [copied, setCopied] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
 
-  // Generate a simple hash from the SQL code to detect changes
-  const sqlCodeHash = useMemo(() => {
-    let hash = 0;
-    for (let i = 0; i < sqlCode.length; i++) {
-      const char = sqlCode.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32bit integer
-    }
-    return hash.toString();
-  }, [sqlCode]);
-
+  // SQL code must be declared before useMemo
   const sqlCode = `-- SYSTEM UPDATE SCRIPT
 -- RUN THIS IN SUPABASE SQL EDITOR TO FIX STORAGE AND ATOMIC UPDATES
 
