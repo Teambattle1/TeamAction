@@ -647,7 +647,7 @@ const chunkArray = <T,>(items: T[], chunkSize: number): T[][] => {
 
 export const saveTemplates = async (
     templates: TaskTemplate[],
-    opts?: { chunkSize?: number }
+    opts?: { chunkSize?: number; onProgress?: (info: { completed: number; total: number }) => void }
 ): Promise<{ ok: boolean }> => {
     try {
         if (!templates || templates.length === 0) return { ok: true };
@@ -662,6 +662,9 @@ export const saveTemplates = async (
 
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
+
+            opts?.onProgress?.({ completed: i, total: chunks.length });
+
             await retryWithBackoff(
                 () =>
                     supabase
@@ -677,6 +680,8 @@ export const saveTemplates = async (
                 `saveTemplates[chunk=${i + 1}/${chunks.length}]`
             );
         }
+
+        opts?.onProgress?.({ completed: chunks.length, total: chunks.length });
 
         return { ok: true };
     } catch (e) {
