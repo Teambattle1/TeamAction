@@ -5,7 +5,7 @@ import {
     X, Plus, LayoutGrid, Globe, Map as MapIcon, ArrowLeft, Trash2, Edit2,
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut,
     Maximize, Lock, Unlock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
-    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight,
+    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight, ChevronDown,
     Wand2, Zap, CheckCircle, XCircle, GripHorizontal, AlertTriangle, QrCode, Target, Loader2, MapPin, Copy, Eye
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
@@ -180,6 +180,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     // Delete Zone State
     const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
+
+    // Collapse State for Left Drawer Sections (default: collapsed)
+    const [isHudAppearanceCollapsed, setIsHudAppearanceCollapsed] = useState(true);
+    const [isBackgroundImageCollapsed, setIsBackgroundImageCollapsed] = useState(true);
 
     // Snap to Road State
     const [snapToRoadMode, setSnapToRoadMode] = useState(false);
