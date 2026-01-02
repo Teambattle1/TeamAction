@@ -3009,6 +3009,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     onMouseEnter={() => setHoveredTaskId(point.id)}
                                     onMouseLeave={() => setHoveredTaskId(null)}
                                     onPointerDown={(e) => {
+                                        // SIMULATION MODE: Click task to open it
+                                        if (isSimulationActive) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setActiveSimulationTaskId(point.id);
+                                            return;
+                                        }
+
                                         if (drawMode.active && drawMode.sourceTaskId && point.id !== drawMode.sourceTaskId) {
                                             // In draw mode: clicking a target task creates the connection
                                             e.preventDefault();
