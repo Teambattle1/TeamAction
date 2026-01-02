@@ -15,7 +15,8 @@ import Dashboard from './Dashboard';
 import TaskEditor from './TaskEditor';
 import TaskModal from './TaskModal';
 import { runCompleteLanguageMigration } from '../services/languageMigrationScript';
-import NotificationModal from './NotificationModal'; 
+import NotificationModal from './NotificationModal';
+import { useTagColors } from '../contexts/TagColorsContext'; 
 
 interface TaskMasterProps {
     onClose: () => void;
@@ -121,8 +122,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
     const [migrationResults, setMigrationResults] = useState<{totalUpdated: number; totalErrors: number} | null>(null);
 
-    // Tag Colors State
-    const [tagColors, setTagColors] = useState<Record<string, string>>({});
+    // Tag Colors (shared across app + persisted to database)
+    const { tagColors } = useTagColors();
 
     const handleRunMigration = async () => {
         setMigrationRunning(true);
@@ -172,31 +173,6 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         };
     }, []);
 
-    // Load tag colors from Supabase system settings (fallback to localStorage)
-    useEffect(() => {
-        const stored = localStorage.getItem('geohunt_tag_colors');
-        let localColors: Record<string, string> = {};
-
-        if (stored) {
-            try {
-                localColors = JSON.parse(stored);
-                setTagColors(localColors);
-            } catch (e) {
-                console.error('[TaskMaster] Error loading tag colors from localStorage:', e);
-            }
-        }
-
-        const loadRemote = async () => {
-            const remote = await db.fetchTagColors();
-            if (remote && Object.keys(remote).length > 0) {
-                const merged = { ...remote, ...localColors };
-                setTagColors(merged);
-                localStorage.setItem('geohunt_tag_colors', JSON.stringify(merged));
-            }
-        };
-
-        loadRemote();
-    }, []);
 
     const loadLibrary = async (forceRefresh = false) => {
         if (!forceRefresh && cachedLibrary && Array.isArray(cachedLibrary) && cachedLibrary.length > 0) {
