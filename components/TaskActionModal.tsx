@@ -96,6 +96,16 @@ const TaskActionModal: React.FC<TaskActionModalProps> = ({ point, allPoints, pla
                    alert(`Please enter message text for the message action in "${triggerLabel}".`);
                    return;
                }
+
+               // Check for missing or invalid cooldown duration
+               const invalidCooldown = actions.find(a =>
+                   a.type === 'cooldown' && (!a.cooldownSeconds || a.cooldownSeconds <= 0)
+               );
+               if (invalidCooldown) {
+                   const triggerLabel = TRIGGER_TABS.find(t => t.id === trigger)?.label || trigger;
+                   alert(`Please enter a valid cooldown duration (seconds) in "${triggerLabel}".`);
+                   return;
+               }
           }
       }
 
