@@ -3516,7 +3516,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 {/* Add New Task Button */}
                                 <button
                                     onClick={() => onAddTask('MANUAL', activePlayground.id)}
-                                    className="py-4 px-3 bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 hover:text-orange-300 border border-orange-600/40 hover:border-orange-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all group flex-col"
+                                    className="py-4 px-3 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 hover:text-yellow-300 border border-yellow-600/40 hover:border-yellow-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all group flex-col"
                                     title="Create a new task"
                                 >
                                     <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
