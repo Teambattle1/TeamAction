@@ -414,7 +414,12 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   };
 
   const toggleZone = (id: string) => {
-      setCollapsedZones(prev => ({ ...prev, [id]: !prev[id] }));
+      const newState = { ...collapsedZones, [id]: !collapsedZones[id] };
+      if (onCollapsedZonesChange) {
+          onCollapsedZonesChange(newState);
+      } else {
+          setCollapsedZonesLocal(newState);
+      }
   };
 
   const handleGPXUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
