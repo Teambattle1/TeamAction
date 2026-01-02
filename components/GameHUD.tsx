@@ -538,6 +538,31 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
         saveToolbarPositions();
     };
 
+    const handleLayersBoxPointerDown = (e: React.PointerEvent) => {
+        const target = e.target as HTMLElement | null;
+        if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
+
+        e.stopPropagation();
+        e.preventDefault();
+        setIsDraggingLayersBox(true);
+        layersDragOffset.current = { x: e.clientX - layersToolboxPos.x, y: e.clientY - layersToolboxPos.y };
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+    const handleLayersBoxPointerMove = (e: React.PointerEvent) => {
+        if (!isDraggingLayersBox) return; e.stopPropagation(); e.preventDefault();
+        setLayersToolboxPos({ x: e.clientX - layersDragOffset.current.x, y: e.clientY - layersDragOffset.current.y });
+    };
+    const handleLayersBoxPointerUp = (e: React.PointerEvent) => {
+        if (!isDraggingLayersBox) return;
+        setIsDraggingLayersBox(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
+        saveToolbarPositions();
+    };
+
     const handleTopToolbarPointerDown = (e: React.PointerEvent) => {
         const target = e.target as HTMLElement | null;
         if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
