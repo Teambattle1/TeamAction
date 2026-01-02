@@ -2414,10 +2414,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 onPointerMove={handleQRScannerPointerMove}
                                 onPointerUp={handleQRScannerPointerUp}
                                 onPointerCancel={handleQRScannerPointerUp}
-                                className={`absolute z-40 cursor-grab active:cursor-grabbing pointer-events-auto touch-none user-select-none`}
+                                className={`absolute transform -translate-x-1/2 -translate-y-1/2 z-40 cursor-grab active:cursor-grabbing pointer-events-auto touch-none select-none`}
                                 style={{
-                                    left: `${qrScannerPos.x}px`,
-                                    top: `${qrScannerPos.y}px`,
+                                    left: `${qrScannerPos.x}%`,
+                                    top: `${qrScannerPos.y}%`,
                                 }}
                             >
                                 <button
