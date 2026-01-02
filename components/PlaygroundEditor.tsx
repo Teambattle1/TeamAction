@@ -665,13 +665,18 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Save QR Scanner settings to playground device layout
     const saveQRScannerSettings = () => {
         if (activePlayground) {
-            const newLayouts = { ...activePlayground.deviceLayouts };
+            const newLayouts = { ...activePlayground.deviceLayouts } || {};
+            // Ensure device layout exists before updating
+            if (!newLayouts[selectedDevice]) {
+                newLayouts[selectedDevice] = {};
+            }
             newLayouts[selectedDevice] = {
                 ...newLayouts[selectedDevice],
                 qrScannerPos: qrScannerPos,
                 qrScannerSize: qrScannerSize,
                 qrScannerColor: qrScannerColor
             };
+            console.log('[PlaygroundEditor] Saving QR Scanner settings:', { qrScannerColor, selectedDevice, newLayouts });
             updatePlayground({ deviceLayouts: newLayouts });
         }
     };
