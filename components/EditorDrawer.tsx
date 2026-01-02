@@ -303,14 +303,17 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onStartSimulation,
   onShowPlayzoneChoice,
   hoveredPlaygroundId,
-  onHoverPlayground
+  onHoverPlayground,
+  collapsedZones: collapsedZonesProp,
+  onCollapsedZonesChange
 }) => {
-  const [isExpanded, setIsExpanded] = useState(initialExpanded); 
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [isSaved, setIsSaved] = useState(false);
   const [isRoutesCollapsed, setIsRoutesCollapsed] = useState(true);
   const [isDangerZonesCollapsed, setIsDangerZonesCollapsed] = useState(true);
 
-  const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': false });
+  const [collapsedZonesLocal, setCollapsedZonesLocal] = useState<Record<string, boolean>>({ 'map': false });
+  const collapsedZones = collapsedZonesProp || collapsedZonesLocal;
   const [activeAddMenu, setActiveAddMenu] = useState<string | null>(null);
   
   const gpxInputRef = useRef<HTMLInputElement>(null);
