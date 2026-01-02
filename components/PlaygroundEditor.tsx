@@ -954,7 +954,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 ...game,
                 points: game.points?.map(p => {
                     if (updates[p.id]) {
-                        return { ...p, playgroundPosition: updates[p.id] };
+                        // Store in device-specific position
+                        return { ...p, ...setDevicePosition(p, updates[p.id]) };
                     }
                     return p;
                 })
