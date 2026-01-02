@@ -2942,6 +2942,81 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 </div>
             )}
 
+            {/* Bulk Activation Modal */}
+            {showBulkActivationModal && (
+                <div className="fixed inset-0 z-[7000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-slate-900 border border-cyan-600/50 rounded-2xl shadow-2xl max-w-md w-full">
+                        <div className="p-6 border-b border-slate-700">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Zap className="w-6 h-6 text-cyan-500" />
+                                <h3 className="text-lg font-black text-white uppercase">SET ACTIVATION FOR {selectedTemplateIds.length} TASK{selectedTemplateIds.length > 1 ? 'S' : ''}</h3>
+                            </div>
+                            <p className="text-slate-400 text-sm">Select one or more activation types. These will replace existing activation settings for all selected tasks.</p>
+                        </div>
+                        <div className="p-6 space-y-3">
+                            {[
+                                { type: 'click', label: 'TAP', icon: '👆', color: 'orange', description: 'Tap to activate (Playzone)' },
+                                { type: 'radius', label: 'GPS', icon: '📍', color: 'blue', description: 'Proximity-based (Map)' },
+                                { type: 'qr', label: 'QR CODE', icon: '⊞', color: 'purple', description: 'Scan QR code' },
+                                { type: 'nfc', label: 'NFC', icon: '📱', color: 'green', description: 'NFC tag scan' },
+                                { type: 'ibeacon', label: 'iBeacon', icon: '📡', color: 'indigo', description: 'Bluetooth beacon' }
+                            ].map(({ type, label, icon, color, description }) => {
+                                const isSelected = bulkActivationTypes.includes(type);
+                                const colorClasses = {
+                                    orange: isSelected ? 'bg-orange-600 border-orange-500' : 'bg-slate-800 border-slate-700 hover:border-orange-500',
+                                    blue: isSelected ? 'bg-blue-600 border-blue-500' : 'bg-slate-800 border-slate-700 hover:border-blue-500',
+                                    purple: isSelected ? 'bg-purple-600 border-purple-500' : 'bg-slate-800 border-slate-700 hover:border-purple-500',
+                                    green: isSelected ? 'bg-green-600 border-green-500' : 'bg-slate-800 border-slate-700 hover:border-green-500',
+                                    indigo: isSelected ? 'bg-indigo-600 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:border-indigo-500'
+                                };
+
+                                return (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => {
+                                            setBulkActivationTypes(prev =>
+                                                prev.includes(type)
+                                                    ? prev.filter(t => t !== type)
+                                                    : [...prev, type]
+                                            );
+                                        }}
+                                        className={`w-full px-4 py-3 border-2 rounded-xl transition-all ${colorClasses[color as keyof typeof colorClasses]} ${isSelected ? 'text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-2xl">{icon}</span>
+                                            <div className="flex-1 text-left">
+                                                <div className="font-bold text-sm uppercase">{label}</div>
+                                                <div className="text-xs opacity-80">{description}</div>
+                                            </div>
+                                            {isSelected && <Check className="w-5 h-5 text-white" />}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="p-6 pt-0 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowBulkActivationModal(false);
+                                    setBulkActivationTypes([]);
+                                }}
+                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkSetActivation}
+                                disabled={bulkActivationTypes.length === 0}
+                                className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Apply to {selectedTemplateIds.length} Task{selectedTemplateIds.length > 1 ? 's' : ''}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Color Scheme Editor Modal */}
             {showColorSchemeEditor && (
                 <ColorSchemeEditor
