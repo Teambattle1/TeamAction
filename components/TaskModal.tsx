@@ -372,15 +372,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
           const attemptsRemaining = maxAttempts > 0 ? maxAttempts - newAttemptsUsed : 999;
           const attemptsExhausted = maxAttempts > 0 && newAttemptsUsed >= maxAttempts;
 
-          // Build error message
+          // If attempts exhausted, auto-close and mark as incorrect
+          if (attemptsExhausted) {
+              // Trigger incorrect completion without showing message
+              onClose();
+              return;
+          }
+
+          // Build error message (only if attempts remain)
           let incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
               ? point.feedback.incorrectMessage
               : (isDoubleTrouble
                   ? `DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`
                   : "Team answer is incorrect.");
 
-          // Add attempts message if not exhausted
-          if (!attemptsExhausted && maxAttempts > 0) {
+          // Add attempts message
+          if (maxAttempts > 0) {
               incorrectMsg += ` ${getAttemptMessage(language, attemptsRemaining)}`;
           }
 
@@ -390,8 +397,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
           setErrorMsg(incorrectMsg);
 
-          // Show correct answer if configured or attempts exhausted
-          if (point.settings?.showCorrectAnswerOnMiss || attemptsExhausted) {
+          // Show correct answer if configured
+          if (point.settings?.showCorrectAnswerOnMiss) {
               setShowCorrectAnswer(true);
           }
           setIsVoting(false);
