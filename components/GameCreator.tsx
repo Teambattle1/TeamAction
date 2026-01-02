@@ -415,6 +415,34 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       loadUsageCounts();
   }, [customStyles]);
 
+  // Generate QR Code when access code changes
+  useEffect(() => {
+      const generateQRCode = async () => {
+          if (accessCode.trim()) {
+              try {
+                  const QRCode = (await import('qrcode')).default;
+                  const url = `${window.location.origin}/access?code=${accessCode.toUpperCase().trim()}`;
+                  const dataUrl = await QRCode.toDataURL(url, {
+                      width: 300,
+                      margin: 2,
+                      color: {
+                          dark: '#000000',
+                          light: '#FFFFFF'
+                      }
+                  });
+                  setQrCodeDataUrl(dataUrl);
+              } catch (error) {
+                  console.error('Failed to generate QR code:', error);
+                  setQrCodeDataUrl('');
+              }
+          } else {
+              setQrCodeDataUrl('');
+          }
+      };
+
+      generateQRCode();
+  }, [accessCode]);
+
 
   const handleMapPreviewUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
