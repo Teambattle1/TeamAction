@@ -121,6 +121,34 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
       }
   };
 
+  // Helper functions for categorizing games
+  const getTodayGames = () => {
+      return games.filter(g => {
+          const gameDate = new Date(g.createdAt);
+          const now = new Date();
+          return gameDate.toDateString() === now.toDateString() || g.state === 'active';
+      });
+  };
+
+  const getPlannedGames = () => {
+      return games.filter(g => {
+          const gameDate = new Date(g.createdAt);
+          const now = new Date();
+          return gameDate.toDateString() !== now.toDateString() && gameDate > now && g.state !== 'active' && g.state !== 'ended';
+      });
+  };
+
+  const getCompletedGames = () => {
+      return games.filter(g => g.state === 'ended');
+  };
+
+  const getActiveTabGames = () => {
+      if (activeTab === 'TODAY') return getTodayGames();
+      if (activeTab === 'PLANNED') return getPlannedGames();
+      if (activeTab === 'COMPLETED') return getCompletedGames();
+      return [];
+  };
+
   return (
     <div className="fixed inset-0 z-[4500] bg-slate-950 text-white flex flex-col font-sans overflow-hidden animate-in fade-in">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#1e293b,transparent)] opacity-40 pointer-events-none" />
