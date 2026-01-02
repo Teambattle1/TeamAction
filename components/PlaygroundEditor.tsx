@@ -5526,8 +5526,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <div className="flex gap-3 pt-2">
                                 <button
                                     onClick={() => {
-                                        setShowQRColorPicker(false);
                                         saveQRScannerSettings();
+                                        setShowQRColorPicker(false);
                                     }}
                                     className="flex-1 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-black uppercase text-sm rounded-xl transition-all shadow-lg"
                                     type="button"
