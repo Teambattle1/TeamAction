@@ -289,6 +289,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
           if (onTaskIncorrect) onTaskIncorrect();
 
+          // Vibrate on incorrect answer
+          if (navigator.vibrate) {
+              navigator.vibrate([100, 50, 100]); // Short double buzz pattern for incorrect answer
+          }
+
           // Check if attempts exhausted
           const attemptsRemaining = maxAttempts > 0 ? maxAttempts - newAttemptsUsed : 999;
           const attemptsExhausted = maxAttempts > 0 && newAttemptsUsed >= maxAttempts;
@@ -367,6 +372,11 @@ const TaskModal: React.FC<TaskModalProps> = ({
           setAttemptsUsed(newAttemptsUsed);
 
           if (onTaskIncorrect) onTaskIncorrect();
+
+          // Vibrate on incorrect answer
+          if (navigator.vibrate) {
+              navigator.vibrate([100, 50, 100]); // Short double buzz pattern for incorrect answer
+          }
 
           // Check if attempts exhausted
           const attemptsRemaining = maxAttempts > 0 ? maxAttempts - newAttemptsUsed : 999;
