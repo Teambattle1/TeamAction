@@ -1077,7 +1077,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 console.log('[PlaygroundEditor] Icon generated successfully');
                 // If a task is selected, update task icon; otherwise update zone icon
                 if (selectedTask) {
-                    updateTask({ iconUrl });
+                    if (editingCompletedIcon) {
+                        updateTask({ completedIconUrl: iconUrl });
+                    } else {
+                        updateTask({ iconUrl });
+                    }
                 } else {
                     updatePlayground({ iconUrl });
                 }
