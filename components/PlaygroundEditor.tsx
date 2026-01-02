@@ -538,6 +538,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const updatedPlaygrounds = [...existingZones, newZone];
         onUpdateGame({ ...game, playgrounds: updatedPlaygrounds });
         setActivePlaygroundId(newZone.id);
+
+        // Open drawers by default for new zones
+        setIsDrawerOpen(true);
+        setIsTasksDrawerOpen(true);
     };
 
     const handleResetBackground = () => {
