@@ -1723,7 +1723,7 @@ const GameApp: React.FC = () => {
       return (
           <>
             <InitialLanding
-                version="4.3"
+                version={APP_VERSION}
                 games={playableGames}
                 activeGameId={activeGameId}
                 onSelectGame={setActiveGameId}
