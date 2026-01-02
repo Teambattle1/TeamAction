@@ -3343,7 +3343,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     onPointerUp={handleTaskPointerUp}
                                     onPointerCancel={handleTaskPointerUp}
                                 >
-                                    <div className={`rounded-full flex items-center justify-center border-4 shadow-xl transition-all relative ${
+                                    <div className={`rounded-full flex items-center justify-center border-4 shadow-xl transition-all relative overflow-hidden ${
                                         isDrawSource && drawMode.trigger === 'onCorrect'
                                             ? 'border-green-500 shadow-green-500/70 scale-125 animate-pulse'
                                             : isDrawSource && drawMode.trigger === 'onIncorrect'
