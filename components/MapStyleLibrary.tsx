@@ -174,12 +174,16 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
         }
     };
 
-    const handleDeleteCustom = async (id: string) => {
-        if (!confirm('Delete this custom map style?')) return;
+    const handleDeleteCustom = (id: string) => {
+        setConfirmModal({ isOpen: true, type: 'custom', styleId: id });
+    };
 
+    const confirmDeleteCustom = async () => {
+        if (!confirmModal.styleId) return;
         try {
-            await db.deleteCustomMapStyle(id);
-            setCustomStyles(customStyles.filter(s => s.id !== id));
+            await db.deleteCustomMapStyle(confirmModal.styleId);
+            setCustomStyles(customStyles.filter(s => s.id !== confirmModal.styleId));
+            setConfirmModal({ isOpen: false });
         } catch (error) {
             console.error('Error deleting map style:', error);
             alert('Failed to delete map style');
@@ -187,12 +191,17 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
     };
 
     const handleDeleteBuiltin = (id: string) => {
-        if (!confirm(`Hide the "${BUILTIN_MAP_STYLES.find(s => s.id === id)?.label}" map style?\n\nThis will hide it from all dropdowns but won't permanently delete it.`)) return;
+        const styleName = BUILTIN_MAP_STYLES.find(s => s.id === id)?.label || 'this style';
+        setConfirmModal({ isOpen: true, type: 'builtin', styleId: id, styleName });
+    };
 
+    const confirmDeleteBuiltin = () => {
+        if (!confirmModal.styleId) return;
         const newDeleted = new Set(deletedBuiltinIds);
-        newDeleted.add(id);
+        newDeleted.add(confirmModal.styleId);
         setDeletedBuiltinIds(newDeleted);
         localStorage.setItem('deletedMapStyles', JSON.stringify([...newDeleted]));
+        setConfirmModal({ isOpen: false });
     };
 
     const handleRestoreBuiltin = (id: string) => {
