@@ -448,6 +448,18 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     }
   };
 
+  const toggleLanguageExpanded = (language: string) => {
+    setExpandedLanguages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(language)) {
+        newSet.delete(language);
+      } else {
+        newSet.add(language);
+      }
+      return newSet;
+    });
+  };
+
   const handleRemoveTranslation = (language: string) => {
     setEditedPoint(prev => {
       const newTranslations = { ...(prev.task.translations || {}) };
