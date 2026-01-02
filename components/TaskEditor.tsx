@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { GamePoint, IconId, TaskType, PointActivationType, PointCompletionLogic, TimelineItem, TaskColorScheme } from '../types';
-import { detectLanguageFromText, normalizeLanguage } from '../utils/i18n';
+import { detectLanguageFromText, normalizeLanguage, getFlag } from '../utils/i18n';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { getCroppedImg } from '../utils/image';
 import Cropper from 'react-easy-crop';
