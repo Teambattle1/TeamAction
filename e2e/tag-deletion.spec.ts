@@ -25,7 +25,7 @@ test.describe('Tags - Global Purge', () => {
     await maybeLogin(page);
 
     // ensureSession only triggers login; after login we may need to click again.
-    const taskMasterHeader = page.getByText('TASK MASTER', { exact: false });
+    const taskMasterHeader = page.getByRole('heading', { name: 'TASK MASTER' }).first();
     const alreadyOpen = await taskMasterHeader.isVisible({ timeout: 1500 }).catch(() => false);
     if (!alreadyOpen) {
       await page.getByText('EDIT', { exact: true }).click();
