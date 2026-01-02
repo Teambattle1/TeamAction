@@ -2180,6 +2180,8 @@ const GameApp: React.FC = () => {
             onToggleZoneLayer={() => setShowZoneLayer(!showZoneLayer)}
             onToggleTaskLayer={() => setShowTaskLayer(!showTaskLayer)}
             onToggleLiveLayer={() => setShowLiveLayer(!showLiveLayer)}
+            collapsedSections={collapsedSections}
+            onCollapsedSectionsChange={setCollapsedSections}
         />
 
         {/* Impossible Travel Warnings - EDIT and INSTRUCTOR modes only */}
