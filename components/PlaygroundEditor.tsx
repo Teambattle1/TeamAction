@@ -145,6 +145,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [snapToRoadMode, setSnapToRoadMode] = useState(false);
     const [selectionBox, setSelectionBox] = useState<{ start: { x: number; y: number } | null; current: { x: number; y: number } | null }>({ start: null, current: null });
 
+    // Task Settings Modal State
+    const [showTaskSettingsModal, setShowTaskSettingsModal] = useState(false);
+    const [settingsModalTaskId, setSettingsModalTaskId] = useState<string | null>(null);
+
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
     const iconInputRef = useRef<HTMLInputElement>(null);
