@@ -123,6 +123,7 @@ const TABS = [
     { id: 'TASKS', label: 'Tasks', icon: List },
     { id: 'TASKDESIGN', label: 'Task Design', icon: Palette },
     { id: 'PLAYGROUNDS', label: 'Zones', icon: LayoutGrid },
+    { id: 'SOUNDS', label: 'Sounds', icon: Volume2 },
     { id: 'CLIENT', label: 'Client', icon: Monitor },
     { id: 'SETTINGS', label: 'Settings', icon: Settings },
     { id: 'LOGS', label: 'Logs', icon: ScrollText },
