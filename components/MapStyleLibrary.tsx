@@ -830,6 +830,32 @@ const MapStyleLibrary: React.FC<MapStyleLibraryProps> = ({ onClose }) => {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal for Custom Styles */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen && confirmModal.type === 'custom'}
+                title="Delete Custom Map Style?"
+                message="Are you sure you want to delete this custom map style? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                isDangerous={true}
+                icon="warning"
+                onConfirm={confirmDeleteCustom}
+                onCancel={() => setConfirmModal({ isOpen: false })}
+            />
+
+            {/* Confirmation Modal for Builtin Styles */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen && confirmModal.type === 'builtin'}
+                title="Hide Map Style?"
+                message={`Hide the "${confirmModal.styleName}" map style?\n\nThis will hide it from all dropdowns but won't permanently delete it.`}
+                confirmText="Hide"
+                cancelText="Cancel"
+                isDangerous={false}
+                icon="question"
+                onConfirm={confirmDeleteBuiltin}
+                onCancel={() => setConfirmModal({ isOpen: false })}
+            />
         </div>
     );
 };
