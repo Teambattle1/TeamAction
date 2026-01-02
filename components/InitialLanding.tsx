@@ -881,19 +881,17 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                                         <button
                                             key={game.id}
                                             onClick={() => { onSelectGame(game.id); setShowGameMenu(false); setGameSearchQuery(''); }}
-                                            className={`w-full text-left px-5 py-3 text-xs border-b border-slate-800 hover:bg-slate-800 transition-colors flex flex-col gap-2 ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
+                                            className={`w-full text-left px-5 py-3 text-xs border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-between gap-3 ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
                                         >
-                                            <div className="flex items-center justify-between gap-2">
-                                                <span className="truncate flex items-center gap-2 flex-1">
-                                                    <span className="text-orange-400 font-black shrink-0">[{getGameDisplayId(game.id)}]</span>
-                                                    <span className="font-bold truncate">{game.name}</span>
-                                                </span>
-                                                {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange] shrink-0" />}
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black tracking-wide border ${badge.bgColor} ${badge.textColor} border-slate-700`}>
+                                            <span className="truncate flex items-center gap-2 flex-1">
+                                                <span className="text-orange-400 font-black shrink-0">[{getGameDisplayId(game.id)}]</span>
+                                                <span className="font-bold truncate">{game.name}</span>
+                                            </span>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                                <span className={`px-2 py-1 rounded-md text-[9px] font-black tracking-wide border ${badge.bgColor} ${badge.textColor} border-slate-700 whitespace-nowrap`}>
                                                     {badge.label}
                                                 </span>
+                                                {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange] shrink-0" />}
                                             </div>
                                         </button>
                                     );
