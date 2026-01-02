@@ -36,7 +36,7 @@ test.describe('Tags - Global Purge', () => {
     await expect(taskMasterHeader).toBeVisible({ timeout: 15000 });
 
     // Open tags registry
-    await page.getByText('TAGS & CATEGORIES', { exact: true }).click();
+    await page.getByRole('button', { name: 'TAGS & CATEGORIES' }).first().click();
     await expect(page.getByText('TAG CATEGORIES', { exact: true })).toBeVisible({ timeout: 15000 });
 
     // The demo content uses the "demo" tag. Purge it.
