@@ -93,15 +93,15 @@ export interface TimelineItem {
 export interface GameTask {
   question: string;
   type: TaskType;
-  
+
   // Media
-  imageUrl?: string; 
+  imageUrl?: string;
   videoUrl?: string;
   audioUrl?: string;
   backgroundAudioUrl?: string;
-  
+
   // Answers
-  answer?: string; 
+  answer?: string;
   correctAnswers?: string[];
   options?: string[];
   placeholder?: string;
@@ -112,11 +112,19 @@ export interface GameTask {
     max: number;
     step: number;
     correctValue: number;
-    tolerance?: number; 
+    tolerance?: number;
   };
 
   // Timeline
   timelineItems?: TimelineItem[];
+
+  // Media Task Settings (for PHOTO/VIDEO tasks)
+  mediaSettings?: {
+    requireApproval: boolean; // true = manual approval, false = auto-approve
+    allowMultipleSubmissions?: boolean; // Allow teams to submit multiple times
+    maxFileSize?: number; // Max file size in MB (default: 10MB for photos, 50MB for videos)
+    partialScoreEnabled?: boolean; // Allow partial scores (slider from 0-100%)
+  };
 
   // Translations
   translations?: Record<Language, TaskTranslation>;
