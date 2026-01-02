@@ -2752,6 +2752,54 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 </div>
             )}
 
+            {/* Bulk Tag Modal */}
+            {showBulkTagModal && (
+                <div className="fixed inset-0 z-[7000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-slate-900 border border-emerald-600/50 rounded-2xl shadow-2xl max-w-md w-full">
+                        <div className="p-6 border-b border-slate-700">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Tag className="w-6 h-6 text-emerald-500" />
+                                <h3 className="text-lg font-black text-white uppercase">ADD TAGS TO {selectedTemplateIds.length} TASK{selectedTemplateIds.length > 1 ? 'S' : ''}</h3>
+                            </div>
+                            <p className="text-slate-400 text-sm">Enter tags separated by commas or spaces. Tags will be added to all selected tasks.</p>
+                        </div>
+                        <div className="p-6">
+                            <input
+                                type="text"
+                                value={bulkTagInput}
+                                onChange={(e) => setBulkTagInput(e.target.value)}
+                                placeholder="e.g. history, europe, advanced"
+                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none transition-colors"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleBulkAddTags();
+                                    }
+                                }}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="p-6 pt-0 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowBulkTagModal(false);
+                                    setBulkTagInput('');
+                                }}
+                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkAddTags}
+                                disabled={!bulkTagInput.trim()}
+                                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Add Tags
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Color Scheme Editor Modal */}
             {showColorSchemeEditor && (
                 <ColorSchemeEditor
