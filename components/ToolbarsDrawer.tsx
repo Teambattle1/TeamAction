@@ -95,6 +95,8 @@ const ToolbarsDrawer: React.FC<ToolbarsDrawerProps> = ({
     onToggleOpen,
     mode,
     activeGame,
+    visibleToolbars: visibleToolbarsProp,
+    onToggleToolbarVisibility,
     onSetMode,
     showMapLayer,
     showZoneLayer,
