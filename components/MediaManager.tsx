@@ -31,16 +31,7 @@ const MediaManager: React.FC<MediaManagerProps> = ({ onClose, games }) => {
   const loadMediaStats = async () => {
     setIsLoading(true);
     try {
-      // TODO: Fetch media submissions from Supabase
-      // For now, simulate with empty data
-      const stats: GameMediaStats[] = games.map(game => ({
-        gameId: game.id,
-        gameName: game.name,
-        photoCount: 0,
-        videoCount: 0,
-        totalSizeMB: 0,
-        downloadedCount: 0
-      }));
+      const stats = await getMediaStats(games);
       setGameStats(stats);
     } catch (error) {
       console.error('Failed to load media stats:', error);
