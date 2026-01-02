@@ -124,6 +124,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
     const [migrationResults, setMigrationResults] = useState<{totalUpdated: number; totalErrors: number} | null>(null);
 
+    // Confirmation Modal for deleting task lists
+    const [deleteListConfirm, setDeleteListConfirm] = useState<{ isOpen: boolean; listId?: string }>({ isOpen: false });
+
     // Color Scheme Editor
     const [showColorSchemeEditor, setShowColorSchemeEditor] = useState(false);
     const [editingColorScheme, setEditingColorScheme] = useState<TaskColorScheme | undefined>();
