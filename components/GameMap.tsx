@@ -937,6 +937,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                     isRelocating={isRelocating}
                     snapToRoadMode={snapToRoadMode}
                     onClick={onPointClick}
+                    onAreaColorClick={onAreaColorClick}
                     onMove={onPointMove}
                     onDelete={onDeletePoint}
                     onHover={onPointHover}
