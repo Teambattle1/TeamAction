@@ -69,7 +69,9 @@ export const generateAiTasks = async (topic: string, count: number = 5, language
   try {
     const response = await makeRequestWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Create exactly ${count} diverse scavenger hunt tasks. Topic: "${topic}". Language: ${normalizedLanguage}. Return JSON array.`,
+      contents: `Create exactly ${count} diverse scavenger hunt tasks. Topic: "${topic}". Language: ${normalizedLanguage}.
+IMPORTANT: For tasks with type "boolean", the answer MUST be either "YES" or "NO" (uppercase).
+Return JSON array.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: responseSchema,
