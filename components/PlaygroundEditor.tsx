@@ -4066,6 +4066,29 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         ...game,
                                         points: [...game.points, newTask]
                                     });
+
+                                    // Save to library - create a template from the copied task
+                                    (async () => {
+                                        const taskTemplate: TaskTemplate = {
+                                            id: `template-${Date.now()}`,
+                                            title: newTask.title,
+                                            task: newTask.task,
+                                            feedback: newTask.feedback,
+                                            points: newTask.points,
+                                            tags: newTask.tags,
+                                            iconId: newTask.iconId,
+                                            iconUrl: newTask.iconUrl,
+                                            settings: newTask.settings,
+                                            logic: newTask.logic
+                                        };
+                                        const { ok } = await db.saveTemplates([taskTemplate]);
+                                        if (!ok) {
+                                            console.error('[PlaygroundEditor] Failed to save copied task to library');
+                                        } else {
+                                            console.log('[PlaygroundEditor] Copied task saved to library');
+                                        }
+                                    })();
+
                                     setSelectedTaskId(newTask.id);
                                 }}
                                 className="w-full py-3 bg-green-600/20 hover:bg-green-600/40 text-green-400 hover:text-green-300 border border-green-600/40 hover:border-green-500 rounded-lg font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all"
