@@ -136,6 +136,7 @@ const ToolbarsDrawer: React.FC<ToolbarsDrawerProps> = ({
     onToggleVisibleToolbars,
     onToggleChat,
     onEditGameSettings,
+    onOpenGameChooser,
     timerConfig,
     showAdjustGameTime,
     onAdjustGameTime,
