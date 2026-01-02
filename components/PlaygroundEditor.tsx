@@ -1641,15 +1641,32 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
 
                         {/* AI Background & Upload Buttons */}
-                        <div className="flex gap-2 mt-3">
-                            <button
-                                onClick={() => setShowAiBackgroundPrompt(true)}
-                                disabled={isGeneratingBackground}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide flex items-center justify-center gap-2 transition-colors shadow-lg"
-                            >
-                                <Wand2 className="w-4 h-4" />
-                                {isGeneratingBackground ? 'GENERATING...' : 'AI BACKGROUND'}
-                            </button>
+                        <div className="space-y-2 mt-3">
+                            {/* API Key Status Indicator */}
+                            <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-lg p-2">
+                                <div className={`w-2 h-2 rounded-full ${typeof window !== 'undefined' && localStorage.getItem('GEMINI_API_KEY') ? 'bg-green-500' : 'bg-red-500'}`} />
+                                <span className="text-[9px] font-bold uppercase text-slate-400 flex-1">
+                                    {typeof window !== 'undefined' && localStorage.getItem('GEMINI_API_KEY') ? 'API Key Configured' : 'No API Key'}
+                                </span>
+                                <button
+                                    onClick={() => setShowGeminiKeyModal(true)}
+                                    className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[8px] font-bold uppercase tracking-wider transition-colors"
+                                    title="Configure Gemini API Key"
+                                >
+                                    {typeof window !== 'undefined' && localStorage.getItem('GEMINI_API_KEY') ? 'Update' : 'Set Key'}
+                                </button>
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowAiBackgroundPrompt(true)}
+                                    disabled={isGeneratingBackground}
+                                    className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                >
+                                    <Wand2 className="w-4 h-4" />
+                                    {isGeneratingBackground ? 'GENERATING...' : 'AI BACKGROUND'}
+                                </button>
+                            </div>
                         </div>
 
                         {/* Scaling Options */}
