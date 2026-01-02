@@ -215,25 +215,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Delete Zone State
     const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
 
-    // Collapse State for Left Drawer Sections (default: collapsed)
+    // Collapse State for Left Drawer Sections (default: all collapsed)
     const [isHudAppearanceCollapsed, setIsHudAppearanceCollapsed] = useState(true);
     const [isBackgroundImageCollapsed, setIsBackgroundImageCollapsed] = useState(true);
     const [isBackgroundMusicCollapsed, setIsBackgroundMusicCollapsed] = useState(true);
-    const [isDeviceCollapsed, setIsDeviceCollapsed] = useState(false); // Expanded by default for easy access
-    const [isOrientationCollapsed, setIsOrientationCollapsed] = useState(false); // Expanded by default for easy access
-    const [isShowCollapsed, setIsShowCollapsed] = useState(false); // Expanded by default
-    const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(false); // Expanded by default
+    const [isDeviceCollapsed, setIsDeviceCollapsed] = useState(true); // Collapsed by default
+    const [isOrientationCollapsed, setIsOrientationCollapsed] = useState(true); // Collapsed by default
+    const [isShowCollapsed, setIsShowCollapsed] = useState(true); // Collapsed by default
+    const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(true); // Collapsed by default
 
-    // Toggle all sections collapsed/expanded
+    // Toggle all sections collapsed/expanded (excluding HUD appearance)
     const toggleAllSections = () => {
-        // Check if any section is expanded
-        const anyExpanded = !isHudAppearanceCollapsed || !isBackgroundImageCollapsed ||
+        // Check if any section is expanded (excluding HUD)
+        const anyExpanded = !isBackgroundImageCollapsed ||
                            !isBackgroundMusicCollapsed || !isDeviceCollapsed ||
                            !isOrientationCollapsed || !isShowCollapsed || !isLayoutCollapsed;
 
         // If any are expanded, collapse all. Otherwise, expand all.
         const newState = anyExpanded;
-        setIsHudAppearanceCollapsed(newState);
         setIsBackgroundImageCollapsed(newState);
         setIsBackgroundMusicCollapsed(newState);
         setIsDeviceCollapsed(newState);
@@ -1711,7 +1710,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             onClick={toggleAllSections}
                             className="text-slate-400 hover:text-orange-400 transition-colors p-2"
                             title={(() => {
-                                const anyExpanded = !isHudAppearanceCollapsed || !isBackgroundImageCollapsed ||
+                                const anyExpanded = !isBackgroundImageCollapsed ||
                                                    !isBackgroundMusicCollapsed || !isDeviceCollapsed ||
                                                    !isOrientationCollapsed || !isShowCollapsed || !isLayoutCollapsed;
                                 return anyExpanded ? "Collapse All Sections" : "Expand All Sections";
