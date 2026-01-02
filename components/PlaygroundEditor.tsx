@@ -456,12 +456,22 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     useEffect(() => {
         if (!activePlayground) return;
-        if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
+
+        // Get orientation from device-specific layout if available
+        if (activePlayground.deviceLayouts?.[selectedDevice]) {
+            const deviceLayout = activePlayground.deviceLayouts[selectedDevice];
+            if (deviceLayout.orientationLock && deviceLayout.orientationLock !== 'none') {
+                setEditorOrientation(deviceLayout.orientationLock);
+            } else {
+                setEditorOrientation('landscape');
+            }
+        } else if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
+            // Fallback to playground-level orientation for backward compatibility
             setEditorOrientation(activePlayground.orientationLock);
         } else {
             setEditorOrientation('landscape');
         }
-    }, [activePlayground?.id, activePlayground?.orientationLock]);
+    }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts, selectedDevice]);
 
     // Deduplicate to prevent "same key" errors
     const uniquePlaygroundPoints = Array.from(new Map(playgroundPoints.map(p => [p.id, p])).values());
