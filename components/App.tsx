@@ -1492,6 +1492,12 @@ const GameApp: React.FC = () => {
                   }}
                   onAddZoneFromLibrary={() => {}}
                   onStartSimulation={!playgroundTemplateToEdit && currentGameObj ? () => handleStartSimulation(currentGameObj) : undefined}
+                  onOpenGameSettings={() => {
+                      if (!playgroundTemplateToEdit && currentGameObj) {
+                          setGameToEdit(currentGameObj);
+                          setShowGameCreator(true);
+                      }
+                  }}
               />
           )}
           {showChatDrawer && activeGameId && (
