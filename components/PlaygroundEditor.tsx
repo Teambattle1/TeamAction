@@ -1707,6 +1707,152 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         )}
                     </div>
 
+                    {/* Device Selection */}
+                    <div>
+                        <button
+                            onClick={() => setIsDeviceCollapsed(!isDeviceCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">DEVICE</span>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isDeviceCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+
+                        {!isDeviceCollapsed && (
+                            <div className="grid grid-cols-3 gap-2">
+                                <button
+                                    onClick={() => setSelectedDevice('mobile')}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                        selectedDevice === 'mobile'
+                                            ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400'
+                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                    }`}
+                                    title="Mobile (375×812)"
+                                >
+                                    <Smartphone className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase">MOBILE</span>
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDevice('tablet')}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                        selectedDevice === 'tablet'
+                                            ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
+                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                    }`}
+                                    title="Tablet (1024×768)"
+                                >
+                                    <Tablet className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase">TABLET</span>
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDevice('desktop')}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                        selectedDevice === 'desktop'
+                                            ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-400'
+                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                    }`}
+                                    title="Desktop (1920×1080)"
+                                >
+                                    <Monitor className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase">DESKTOP</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Orientation Selection */}
+                    <div>
+                        <button
+                            onClick={() => setIsOrientationCollapsed(!isOrientationCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">ORIENTATION</span>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isOrientationCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+
+                        {!isOrientationCollapsed && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setEditorOrientation('portrait');
+                                            if (isOrientationLocked && activePlayground) {
+                                                const newLayouts = { ...activePlayground.deviceLayouts };
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'portrait',
+                                                };
+                                                updatePlayground({ deviceLayouts: newLayouts });
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                            editorOrientation === 'portrait'
+                                                ? 'bg-orange-600 text-white shadow-lg ring-2 ring-orange-400'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                        }`}
+                                        title="Portrait orientation"
+                                    >
+                                        <Smartphone className="w-6 h-6" />
+                                        <span className="text-[10px] font-black uppercase">PORTRAIT</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditorOrientation('landscape');
+                                            if (isOrientationLocked && activePlayground) {
+                                                const newLayouts = { ...activePlayground.deviceLayouts };
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'landscape',
+                                                };
+                                                updatePlayground({ deviceLayouts: newLayouts });
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                            editorOrientation === 'landscape'
+                                                ? 'bg-orange-600 text-white shadow-lg ring-2 ring-orange-400'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                        }`}
+                                        title="Landscape orientation"
+                                    >
+                                        <Monitor className="w-6 h-6" />
+                                        <span className="text-[10px] font-black uppercase">LAND</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (!activePlayground) return;
+                                            const newLayouts = { ...activePlayground.deviceLayouts };
+                                            if (isOrientationLocked) {
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'none',
+                                                };
+                                            } else {
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: editorOrientation,
+                                                };
+                                            }
+                                            updatePlayground({ deviceLayouts: newLayouts });
+                                        }}
+                                        className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                            isOrientationLocked
+                                                ? 'bg-orange-600 text-white shadow-lg ring-2 ring-orange-400'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                        }`}
+                                        title={isOrientationLocked ? 'Unlock orientation' : 'Lock to selected orientation'}
+                                    >
+                                        <Lock className="w-6 h-6" />
+                                        <span className="text-[10px] font-black uppercase">LOCK</span>
+                                    </button>
+                                </div>
+                                {isOrientationLocked && (
+                                    <div className="bg-orange-900/30 border border-orange-500/50 rounded-lg p-3 text-[9px] text-orange-300 uppercase font-bold tracking-wide">
+                                        ⚠️ Locked to {activePlayground?.deviceLayouts?.[selectedDevice]?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     {/* Grid Controls */}
                     <div className={`grid gap-3 ${isMarkMode ? 'grid-cols-2' : 'grid-cols-2'}`}>
                         <button
