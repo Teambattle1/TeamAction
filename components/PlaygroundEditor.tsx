@@ -2239,15 +2239,38 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <span className="text-[10px] font-black uppercase">MARK</span>
                                     </button>
                                 </div>
-                                {isMarkMode && markedTaskIds.size > 0 && (
-                                    <button
-                                        onClick={handleSnapMarkedToGrid}
-                                        className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase text-[10px] shadow-lg"
-                                        title={`Snap ${markedTaskIds.size} selected task(s) to grid`}
-                                    >
-                                        <Check className="w-4 h-4" />
-                                        SNAP ({markedTaskIds.size})
-                                    </button>
+                                {isMarkMode && (
+                                    <div className="space-y-2">
+                                        {/* Mark All / Unmark All Button */}
+                                        <button
+                                            onClick={() => {
+                                                if (markedTaskIds.size === uniquePlaygroundPoints.length) {
+                                                    // If all are marked, unmark all
+                                                    setMarkedTaskIds(new Set());
+                                                } else {
+                                                    // Mark all icons in current playground
+                                                    setMarkedTaskIds(new Set(uniquePlaygroundPoints.map(p => p.id)));
+                                                }
+                                            }}
+                                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase text-[10px] shadow-lg transition-colors"
+                                            title={markedTaskIds.size === uniquePlaygroundPoints.length ? 'Unmark all tasks' : 'Mark all tasks'}
+                                        >
+                                            <Target className="w-4 h-4" />
+                                            {markedTaskIds.size === uniquePlaygroundPoints.length ? 'UNMARK ALL' : 'MARK ALL'}
+                                        </button>
+
+                                        {/* Snap Button - only show when tasks are marked */}
+                                        {markedTaskIds.size > 0 && (
+                                            <button
+                                                onClick={handleSnapMarkedToGrid}
+                                                className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase text-[10px] shadow-lg transition-colors"
+                                                title={`Snap ${markedTaskIds.size} selected task(s) to grid`}
+                                            >
+                                                <Check className="w-4 h-4" />
+                                                SNAP ({markedTaskIds.size})
+                                            </button>
+                                        )}
+                                    </div>
                                 )}
                                 <button
                                     onClick={() => setIsBackgroundImageCollapsed(!isBackgroundImageCollapsed)}
