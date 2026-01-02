@@ -1,3 +1,6 @@
+// Global version variable injected at build time by Vite
+declare const __APP_VERSION__: string;
+
 export interface Coordinate {
   lat: number;
   lng: number;
