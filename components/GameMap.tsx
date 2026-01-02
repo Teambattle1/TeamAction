@@ -457,6 +457,10 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
                     }}
                     interactive={true}
                     eventHandlers={{
+                        click: (e: any) => {
+                            e.originalEvent?.stopPropagation();
+                            onClick(point);
+                        },
                         mouseover: () => {
                             if (onHover) onHover(point);
                         },
