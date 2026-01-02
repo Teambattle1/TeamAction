@@ -2763,15 +2763,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         }}
                                         className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
                                             isOrientationLocked
-                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                ? 'bg-red-600 text-white shadow-lg ring-2 ring-red-400'
                                                 : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
                                         }`}
-                                        title={isOrientationLocked ? 'Unlock orientation' : 'Lock to selected orientation'}
+                                        title={isOrientationLocked ? 'Unlock orientation - Device can rotate freely' : 'Lock to selected orientation - Forces chosen orientation in game'}
                                         type="button"
                                     >
                                         <Lock className="w-4 h-4" />
                                     </button>
-                                    <span className={`text-[8px] font-black uppercase tracking-widest ${isOrientationLocked ? 'text-orange-300' : 'text-slate-500'}`}>LOCK</span>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${isOrientationLocked ? 'text-red-300' : 'text-slate-500'}`}>LOCK</span>
                                 </div>
                             </div>
                         </div>
