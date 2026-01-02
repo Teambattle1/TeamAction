@@ -27,7 +27,8 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
     const [newTagName, setNewTagName] = useState('');
     const [selectedColor, setSelectedColor] = useState(TAG_COLORS[0]);
     const [searchQuery, setSearchQuery] = useState('');
-    
+    const [showTagNameSuggestions, setShowTagNameSuggestions] = useState(false);
+
     // Edit / Rename State
     const [editingOldName, setEditingOldName] = useState<string | null>(null);
     
@@ -190,6 +191,17 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
             .sort((a, b) => a.localeCompare(b));
     }, [tagColors, inUseTags, searchQuery]);
 
+    const tagNameSuggestions = useMemo(() => {
+        if (editingOldName) return [];
+        const q = newTagName.trim().toLowerCase();
+        if (!q) return [];
+
+        return displayTags
+            .filter(t => t.toLowerCase().includes(q))
+            .filter(t => t.toLowerCase() !== q)
+            .slice(0, 8);
+    }, [displayTags, editingOldName, newTagName]);
+
     const purgeProgressPercent = isPurging
         ? Math.min(100, Math.max(2, Math.round(purgeProgress * 100)))
         : 0;
@@ -220,16 +232,59 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
                         </h2>
                         
                         <div className="space-y-6">
-                            <div>
+                            <div className="relative">
                                 <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">TAG NAME</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     value={newTagName}
-                                    onChange={(e) => setNewTagName(e.target.value)}
+                                    onChange={(e) => { setNewTagName(e.target.value); setShowTagNameSuggestions(true); }}
+                                    onFocus={() => setShowTagNameSuggestions(true)}
+                                    onBlur={() => window.setTimeout(() => setShowTagNameSuggestions(false), 150)}
                                     placeholder="E.G. HISTORICAL..."
                                     className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl p-3 text-white font-bold outline-none focus:border-[#00adef] transition-all uppercase placeholder:text-gray-700 text-sm"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSaveTag()}
                                 />
+
+                                {!editingOldName && showTagNameSuggestions && tagNameSuggestions.length > 0 && (
+                                    <div className="absolute left-0 right-0 top-full mt-2 bg-[#111111] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50">
+                                        {tagNameSuggestions.map((suggestion) => {
+                                            const isRegistered = !!tagColors[suggestion];
+                                            const isInUse = inUseTags.includes(suggestion);
+                                            const useCount = inUseTagsCountMap[suggestion] || 0;
+
+                                            return (
+                                                <button
+                                                    key={suggestion}
+                                                    type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
+                                                    onClick={() => {
+                                                        handleEditTagClick(suggestion, tagColors[suggestion]);
+                                                        setShowTagNameSuggestions(false);
+                                                    }}
+                                                    className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-white/[0.04] transition-colors"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-black text-white uppercase tracking-wider truncate">{suggestion}</span>
+                                                            {!isRegistered && (
+                                                                <span className="text-[8px] bg-red-500/10 text-red-500 border border-red-500/20 px-1.5 py-0.5 rounded font-black tracking-widest uppercase">NOT REGISTERED</span>
+                                                            )}
+                                                            {isInUse && (
+                                                                <span className="text-[8px] bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5 rounded font-black tracking-widest uppercase">{useCount} IN USE</span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[9px] text-gray-600 font-mono mt-0.5 uppercase">CLICK TO EDIT</p>
+                                                    </div>
+
+                                                    <div
+                                                        className="w-4 h-4 rounded border border-white/10 shrink-0"
+                                                        style={{ backgroundColor: tagColors[suggestion] || '#1f2937' }}
+                                                    />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
 
                             <div>
