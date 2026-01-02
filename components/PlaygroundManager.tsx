@@ -240,6 +240,60 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
             </div>
         </div>
 
+        {/* GAME SELECTOR MODAL */}
+        {showGameSelector && selectedTemplateForGame && (
+            <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-in fade-in">
+                <div className="bg-slate-900 border-2 border-purple-600 rounded-2xl shadow-2xl p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto animate-in zoom-in-95">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-purple-600/20 border border-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Plus className="w-6 h-6 text-purple-500" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-white uppercase tracking-tight">ADD TO GAME</h2>
+                            <p className="text-xs text-slate-400 mt-0.5">Select which game to add "{selectedTemplateForGame.title}"</p>
+                        </div>
+                    </div>
+
+                    {gamesLoading ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-3" />
+                            <span className="text-xs font-bold text-slate-400 uppercase">LOADING GAMES...</span>
+                        </div>
+                    ) : games.length === 0 ? (
+                        <div className="text-center py-8">
+                            <p className="text-sm text-slate-400">No games available. Create a game first.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                            {games.map(game => (
+                                <button
+                                    key={game.id}
+                                    onClick={() => confirmAddToGame(game)}
+                                    className="text-left p-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-purple-600 rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/20 group"
+                                >
+                                    <h3 className="font-bold text-white uppercase text-sm mb-1 group-hover:text-purple-400 transition-colors">{game.name}</h3>
+                                    <p className="text-xs text-slate-400 mb-2">{game.points?.length || 0} tasks • {game.playgrounds?.length || 0} zones</p>
+                                    <p className="text-xs text-slate-500">
+                                        {game.client?.name ? `By ${game.client.name}` : 'No client assigned'}
+                                    </p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => {
+                            setShowGameSelector(false);
+                            setSelectedTemplateForGame(null);
+                        }}
+                        className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors"
+                    >
+                        CANCEL
+                    </button>
+                </div>
+            </div>
+        )}
+
         {/* DELETE WARNING MODAL */}
         {deleteWarningTemplate && (
             <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-in fade-in">
