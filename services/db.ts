@@ -989,14 +989,6 @@ export const sendAccountUserMessage = async (targetUserId: string, messageText: 
 // --- USER SETTINGS ---
 export const fetchUserSettings = async (userId: string): Promise<any | null> => {
     try {
-        // Skip database query if userId is not a valid UUID
-        // (hardcoded admin users like 'admin-thomas-permanent' are not UUIDs)
-        if (!isValidUUID(userId)) {
-            // Use debug instead of log to reduce console noise
-            console.debug(`[DB Service] Skipping fetchUserSettings for non-UUID user: ${userId}`);
-            return null;
-        }
-
         const { data, error } = await supabase
             .from('user_settings')
             .select('data')
@@ -1008,11 +1000,24 @@ export const fetchUserSettings = async (userId: string): Promise<any | null> => 
                 // No row found, return null (not an error)
                 return null;
             }
+
+            // If DB uses UUID user_id but we pass a non-uuid, Postgres returns 22P02.
+            if (error.code === '22P02' || `${error.message || ''}`.includes('invalid input syntax for type uuid')) {
+                console.debug(`[DB Service] fetchUserSettings skipped (user_id not uuid in this schema): ${userId}`);
+                return null;
+            }
+
             throw error;
         }
 
         return data?.data || null;
-    } catch (e) {
+    } catch (e: any) {
+        // If DB uses UUID user_id but we pass a non-uuid, Postgres returns 22P02.
+        if (e?.code === '22P02' || `${e?.message || ''}`.includes('invalid input syntax for type uuid')) {
+            console.debug(`[DB Service] fetchUserSettings skipped (user_id not uuid in this schema): ${userId}`);
+            return null;
+        }
+
         logError('fetchUserSettings', e);
         return null;
     }
@@ -1020,14 +1025,6 @@ export const fetchUserSettings = async (userId: string): Promise<any | null> => 
 
 export const saveUserSettings = async (userId: string, settings: any): Promise<boolean> => {
     try {
-        // Skip database operation if userId is not a valid UUID
-        // (hardcoded admin users like 'admin-thomas-permanent' are not UUIDs)
-        if (!isValidUUID(userId)) {
-            // Use debug instead of log to reduce console noise
-            console.debug(`[DB Service] Skipping saveUserSettings for non-UUID user: ${userId}`);
-            return true; // Return true to prevent error cascading
-        }
-
         await retryWithBackoff(
             () => supabase
                 .from('user_settings')
@@ -1042,7 +1039,13 @@ export const saveUserSettings = async (userId: string, settings: any): Promise<b
             'saveUserSettings'
         );
         return true;
-    } catch (e) {
+    } catch (e: any) {
+        // If DB uses UUID user_id but we pass a non-uuid, Postgres returns 22P02.
+        if (e?.code === '22P02' || `${e?.message || ''}`.includes('invalid input syntax for type uuid')) {
+            console.debug(`[DB Service] saveUserSettings skipped (user_id not uuid in this schema): ${userId}`);
+            return true; // treat as success to prevent cascading UI errors
+        }
+
         logError('saveUserSettings', e);
         return false;
     }
