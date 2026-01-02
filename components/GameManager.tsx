@@ -15,6 +15,7 @@ import {
   LayoutTemplate
 } from 'lucide-react';
 import { getGameModeIcon } from '../utils/gameModeIcons';
+import { getGameDisplayId, formatGameNameWithId } from '../utils/gameIdUtils';
 
 interface GameManagerProps {
   games: Game[];
