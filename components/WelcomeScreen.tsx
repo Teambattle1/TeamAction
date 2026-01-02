@@ -238,7 +238,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                     className="w-full bg-slate-800/50 border border-slate-700 rounded-xl p-4 text-white font-bold outline-none appearance-none text-sm uppercase tracking-wide focus:border-blue-500 transition-colors"
                                 >
                                     {sortedGames.map(g => (
-                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                        <option key={g.id} value={g.id}>[{getGameDisplayId(g.id)}] {g.name}</option>
                                     ))}
                                 </select>
                                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
