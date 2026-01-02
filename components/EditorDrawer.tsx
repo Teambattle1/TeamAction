@@ -52,6 +52,8 @@ interface EditorDrawerProps {
   showScores?: boolean;
   onToggleScores?: () => void;
   onStartSimulation?: () => void; // New prop
+  // Playzone Props
+  onShowPlayzoneChoice?: () => void;
 }
 
 const SortablePointItem: React.FC<{
