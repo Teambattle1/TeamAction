@@ -1012,7 +1012,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         // Sort points by current Y position (top to bottom), then X (left to right)
         const sortedPoints = [...uniquePlaygroundPoints].sort((a, b) => {
-            const aPosget = getDevicePosition(a);
+            const aPos = getDevicePosition(a);
             const bPos = getDevicePosition(b);
             const aY = aPos.y;
             const bY = bPos.y;
