@@ -193,21 +193,35 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         }
     }, [game.playgrounds]);
 
-    // Load toolbar positions from game
+    // Load toolbar positions from game (device-aware)
     useEffect(() => {
-        if (game.toolbarPositions?.editorOrientationPos) {
-            setOrientationToolbarPos(game.toolbarPositions.editorOrientationPos);
+        const pos = game.toolbarPositions;
+
+        // Try device-specific positions first, fall back to default
+        if (pos?.editorOrientationPosPerDevice?.[selectedDevice]) {
+            setOrientationToolbarPos(pos.editorOrientationPosPerDevice[selectedDevice]);
+        } else if (pos?.editorOrientationPos) {
+            setOrientationToolbarPos(pos.editorOrientationPos);
         }
-        if (game.toolbarPositions?.editorShowPos) {
-            setShowToolbarPos(game.toolbarPositions.editorShowPos);
+
+        if (pos?.editorShowPosPerDevice?.[selectedDevice]) {
+            setShowToolbarPos(pos.editorShowPosPerDevice[selectedDevice]);
+        } else if (pos?.editorShowPos) {
+            setShowToolbarPos(pos.editorShowPos);
         }
-        if (game.toolbarPositions?.editorToolsPos) {
-            setToolsToolbarPos(game.toolbarPositions.editorToolsPos);
+
+        if (pos?.editorToolsPosPerDevice?.[selectedDevice]) {
+            setToolsToolbarPos(pos.editorToolsPosPerDevice[selectedDevice]);
+        } else if (pos?.editorToolsPos) {
+            setToolsToolbarPos(pos.editorToolsPos);
         }
-        if (game.toolbarPositions?.editorQRScannerPos) {
-            setQRScannerPos(game.toolbarPositions.editorQRScannerPos);
+
+        if (pos?.editorQRScannerPosPerDevice?.[selectedDevice]) {
+            setQRScannerPos(pos.editorQRScannerPosPerDevice[selectedDevice]);
+        } else if (pos?.editorQRScannerPos) {
+            setQRScannerPos(pos.editorQRScannerPos);
         }
-    }, [game.id]);
+    }, [game.id, selectedDevice]);
 
     // Save toolbar positions to game
     const saveToolbarPositions = () => {
