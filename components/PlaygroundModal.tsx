@@ -317,10 +317,23 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                   const isOptionsType = ['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(point.task.type);
                   const showLabel = playground.showLabels !== false;
 
+                  // Cooldown check
+                  const cooldownEndTime = taskCooldowns.get(point.id);
+                  const isCoolingDown = cooldownEndTime ? Date.now() < cooldownEndTime : false;
+                  const cooldownSecondsRemaining = isCoolingDown && cooldownEndTime
+                      ? Math.ceil((cooldownEndTime - Date.now()) / 1000)
+                      : 0;
+
                   return (
                       <button
                           key={point.id}
-                          onClick={(e) => { e.stopPropagation(); onPointClick(point); }}
+                          onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isCoolingDown) {
+                                  onPointClick(point);
+                              }
+                          }}
+                          disabled={isCoolingDown}
                           onPointerDown={(e) => e.stopPropagation()} 
                           onMouseEnter={() => mode === GameMode.INSTRUCTOR && setHoveredPointId(point.id)}
                           onMouseLeave={() => mode === GameMode.INSTRUCTOR && setHoveredPointId(null)}
