@@ -2386,8 +2386,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     </pattern>
                                 </defs>
                                 {uniquePlaygroundPoints.flatMap((source) => {
-                                    const sourceX = (source.playgroundPosition?.x || 50);
-                                    const sourceY = (source.playgroundPosition?.y || 50);
+                                    const sourcePos = getDevicePosition(source);
+                                    const sourceX = sourcePos.x;
+                                    const sourceY = sourcePos.y;
 
                                     // Extract target IDs from GameAction objects
                                     const getTargetIds = (actions: any[] | undefined) => {
@@ -2401,8 +2402,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         ...getTargetIds(source.logic?.onCorrect).map((targetId) => {
                                             const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
-                                            const targetX = (target.playgroundPosition?.x || 50);
-                                            const targetY = (target.playgroundPosition?.y || 50);
+                                            const targetPos = getDevicePosition(target);
+                                            const targetX = targetPos.x;
+                                            const targetY = targetPos.y;
                                             return (
                                                 <line
                                                     key={`correct-${source.id}-${targetId}`}
@@ -2420,8 +2422,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         ...getTargetIds(source.logic?.onIncorrect).map((targetId) => {
                                             const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
-                                            const targetX = (target.playgroundPosition?.x || 50);
-                                            const targetY = (target.playgroundPosition?.y || 50);
+                                            const targetPos = getDevicePosition(target);
+                                            const targetX = targetPos.x;
+                                            const targetY = targetPos.y;
                                             return (
                                                 <line
                                                     key={`incorrect-${source.id}-${targetId}`}
@@ -2439,8 +2442,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         ...getTargetIds(source.logic?.onOpen).map((targetId) => {
                                             const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
-                                            const targetX = (target.playgroundPosition?.x || 50);
-                                            const targetY = (target.playgroundPosition?.y || 50);
+                                            const targetPos = getDevicePosition(target);
+                                            const targetX = targetPos.x;
+                                            const targetY = targetPos.y;
                                             return (
                                                 <line
                                                     key={`open-${source.id}-${targetId}`}
