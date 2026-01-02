@@ -367,7 +367,7 @@ const AdminModal: React.FC<AdminModalProps> = ({ onClose, onLibraryUpdated }) =>
                           Default answer sounds
                       </p>
                       <p className="text-[10px] text-slate-600 font-bold mt-2 leading-snug">
-                          Set default sounds for correct/incorrect answers. Can be overridden per-game.
+                          Choose from common sounds or upload custom MP3/WAV files. Can be overridden per-game.
                       </p>
                   </div>
               </div>
