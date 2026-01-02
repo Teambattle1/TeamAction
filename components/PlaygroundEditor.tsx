@@ -1509,14 +1509,20 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                         {/* HUD Appearance */}
                         <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <button
+                                onClick={() => setIsHudAppearanceCollapsed(!isHudAppearanceCollapsed)}
+                                className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                            >
+                                <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest flex items-center gap-1">
                                     <MousePointerClick className="w-3 h-3" /> HUD BUTTON APPEARANCE
                                 </span>
-                            </div>
+                                <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-transform ${isHudAppearanceCollapsed ? '-rotate-90' : ''}`} />
+                            </button>
 
-                            {/* Custom Icon Preview */}
-                            {activePlayground.iconUrl && (
+                            {!isHudAppearanceCollapsed && (
+                                <div className="space-y-3">
+                                    {/* Custom Icon Preview */}
+                                    {activePlayground.iconUrl && (
                                 <div className="mb-3 p-3 bg-slate-800 rounded-lg border border-slate-700 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <img src={activePlayground.iconUrl} alt="Custom Icon" className="w-8 h-8 object-contain" />
@@ -1619,16 +1625,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
                                 />
                             </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Background Image */}
                     <div>
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">BACKGROUND IMAGE</span>
-                        </div>
+                        <button
+                            onClick={() => setIsBackgroundImageCollapsed(!isBackgroundImageCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">BACKGROUND IMAGE</span>
+                            <ChevronDown className={`w-4 h-4 text-slate-500 group-hover:text-slate-400 transition-transform ${isBackgroundImageCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
 
-                        <div
+                        {!isBackgroundImageCollapsed && (
+                            <div className="space-y-3">
+                                <div
                             className="aspect-video bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative group cursor-pointer hover:border-slate-500 transition-colors"
                             onClick={() => fileInputRef.current?.click()}
                         >
@@ -1686,6 +1700,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </button>
                             ))}
                         </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Grid Controls */}
