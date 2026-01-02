@@ -746,6 +746,120 @@ const TaskModal: React.FC<TaskModalProps> = ({
                       />
                   </div>
               );
+          case 'photo':
+          case 'video':
+              const isPhoto = type === 'photo';
+              const maxSize = point.task.mediaSettings?.maxFileSize || (isPhoto ? 10 : 50);
+
+              const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  // Check file size
+                  if (file.size > maxSize * 1024 * 1024) {
+                      setErrorMsg(`File is too large! Maximum size is ${maxSize}MB.`);
+                      return;
+                  }
+
+                  // Check file type
+                  if (isPhoto && !file.type.startsWith('image/')) {
+                      setErrorMsg('Please select a valid image file.');
+                      return;
+                  }
+                  if (!isPhoto && !file.type.startsWith('video/')) {
+                      setErrorMsg('Please select a valid video file.');
+                      return;
+                  }
+
+                  setCapturedMedia(file);
+                  setMediaPreview(URL.createObjectURL(file));
+                  setErrorMsg(null);
+              };
+
+              const handleRemoveMedia = () => {
+                  setCapturedMedia(null);
+                  if (mediaPreview) {
+                      URL.revokeObjectURL(mediaPreview);
+                      setMediaPreview(null);
+                  }
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  if (videoInputRef.current) videoInputRef.current.value = '';
+              };
+
+              return (
+                  <div className="space-y-4">
+                      {mediaPreview ? (
+                          <div className="relative bg-black rounded-xl overflow-hidden border-2 border-green-500">
+                              {isPhoto ? (
+                                  <img
+                                      src={mediaPreview}
+                                      alt="Captured"
+                                      className="w-full h-auto max-h-96 object-contain"
+                                  />
+                              ) : (
+                                  <video
+                                      src={mediaPreview}
+                                      controls
+                                      className="w-full h-auto max-h-96"
+                                  />
+                              )}
+                              <button
+                                  type="button"
+                                  onClick={handleRemoveMedia}
+                                  className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                              >
+                                  <X className="w-4 h-4" />
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center">
+                              <div className="flex flex-col items-center gap-4">
+                                  {isPhoto ? (
+                                      <Camera className="w-12 h-12 text-gray-400" />
+                                  ) : (
+                                      <Video className="w-12 h-12 text-gray-400" />
+                                  )}
+                                  <div>
+                                      <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                          {isPhoto ? 'Take or Upload Photo' : 'Record or Upload Video'}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                          Max size: {maxSize}MB
+                                      </p>
+                                  </div>
+                                  <label className="cursor-pointer bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center gap-2">
+                                      <Upload className="w-5 h-5" />
+                                      {isPhoto ? 'Choose Photo' : 'Choose Video'}
+                                      <input
+                                          ref={isPhoto ? fileInputRef : videoInputRef}
+                                          type="file"
+                                          accept={isPhoto ? 'image/*' : 'video/*'}
+                                          capture={isPhoto ? 'environment' : 'user'}
+                                          onChange={handleFileSelect}
+                                          className="hidden"
+                                          disabled={isDisabled}
+                                      />
+                                  </label>
+                              </div>
+                          </div>
+                      )}
+
+                      {isUploading && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                                  <span className="font-bold text-blue-700 dark:text-blue-300">Uploading...</span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                                  <div
+                                      className="bg-blue-600 h-full transition-all duration-300"
+                                      style={{ width: `${uploadProgress}%` }}
+                                  />
+                              </div>
+                          </div>
+                      )}
+                  </div>
+              );
           default: return null;
       }
   };
