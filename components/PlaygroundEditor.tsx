@@ -545,8 +545,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const zoneNumber = existingZones.length + 1;
 
         // Initialize device layouts with default configurations
-        const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
-        const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
 
         const newZone: Playground = {
             id: `pg-${Date.now()}`,
@@ -558,21 +556,21 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             deviceLayouts: {
                 mobile: {
                     orientationLock: 'landscape',
-                    qrScannerPos: { x: windowWidth - 120, y: windowHeight - 100 },
+                    qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
                     iconPositions: {},
                     buttonVisible: true,
                     iconScale: 1.0,
                 },
                 tablet: {
                     orientationLock: 'landscape',
-                    qrScannerPos: { x: windowWidth - 120, y: windowHeight - 100 },
+                    qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
                     iconPositions: {},
                     buttonVisible: true,
                     iconScale: 1.0,
                 },
                 desktop: {
                     orientationLock: 'landscape',
-                    qrScannerPos: { x: windowWidth - 120, y: windowHeight - 100 },
+                    qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
                     iconPositions: {},
                     buttonVisible: true,
                     iconScale: 1.0,
