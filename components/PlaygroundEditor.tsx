@@ -3926,7 +3926,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                     ? 'bg-purple-600/50 text-purple-300 cursor-wait'
                                                     : 'border border-dashed border-purple-600 text-purple-400 hover:text-purple-300 hover:border-purple-400'
                                             }`}
-                                            title="Generate icon with AI for unsolved state"
+                                            title="Generate icon with AI for incorrect answer"
                                             type="button"
                                         >
                                             {isGeneratingIcon && !editingCompletedIcon ? (
