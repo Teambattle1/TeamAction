@@ -5,7 +5,7 @@ import { detectLanguageFromText, normalizeLanguage } from '../utils/i18n';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { getCroppedImg } from '../utils/image';
 import Cropper from 'react-easy-crop';
-import { generateAiImage } from '../services/ai';
+import { generateAiImage, translateTaskContent } from '../services/ai';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import { fetchUniqueTags } from '../services/db';
 import { useTagColors } from '../contexts/TagColorsContext';
