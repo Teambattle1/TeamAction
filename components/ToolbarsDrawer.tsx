@@ -147,6 +147,7 @@ const ToolbarsDrawer: React.FC<ToolbarsDrawerProps> = ({
         show: false,
         tools: false,
     });
+    const [showMapStylesMenu, setShowMapStylesMenu] = useState(false);
 
     const toggleSection = (section: string) => {
         setCollapsedSections(prev => ({
