@@ -4,6 +4,7 @@ import AccountUsers from './AccountUsers';
 import AccountTags from './AccountTags';
 import * as db from '../services/db';
 import { formatDateShort } from '../utils/date';
+import { getGameDisplayId } from '../utils/gameIdUtils';
 import {
   LayoutDashboard, Gamepad2, LayoutTemplate, ListChecks,
   ExternalLink, Plus, ChevronRight, Settings, Clock, Star,
