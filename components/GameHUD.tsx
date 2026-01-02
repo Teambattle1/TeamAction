@@ -1097,7 +1097,7 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
             )}
 
             {/* Draggable Top Toolbar (Chat, Measure, Settings) */}
-            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && !hideMapToolbars && (
+            {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR || mode === GameMode.PLAY) && visibleToolbars['tools'] && (
                 <div
                     className="absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: topToolbarPos.x, top: topToolbarPos.y }}
