@@ -135,6 +135,9 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
     const handleRemoveTagClick = (name: string) => {
         const count = inUseTagsCountMap[name] || 0;
         if (count > 0) {
+            setPurgeProgress(0);
+            setPurgeLabel('');
+            setIsPurging(false);
             setPurgeTarget(name);
         } else {
             // Tag not in use, just remove from registry
@@ -401,8 +404,8 @@ const AccountTags: React.FC<AccountTagsProps> = ({ games = [], library = [], onD
                         </div>
 
                         <div className="flex gap-4">
-                            <button 
-                                onClick={() => setPurgeTarget(null)}
+                            <button
+                                onClick={() => { setPurgeTarget(null); setPurgeLabel(''); setPurgeProgress(0); }}
                                 disabled={isPurging}
                                 className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-xl font-black uppercase tracking-[0.2em] text-[10px] transition-all"
                             >
