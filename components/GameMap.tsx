@@ -460,7 +460,11 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
                     eventHandlers={{
                         click: (e: any) => {
                             e.originalEvent?.stopPropagation();
-                            onClick(point);
+                            if (onAreaColorClick) {
+                                onAreaColorClick(point);
+                            } else {
+                                onClick(point);
+                            }
                         },
                         mouseover: () => {
                             if (onHover) onHover(point);
