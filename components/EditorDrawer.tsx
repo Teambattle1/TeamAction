@@ -199,28 +199,32 @@ const SortablePointItem: React.FC<{
   );
 };
 
-const ZoneSection = ({ 
+const ZoneSection = ({
     id,
-    title, 
-    icon: Icon, 
-    count, 
-    isCollapsed, 
-    onToggle, 
-    children, 
+    title,
+    icon: Icon,
+    count,
+    isCollapsed,
+    onToggle,
+    children,
     onAdd,
     activeMenu,
-    onSetActiveMenu
-}: { 
+    onSetActiveMenu,
+    isHovered,
+    onHover
+}: {
     id: string,
-    title: string, 
-    icon: any, 
-    count: number, 
-    isCollapsed: boolean, 
-    onToggle: () => void, 
-    children?: React.ReactNode, 
+    title: string,
+    icon: any,
+    count: number,
+    isCollapsed: boolean,
+    onToggle: () => void,
+    children?: React.ReactNode,
     onAdd: (type: 'MANUAL' | 'AI' | 'LIBRARY') => void,
     activeMenu: boolean,
-    onSetActiveMenu: (open: boolean) => void
+    onSetActiveMenu: (open: boolean) => void,
+    isHovered?: boolean,
+    onHover?: (id: string | null) => void
 }) => {
     const { setNodeRef, isOver } = useDroppable({ id });
 
