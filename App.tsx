@@ -1962,6 +1962,29 @@ const GameApp: React.FC = () => {
                 />
             )}
 
+            {showTranslationsManager && (
+                <TranslationsManager
+                    onClose={() => setShowTranslationsManager(false)}
+                    onEditTask={(gameId, pointId) => {
+                        // Close translations manager
+                        setShowTranslationsManager(false);
+
+                        // Load the game and open the task editor
+                        const game = games.find(g => g.id === gameId);
+                        if (game) {
+                            setActiveGameId(gameId);
+                            setActiveGame(game);
+                            setMode(GameMode.EDIT);
+                            setShowLanding(false);
+
+                            // Note: The task editor will need to be opened from GameHUD
+                            // For now, we just navigate to the game in edit mode
+                            // The user can then find and edit the task
+                        }
+                    }}
+                />
+            )}
+
             {/* CLIENT ZONE */}
             {showClientGameChooser && (
                 <ClientGameChooser
