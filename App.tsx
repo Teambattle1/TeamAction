@@ -599,6 +599,43 @@ const GameApp: React.FC = () => {
       }
   };
 
+  // Export all game tasks to library and sync to Supabase
+  const handleExportGameToLibrary = async () => {
+      if (!activeGame || !activeGame.points || activeGame.points.length === 0) {
+          alert('No tasks to export');
+          return;
+      }
+
+      try {
+          const taskTemplates = activeGame.points.map(point => ({
+              id: `template-${point.id}`,
+              title: point.title,
+              task: point.task,
+              feedback: point.feedback,
+              points: point.points,
+              tags: point.tags,
+              iconId: point.iconId,
+              iconUrl: point.iconUrl,
+              completedIconId: (point as any).completedIconId,
+              completedIconUrl: (point as any).completedIconUrl,
+              settings: point.settings,
+              logic: point.logic
+          }));
+
+          const { ok } = await db.saveTemplates(taskTemplates);
+
+          if (ok) {
+              alert(`✅ Exported ${taskTemplates.length} tasks to Global Library and synced to Supabase!`);
+              console.log('[Export] Tasks exported to library:', taskTemplates.length);
+          } else {
+              alert('❌ Failed to export tasks to library');
+          }
+      } catch (error) {
+          console.error('[Export] Error exporting tasks:', error);
+          alert('Error exporting tasks to library');
+      }
+  };
+
   const handleDeleteItem = async (pointId: string) => {
       if (!activeGame) return;
       if (!pointId) {
