@@ -351,6 +351,16 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
         if (selectedTasks.length === 0) return;
 
+        // Check if all selected tasks have at least one tag
+        const tasksWithoutTags = selectedTasks.filter(t => !Array.isArray(t.tags) || t.tags.length === 0);
+        if (tasksWithoutTags.length > 0) {
+            setNotification({
+                message: `❌ Cannot copy: ${tasksWithoutTags.length} task(s) have no tags. Please add tags before copying.`,
+                type: 'error'
+            });
+            return;
+        }
+
         const copies = selectedTasks.map((t, i) => cloneTemplateWithCopyTitle(t, i));
 
         try {
