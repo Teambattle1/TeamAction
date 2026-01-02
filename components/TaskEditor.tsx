@@ -200,6 +200,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
   // Translation State
   const [isTranslating, setIsTranslating] = useState(false);
   const [selectedTranslationLanguage, setSelectedTranslationLanguage] = useState<string>('');
+  const [expandedLanguages, setExpandedLanguages] = useState<Set<string>>(new Set());
 
   // Load existing tags for autocomplete
   useEffect(() => {
