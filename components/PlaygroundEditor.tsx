@@ -3744,7 +3744,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                                             // Sort based on mode
                                             const sortedTasks = taskSortMode === 'actions'
-                                                ? [...taskActionInfo].sort((a, b) => b.actionCount - a.actionCount)
+                                                ? [...taskActionInfo].sort((a, b) => {
+                                                    // Calculate category for each task
+                                                    const aHasSource = a.hasSourceOnOpen || a.hasSourceOnCorrect || a.hasSourceOnIncorrect;
+                                                    const bHasSource = b.hasSourceOnOpen || b.hasSourceOnCorrect || b.hasSourceOnIncorrect;
+                                                    const aHasTarget = a.hasTargetOnOpen || a.hasTargetOnCorrect || a.hasTargetOnIncorrect;
+                                                    const bHasTarget = b.hasTargetOnOpen || b.hasTargetOnCorrect || b.hasTargetOnIncorrect;
+
+                                                    // Category scores: 3 = SOURCE, 2 = TARGET only, 1 = no actions
+                                                    const aCategory = aHasSource ? 3 : aHasTarget ? 2 : 1;
+                                                    const bCategory = bHasSource ? 3 : bHasTarget ? 2 : 1;
+
+                                                    // Sort by category first (higher category first)
+                                                    if (aCategory !== bCategory) {
+                                                        return bCategory - aCategory;
+                                                    }
+
+                                                    // Within same category, sort by action count (more actions first)
+                                                    return b.actionCount - a.actionCount;
+                                                })
                                                 : taskActionInfo;
 
                                             return sortedTasks.map(({ point, hasSourceOnOpen, hasSourceOnCorrect, hasSourceOnIncorrect, hasTargetOnOpen, hasTargetOnCorrect, hasTargetOnIncorrect }, index) => {
