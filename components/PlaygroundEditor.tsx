@@ -2659,7 +2659,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                                     {/* Task Name - Always Visible when showTaskNames is true */}
                                     {showTaskNames && (
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 text-white text-[9px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap pointer-events-none shadow-lg border border-orange-500/30">
+                                        <div
+                                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 text-white font-bold px-2 py-1 rounded uppercase whitespace-nowrap pointer-events-none shadow-lg border border-orange-500/30"
+                                            style={{
+                                                fontSize: `${(point.textLabelScale || 1) * 9}px`
+                                            }}
+                                        >
                                             {point.title}
                                         </div>
                                     )}
