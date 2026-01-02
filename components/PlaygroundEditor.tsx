@@ -369,6 +369,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             // ignore
         }
         saveToolbarPositions();
+
+        // Also save QR scanner position to device-specific layout
+        if (activePlayground) {
+            const newLayouts = { ...activePlayground.deviceLayouts };
+            newLayouts[selectedDevice] = {
+                ...newLayouts[selectedDevice],
+                qrScannerPos: qrScannerPos,
+            };
+            updatePlayground({ deviceLayouts: newLayouts });
+        }
     };
 
     // QR Scanner function
