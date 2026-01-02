@@ -390,7 +390,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             task: template.task,
             location: { lat: 0, lng: 0 },
             radiusMeters: 50,
-            activationTypes: ['click'],
+            activationTypes: template.activationTypes || ['click'], // Use template's activation types or default to click
             iconId: template.iconId,
             points: template.points || 10,
             isUnlocked: true,
@@ -399,7 +399,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             tags: template.tags,
             feedback: template.feedback,
             settings: template.settings,
-            logic: template.logic
+            logic: template.logic,
+            qrCodeString: template.qrCodeString,
+            nfcTagId: template.nfcTagId,
+            ibeaconUUID: template.ibeaconUUID
         };
     };
 
@@ -416,7 +419,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             intro: point.shortIntro,
             feedback: point.feedback,
             settings: point.settings,
-            logic: point.logic
+            logic: point.logic,
+            activationTypes: point.activationTypes, // Preserve activation types
+            qrCodeString: point.qrCodeString,
+            nfcTagId: point.nfcTagId,
+            ibeaconUUID: point.ibeaconUUID
         };
     };
 
