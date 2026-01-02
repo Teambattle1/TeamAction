@@ -1041,10 +1041,15 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             
                             <h4
                                 onClick={(e) => { e.stopPropagation(); setEditingTemplate(task); }}
-                                className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase"
+                                className="font-bold text-gray-900 dark:text-white text-sm mb-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase flex items-start gap-1"
                                 title="Click to edit"
                             >
-                                {task.title}
+                                {!hasValidAnswers(task) && (
+                                    <span className="text-red-500 flex-shrink-0 mt-0.5" title="Invalid or missing answer">
+                                        <AlertCircle className="w-3.5 h-3.5" />
+                                    </span>
+                                )}
+                                <span className="line-clamp-2">{task.title}</span>
                             </h4>
                             <p
                                 className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1 cursor-pointer hover:text-gray-300 transition-colors"
