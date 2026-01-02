@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users, Gamepad2, Library, LayoutList, Shield, Edit2,
   UserCircle, Settings, Play,
   LayoutDashboard, LayoutGrid, UserPlus,
   Plus, Database, ArrowLeft,
-  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin, Gauge, Map, KeyRound
+  Globe, ChevronDown, QrCode, MessageSquare, Anchor, Home, Trash2, Smartphone, FilePlus, Check, ChevronRight, LogOut, BarChart3, Bomb, MapPin, Gauge, Map, KeyRound, Search, X as XIcon
 } from 'lucide-react';
 import { Game, AuthUser } from '../types';
+import { getGameDisplayId, matchesGameSearch, formatGameNameWithId } from '../utils/gameIdUtils';
 import './InitialLandingStyles.css';
 
 interface InitialLandingProps {
