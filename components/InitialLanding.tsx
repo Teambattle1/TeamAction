@@ -1051,6 +1051,47 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
             </p>
           </div>
         </div>
+
+        {/* Playzone Choice Modal */}
+        {showPlayzoneChoiceModal && (
+          <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border-2 border-emerald-600 rounded-2xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95">
+              <h2 className="text-2xl font-black text-white mb-2">ADD PLAYZONE</h2>
+              <p className="text-sm text-slate-400 mb-6">Choose how you want to create your playzone</p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowPlayzoneChoiceModal(false);
+                    onAction('CREATE_PLAYZONE_GAME');
+                  }}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+                >
+                  <Plus className="w-5 h-5" />
+                  CREATE NEW
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowPlayzoneChoiceModal(false);
+                    onAction('TEMPLATES');
+                  }}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+                >
+                  <Library className="w-5 h-5" />
+                  FROM TEMPLATE
+                </button>
+              </div>
+
+              <button
+                onClick={() => setShowPlayzoneChoiceModal(false)}
+                className="w-full mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase tracking-widest rounded-lg transition-all duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
