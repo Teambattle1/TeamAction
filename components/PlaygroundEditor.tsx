@@ -894,8 +894,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         setIsGeneratingIcon(true);
         try {
+            console.log('[PlaygroundEditor] Generating AI icon for:', prompt);
             const iconUrl = await generateAiImage(prompt, 'simple icon style, transparent background');
+
             if (iconUrl) {
+                console.log('[PlaygroundEditor] Icon generated successfully');
                 // If a task is selected, update task icon; otherwise update zone icon
                 if (selectedTask) {
                     updateTask({ iconUrl });
@@ -903,11 +906,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     updatePlayground({ iconUrl });
                 }
             } else {
-                alert('Icon generation failed. Please try again.');
+                console.warn('[PlaygroundEditor] AI returned null - check console for details');
+                alert('⚠️ Image generation failed\n\nGemini 2.5 Flash Image did not return image data. This could mean:\n\n1. The prompt may have been filtered by safety settings\n2. Your API key may have reached its quota\n3. The content may be too complex or ambiguous\n\nCheck the browser console (F12) for detailed error logs.\n\nTry:\n• Using simpler, descriptive keywords\n• Avoiding potentially sensitive content\n• Being more specific in your description');
             }
-        } catch (error) {
-            console.error('Icon generation error:', error);
-            alert('Failed to generate icon. Check your API key or try again.');
+        } catch (error: any) {
+            console.error('[PlaygroundEditor] Icon generation error:', error);
+            const errorMessage = error?.message || '';
+            if (errorMessage.includes('AI API Key missing')) {
+                setShowGeminiKeyModal(true);
+            } else {
+                alert('Error generating icon. Please check your API key and try again.\n\n' + errorMessage);
+            }
         } finally {
             setIsGeneratingIcon(false);
         }
