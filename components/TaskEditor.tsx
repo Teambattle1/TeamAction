@@ -857,7 +857,51 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
             </div>
         );
     }
-    
+
+    if (type === 'boolean') {
+        const currentAnswer = editedPoint.task.answer;
+        return (
+            <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2 uppercase flex items-center gap-2">
+                    CORRECT ANSWER
+                    <span className="text-red-500 text-[10px] font-black">REQUIRED</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setEditedPoint({...editedPoint, task: {...editedPoint.task, answer: 'YES'}})}
+                        className={`py-3 px-6 rounded-xl font-bold uppercase text-sm transition-all border-2 ${
+                            currentAnswer === 'YES'
+                                ? 'bg-green-500 border-green-500 text-white shadow-lg'
+                                : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400'
+                        }`}
+                    >
+                        <Check className={`w-5 h-5 mx-auto mb-1 ${currentAnswer === 'YES' ? '' : 'opacity-30'}`} />
+                        YES
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setEditedPoint({...editedPoint, task: {...editedPoint.task, answer: 'NO'}})}
+                        className={`py-3 px-6 rounded-xl font-bold uppercase text-sm transition-all border-2 ${
+                            currentAnswer === 'NO'
+                                ? 'bg-green-500 border-green-500 text-white shadow-lg'
+                                : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400'
+                        }`}
+                    >
+                        <X className={`w-5 h-5 mx-auto mb-1 ${currentAnswer === 'NO' ? '' : 'opacity-30'}`} />
+                        NO
+                    </button>
+                </div>
+                {!currentAnswer && (
+                    <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Please select the correct answer (YES or NO)
+                    </p>
+                )}
+            </div>
+        );
+    }
+
     if (['multiple_choice', 'checkbox', 'dropdown', 'multi_select_dropdown'].includes(type)) {
         const isMulti = type === 'checkbox' || type === 'multi_select_dropdown';
         return (
