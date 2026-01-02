@@ -66,6 +66,14 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [timelineFinished, setTimelineFinished] = useState(false);
   const [lastPlacedStatus, setLastPlacedStatus] = useState<'correct' | 'incorrect' | null>(null);
 
+  // Media Capture State (Photo/Video)
+  const [capturedMedia, setCapturedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+
   const isEditMode = mode === GameMode.EDIT;
   const isInstructor = isInstructorMode || mode === GameMode.INSTRUCTOR;
   const isSimulation = mode === GameMode.SIMULATION;
