@@ -5,7 +5,7 @@ import {
     X, Plus, LayoutGrid, Globe, Map as MapIcon, ArrowLeft, Trash2, Edit2,
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut,
     Maximize, Lock, Unlock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
-    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight, ChevronDown,
+    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronsUpDown,
     Wand2, Zap, CheckCircle, XCircle, GripHorizontal, AlertTriangle, QrCode, Target, Loader2, MapPin, Copy, Eye, PenTool, Trophy
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
