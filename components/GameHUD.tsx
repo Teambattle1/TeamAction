@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { GameMode, MapStyleId, Language, Coordinate, TimerConfig, Playground, GameRoute, AuthUser, Game } from '../types';
+import { GameMode, MapStyleId, Language, Coordinate, TimerConfig, Playground, GameRoute, AuthUser, Game, DeviceType } from '../types';
+import { detectDeviceTypeWithUA, getDeviceLayout } from '../utils/deviceUtils';
 import {
     Map as MapIcon, Layers, Crosshair, ChevronLeft, Ruler, Settings,
     MessageSquare, Shield, Globe, Skull, Clock,
