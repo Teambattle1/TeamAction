@@ -49,6 +49,7 @@ import RemoteOverrideModal from './components/RemoteOverrideModal';
 import ClientLobby from './components/ClientLobby';
 import ClientGameChooser from './components/ClientGameChooser';
 import Access from './components/Access';
+import PlayzoneSelector from './components/PlayzoneSelector';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
