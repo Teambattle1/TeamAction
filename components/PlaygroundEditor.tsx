@@ -473,12 +473,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             if (deviceLayout.orientationLock && deviceLayout.orientationLock !== 'none') {
                 setEditorOrientation(deviceLayout.orientationLock);
             } else {
+                // Default to landscape for all devices when no orientation lock
                 setEditorOrientation('landscape');
             }
         } else if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
             // Fallback to playground-level orientation for backward compatibility
             setEditorOrientation(activePlayground.orientationLock);
         } else {
+            // Default to landscape for all devices
             setEditorOrientation('landscape');
         }
     }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts, selectedDevice]);
