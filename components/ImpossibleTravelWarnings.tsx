@@ -26,9 +26,9 @@ const ImpossibleTravelWarnings: React.FC<ImpossibleTravelWarningsProps> = ({
 
   useEffect(() => {
     loadWarnings();
-    
-    // Refresh warnings every 30 seconds
-    const interval = setInterval(loadWarnings, 30000);
+
+    // Refresh warnings every 60 seconds (reduced from 30 to minimize network calls)
+    const interval = setInterval(loadWarnings, 60000);
     return () => clearInterval(interval);
   }, [gameId]);
 
@@ -38,7 +38,11 @@ const ImpossibleTravelWarnings: React.FC<ImpossibleTravelWarningsProps> = ({
       const data = await fetchImpossibleTravelWarnings(gameId);
       setWarnings(data);
     } catch (error) {
-      console.error('Error loading impossible travel warnings:', error);
+      // Silently fail - the service already logs errors if needed
+      // Only log unexpected errors
+      if (error && !(error instanceof TypeError)) {
+        console.error('Error loading impossible travel warnings:', error);
+      }
     } finally {
       setLoading(false);
     }
