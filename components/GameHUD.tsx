@@ -968,6 +968,8 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
                 onOpenRemoteOverride={onOpenRemoteOverride}
                 onOpenLiveApproval={onOpenLiveApproval}
                 pendingApprovalsCount={pendingApprovalsCount}
+                collapsedSections={collapsedSections}
+                onCollapsedSectionsChange={onCollapsedSectionsChange}
             />
             <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 sm:p-6 z-[1000]">
             {/* COUNTDOWN OVERLAY */}
