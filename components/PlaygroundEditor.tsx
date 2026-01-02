@@ -180,6 +180,19 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [taskSortMode, setTaskSortMode] = useState<'order' | 'actions'>('order');
     const [collapsedSources, setCollapsedSources] = useState<Set<string>>(new Set());
     const [bulkIconSourceId, setBulkIconSourceId] = useState<string | null>(null);
+
+    // Auto-collapse all source tasks on mount
+    useEffect(() => {
+        if (activePlayground && taskSortMode === 'actions') {
+            const uniquePlaygroundPoints = game.points.filter(p => p.playgroundId === activePlayground.id);
+            const sourceTasks = uniquePlaygroundPoints.filter(p =>
+                p.logic?.onOpen?.length > 0 ||
+                p.logic?.onCorrect?.length > 0 ||
+                p.logic?.onIncorrect?.length > 0
+            );
+            setCollapsedSources(new Set(sourceTasks.map(t => t.id)));
+        }
+    }, [activePlayground?.id, taskSortMode]);
     const [bulkIconMode, setBulkIconMode] = useState(false);
     const [bulkIconTargets, setBulkIconTargets] = useState<Set<string>>(new Set());
 
