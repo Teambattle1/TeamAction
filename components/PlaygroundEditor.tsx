@@ -128,12 +128,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showToolbarPos, setShowToolbarPos] = useState(initialToolbarDefaults.show);
     const [toolsToolbarPos, setToolsToolbarPos] = useState(initialToolbarDefaults.tools);
     const [qrScannerPos, setQRScannerPos] = useState({ x: 85, y: 85 }); // Percentage-based positioning (85%, 85%)
+    const [qrScannerSize, setQRScannerSize] = useState({ width: 140, height: 48 });
+    const [qrScannerColor, setQRScannerColor] = useState('#f97316'); // Orange-500
     const [isDraggingOrientation, setIsDraggingOrientation] = useState(false);
     const [isDraggingShow, setIsDraggingShow] = useState(false);
     const [isDraggingTools, setIsDraggingTools] = useState(false);
     const [isDraggingQRScanner, setIsDraggingQRScanner] = useState(false);
+    const [isResizingQRScanner, setIsResizingQRScanner] = useState(false);
+    const [showQRColorPicker, setShowQRColorPicker] = useState(false);
     const [isQRScannerActive, setIsQRScannerActive] = useState(false);
     const [qrScannedValue, setQRScannedValue] = useState<string | null>(null);
+    const qrScannerResizeStart = useRef({ width: 0, height: 0, x: 0, y: 0 });
 
     // Device-specific layout management
     const [selectedDevice, setSelectedDevice] = useState<DeviceType>('mobile'); // Changed default to mobile
