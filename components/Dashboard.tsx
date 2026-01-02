@@ -22,8 +22,8 @@ interface DashboardProps {
   onSelectGame?: (id: string) => void; // New prop
   userName: string;
   initialTab?: 'dashboard' | 'games' | 'templates' | 'tasks' | 'users' | 'tags' | 'client';
-  onDeleteTagGlobally?: (tagName: string) => Promise<void>;
-  onRenameTagGlobally?: (oldTag: string, newTag: string) => Promise<void>;
+  onDeleteTagGlobally?: (tagName: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
+  onRenameTagGlobally?: (oldTag: string, newTag: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [], onBack, onAction, onSelectGame, userName, initialTab = 'dashboard', onDeleteTagGlobally, onRenameTagGlobally }) => {
