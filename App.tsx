@@ -1674,6 +1674,12 @@ const GameApp: React.FC = () => {
                   onUpdateTaskLists={setTaskLists}
                   taskLibrary={taskLibrary}
                   onUpdateTaskLibrary={setTaskLibrary}
+                  onOpenGameSettings={() => {
+                      if (activeGame) {
+                          setGameToEdit(activeGame);
+                          setShowGameCreator(true);
+                      }
+                  }}
               />
           )}
           {showChatDrawer && activeGameId && (
