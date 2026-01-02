@@ -213,13 +213,51 @@ const Access: React.FC<AccessProps> = ({ onGameSelected, onBack }) => {
 
             {/* Valid Game Message */}
             {validGame && (
-              <div className="bg-green-900/50 border border-green-300/50 rounded-xl p-4">
-                <div className="flex items-start gap-3 mb-3">
-                  <CheckCircle className="w-5 h-5 text-green-100 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-bold text-green-100 mb-1">Access Code Valid!</p>
-                    <p className="text-xs text-green-100/90">Ready to join: <strong>{validGame.name}</strong></p>
+              <div className="space-y-4">
+                <div className="bg-green-900/50 border border-green-300/50 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-100 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-bold text-green-100 mb-1">Access Code Valid!</p>
+                      <p className="text-xs text-green-100/90">Ready to join: <strong>{validGame.name}</strong></p>
+                    </div>
                   </div>
+                </div>
+
+                {/* Language Selector */}
+                <div className="bg-slate-900/90 border-2 border-slate-800 rounded-xl p-4">
+                  <label className="block text-xs font-bold text-white/80 uppercase mb-3 tracking-wide flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Select Game Language
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {availableLanguages.map(lang => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setSelectedLanguage(lang)}
+                        className={`flex items-center gap-2 px-4 py-3 rounded-lg font-bold text-sm transition-all ${
+                          selectedLanguage === lang
+                            ? 'bg-orange-600 text-white shadow-lg scale-105'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        <span className="text-xl">{getFlag(lang)}</span>
+                        <span className="uppercase tracking-wide">{lang}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {availableLanguages.length === 1 && (
+                    <p className="text-[10px] text-slate-400 mt-3 italic">
+                      💡 Only English is available. Other languages need approved translations.
+                    </p>
+                  )}
+                  {availableLanguages.length > 1 && (
+                    <p className="text-[10px] text-green-400 mt-3 italic flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      All translations approved for selected languages
+                    </p>
+                  )}
                 </div>
               </div>
             )}
