@@ -2286,12 +2286,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
                 </div>
 
-                {/* Orientation Lock Warning */}
-                {isOrientationLocked && (
-                    <div className="absolute top-24 left-6 bg-orange-900/80 border border-orange-500 rounded-lg p-3 text-[9px] text-orange-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
-                        ⚠️ Orientation is LOCKED to {activePlayground?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'} when playing
-                    </div>
-                )}
+                {/* Orientation Lock Warning - HIDDEN - Now shown inline in left drawer */}
 
                 {isBackgroundLocked && (
                     <div className="absolute top-40 left-6 bg-red-900/80 border border-red-500 rounded-lg p-3 text-[9px] text-red-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
