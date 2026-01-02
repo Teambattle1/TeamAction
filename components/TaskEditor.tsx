@@ -866,6 +866,58 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                    {/* ... Settings and Actions Tabs ... */}
                    {activeTab === 'SETTINGS' && (
                        <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
+                           {/* Color Scheme Section */}
+                           {!isTemplateMode && (
+                               <div>
+                                   <label className="block text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-3">Task Color Scheme (Local Override)</label>
+                                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
+                                       Override the default game color scheme for this specific task.
+                                   </p>
+
+                                   <button
+                                       onClick={() => setShowColorSchemeEditor(true)}
+                                       className={`w-full py-4 rounded-xl font-bold text-sm uppercase transition-all shadow-lg flex items-center justify-center gap-2 ${
+                                           editedPoint.colorScheme
+                                               ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white'
+                                               : 'bg-slate-700 hover:bg-slate-600 text-white'
+                                       }`}
+                                   >
+                                       <Palette className="w-5 h-5" />
+                                       {editedPoint.colorScheme ? 'Edit Color Scheme' : 'Add Color Scheme'}
+                                   </button>
+
+                                   {editedPoint.colorScheme && (
+                                       <>
+                                           <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                                               <div className="text-xs font-bold text-slate-400 uppercase mb-3">Current Colors</div>
+                                               <div className="grid grid-cols-5 gap-2">
+                                                   {Object.entries(editedPoint.colorScheme).map(([key, value]) => {
+                                                       if (key === 'id' || key === 'name') return null;
+                                                       return (
+                                                           <div key={key} className="flex flex-col items-center gap-1">
+                                                               <div
+                                                                   className="w-10 h-10 rounded-lg border-2 border-slate-600"
+                                                                   style={{ backgroundColor: value as string }}
+                                                               />
+                                                               <span className="text-[7px] text-slate-500 uppercase text-center">
+                                                                   {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                               </span>
+                                                           </div>
+                                                       );
+                                                   })}
+                                               </div>
+                                           </div>
+                                           <button
+                                               onClick={() => setEditedPoint({ ...editedPoint, colorScheme: undefined })}
+                                               className="w-full mt-3 bg-red-900/30 hover:bg-red-900/50 border border-red-700/50 text-red-400 py-3 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2"
+                                           >
+                                               <Trash2 className="w-4 h-4" />
+                                               Remove Color Scheme
+                                           </button>
+                                       </>
+                                   )}
+                               </div>
+                           )}
                            {/* ... Radius and Area Color ... */}
                            <div>
                                <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 mb-2 block flex justify-between">
