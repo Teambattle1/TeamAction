@@ -4176,6 +4176,23 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                 }
 
                                                 // Then, render TARGET-only tasks (tasks that are only targets, not sources)
+                                                // Build set of task IDs currently visible under expanded sources
+                                                const visibleTargetIds = new Set<string>();
+                                                sourceTasks.forEach(sourceTask => {
+                                                    if (!collapsedSources.has(sourceTask.id)) {
+                                                        // This source is expanded, collect all its target IDs
+                                                        sourceTask.logic?.onOpen?.forEach((action: any) => {
+                                                            visibleTargetIds.add(action.targetId || action);
+                                                        });
+                                                        sourceTask.logic?.onCorrect?.forEach((action: any) => {
+                                                            visibleTargetIds.add(action.targetId || action);
+                                                        });
+                                                        sourceTask.logic?.onIncorrect?.forEach((action: any) => {
+                                                            visibleTargetIds.add(action.targetId || action);
+                                                        });
+                                                    }
+                                                });
+
                                                 const targetOnlyTasks = uniquePlaygroundPoints.filter(p => {
                                                     const isSource = p.logic?.onOpen?.length > 0 ||
                                                                    p.logic?.onCorrect?.length > 0 ||
@@ -4187,7 +4204,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                             other.logic?.onIncorrect?.some((a: any) => (a.targetId || a) === p.id)
                                                         )
                                                     );
-                                                    return isTarget && !isSource;
+                                                    // Only show if it's a target, not a source, AND not currently visible under an expanded source
+                                                    return isTarget && !isSource && !visibleTargetIds.has(p.id);
                                                 });
 
                                                 if (targetOnlyTasks.length > 0) {
