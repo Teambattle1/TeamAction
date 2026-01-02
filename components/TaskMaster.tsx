@@ -2121,11 +2121,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                     </button>
                                                     <button
                                                         onClick={() => {
-                                                            if (confirm('Delete this list?')) {
-                                                                const updated = taskLists.filter(l => l.id !== list.id);
-                                                                onUpdateTaskLists(updated);
-                                                                db.deleteTaskList(list.id);
-                                                            }
+                                                            setDeleteListConfirm({ isOpen: true, listId: list.id });
                                                         }}
                                                         className="p-2 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg transition-colors"
                                                     >
