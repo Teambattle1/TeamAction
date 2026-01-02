@@ -716,9 +716,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 setEditorOrientation(defaultOrientation);
             }
 
-            // Load QR scanner position from device layout
+            // Load QR scanner settings from device layout
             if (deviceLayout.qrScannerPos) {
                 setQRScannerPos(deviceLayout.qrScannerPos);
+            }
+            if (deviceLayout.qrScannerSize) {
+                setQRScannerSize(deviceLayout.qrScannerSize);
+            }
+            if (deviceLayout.qrScannerColor) {
+                setQRScannerColor(deviceLayout.qrScannerColor);
             }
         } else if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
             // Fallback to playground-level orientation for backward compatibility
