@@ -10,6 +10,7 @@ import {
 import LocationSearch from './LocationSearch';
 import AdjustGameTimeModal from './AdjustGameTimeModal';
 import QRScannerModal from './QRScannerModal';
+import ToolbarsDrawer from './ToolbarsDrawer';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { parseGPX } from '../utils/gpx';
 import { timeService } from '../services/time';
