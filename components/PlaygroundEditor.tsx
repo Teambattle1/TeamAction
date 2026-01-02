@@ -68,7 +68,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     onUpdateTaskLibrary,
     isAdmin = false,
     onStartSimulation,
-    onOpenGameSettings
+    onOpenGameSettings,
+    onExportGameToLibrary
 }) => {
     // State
     const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(null);
