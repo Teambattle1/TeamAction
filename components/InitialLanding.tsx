@@ -184,11 +184,50 @@ const MapPinButton = ({
     );
 };
 
+type GameStatusTab = 'TODAY' | 'PLANNED' | 'COMPLETED';
+
+const getGameSessionDate = (game: Game): Date => {
+  if (game.client?.playingDate) {
+    const d = new Date(game.client.playingDate);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return new Date(game.createdAt || Date.now());
+};
+
+const isGameCompleted = (game: Game): boolean => {
+  if (!game) return false;
+  if (game.state === 'ended') return true;
+
+  const points = game.points || [];
+  const playablePoints = points.filter(p => !p.isSectionHeader);
+  if (playablePoints.length === 0) return false;
+
+  return playablePoints.every(p => !!p.isCompleted);
+};
+
+const getGameStatusTab = (game: Game, now: Date): GameStatusTab => {
+  if (!game) return 'TODAY';
+  if (isGameCompleted(game)) return 'COMPLETED';
+
+  const date = getGameSessionDate(game);
+
+  const startOfToday = new Date(now);
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const startOfTomorrow = new Date(startOfToday);
+  startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+  if (date.getTime() < startOfToday.getTime()) return 'COMPLETED';
+  if (date.getTime() >= startOfTomorrow.getTime()) return 'PLANNED';
+  return 'TODAY';
+};
+
 const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, games, activeGameId, onSelectGame, authUser, onLogout }) => {
   const [view, setView] = useState<CategoryView>('HOME');
   const [showGameMenu, setShowGameMenu] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [createMenuSearchQuery, setCreateMenuSearchQuery] = useState('');
+  const [statusTab, setStatusTab] = useState<GameStatusTab>('TODAY');
   const activeGame = games.find(g => g.id === activeGameId);
 
   const filteredGames = useMemo(() => {
