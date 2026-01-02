@@ -627,6 +627,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         } catch {
             // ignore
         }
+        // IMPORTANT: Reset drag flag for next click interaction
+        // This ensures clicking the button after dragging will still open the color picker
+        qrScannerDidDrag.current = false;
         saveQRScannerSettings();
     };
 
