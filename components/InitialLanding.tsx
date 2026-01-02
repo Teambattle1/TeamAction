@@ -316,11 +316,6 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
     return filtered;
   }, [games, gameSearchQuery, statusTab]);
 
-  const filteredGamesForCreate = useMemo(() => {
-    if (!createMenuSearchQuery.trim()) return games;
-    return games.filter(game => matchesGameSearch(game.name, game.id, createMenuSearchQuery));
-  }, [games, createMenuSearchQuery]);
-
   // Dynamic Header Content
   const getHeaderContent = () => {
       switch (view) {
