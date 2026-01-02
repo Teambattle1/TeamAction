@@ -297,6 +297,26 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
       setEditedPoint(prev => ({ ...prev, tags: (prev.tags || []).filter(t => t !== tag) }));
   };
 
+  const filteredTagSuggestions = useMemo(() => {
+      const q = tagInput.trim().toLowerCase();
+      if (!q) return [];
+
+      const existing = new Set((editedPoint.tags || []).map(t => t.toLowerCase()));
+
+      return existingTags
+          .filter(t => t.toLowerCase().includes(q))
+          .filter(t => !existing.has(t.toLowerCase()))
+          .slice(0, 8);
+  }, [tagInput, existingTags, editedPoint.tags]);
+
+  const handleSelectTagSuggestion = (tag: string) => {
+      handleAddTag(tag);
+  };
+
+  const handleTagInputBlur = () => {
+      window.setTimeout(() => setShowTagSuggestions(false), 150);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editedPoint.tags || editedPoint.tags.length === 0) {
