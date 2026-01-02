@@ -2334,6 +2334,7 @@ const GameApp: React.FC = () => {
                 onToggleScores={() => setShowScores(!showScores)}
                 isGameTemplateMode={!!activeGame?.isGameTemplate}
                 onSaveGameTemplate={handleSaveGameTemplate}
+                onExportGameToLibrary={handleExportGameToLibrary}
                 onAddTask={async (type, playgroundId) => {
                     if (!activeGame) return;
                     const center = mapRef.current?.getCenter();
