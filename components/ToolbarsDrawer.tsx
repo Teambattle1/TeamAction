@@ -81,6 +81,7 @@ interface ToolbarsDrawerProps {
     // TOOLS
     onToggleChat: () => void;
     onEditGameSettings: () => void;
+    onOpenGameChooser?: () => void;
     timerConfig?: any;
     showAdjustGameTime?: boolean;
     onAdjustGameTime?: () => void;
