@@ -2532,9 +2532,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     (source.logic.onOpen?.some((a: any) => a.targetId === point.id || a === point.id))
                                 )
                             );
-                            // Use visual position while dragging, otherwise use game state position
-                            const displayX = isDraggingThis && dragVisualPosition ? dragVisualPosition.x : (point.playgroundPosition?.x || 50);
-                            const displayY = isDraggingThis && dragVisualPosition ? dragVisualPosition.y : (point.playgroundPosition?.y || 50);
+                            // Use visual position while dragging, otherwise use device-specific position
+                            const devicePos = getDevicePosition(point);
+                            const displayX = isDraggingThis && dragVisualPosition ? dragVisualPosition.x : devicePos.x;
+                            const displayY = isDraggingThis && dragVisualPosition ? dragVisualPosition.y : devicePos.y;
 
                             return (
                                 <div
