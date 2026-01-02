@@ -1759,8 +1759,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             )}
                         </div>
 
-                        {/* HUD Appearance - HIDDEN, accessed via game settings clockwheel */}
-                        <div className="hidden">
+                        {/* HUD Appearance */}
+                        <div>
                             <button
                                 onClick={() => setIsHudAppearanceCollapsed(!isHudAppearanceCollapsed)}
                                 className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
