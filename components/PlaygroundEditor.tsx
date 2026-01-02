@@ -1108,7 +1108,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                     {/* Active Zone Card */}
-                    <div className="bg-[#1e293b]/50 border border-slate-700 rounded-xl p-4 space-y-4">
+                    <div className="bg-[#1e293b]/50 border border-slate-700 rounded-xl p-4 space-y-4 hidden">
                         <div className="flex justify-between items-start">
                             <div className="flex flex-col flex-1">
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">ZONE TITLE</span>
