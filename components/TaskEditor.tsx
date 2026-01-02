@@ -377,6 +377,139 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
       return { ['--tag-bg' as any]: bg, ['--tag-fg' as any]: fg };
   };
 
+  const handleAddTranslation = async (targetLanguage: string) => {
+    if (!targetLanguage || isTranslating) return;
+
+    setIsTranslating(true);
+    try {
+      // Prepare content to translate from the base task
+      const contentToTranslate = {
+        question: editedPoint.task.question,
+        options: editedPoint.task.options,
+        answer: editedPoint.task.answer,
+        correctAnswers: editedPoint.task.correctAnswers,
+        placeholder: editedPoint.task.placeholder,
+        feedback: editedPoint.feedback ? {
+          correctMessage: editedPoint.feedback.correctMessage,
+          incorrectMessage: editedPoint.feedback.incorrectMessage,
+          hint: editedPoint.feedback.hint,
+        } : undefined,
+      };
+
+      // Call AI translation
+      const translated = await translateTaskContent(contentToTranslate, targetLanguage);
+
+      // Create new translation entry with approval states set to false
+      const newTranslation = {
+        question: translated.question,
+        questionApproved: false,
+        options: translated.options,
+        optionsApproved: false,
+        answer: translated.answer,
+        answerApproved: false,
+        correctAnswers: translated.correctAnswers,
+        correctAnswersApproved: false,
+        placeholder: translated.placeholder,
+        placeholderApproved: false,
+        feedback: translated.feedback ? {
+          correctMessage: translated.feedback.correctMessage,
+          correctMessageApproved: false,
+          incorrectMessage: translated.feedback.incorrectMessage,
+          incorrectMessageApproved: false,
+          hint: translated.feedback.hint,
+          hintApproved: false,
+        } : undefined,
+      };
+
+      // Update the task with new translation
+      setEditedPoint(prev => ({
+        ...prev,
+        task: {
+          ...prev.task,
+          translations: {
+            ...(prev.task.translations || {}),
+            [targetLanguage as any]: newTranslation,
+          },
+        },
+      }));
+
+      setSelectedTranslationLanguage('');
+    } catch (error: any) {
+      console.error('[TaskEditor] Translation error:', error);
+      const errorMessage = error?.message || '';
+      if (errorMessage.includes('AI API Key missing')) {
+        alert('Gemini API Key is missing. Please set your API key in Settings.\n\nGet a free API key at https://aistudio.google.com/app/apikey');
+      } else {
+        alert('Translation failed. Please try again.\n\n' + errorMessage);
+      }
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleRemoveTranslation = (language: string) => {
+    setEditedPoint(prev => {
+      const newTranslations = { ...(prev.task.translations || {}) };
+      delete newTranslations[language as any];
+      return {
+        ...prev,
+        task: {
+          ...prev.task,
+          translations: newTranslations,
+        },
+      };
+    });
+  };
+
+  const handleApproveTranslationField = (language: string, field: string) => {
+    setEditedPoint(prev => {
+      const translations = prev.task.translations || {};
+      const translation = translations[language as any];
+      if (!translation) return prev;
+
+      const updatedTranslation = { ...translation };
+
+      // Update the approval field
+      if (field === 'question') {
+        updatedTranslation.questionApproved = true;
+      } else if (field === 'options') {
+        updatedTranslation.optionsApproved = true;
+      } else if (field === 'answer') {
+        updatedTranslation.answerApproved = true;
+      } else if (field === 'correctAnswers') {
+        updatedTranslation.correctAnswersApproved = true;
+      } else if (field === 'placeholder') {
+        updatedTranslation.placeholderApproved = true;
+      } else if (field === 'correctMessage') {
+        updatedTranslation.feedback = {
+          ...updatedTranslation.feedback!,
+          correctMessageApproved: true,
+        };
+      } else if (field === 'incorrectMessage') {
+        updatedTranslation.feedback = {
+          ...updatedTranslation.feedback!,
+          incorrectMessageApproved: true,
+        };
+      } else if (field === 'hint') {
+        updatedTranslation.feedback = {
+          ...updatedTranslation.feedback!,
+          hintApproved: true,
+        };
+      }
+
+      return {
+        ...prev,
+        task: {
+          ...prev.task,
+          translations: {
+            ...translations,
+            [language as any]: updatedTranslation,
+          },
+        },
+      };
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editedPoint.tags || editedPoint.tags.length === 0) {
