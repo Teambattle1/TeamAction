@@ -1,27 +1,33 @@
 # Page snapshot
 
 ```yaml
-- generic [ref=e4]:
-  - button "Back to Hub" [ref=e6] [cursor=pointer]:
-    - text: Back to Hub
-    - img [ref=e7]
-  - generic [ref=e10]:
-    - img [ref=e12]
-    - heading "System Access" [level=1] [ref=e14]
-    - paragraph [ref=e15]: Authorized Personnel Only
-  - generic [ref=e16]:
-    - generic [ref=e17]:
-      - generic [ref=e18]: Email
-      - textbox "admin@teambattle.dk" [ref=e19]: thomas@teambattle.dk
-    - generic [ref=e20]:
-      - generic [ref=e21]: Password
-      - textbox "••••••••" [ref=e22]: Sommer22?
-    - button "LOGIN" [ref=e23] [cursor=pointer]:
-      - text: LOGIN
-      - img [ref=e24]
-  - generic [ref=e26]:
-    - paragraph [ref=e27]: Joining a game?
-    - button "ENTER AS PLAYER" [ref=e28] [cursor=pointer]:
-      - img [ref=e29]
-      - text: ENTER AS PLAYER
+- generic [ref=e3]:
+  - generic:
+    - img
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - button "System Settings & Tools" [ref=e8] [cursor=pointer]:
+        - img [ref=e9]
+      - generic [ref=e13]:
+        - generic [ref=e16]:
+          - paragraph [ref=e17]: OPERATOR
+          - paragraph [ref=e18]: THOMAS
+        - button "Logout" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+      - generic [ref=e25]:
+        - heading "TEAMCHALLENGE" [level=1] [ref=e26]
+        - generic [ref=e27]:
+          - paragraph [ref=e28]: OPERATION CENTER
+          - paragraph [ref=e29]: v4.2
+    - generic [ref=e32]:
+      - generic [ref=e33] [cursor=pointer]:
+        - img [ref=e37]
+        - heading "CREATE" [level=2] [ref=e41]
+      - generic [ref=e43] [cursor=pointer]:
+        - img [ref=e47]
+        - heading "EDIT" [level=2] [ref=e52]
+      - generic [ref=e54] [cursor=pointer]:
+        - img [ref=e58]
+        - heading "PLAY" [level=2] [ref=e63]
+    - paragraph [ref=e66]: POWERED BY TEAMBATTLE
 ```

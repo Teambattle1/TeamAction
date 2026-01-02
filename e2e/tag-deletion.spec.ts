@@ -24,8 +24,16 @@ test.describe('Tags - Global Purge', () => {
     // Some actions require a session; login overlay may appear after clicking.
     await maybeLogin(page);
 
+    // ensureSession only triggers login; after login we may need to click again.
+    const taskMasterHeader = page.getByText('TASK MASTER', { exact: false });
+    const alreadyOpen = await taskMasterHeader.isVisible({ timeout: 1500 }).catch(() => false);
+    if (!alreadyOpen) {
+      await page.getByText('EDIT', { exact: true }).click();
+      await page.getByText('EDIT TASK', { exact: true }).click();
+    }
+
     // TaskMaster modal
-    await expect(page.getByText('TASK MASTER', { exact: false })).toBeVisible({ timeout: 15000 });
+    await expect(taskMasterHeader).toBeVisible({ timeout: 15000 });
 
     // Open tags registry
     await page.getByText('TAGS & CATEGORIES', { exact: true }).click();
