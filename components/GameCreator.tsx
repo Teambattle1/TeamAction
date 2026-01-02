@@ -2643,6 +2643,18 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                 handleGenerateAiLogo();
             }}
         />
+        {/* Color Scheme Editor Modal */}
+        {showColorSchemeEditor && (
+            <ColorSchemeEditor
+                initialScheme={defaultTaskColorScheme}
+                onSave={(scheme) => {
+                    setDefaultTaskColorScheme(scheme);
+                    setShowColorSchemeEditor(false);
+                }}
+                onClose={() => setShowColorSchemeEditor(false)}
+                title="Game Default Color Scheme"
+            />
+        )}
     </div>
   );
 };
