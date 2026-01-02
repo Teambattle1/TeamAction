@@ -40,8 +40,9 @@ interface EditorDrawerProps {
   initialExpanded?: boolean;
   onAddTask?: (type: 'MANUAL' | 'AI' | 'LIBRARY' | 'TASKLIST', playgroundId?: string) => void;
   onExpandChange?: (expanded: boolean) => void; 
-  isGameTemplateMode?: boolean; 
+  isGameTemplateMode?: boolean;
   onSaveGameTemplate?: () => void;
+  onExportGameToLibrary?: () => void; // Export all tasks to library
   // Route Props
   routes?: GameRoute[];
   onAddRoute?: (route: GameRoute) => void;
