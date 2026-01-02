@@ -590,8 +590,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const isResizeHandle = target?.closest('.qr-resize-handle');
         if (isResizeHandle) return; // Let resize handle work
 
-        // Don't block dragging from buttons in this case - we want the QR button to be draggable
-        // if (target?.closest('button, a, input, textarea, select, [role="button"]')) return;
+        // Only start dragging if NOT clicking on the button itself
+        // The button will handle its own pointer events for click detection
+        const isButton = target?.closest('button');
+        if (isButton) return; // Button handles its own clicks
 
         e.stopPropagation();
         e.preventDefault();
