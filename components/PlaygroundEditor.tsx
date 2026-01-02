@@ -1750,6 +1750,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         </div>
                     </div>
 
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
+
                     {/* Simulator Toggle */}
                     <div className="mb-4">
                         <button
@@ -1793,6 +1796,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <span className="text-xs font-black uppercase tracking-wider">{isSimulationActive ? 'STOP SIM' : 'SIMULATOR'}</span>
                         </button>
                     </div>
+
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
 
                     {/* Device Selection */}
                     <div>
@@ -1845,6 +1851,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
 
                     {/* Orientation Selection */}
                     <div>
@@ -1945,6 +1954,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
 
                     {/* SHOW IN GAME Section */}
                     <div>
