@@ -761,7 +761,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setShowTaskStatus(activePlayground.showTaskStatus !== false);
         setShowBackground(activePlayground.showBackground !== false);
         setShowQRScanner(activePlayground.showQRScanner !== false);
-    }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts, selectedDevice, activePlayground?.showTaskScores, activePlayground?.showTaskOrder, activePlayground?.showTaskActions, activePlayground?.showTaskNames, activePlayground?.showTaskStatus, activePlayground?.showBackground, activePlayground?.showQRScanner]);
+    }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerColor, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerPos, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerSize, selectedDevice, activePlayground?.showTaskScores, activePlayground?.showTaskOrder, activePlayground?.showTaskActions, activePlayground?.showTaskNames, activePlayground?.showTaskStatus, activePlayground?.showBackground, activePlayground?.showQRScanner]);
 
     // Load last used device when switching playgrounds
     useEffect(() => {
