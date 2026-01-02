@@ -6,7 +6,7 @@ import {
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut,
     Maximize, Lock, Unlock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
     Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight, ChevronDown,
-    Wand2, Zap, CheckCircle, XCircle, GripHorizontal, AlertTriangle, QrCode, Target, Loader2, MapPin, Copy, Eye, PenTool
+    Wand2, Zap, CheckCircle, XCircle, GripHorizontal, AlertTriangle, QrCode, Target, Loader2, MapPin, Copy, Eye, PenTool, Trophy
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { uploadImage } from '../services/storage'; // IMPORTED
@@ -2652,6 +2652,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <QrCode className="w-4 h-4" />
                                     </button>
                                     <span className={`text-[8px] font-black uppercase tracking-widest ${showQRScanner ? 'text-orange-300' : 'text-slate-500'}`}>QR</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setShowRanking(!showRanking);
+                                        }}
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                            showRanking
+                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Show/Hide Ranking Leaderboard"
+                                        type="button"
+                                    >
+                                        <Trophy className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${showRanking ? 'text-orange-300' : 'text-slate-500'}`}>RANKING</span>
                                 </div>
                             </div>
                         </div>
