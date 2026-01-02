@@ -440,6 +440,14 @@ export interface ToolbarPositions {
   showToolboxPos?: ToolbarPosition;
   editorOrientationPos?: ToolbarPosition;
   editorShowPos?: ToolbarPosition;
+  editorToolsPos?: ToolbarPosition;
+  editorQRScannerPos?: ToolbarPosition;
+
+  // Device-specific editor toolbar positions
+  editorOrientationPosPerDevice?: Record<DeviceType, ToolbarPosition>;
+  editorShowPosPerDevice?: Record<DeviceType, ToolbarPosition>;
+  editorToolsPosPerDevice?: Record<DeviceType, ToolbarPosition>;
+  editorQRScannerPosPerDevice?: Record<DeviceType, ToolbarPosition>;
 }
 
 // ------------------------
