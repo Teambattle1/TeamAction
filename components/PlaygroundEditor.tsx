@@ -2049,6 +2049,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     <QrCode className="w-4 h-4" />
                                     <span className="text-[8px] font-black uppercase">QR</span>
                                 </button>
+                                <button
+                                    onClick={() => setShowRanking(!showRanking)}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showRanking ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                    title="Show/Hide Ranking Popup"
+                                >
+                                    <Trophy className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">RANK</span>
+                                </button>
                             </div>
                         )}
                     </div>
