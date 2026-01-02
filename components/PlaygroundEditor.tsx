@@ -1116,7 +1116,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
             if (logoUrl) {
                 console.log('[Logo Search] Found logo:', logoUrl);
-                updateTask({ iconUrl: logoUrl });
+                if (editingCompletedIcon) {
+                    updateTask({ completedIconUrl: logoUrl });
+                } else {
+                    updateTask({ iconUrl: logoUrl });
+                }
                 setShowLogoPrompt(false);
                 setLogoCompanyName('');
             } else {
