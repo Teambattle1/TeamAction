@@ -675,8 +675,11 @@ const GameApp: React.FC = () => {
       setMode(GameMode.PLAY);
       setShowLanding(false);
 
+      // Set volume to 80% on game load (as requested)
+      setGlobalVolume(80);
+
       const teams = await db.fetchTeams(gameId);
-      const myTeam = teams.find(t => t.name === teamName); 
+      const myTeam = teams.find(t => t.name === teamName);
       if (myTeam) {
           setCurrentTeam(myTeam);
       }
