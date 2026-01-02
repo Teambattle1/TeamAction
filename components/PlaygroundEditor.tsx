@@ -671,6 +671,29 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Deduplicate to prevent "same key" errors
     const uniquePlaygroundPoints = Array.from(new Map(playgroundPoints.map(p => [p.id, p])).values());
 
+    // Device-specific position helpers
+    const getDevicePosition = (point: GamePoint): { x: number; y: number } => {
+        // Priority: devicePositions[selectedDevice] > playgroundPosition > default
+        if (point.devicePositions?.[selectedDevice]) {
+            return point.devicePositions[selectedDevice];
+        }
+        // Fallback to legacy playgroundPosition
+        if (point.playgroundPosition) {
+            return point.playgroundPosition;
+        }
+        // Default position
+        return { x: 50, y: 50 };
+    };
+
+    const setDevicePosition = (point: GamePoint, position: { x: number; y: number }): Partial<GamePoint> => {
+        // Store in device-specific position
+        const devicePositions = {
+            ...point.devicePositions,
+            [selectedDevice]: position
+        };
+        return { devicePositions };
+    };
+
     // Handlers
     const updatePlayground = (updates: Partial<Playground>) => {
         if (!activePlayground) return;
