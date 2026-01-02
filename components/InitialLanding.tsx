@@ -641,28 +641,57 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
                 
                 {/* Session Selector (Only shown in Edit and Play Menus) */}
                 {(view === 'EDIT_MENU' || view === 'PLAY_MENU') && (
-                    <div className="relative z-20 animate-in slide-in-from-bottom-2 duration-500 delay-100">
-                        <button 
+                    <div className="relative z-20 animate-in slide-in-from-bottom-2 duration-500 delay-100 flex flex-col items-center gap-4">
+                        <button
                             onClick={() => setShowGameMenu(!showGameMenu)}
                             className={`flex items-center gap-3 px-8 py-4 bg-slate-900/80 hover:bg-slate-800 text-white rounded-full shadow-2xl border transition-all font-black uppercase text-xs tracking-widest hover:scale-105 active:scale-95 backdrop-blur-md ${activeGame ? 'border-orange-500/50 shadow-orange-900/20' : 'border-slate-700 hover:border-slate-500'}`}
                         >
-                            <span className="max-w-[250px] truncate">{activeGame ? activeGame.name : "SELECT SESSION"}</span>
+                            <span className="max-w-[250px] truncate">{activeGame ? `[${getGameDisplayId(activeGame.id)}] ${activeGame.name}` : "SELECT SESSION"}</span>
                             <ChevronDown className={`w-4 h-4 transition-transform ${showGameMenu ? 'rotate-180' : ''}`} />
                         </button>
-                        
+
                         {showGameMenu && (
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
-                                {games.length === 0 && <div className="p-6 text-xs text-slate-500 font-bold text-center uppercase tracking-widest">NO GAMES FOUND</div>}
-                                {games.map(game => (
-                                    <button
-                                        key={game.id}
-                                        onClick={() => { onSelectGame(game.id); setShowGameMenu(false); }}
-                                        className={`w-full text-left px-5 py-4 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-between ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
-                                    >
-                                        <span className="truncate">{game.name}</span>
-                                        {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange]" />}
-                                    </button>
-                                ))}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-96 flex flex-col animate-in slide-in-from-top-2">
+                                {/* Search Input */}
+                                <div className="sticky top-0 p-4 border-b border-slate-700 bg-slate-900">
+                                    <div className="relative flex items-center">
+                                        <Search className="absolute left-3 w-4 h-4 text-slate-500 pointer-events-none" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search by ID or name..."
+                                            value={gameSearchQuery}
+                                            onChange={(e) => setGameSearchQuery(e.target.value)}
+                                            className="w-full pl-10 pr-8 py-2 bg-slate-800 text-white text-xs rounded-lg border border-slate-700 focus:border-orange-500 focus:outline-none placeholder-slate-500"
+                                            autoFocus
+                                        />
+                                        {gameSearchQuery && (
+                                            <button
+                                                onClick={() => setGameSearchQuery('')}
+                                                className="absolute right-2 p-1 hover:bg-slate-700 rounded transition-colors"
+                                            >
+                                                <XIcon className="w-4 h-4 text-slate-400 hover:text-white" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Game List */}
+                                <div className="overflow-y-auto">
+                                    {filteredGames.length === 0 && <div className="p-6 text-xs text-slate-500 font-bold text-center uppercase tracking-widest">NO GAMES FOUND</div>}
+                                    {filteredGames.map(game => (
+                                        <button
+                                            key={game.id}
+                                            onClick={() => { onSelectGame(game.id); setShowGameMenu(false); setGameSearchQuery(''); }}
+                                            className={`w-full text-left px-5 py-4 text-xs font-bold uppercase border-b border-slate-800 hover:bg-slate-800 transition-colors flex items-center justify-between ${game.id === activeGameId ? 'text-orange-500 bg-orange-900/10' : 'text-slate-300'}`}
+                                        >
+                                            <span className="truncate flex items-center gap-2">
+                                                <span className="text-orange-400 font-black">[{getGameDisplayId(game.id)}]</span>
+                                                <span>{game.name}</span>
+                                            </span>
+                                            {game.id === activeGameId && <div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_orange] shrink-0" />}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                         {showGameMenu && <div className="fixed inset-0 z-40" onClick={() => setShowGameMenu(false)} />}
