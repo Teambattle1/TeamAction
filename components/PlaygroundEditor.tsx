@@ -3765,12 +3765,36 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                 })
                                                 : taskActionInfo;
 
-                                            return sortedTasks.map(({ point, hasSourceOnOpen, hasSourceOnCorrect, hasSourceOnIncorrect, hasTargetOnOpen, hasTargetOnCorrect, hasTargetOnIncorrect }, index) => {
+                                            // Build task list with group headers
+                                            const renderedItems: JSX.Element[] = [];
+                                            let lastCategory: number | null = null;
+
+                                            sortedTasks.forEach(({ point, hasSourceOnOpen, hasSourceOnCorrect, hasSourceOnIncorrect, hasTargetOnOpen, hasTargetOnCorrect, hasTargetOnIncorrect }, index) => {
                                             const hasActions = hasSourceOnOpen || hasSourceOnCorrect || hasSourceOnIncorrect;
+                                            const hasTargets = hasTargetOnOpen || hasTargetOnCorrect || hasTargetOnIncorrect;
                                             const isMarked = markedTaskIds.has(point.id);
                                             const isHovered = hoveredTaskId === point.id;
                                             const isSourceTask = taskSortMode === 'actions' && hasActions;
-                                            return (
+
+                                            // Add group header if category changes (ACTION mode only)
+                                            if (taskSortMode === 'actions') {
+                                                const currentCategory = hasActions ? 3 : hasTargets ? 2 : 1;
+                                                if (lastCategory !== currentCategory) {
+                                                    renderedItems.push(
+                                                        <div key={`header-${currentCategory}`} className="flex items-center gap-2 py-2 px-2 mt-3 mb-1">
+                                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent" />
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                                {currentCategory === 3 ? '\u26a1 SOURCE Tasks' : currentCategory === 2 ? '\ud83c\udfaf TARGET Tasks' : '\ud83d\udccb No Actions'}
+                                                            </span>
+                                                            <div className="flex-1 h-px bg-gradient-to-r from-slate-600 via-transparent to-transparent" />
+                                                        </div>
+                                                    );
+                                                    lastCategory = currentCategory;
+                                                }
+                                            }
+
+                                            // Add task item
+                                            renderedItems.push(
                                                 <div
                                                     key={point.id}
                                                     className={`px-3 py-2 border rounded transition-colors group flex items-center gap-2 ${
