@@ -306,7 +306,9 @@ export interface GamePoint {
 
   // Appearance
   iconId: IconId;
-  iconUrl?: string; 
+  iconUrl?: string;
+  completedIconId?: IconId; // Icon to show when task is completed
+  completedIconUrl?: string; // Custom icon URL to show when task is completed
   areaColor?: string; 
 
   // Logic & Scoring
