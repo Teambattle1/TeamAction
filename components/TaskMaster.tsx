@@ -771,6 +771,56 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setShowGameSelector(false);
     };
 
+    const handleBulkAddTags = async () => {
+        if (!bulkTagInput.trim()) {
+            setNotification({ message: 'Please enter at least one tag', type: 'warning' });
+            return;
+        }
+
+        // Parse tags from input (comma or space separated)
+        const newTags = bulkTagInput
+            .split(/[,\s]+/)
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0);
+
+        if (newTags.length === 0) {
+            setNotification({ message: 'Please enter at least one tag', type: 'warning' });
+            return;
+        }
+
+        // Update selected tasks with new tags (merge with existing)
+        const updatedLibrary = library.map(task => {
+            if (selectedTemplateIds.includes(task.id)) {
+                const existingTags = Array.isArray(task.tags) ? task.tags : [];
+                const uniqueTags = [...new Set([...existingTags, ...newTags])];
+                return { ...task, tags: uniqueTags };
+            }
+            return task;
+        });
+
+        setLibrary(updatedLibrary);
+        onUpdateTaskLibrary(updatedLibrary);
+
+        // Update in database
+        for (const taskId of selectedTemplateIds) {
+            const task = updatedLibrary.find(t => t.id === taskId);
+            if (task) {
+                await db.saveTemplate(task);
+            }
+        }
+
+        setNotification({
+            message: `✓ Added ${newTags.length} tag${newTags.length > 1 ? 's' : ''} to ${selectedTemplateIds.length} task${selectedTemplateIds.length > 1 ? 's' : ''}`,
+            type: 'success'
+        });
+
+        // Reset
+        setBulkTagInput('');
+        setShowBulkTagModal(false);
+        setSelectedTemplateIds([]);
+        setBulkSelectionMode(false);
+    };
+
     const handleAddSingleTaskToGame = async (game: Game) => {
         if (!singleTaskGameSelector) return;
         const task = library.find(t => t.id === singleTaskGameSelector.taskId);
