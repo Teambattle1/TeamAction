@@ -676,6 +676,30 @@ const GameApp: React.FC = () => {
       }
   };
 
+  const handleAreaColorClick = (point: GamePoint) => {
+      console.log('[handleAreaColorClick] Area color circle clicked:', {
+          pointId: point.id,
+          mode,
+          isMeasuring,
+          isRelocating
+      });
+
+      // Skip if in measurement or relocation modes
+      if (isMeasuring || isRelocating) {
+          console.log('[handleAreaColorClick] Ignoring - measure or relocate mode active');
+          return;
+      }
+
+      // Always open task view (not action editor) when clicking area color circle
+      if (mode === GameMode.EDIT) {
+          console.log('[handleAreaColorClick] EDIT mode - Opening task editor:', point.id);
+          setActiveTask(point);
+      } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
+          console.log('[handleAreaColorClick] PLAY/INSTRUCTOR mode - Opening task modal:', point.id);
+          setActiveTaskModalId(point.id);
+      }
+  };
+
   const handleMapClick = async (coord: Coordinate) => {
       // DISABLED: Measure tool should ONLY work with tasks, not random map points
       // Users should click tasks to measure between them
