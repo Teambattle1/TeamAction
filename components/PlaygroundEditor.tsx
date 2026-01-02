@@ -3511,36 +3511,53 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             >
                                 {/* QR Scan Button - Resizable, draggable, color customizable */}
                                 <button
-                                    onClick={(e) => {
+                                    onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        // Track button position for click detection (separate from wrapper's drag)
+                                        qrScannerButtonDownPos.current = { x: e.clientX, y: e.clientY };
+                                        qrScannerHasMoved.current = false;
+                                    }}
+                                    onPointerMove={(e) => {
+                                        // Track if user moved significantly (threshold: 5px)
+                                        const deltaX = Math.abs(e.clientX - qrScannerButtonDownPos.current.x);
+                                        const deltaY = Math.abs(e.clientY - qrScannerButtonDownPos.current.y);
+                                        if (deltaX > 5 || deltaY > 5) {
+                                            qrScannerHasMoved.current = true;
+                                        }
+                                    }}
+                                    onPointerUp={(e) => {
                                         e.stopPropagation();
 
-                                        // In simulation mode, always allow click to open scanner
-                                        if (isSimulationActive && !qrScannerDidDrag.current) {
+                                        // Only count as click if there was minimal movement
+                                        if (qrScannerHasMoved.current) {
+                                            return; // This was a drag, not a click
+                                        }
+
+                                        // In simulation mode, always open scanner on single click
+                                        if (isSimulationActive) {
                                             handleQRScanClick();
                                             return;
                                         }
 
                                         // In editor mode, detect double-click for color picker
-                                        if (!isSimulationActive) {
-                                            qrScannerClickCount.current++;
+                                        qrScannerClickCount.current++;
 
-                                            if (qrScannerClickCount.current === 1) {
-                                                // First click - set timer to detect double-click
-                                                if (qrScannerClickTimer.current) {
-                                                    clearTimeout(qrScannerClickTimer.current);
-                                                }
-                                                qrScannerClickTimer.current = setTimeout(() => {
-                                                    // Single click - do nothing, just allow drag/resize
-                                                    qrScannerClickCount.current = 0;
-                                                }, 300);
-                                            } else if (qrScannerClickCount.current === 2) {
-                                                // Double-click detected - open color picker
-                                                if (qrScannerClickTimer.current) {
-                                                    clearTimeout(qrScannerClickTimer.current);
-                                                }
-                                                qrScannerClickCount.current = 0;
-                                                handleQRScanClick(); // Opens color picker
+                                        if (qrScannerClickCount.current === 1) {
+                                            // First click - set timer to detect double-click
+                                            if (qrScannerClickTimer.current) {
+                                                clearTimeout(qrScannerClickTimer.current);
                                             }
+                                            qrScannerClickTimer.current = setTimeout(() => {
+                                                // Single click - do nothing, just allow drag/resize
+                                                qrScannerClickCount.current = 0;
+                                            }, 300);
+                                        } else if (qrScannerClickCount.current === 2) {
+                                            // Double-click detected - open color picker
+                                            if (qrScannerClickTimer.current) {
+                                                clearTimeout(qrScannerClickTimer.current);
+                                            }
+                                            qrScannerClickCount.current = 0;
+                                            handleQRScanClick(); // Opens color picker
                                         }
                                     }}
                                     style={{
@@ -3552,6 +3569,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         isSimulationActive ? 'cursor-pointer' : 'cursor-move'
                                     }`}
                                     title={isSimulationActive ? 'Click to scan QR code' : 'Double-click to change color | Drag to move | Resize from corner'}
+                                    type="button"
                                 >
                                     <QrCode className="w-4 h-4" />
                                     <span className={qrScannerSize.width < 120 ? 'text-[10px]' : 'text-xs'}>
