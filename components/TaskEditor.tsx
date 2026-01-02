@@ -133,7 +133,7 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     feedback: {
         correctMessage: 'Correct!',
         showCorrectMessage: true,
-        incorrectMessage: 'Incorrect, try again.',
+        incorrectMessage: 'Sorry! Not quite right...',
         showIncorrectMessage: true,
         hint: '',
         hintCost: 10,
