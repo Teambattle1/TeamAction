@@ -1304,14 +1304,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     // Pan/Zoom, etc.
     const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const scaleAmount = -e.deltaY * 0.001;
-            setZoom(z => Math.max(0.2, Math.min(5, z * (1 + scaleAmount))));
-        } else if (!isBackgroundLocked) {
-            // Pan (only if background is not locked)
-            setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
-        }
+        // Default behavior: zoom in/out
+        e.preventDefault();
+        const scaleAmount = -e.deltaY * 0.001;
+        setZoom(z => Math.max(0.2, Math.min(5, z * (1 + scaleAmount))));
+
+        // Note: Removed panning on scroll - users can drag to pan instead
+        // This makes mousewheel zoom the primary interaction, which is more intuitive
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
