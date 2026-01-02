@@ -2120,9 +2120,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
                 </div>
 
-                {/* Draggable ORIENTATION Toolbar */}
+                {/* Draggable ORIENTATION Toolbar - HIDDEN - Now in left drawer */}
                 <div
-                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    className="hidden absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: orientationToolbarPos.x, top: orientationToolbarPos.y }}
                     onPointerDown={handleOrientationPointerDown}
                     onPointerMove={handleOrientationPointerMove}
