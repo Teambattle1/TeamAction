@@ -3419,25 +3419,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                                         {/* OK/Wrong Answer Marker - Green Check (correct) or Red X (wrong) */}
                                         {showTaskStatus && (point.showStatusMarkers ?? true) && (point.isCompleted || (point as any).answeredIncorrectly) && (
-                                            <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${
-                                                (point as any).answeredIncorrectly ? 'opacity-90' : 'opacity-80'
-                                            }`}>
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                 {(point as any).answeredIncorrectly ? (
-                                                    // Red X for incorrect
-                                                    <div className="relative">
-                                                        <XCircle className="w-16 h-16 text-red-500 drop-shadow-[0_2px_8px_rgba(239,68,68,0.8)]" strokeWidth={3} />
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="w-12 h-12 bg-red-500/20 rounded-full blur-xl"></div>
-                                                        </div>
-                                                    </div>
+                                                    // Red X for incorrect - fills entire icon
+                                                    <XCircle className="w-full h-full text-red-500 drop-shadow-[0_4px_12px_rgba(239,68,68,0.9)]" strokeWidth={2} />
                                                 ) : (
-                                                    // Green check for correct
-                                                    <div className="relative">
-                                                        <CheckCircle className="w-16 h-16 text-green-500 drop-shadow-[0_2px_8px_rgba(34,197,94,0.8)]" strokeWidth={3} />
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="w-12 h-12 bg-green-500/20 rounded-full blur-xl"></div>
-                                                        </div>
-                                                    </div>
+                                                    // Green checkmark for correct - fills entire icon
+                                                    <CheckCircle className="w-full h-full text-green-500 drop-shadow-[0_4px_12px_rgba(34,197,94,0.9)]" strokeWidth={2} />
                                                 )}
                                             </div>
                                         )}
