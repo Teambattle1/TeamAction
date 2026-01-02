@@ -489,7 +489,7 @@ const GameManager: React.FC<GameManagerProps> = ({
 
                     <button
                       onClick={() => {
-                        if (confirm('Delete template?')) onDeleteGame(template.id);
+                        setConfirmModal({ isOpen: true, gameId: template.id, isTemplate: true });
                       }}
                       className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                       title="Delete Template"
