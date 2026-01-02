@@ -289,7 +289,9 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   showScores,
   onToggleScores,
   onStartSimulation,
-  onShowPlayzoneChoice
+  onShowPlayzoneChoice,
+  hoveredPlaygroundId,
+  onHoverPlayground
 }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded); 
   const [isSaved, setIsSaved] = useState(false);
