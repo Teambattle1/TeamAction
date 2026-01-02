@@ -1,8 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Game } from '../types';
-import { X, KeyRound, Eye, EyeOff, Trash2, Download, Book, Zap, Loader2, Check } from 'lucide-react';
+import { X, KeyRound, Eye, EyeOff, Trash2, Download, Book, Zap, Loader2, Check, Volume2, Play } from 'lucide-react';
 import { generateFeatureCatalogPDF } from '../utils/pdfGenerator';
 import { migrateAllTasksToGpsEnabled } from '../services/migrationGpsActivation';
+import {
+  CORRECT_SOUNDS,
+  INCORRECT_SOUNDS,
+  getGlobalCorrectSound,
+  getGlobalIncorrectSound,
+  getGlobalVolume,
+  setGlobalCorrectSound,
+  setGlobalIncorrectSound,
+  setGlobalVolume,
+  playSound
+} from '../utils/sounds';
 
 interface AdminModalProps {
   games: Game[];
