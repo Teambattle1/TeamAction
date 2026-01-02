@@ -2190,14 +2190,15 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                        <div className="space-y-4">
                                            {Object.entries(editedPoint.task.translations).map(([language, translation]) => {
                                                const allApproved =
-                                                   translation.questionApproved !== false &&
-                                                   (translation.options ? translation.optionsApproved !== false : true) &&
-                                                   (translation.answer ? translation.answerApproved !== false : true) &&
-                                                   (translation.correctAnswers ? translation.correctAnswersApproved !== false : true) &&
+                                                   translation.questionApproved === true &&
+                                                   (translation.options ? translation.optionsApproved === true : true) &&
+                                                   (translation.answer ? translation.answerApproved === true : true) &&
+                                                   (translation.correctAnswers ? translation.correctAnswersApproved === true : true) &&
+                                                   (translation.placeholder ? translation.placeholderApproved === true : true) &&
                                                    (translation.feedback ? (
-                                                       translation.feedback.correctMessageApproved !== false &&
-                                                       translation.feedback.incorrectMessageApproved !== false &&
-                                                       translation.feedback.hintApproved !== false
+                                                       (translation.feedback.correctMessage ? translation.feedback.correctMessageApproved === true : true) &&
+                                                       (translation.feedback.incorrectMessage ? translation.feedback.incorrectMessageApproved === true : true) &&
+                                                       (translation.feedback.hint ? translation.feedback.hintApproved === true : true)
                                                    ) : true);
 
                                                const isExpanded = expandedLanguages.has(language);
