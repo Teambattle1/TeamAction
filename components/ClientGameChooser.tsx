@@ -36,7 +36,7 @@ const ClientGameChooser: React.FC<ClientGameChooserProps> = ({ onClose, onSelect
   };
 
   const filteredGames = games.filter(game =>
-    game.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    matchesGameSearch(game.name, game.id, searchQuery) ||
     game.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
