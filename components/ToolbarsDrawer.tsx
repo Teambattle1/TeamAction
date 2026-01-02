@@ -514,16 +514,55 @@ const ToolbarsDrawer: React.FC<ToolbarsDrawerProps> = ({
                                     </button>
                                 )}
 
-                                {onToggleVisibleToolbars && (
+                                <div className="relative">
                                     <button
-                                        onClick={onToggleVisibleToolbars}
+                                        onClick={() => setShowToolbarsMenu(!showToolbarsMenu)}
                                         className="w-full py-2 px-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 transition-all"
-                                        title="Toggle Toolbars Visibility"
+                                        title="Select Toolbars to Display"
                                     >
                                         <GripHorizontal className="w-4 h-4" />
                                         TOOLBARS
                                     </button>
-                                )}
+
+                                    {showToolbarsMenu && (
+                                        <div className="absolute top-full mt-2 left-0 right-0 bg-slate-900 border-2 border-indigo-600 rounded-lg p-3 shadow-xl z-50 space-y-2">
+                                            <div className="text-[9px] font-black text-indigo-300 uppercase tracking-widest mb-2">Show Toolbars on Map:</div>
+
+                                            {[
+                                                { id: 'mapmode', label: 'MAPMODE', color: 'red' },
+                                                { id: 'layers', label: 'LAYERS', color: 'cyan' },
+                                                { id: 'location', label: 'LOCATION', color: 'green' },
+                                                { id: 'pins', label: 'PINS', color: 'yellow' },
+                                                { id: 'show', label: 'SHOW', color: 'purple' },
+                                                { id: 'tools', label: 'TOOLS', color: 'slate' },
+                                            ].map(toolbar => (
+                                                <button
+                                                    key={toolbar.id}
+                                                    onClick={() => {
+                                                        setVisibleToolbars(prev => ({
+                                                            ...prev,
+                                                            [toolbar.id]: !prev[toolbar.id]
+                                                        }));
+                                                    }}
+                                                    className={`w-full px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-all flex items-center gap-2 ${
+                                                        visibleToolbars[toolbar.id]
+                                                            ? `bg-${toolbar.color}-700 text-white border-2 border-${toolbar.color}-500`
+                                                            : 'bg-slate-800 text-slate-400 border-2 border-slate-700 hover:text-slate-300'
+                                                    }`}
+                                                >
+                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                                        visibleToolbars[toolbar.id]
+                                                            ? `bg-${toolbar.color}-600 border-${toolbar.color}-400`
+                                                            : 'border-slate-600'
+                                                    }`}>
+                                                        {visibleToolbars[toolbar.id] && <Check className="w-3 h-3 text-white" />}
+                                                    </div>
+                                                    {toolbar.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
