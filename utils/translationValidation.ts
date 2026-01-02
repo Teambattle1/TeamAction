@@ -34,11 +34,18 @@ export const isTranslationFullyApproved = (translation: TaskTranslation): boolea
 
   // Check feedback fields if feedback exists
   if (translation.feedback) {
-    checks.push(
-      translation.feedback.correctMessage ? isFieldApproved(translation as any, 'correctMessage') : true,
-      translation.feedback.incorrectMessage ? isFieldApproved(translation as any, 'incorrectMessage') : true,
-      translation.feedback.hint ? isFieldApproved(translation as any, 'hint') : true
-    );
+    // Check correct message
+    if (translation.feedback.correctMessage) {
+      checks.push(translation.feedback.correctMessageApproved === true);
+    }
+    // Check incorrect message
+    if (translation.feedback.incorrectMessage) {
+      checks.push(translation.feedback.incorrectMessageApproved === true);
+    }
+    // Check hint
+    if (translation.feedback.hint) {
+      checks.push(translation.feedback.hintApproved === true);
+    }
   }
 
   // All checks must pass
