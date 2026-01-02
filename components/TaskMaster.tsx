@@ -1768,7 +1768,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                                         onChange={(e) => setShowOnlyInvalidAnswers(e.target.checked)}
                                                                         className="w-4 h-4 rounded border-red-600 bg-slate-800 cursor-pointer accent-red-600"
                                                                     />
-                                                                    <span className="text-red-400">⚠️ Only With Invalid Answers</span>
+                                                                    <span className="text-red-400 flex-1">⚠️ Only With Invalid Answers</span>
+                                                                    {getInvalidAnswersCount() > 0 && (
+                                                                        <span className="bg-red-600 text-white text-[9px] px-2 py-0.5 rounded-full font-black">
+                                                                            {getInvalidAnswersCount()}
+                                                                        </span>
+                                                                    )}
                                                                 </label>
 
                                                                 <div className="flex flex-wrap gap-2">
