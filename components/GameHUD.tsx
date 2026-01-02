@@ -547,11 +547,90 @@ const GameHUD = forwardRef<GameHUDHandle, GameHUDProps>(({    accuracy, mode, to
         } catch {
             // ignore
         }
-        saveToolbarPositions();
+        saveQRScannerSettings();
+    };
+
+    // QR Scanner resize handlers
+    const handleQRScannerResizeDown = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizingQRScanner(true);
+        qrScannerResizeStart.current = {
+            width: qrScannerSize.width,
+            height: qrScannerSize.height,
+            x: e.clientX,
+            y: e.clientY
+        };
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+
+    const handleQRScannerResizeMove = (e: React.PointerEvent) => {
+        if (!isResizingQRScanner) return;
+        e.stopPropagation();
+        e.preventDefault();
+
+        const deltaX = e.clientX - qrScannerResizeStart.current.x;
+        const deltaY = e.clientY - qrScannerResizeStart.current.y;
+        const newWidth = Math.max(100, qrScannerResizeStart.current.width + deltaX);
+        const newHeight = Math.max(40, qrScannerResizeStart.current.height + deltaY);
+
+        setQRScannerSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleQRScannerResizeUp = (e: React.PointerEvent) => {
+        if (!isResizingQRScanner) return;
+        setIsResizingQRScanner(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
+        saveQRScannerSettings();
+    };
+
+    // Save QR Scanner settings to playground device layout
+    const saveQRScannerSettings = async () => {
+        if (!targetPlaygroundId || !playgrounds || !onUpdateGame || !activeGame) return;
+
+        const playground = playgrounds.find(p => p.id === targetPlaygroundId);
+        if (!playground) return;
+
+        const device = detectedDevice;
+        const updatedDeviceLayouts = {
+            ...playground.deviceLayouts,
+            [device]: {
+                ...playground.deviceLayouts?.[device],
+                qrScannerPos,
+                qrScannerSize,
+                qrScannerColor
+            }
+        };
+
+        // Update the playground in the game
+        const updatedPlaygrounds = playgrounds.map(p =>
+            p.id === targetPlaygroundId
+                ? { ...p, deviceLayouts: updatedDeviceLayouts }
+                : p
+        );
+
+        try {
+            await onUpdateGame({
+                ...activeGame,
+                playgrounds: updatedPlaygrounds
+            });
+            console.log('[GameHUD] QR Scanner settings saved');
+        } catch (error) {
+            console.error('[GameHUD] Error saving QR scanner settings:', error);
+        }
     };
 
     // QR Scanner handler
     const handleQRScanClick = async () => {
+        // In EDIT mode, show color picker instead of scanning
+        if (mode === GameMode.EDIT) {
+            setShowQRColorPicker(true);
+            return;
+        }
         if (isQRScannerActive) {
             // Stop scanning
             if (qrStreamRef.current) {
