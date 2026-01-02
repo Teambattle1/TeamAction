@@ -136,6 +136,22 @@ export interface TaskSettings {
   showCorrectAnswerOnMiss: boolean;
 }
 
+// Color Scheme for Task Visual Design
+export interface TaskColorScheme {
+  id?: string; // Optional ID for saving/loading schemes
+  name?: string; // Optional name for the scheme
+  backgroundColor: string; // Main task background
+  headerColor: string; // Task header/title area
+  questionColor: string; // Question text color
+  optionBackgroundColor: string; // Answer option background
+  optionTextColor: string; // Answer option text
+  correctColor: string; // Correct answer highlight
+  incorrectColor: string; // Incorrect answer highlight
+  buttonColor: string; // Submit/action buttons
+  buttonTextColor: string; // Button text
+  borderColor: string; // Borders and dividers
+}
+
 export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click' | 'ibeacon';
 
 export type PointCompletionLogic = 
@@ -291,7 +307,11 @@ export interface GamePoint {
   completionLogic?: PointCompletionLogic;
   instructorNotes?: string;
   showStatusMarkers?: boolean; // Show OK/Wrong answer markers (✓/✗) when task is completed
-  
+
+  // Visual Design
+  colorScheme?: TaskColorScheme; // Local color scheme override (only for this task in this game)
+  isColorSchemeLocked?: boolean; // If true, prevents color scheme changes when imported from library
+
   // Event Logic
   logic?: TaskLogic;
   
@@ -337,6 +357,10 @@ export interface TaskTemplate {
   qrCodeString?: string;
   nfcTagId?: string;
   ibeaconUUID?: string;
+
+  // Visual Design (global library)
+  colorScheme?: TaskColorScheme; // Color scheme for this template
+  isColorSchemeLocked?: boolean; // If true, prevents overriding when used in games
 
   // Client Submission Fields
   submissionStatus?: 'pending' | 'approved' | 'rejected';
@@ -508,6 +532,7 @@ export interface Game {
   designConfig?: DesignConfig;
   taskConfig?: GameTaskConfiguration; // New Task Configuration
   mapConfig?: MapConfiguration; // New Map Configuration
+  defaultTaskColorScheme?: TaskColorScheme; // Default color scheme for all tasks in this game
   
   // Game Lifecycle / End Game
   state?: 'active' | 'ending' | 'ended';
