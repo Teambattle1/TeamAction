@@ -221,7 +221,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     {/* Game Badge */}
                     {selectedGame && (
                         <div className="bg-orange-600/20 border border-orange-500/50 text-orange-500 px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest mb-8 shadow-[0_0_15px_rgba(234,88,12,0.3)]">
-                            {selectedGame.name}
+                            [{getGameDisplayId(selectedGame.id)}] {selectedGame.name}
                         </div>
                     )}
 
