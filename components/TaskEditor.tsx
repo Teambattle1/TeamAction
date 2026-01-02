@@ -474,6 +474,55 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
     });
   };
 
+  const handleUpdateTranslationField = (language: string, field: string, value: any) => {
+    setEditedPoint(prev => {
+      const translations = prev.task.translations || {};
+      const translation = translations[language as any];
+      if (!translation) return prev;
+
+      const updatedTranslation = { ...translation };
+
+      // Update the field value
+      if (field === 'question') {
+        updatedTranslation.question = value;
+      } else if (field === 'options') {
+        updatedTranslation.options = value;
+      } else if (field === 'answer') {
+        updatedTranslation.answer = value;
+      } else if (field === 'correctAnswers') {
+        updatedTranslation.correctAnswers = value;
+      } else if (field === 'placeholder') {
+        updatedTranslation.placeholder = value;
+      } else if (field === 'correctMessage') {
+        updatedTranslation.feedback = {
+          ...updatedTranslation.feedback!,
+          correctMessage: value,
+        };
+      } else if (field === 'incorrectMessage') {
+        updatedTranslation.feedback = {
+          ...updatedTranslation.feedback!,
+          incorrectMessage: value,
+        };
+      } else if (field === 'hint') {
+        updatedTranslation.feedback = {
+          ...updatedTranslation.feedback!,
+          hint: value,
+        };
+      }
+
+      return {
+        ...prev,
+        task: {
+          ...prev.task,
+          translations: {
+            ...translations,
+            [language as any]: updatedTranslation,
+          },
+        },
+      };
+    });
+  };
+
   const handleApproveTranslationField = (language: string, field: string) => {
     setEditedPoint(prev => {
       const translations = prev.task.translations || {};
