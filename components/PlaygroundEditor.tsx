@@ -1109,6 +1109,19 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (dragTaskRef.current.id) return;
+
+        // Track mouse position in draw mode
+        if (drawMode.active && drawMode.sourceTaskId && canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            setDrawMode(prev => ({
+                ...prev,
+                mousePosition: {
+                    x: ((e.clientX - rect.left) / rect.width) * 100,
+                    y: ((e.clientY - rect.top) / rect.height) * 100
+                }
+            }));
+        }
+
         if (isDragging) {
             setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
         }
