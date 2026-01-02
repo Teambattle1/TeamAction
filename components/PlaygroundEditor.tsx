@@ -1284,7 +1284,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             }
         });
 
-        // Within each row, sort by X and snap to grid
+        // Within each row, sort by X and snap to grid while preserving spacing
         const GRID_SIZE = 10; // Grid spacing (10% intervals)
         const snappedMarkedPoints = rows.flatMap((row, rowIndex) => {
             const baseY = getDevicePosition(row[0]).y;
@@ -1294,15 +1294,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 return aX - bX;
             });
 
-            // Snap each point to the nearest grid position
-            return sortedByX.map((point) => {
+            // Snap Y coordinate to grid
+            const snappedY = Math.round(baseY / GRID_SIZE) * GRID_SIZE;
+
+            // Only snap the first icon's X to grid, then preserve relative spacing
+            return sortedByX.map((point, index) => {
                 const currentPos = getDevicePosition(point);
+                let snappedX;
 
-                // Snap X to nearest grid point
-                const snappedX = Math.round(currentPos.x / GRID_SIZE) * GRID_SIZE;
-
-                // Snap Y to nearest grid point
-                const snappedY = Math.round(baseY / GRID_SIZE) * GRID_SIZE;
+                if (index === 0) {
+                    // First icon: snap to nearest grid point
+                    snappedX = Math.round(currentPos.x / GRID_SIZE) * GRID_SIZE;
+                } else {
+                    // Subsequent icons: preserve spacing from first icon
+                    const firstIconOriginalX = getDevicePosition(sortedByX[0]).x;
+                    const firstIconSnappedX = Math.round(firstIconOriginalX / GRID_SIZE) * GRID_SIZE;
+                    const originalOffset = currentPos.x - firstIconOriginalX;
+                    snappedX = firstIconSnappedX + originalOffset;
+                }
 
                 return {
                     ...point,
