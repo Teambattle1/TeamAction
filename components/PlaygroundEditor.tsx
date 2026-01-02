@@ -1690,7 +1690,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             </div>
 
             {/* RIGHT MAIN CANVAS */}
-            <div className="flex-1 relative flex flex-col bg-[#050505]">
+            <div ref={editorRootRef} className="flex-1 relative flex flex-col bg-[#050505]">
                 {/* Drawer Toggle Button - Always Visible */}
                 <button
                     onClick={() => setIsDrawerOpen(!isDrawerOpen)}
