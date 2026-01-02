@@ -17,7 +17,8 @@ import TaskModal from './TaskModal';
 import ColorSchemeEditor from './ColorSchemeEditor';
 import { runCompleteLanguageMigration } from '../services/languageMigrationScript';
 import NotificationModal from './NotificationModal';
-import { useTagColors } from '../contexts/TagColorsContext'; 
+import { useTagColors } from '../contexts/TagColorsContext';
+import ConfirmationModal from './ConfirmationModal'; 
 
 interface TaskMasterProps {
     onClose: () => void;
