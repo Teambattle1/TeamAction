@@ -2411,11 +2411,43 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     onMouseEnter={() => setHoveredTaskId(point.id)}
                                     onMouseLeave={() => setHoveredTaskId(null)}
                                     onPointerDown={(e) => {
-                                        if (isMarkMode && !isDraggingThis) {
+                                        if (drawMode.active && drawMode.sourceTaskId && point.id !== drawMode.sourceTaskId) {
+                                            // In draw mode: clicking a target task creates the connection
+                                            e.preventDefault();
+                                            e.stopPropagation();
+
+                                            const sourceTask = uniquePlaygroundPoints.find(p => p.id === drawMode.sourceTaskId);
+                                            if (sourceTask && drawMode.trigger) {
+                                                // Create a new "unlock" action with this target
+                                                const newAction: any = {
+                                                    id: `act-${Date.now()}`,
+                                                    type: 'unlock',
+                                                    targetId: point.id
+                                                };
+
+                                                const updatedLogic = {
+                                                    ...sourceTask.logic,
+                                                    [drawMode.trigger]: [...(sourceTask.logic?.[drawMode.trigger] || []), newAction]
+                                                };
+
+                                                // Update the game with the new logic
+                                                onUpdateGame({
+                                                    ...game,
+                                                    points: game.points.map(p =>
+                                                        p.id === sourceTask.id
+                                                            ? { ...p, logic: updatedLogic }
+                                                            : p
+                                                    )
+                                                });
+
+                                                // Keep draw mode active so user can continue connecting
+                                                console.log(`Connected ${sourceTask.title} → ${point.title} via ${drawMode.trigger}`);
+                                            }
+                                        } else if (isMarkMode && !isDraggingThis) {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             toggleMarkTask(point.id);
-                                        } else {
+                                        } else if (!drawMode.active) {
                                             handleTaskPointerDown(e, point);
                                         }
                                     }}
