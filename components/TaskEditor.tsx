@@ -1165,6 +1165,12 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                               {editedPoint.task.type === 'timeline' && (
                                                   <><p className="font-bold text-blue-200">📅 TIMELINE</p><p className="text-blue-300/80">Arrange in order</p><p className="italic text-blue-400">Ex: "Sort by date"</p></>
                                               )}
+                                              {editedPoint.task.type === 'photo' && (
+                                                  <><p className="font-bold text-blue-200">📸 PHOTO</p><p className="text-blue-300/80">Teams upload a photo</p><p className="italic text-blue-400">Ex: "Take a selfie at the statue"</p></>
+                                              )}
+                                              {editedPoint.task.type === 'video' && (
+                                                  <><p className="font-bold text-blue-200">🎥 VIDEO</p><p className="text-blue-300/80">Teams record a video</p><p className="italic text-blue-400">Ex: "Record your team's challenge"</p></>
+                                              )}
                                           </div>
                                       )}
                                   </div>
