@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users, Gamepad2, Library, LayoutList, Shield, Edit2,
   UserCircle, Settings, Play,
@@ -9,6 +9,8 @@ import {
 import { Game, AuthUser } from '../types';
 import { getGameDisplayId, matchesGameSearch, formatGameNameWithId } from '../utils/gameIdUtils';
 import { hasNewSupabaseSetup } from './SupabaseToolsModal';
+import ActivityNotificationModal from './ActivityNotificationModal';
+import { getActivitySinceLastLogin, getLastLogin, updateLastLogin, ActivitySummary, getPendingMediaCount } from '../services/activityTracker';
 import './InitialLandingStyles.css';
 
 interface InitialLandingProps {
@@ -259,6 +261,9 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
   const [showGeminiWarning, setShowGeminiWarning] = useState(false);
   const [hasCheckedGeminiKey, setHasCheckedGeminiKey] = useState(false);
   const [showPlayzoneChoiceModal, setShowPlayzoneChoiceModal] = useState(false);
+  const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null);
+  const [showActivityNotification, setShowActivityNotification] = useState(false);
+  const [pendingMediaCounts, setPendingMediaCounts] = useState<Record<string, number>>({});
   const fieldsContainerRef = React.useRef<HTMLDivElement>(null);
   const activeGame = games.find(g => g.id === activeGameId);
 
@@ -298,6 +303,44 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
 
     return () => clearInterval(interval);
   }, []);
+
+  // Check for new activity since last login
+  useEffect(() => {
+    const checkActivity = async () => {
+      const lastLogin = getLastLogin();
+
+      // Get activity summary
+      const activity = await getActivitySinceLastLogin(games, lastLogin);
+      setActivitySummary(activity);
+
+      // Show notification if there's new activity
+      const hasActivity = activity.newSubmissions > 0 ||
+                         activity.recentlyApproved > 0 ||
+                         activity.recentlyRejected > 0 ||
+                         activity.pendingApprovals > 0;
+
+      if (hasActivity) {
+        setShowActivityNotification(true);
+      }
+
+      // Update last login time
+      updateLastLogin();
+
+      // Load pending counts for each game (for badges)
+      const counts: Record<string, number> = {};
+      for (const game of games) {
+        const count = await getPendingMediaCount(game.id);
+        if (count > 0) {
+          counts[game.id] = count;
+        }
+      }
+      setPendingMediaCounts(counts);
+    };
+
+    if (games.length > 0) {
+      checkActivity();
+    }
+  }, [games]);
 
   // Handle drag start
   const handleDragStart = (e: React.MouseEvent) => {
