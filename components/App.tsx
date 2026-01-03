@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { migrateAllTasksInSystem } from '../utils/languageMigration';
 import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage, GameChangeLogEntry, TeamMember, PlaygroundTemplate, ActionType } from '../types';
+import { APP_VERSION } from '../utils/version';
 import * as db from '../services/db';
 import { logGameChange } from '../utils/gameLog';
 import { supabase } from '../lib/supabase';
@@ -39,6 +40,7 @@ import ErrorBoundary from './ErrorBoundary';
 import OfflineIndicator from './OfflineIndicator';
 import ConnectionStatus from './ConnectionStatus';
 import { PlayCircle, Ruler } from 'lucide-react';
+import { setGlobalVolume } from '../utils/sounds';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
@@ -98,6 +100,10 @@ const GameApp: React.FC = () => {
   const [showTaskId, setShowTaskId] = useState(true); // Task order (001, 002, etc.)
   const [showTaskTitle, setShowTaskTitle] = useState(true); // Task name/title
 
+  // --- COOLDOWN STATE ---
+  // Map of taskId -> timestamp when cooldown expires
+  const [taskCooldowns, setTaskCooldowns] = useState<Map<string, number>>(new Map());
+
   // Update showScores when game changes based on designConfig.hideScore
   useEffect(() => {
     const currentGame = games.find(g => g.id === activeGameId);
@@ -151,9 +157,8 @@ const GameApp: React.FC = () => {
       for (const game of migratedGames) {
         await db.saveGame(game);
       }
-      for (const template of migratedLibrary) {
-        await db.saveTemplate(template);
-      }
+      const { ok: migratedOk } = await db.saveTemplates(migratedLibrary);
+      if (!migratedOk) console.error('[App] Failed to persist migrated library templates');
     };
     init();
   }, []);
@@ -368,6 +373,36 @@ const GameApp: React.FC = () => {
       return () => clearInterval(interval);
   }, [userLocation, activeGame, mode]);
 
+  // --- COOLDOWN TIMER ---
+  useEffect(() => {
+      if (taskCooldowns.size === 0) return;
+
+      const interval = setInterval(() => {
+          const now = Date.now();
+          const newCooldowns = new Map(taskCooldowns);
+          let hasExpiredCooldowns = false;
+
+          // Check for expired cooldowns
+          taskCooldowns.forEach((endTime, taskId) => {
+              if (now >= endTime) {
+                  newCooldowns.delete(taskId);
+                  hasExpiredCooldowns = true;
+                  // Vibrate when cooldown expires
+                  if (navigator.vibrate) {
+                      navigator.vibrate(200);
+                  }
+              }
+          });
+
+          // Update state if any cooldowns expired
+          if (hasExpiredCooldowns) {
+              setTaskCooldowns(newCooldowns);
+          }
+      }, 1000); // Check every second
+
+      return () => clearInterval(interval);
+  }, [taskCooldowns]);
+
   // --- MEMOIZED DATA ---
   const currentGameObj = mode === GameMode.SIMULATION ? simulatedGame : activeGame;
 
@@ -577,6 +612,11 @@ const GameApp: React.FC = () => {
           if (action.type === 'open_playground' && action.targetId) {
               setViewingPlaygroundId(action.targetId);
           }
+          if (action.type === 'cooldown' && activeTaskModalId && action.cooldownSeconds) {
+              // Add cooldown for the current task (the one that triggered this action)
+              const cooldownEndTime = Date.now() + (action.cooldownSeconds * 1000);
+              setTaskCooldowns(prev => new Map(prev).set(activeTaskModalId, cooldownEndTime));
+          }
       });
 
       if (hasChanges) {
@@ -635,8 +675,11 @@ const GameApp: React.FC = () => {
       setMode(GameMode.PLAY);
       setShowLanding(false);
 
+      // Set volume to 80% on game load (as requested)
+      setGlobalVolume(80);
+
       const teams = await db.fetchTeams(gameId);
-      const myTeam = teams.find(t => t.name === teamName); 
+      const myTeam = teams.find(t => t.name === teamName);
       if (myTeam) {
           setCurrentTeam(myTeam);
       }
@@ -815,69 +858,174 @@ const GameApp: React.FC = () => {
       }
   };
 
-  // ... (Tag handlers remain same) ...
-  const handleRenameTagGlobally = async (oldTag: string, newTag: string) => {
-      const renameInTasks = (tasks: TaskTemplate[]) => {
-          return tasks.map(t => ({
-              ...t,
-              tags: t.tags?.map(tag => tag === oldTag ? newTag : tag) || []
-          }));
+  // --- TAG MANAGEMENT ---
+  const handleRenameTagGlobally = async (
+      oldTag: string,
+      newTag: string,
+      onProgress?: (progress: number, label: string) => void
+  ) => {
+      const oldLower = oldTag.toLowerCase();
+      const newLower = newTag.toLowerCase();
+
+      const replaceTag = (tags: string[] | undefined): { next: string[]; changed: boolean } => {
+          const current = tags || [];
+          let changed = false;
+          const next = current.map(t => {
+              if (t.toLowerCase() === oldLower) {
+                  changed = true;
+                  return newLower;
+              }
+              return t;
+          });
+          return { next, changed };
       };
 
-      const updatedLib = renameInTasks(taskLibrary);
-      for (const t of updatedLib) {
-          if (t.tags?.includes(newTag)) await db.saveTemplate(t);
+      onProgress?.(0, 'Scanning items...');
+
+      const updatedLib: TaskTemplate[] = [];
+      const changedTemplates: TaskTemplate[] = [];
+      for (const t of taskLibrary) {
+          const { next, changed } = replaceTag(t.tags);
+          const updated = { ...t, tags: next };
+          updatedLib.push(updated);
+          if (changed) changedTemplates.push(updated);
       }
+
+      const updatedLists = taskLists.map(list => {
+          let listChanged = false;
+          const updatedTasks = (list.tasks || []).map(task => {
+              const { next, changed } = replaceTag(task.tags);
+              if (changed) listChanged = true;
+              return { ...task, tags: next };
+          });
+          const updated = { ...list, tasks: updatedTasks };
+          return { updated, listChanged };
+      });
+
+      const updatedGames = games.map(g => {
+          let gameChanged = false;
+          const updatedPoints = (g.points || []).map(p => {
+              const { next, changed } = replaceTag(p.tags as any);
+              if (changed) gameChanged = true;
+              return { ...p, tags: next };
+          });
+          const updated = { ...g, points: updatedPoints };
+          return { updated, gameChanged };
+      });
+
+      if (changedTemplates.length > 0) {
+          const { ok } = await db.saveTemplates(changedTemplates, {
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(pct * 0.6, `Updating tasks (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+          if (!ok) console.error('[App] Failed to persist library tag rename');
+      }
+
+      const listChanges = updatedLists.filter(x => x.listChanged).map(x => x.updated);
+      if (listChanges.length > 0) {
+          for (let i = 0; i < listChanges.length; i++) {
+              onProgress?.(0.6 + (i / listChanges.length) * 0.2, `Updating lists (${i + 1}/${listChanges.length})`);
+              await db.saveTaskList(listChanges[i]);
+          }
+      }
+
+      const gameChanges = updatedGames.filter(x => x.gameChanged).map(x => x.updated);
+      if (gameChanges.length > 0) {
+          await db.saveGames(gameChanges, {
+              chunkSize: 2,
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.8 + pct * 0.2, `Updating games (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+      }
+
+      onProgress?.(1, 'Done');
       setTaskLibrary(updatedLib);
-
-      const updatedLists = taskLists.map(list => ({
-          ...list,
-          tasks: renameInTasks(list.tasks)
-      }));
-      for (const list of updatedLists) await db.saveTaskList(list);
-      setTaskLists(updatedLists);
-
-      const updatedGames = games.map(g => ({
-          ...g,
-          points: g.points.map(p => ({
-              ...p,
-              tags: p.tags?.map(tag => tag === oldTag ? newTag : tag) || []
-          }))
-      }));
-      for (const g of updatedGames) await db.saveGame(g);
-      setGames(updatedGames);
+      setTaskLists(updatedLists.map(x => x.updated));
+      setGames(updatedGames.map(x => x.updated));
   };
 
-  const handleDeleteTagGlobally = async (tagToDelete: string) => {
+  const handleDeleteTagGlobally = async (
+      tagToDelete: string,
+      onProgress?: (progress: number, label: string) => void
+  ) => {
       const tagToDeleteLower = tagToDelete.toLowerCase();
 
-      const removeInTasks = (tasks: TaskTemplate[]) => {
-          return tasks.map(t => ({
-              ...t,
-              tags: t.tags?.filter(tag => tag.toLowerCase() !== tagToDeleteLower) || []
-          }));
+      const stripTag = (tags: string[] | undefined): { next: string[]; changed: boolean } => {
+          const current = tags || [];
+          const next = current.filter(tag => tag.toLowerCase() !== tagToDeleteLower);
+          return { next, changed: next.length !== current.length };
       };
 
-      const updatedLib = removeInTasks(taskLibrary);
-      for (const t of updatedLib) await db.saveTemplate(t);
+      onProgress?.(0, 'Scanning items...');
+
+      const updatedLib: TaskTemplate[] = [];
+      const changedTemplates: TaskTemplate[] = [];
+      for (const t of taskLibrary) {
+          const { next, changed } = stripTag(t.tags);
+          const updated = { ...t, tags: next };
+          updatedLib.push(updated);
+          if (changed) changedTemplates.push(updated);
+      }
+
+      const updatedLists = taskLists.map(list => {
+          let listChanged = false;
+          const updatedTasks = (list.tasks || []).map(task => {
+              const { next, changed } = stripTag(task.tags);
+              if (changed) listChanged = true;
+              return { ...task, tags: next };
+          });
+          const updated = { ...list, tasks: updatedTasks };
+          return { updated, listChanged };
+      });
+
+      const updatedGames = games.map(g => {
+          let gameChanged = false;
+          const updatedPoints = (g.points || []).map(p => {
+              const { next, changed } = stripTag(p.tags as any);
+              if (changed) gameChanged = true;
+              return { ...p, tags: next };
+          });
+          const updated = { ...g, points: updatedPoints };
+          return { updated, gameChanged };
+      });
+
+      if (changedTemplates.length > 0) {
+          const { ok } = await db.saveTemplates(changedTemplates, {
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(pct * 0.6, `Updating tasks (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+          if (!ok) console.error('[App] Failed to persist library tag delete');
+      }
+
+      const listChanges = updatedLists.filter(x => x.listChanged).map(x => x.updated);
+      if (listChanges.length > 0) {
+          for (let i = 0; i < listChanges.length; i++) {
+              onProgress?.(0.6 + (i / listChanges.length) * 0.2, `Updating lists (${i + 1}/${listChanges.length})`);
+              await db.saveTaskList(listChanges[i]);
+          }
+      }
+
+      const gameChanges = updatedGames.filter(x => x.gameChanged).map(x => x.updated);
+      if (gameChanges.length > 0) {
+          await db.saveGames(gameChanges, {
+              chunkSize: 2,
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.8 + pct * 0.2, `Updating games (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+      }
+
+      onProgress?.(1, 'Done');
       setTaskLibrary(updatedLib);
-
-      const updatedLists = taskLists.map(list => ({
-          ...list,
-          tasks: removeInTasks(list.tasks)
-      }));
-      for (const list of updatedLists) await db.saveTaskList(list);
-      setTaskLists(updatedLists);
-
-      const updatedGames = games.map(g => ({
-          ...g,
-          points: g.points.map(p => ({
-              ...p,
-              tags: p.tags?.filter(tag => tag.toLowerCase() !== tagToDeleteLower) || []
-          }))
-      }));
-      for (const g of updatedGames) await db.saveGame(g);
-      setGames(updatedGames);
+      setTaskLists(updatedLists.map(x => x.updated));
+      setGames(updatedGames.map(x => x.updated));
   };
 
   const isCaptain = currentTeam?.captainDeviceId === teamSync.getDeviceId() || mode === GameMode.SIMULATION;
@@ -1024,7 +1172,16 @@ const GameApp: React.FC = () => {
                   }}
                   onDeleteGame={handleDeleteGame}
                   onClose={() => setShowGameChooser(false)}
-                  onEditGame={(id) => { 
+                  onEditGame={(id) => {
+                      const game = games.find(g => g.id === id);
+                      if (game) {
+                          setGameToEdit(game);
+                          setActiveGameId(id);
+                          setShowGameCreator(true);
+                          setShowGameChooser(false);
+                      }
+                  }}
+                  onEditGameSetup={(id) => {
                       const game = games.find(g => g.id === id);
                       if (game) {
                           setGameToEdit(game);
@@ -1335,6 +1492,12 @@ const GameApp: React.FC = () => {
                   }}
                   onAddZoneFromLibrary={() => {}}
                   onStartSimulation={!playgroundTemplateToEdit && currentGameObj ? () => handleStartSimulation(currentGameObj) : undefined}
+                  onOpenGameSettings={() => {
+                      if (!playgroundTemplateToEdit && currentGameObj) {
+                          setGameToEdit(currentGameObj);
+                          setShowGameCreator(true);
+                      }
+                  }}
               />
           )}
           {showChatDrawer && activeGameId && (
@@ -1430,7 +1593,7 @@ const GameApp: React.FC = () => {
       return (
           <>
             <InitialLanding
-                version="4.0.1"
+                version={APP_VERSION}
                 games={games}
                 activeGameId={activeGameId}
                 onSelectGame={setActiveGameId}

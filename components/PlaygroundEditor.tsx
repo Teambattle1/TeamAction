@@ -1,20 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Game, Playground, GamePoint, IconId, TaskTemplate, TaskList } from '../types';
+import { Game, Playground, GamePoint, IconId, TaskTemplate, TaskList, DeviceType, PlaygroundTemplate } from '../types';
+import { DEVICE_SPECS, getDeviceLayout, ensureDeviceLayouts, DEVICE_SPECS as SPECS } from '../utils/deviceUtils';
 import {
     X, Plus, LayoutGrid, Globe, Map as MapIcon, ArrowLeft, Trash2, Edit2,
     Image as ImageIcon, Upload, Grid, MousePointer2, Move, ZoomIn, ZoomOut,
-    Maximize, Lock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
-    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight,
-    Wand2, Zap, CheckCircle, XCircle, GripHorizontal, Navigation, AlertTriangle
+    Maximize, Lock, Unlock, Settings, Home, Save, Check, Type, Gamepad2, Library, Users, Shield,
+    Smartphone, Tablet, Monitor, MousePointerClick, Music, Repeat, PlayCircle, ChevronLeft, ChevronRight, ChevronDown, ChevronsUpDown,
+    Wand2, Zap, CheckCircle, XCircle, GripHorizontal, AlertTriangle, QrCode, Target, Loader2, MapPin, Copy, Eye, PenTool, Trophy, Download
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import { generateAiImage, generateAiBackground, searchLogoUrl } from '../services/ai';
 import * as db from '../services/db';
 import { snapPointsToRoad, isPointInBox } from '../utils/mapbox';
+import jsQR from 'jsqr';
+import QRScannerModal from './QRScannerModal';
+import { getGlobalCorrectSound, getGlobalIncorrectSound, getGlobalVolume } from '../utils/sounds';
 import TaskActionModal from './TaskActionModal';
 import AiTaskGenerator from './AiTaskGenerator';
 import TaskMaster from './TaskMaster';
+import TaskEditor from './TaskEditor';
+import GeminiApiKeyModal from './GeminiApiKeyModal';
+import TaskModal from './TaskModal';
 
 interface PlaygroundEditorProps {
   game: Game;
@@ -37,6 +44,8 @@ interface PlaygroundEditorProps {
   onUpdateTaskLists: (lists: TaskList[]) => void; // Update task lists
   taskLibrary: TaskTemplate[]; // Task library for TaskMaster
   onUpdateTaskLibrary: (library: TaskTemplate[]) => void; // Update task library
+  onOpenGameSettings?: () => void; // Open game settings
+  onExportGameToLibrary?: () => void; // Export all tasks to library
 }
 
 const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
@@ -58,7 +67,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     taskLibrary,
     onUpdateTaskLibrary,
     isAdmin = false,
-    onStartSimulation
+    onStartSimulation,
+    onOpenGameSettings,
+    onExportGameToLibrary
 }) => {
     // State
     const [activePlaygroundId, setActivePlaygroundId] = useState<string | null>(null);
@@ -68,8 +79,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success'>('idle');
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [isTasksDrawerOpen, setIsTasksDrawerOpen] = useState(false);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(true); // Open by default
+    const [isTasksDrawerOpen, setIsTasksDrawerOpen] = useState(true); // Open by default
     const [showGrid, setShowGrid] = useState(false);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [isGeneratingIcon, setIsGeneratingIcon] = useState(false);
@@ -81,17 +92,104 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showTaskStatus, setShowTaskStatus] = useState(true);
     const [showTaskNames, setShowTaskNames] = useState(true);
     const [showBackground, setShowBackground] = useState(true);
+    const [isBackgroundLocked, setIsBackgroundLocked] = useState(false);
 
-    // Toolbar positions (draggable)
-    const [orientationToolbarPos, setOrientationToolbarPos] = useState({ x: 240, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
-    const [showToolbarPos, setShowToolbarPos] = useState({ x: 520, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
-    const [toolsToolbarPos, setToolsToolbarPos] = useState({ x: 820, y: typeof window !== 'undefined' ? window.innerHeight - 120 : 600 });
+    // Simulation Mode State
+    const [isSimulationActive, setIsSimulationActive] = useState(false);
+    const [simulationScore, setSimulationScore] = useState(0);
+    const [simulationTeam, setSimulationTeam] = useState<any | null>(null);
+    const [showRanking, setShowRanking] = useState(false);
+    const [rankingPos, setRankingPos] = useState({ x: window.innerWidth - 350, y: 100 });
+    const [isDraggingRanking, setIsDraggingRanking] = useState(false);
+    const rankingDragOffset = useRef({ x: 0, y: 0 });
+    const [activeSimulationTaskId, setActiveSimulationTaskId] = useState<string | null>(null);
+
+    // Audio refs for simulation mode
+    const simulationBgAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Draw Mode State for Visual Connections
+    const [drawMode, setDrawMode] = useState<{
+        active: boolean;
+        trigger: 'onOpen' | 'onCorrect' | 'onIncorrect' | null;
+        sourceTaskId: string | null;
+        mousePosition: { x: number; y: number } | null;
+    }>({ active: false, trigger: null, sourceTaskId: null, mousePosition: null });
+
+    const editorRootRef = useRef<HTMLDivElement>(null);
+    const drawCanvasRef = useRef<HTMLDivElement>(null);
+
+    const getDefaultEditorToolbarPositions = () => {
+        const rootWidth = editorRootRef.current?.getBoundingClientRect().width || (typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+        // Default: top row under the header (matches the desired "Picture 2" desktop layout)
+        const y = 88;
+
+        // Approximate widths (used only to compute non-overlapping start X positions)
+        const gap = 14;
+        const orientationW = 470;
+        const showW = 320;
+        const toolsW = 320;
+
+        const totalW = orientationW + showW + toolsW + gap * 2;
+        const startX = Math.max(20, Math.round((rootWidth - totalW) / 2));
+
+        return {
+            orientation: { x: startX, y },
+            show: { x: startX + orientationW + gap, y },
+            tools: { x: startX + orientationW + gap + showW + gap, y },
+        };
+    };
+
+    // Toolbar positions (draggable) - Default spread-out positions to avoid overlap
+    const initialToolbarDefaults = getDefaultEditorToolbarPositions();
+    const [orientationToolbarPos, setOrientationToolbarPos] = useState(initialToolbarDefaults.orientation);
+    const [showToolbarPos, setShowToolbarPos] = useState(initialToolbarDefaults.show);
+    const [toolsToolbarPos, setToolsToolbarPos] = useState(initialToolbarDefaults.tools);
+    const [qrScannerPos, setQRScannerPos] = useState({ x: 85, y: 85 }); // Percentage-based positioning (85%, 85%)
+    const [qrScannerSize, setQRScannerSize] = useState({ width: 140, height: 48 });
+    const [qrScannerColor, setQRScannerColor] = useState('#f97316'); // Orange-500
     const [isDraggingOrientation, setIsDraggingOrientation] = useState(false);
     const [isDraggingShow, setIsDraggingShow] = useState(false);
     const [isDraggingTools, setIsDraggingTools] = useState(false);
+    const [isDraggingQRScanner, setIsDraggingQRScanner] = useState(false);
+    const [isResizingQRScanner, setIsResizingQRScanner] = useState(false);
+    const [showQRColorPicker, setShowQRColorPicker] = useState(false);
+    const [isQRScannerActive, setIsQRScannerActive] = useState(false);
+    const [qrScannedValue, setQRScannedValue] = useState<string | null>(null);
+    const qrScannerResizeStart = useRef({ width: 0, height: 0, x: 0, y: 0 });
+    const qrScannerDidDrag = useRef(false);
+    const qrScannerClickTimer = useRef<NodeJS.Timeout | null>(null);
+    const qrScannerClickCount = useRef(0);
+    const qrScannerButtonDownPos = useRef({ x: 0, y: 0 });
+    const qrScannerHasMoved = useRef(false);
+
+    // Device-specific layout management
+    // Smart device initialization: desktop for new playgrounds, last used for existing
+    const [selectedDevice, setSelectedDevice] = useState<DeviceType>(() => {
+        // Check if this is a new playground (no tasks yet)
+        const playgroundId = game.playgrounds?.[0]?.id || activePlaygroundId;
+        const playgroundTasks = game.points?.filter(p => p.playgroundId === playgroundId) || [];
+        const isNewPlayground = playgroundTasks.length === 0;
+
+        if (isNewPlayground) {
+            // New playground: start with desktop mode
+            return 'desktop';
+        } else {
+            // Existing playground: load last used device from localStorage
+            const storageKey = `playzone_device_${playgroundId}`;
+            const savedDevice = localStorage.getItem(storageKey);
+            return (savedDevice as DeviceType) || 'desktop';
+        }
+    });
+    const [deviceLayoutsCache, setDeviceLayoutsCache] = useState<Record<DeviceType, any> | null>(null);
     const orientationDragOffset = useRef({ x: 0, y: 0 });
     const showDragOffset = useRef({ x: 0, y: 0 });
     const toolsDragOffset = useRef({ x: 0, y: 0 });
+    const qrScannerDragOffset = useRef({ x: 0, y: 0 });
+    const qrVideoRef = useRef<HTMLVideoElement>(null);
+    const qrCanvasRef = useRef<HTMLCanvasElement>(null);
+    const qrStreamRef = useRef<MediaStream | null>(null);
+    const qrScanIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     const [editorOrientation, setEditorOrientation] = useState<'portrait' | 'landscape'>('landscape');
     const [showAiIconPrompt, setShowAiIconPrompt] = useState(false);
@@ -99,37 +197,83 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const [showLogoPrompt, setShowLogoPrompt] = useState(false);
     const [logoCompanyName, setLogoCompanyName] = useState('');
     const [isSearchingLogo, setIsSearchingLogo] = useState(false);
+    const [editingCompletedIcon, setEditingCompletedIcon] = useState(false); // Track if editing completed icon
     const [isMarkMode, setIsMarkMode] = useState(false);
     const [markedTaskIds, setMarkedTaskIds] = useState<Set<string>>(new Set());
+    const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
+    const [showQRScanner, setShowQRScanner] = useState(true);
     const [showTaskMaster, setShowTaskMaster] = useState(false);
     const [taskMasterTab, setTaskMasterTab] = useState<'LIBRARY' | 'LISTS'>('LIBRARY');
     const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
     const [editingTitleValue, setEditingTitleValue] = useState('');
+    const [taskSortMode, setTaskSortMode] = useState<'order' | 'actions'>('order');
+    const [collapsedSources, setCollapsedSources] = useState<Set<string>>(new Set());
     const [bulkIconSourceId, setBulkIconSourceId] = useState<string | null>(null);
     const [bulkIconMode, setBulkIconMode] = useState(false);
     const [bulkIconTargets, setBulkIconTargets] = useState<Set<string>>(new Set());
+
+    // Playzone selection for task/AI import
+    const [showPlayzoneSelector, setShowPlayzoneSelector] = useState(false);
+    const [pendingTasksToAdd, setPendingTasksToAdd] = useState<TaskTemplate[]>([]);
+    const [isAddingAITasks, setIsAddingAITasks] = useState(false);
+    const [isAddingTaskList, setIsAddingTaskList] = useState(false);
 
     // AI Background Generation
     const [showAiBackgroundPrompt, setShowAiBackgroundPrompt] = useState(false);
     const [aiBackgroundPromptValue, setAiBackgroundPromptValue] = useState('');
     const [isGeneratingBackground, setIsGeneratingBackground] = useState(false);
+    const [showGeminiKeyModal, setShowGeminiKeyModal] = useState(false);
+    const [pendingBackgroundKeywords, setPendingBackgroundKeywords] = useState<string | null>(null);
 
     // Delete Zone State
     const [isOverDeleteZone, setIsOverDeleteZone] = useState(false);
 
+    // Collapse State for Left Drawer Sections (default: all collapsed)
+    const [isHudAppearanceCollapsed, setIsHudAppearanceCollapsed] = useState(true);
+    const [isBackgroundImageCollapsed, setIsBackgroundImageCollapsed] = useState(true);
+    const [isBackgroundMusicCollapsed, setIsBackgroundMusicCollapsed] = useState(true);
+    const [isDeviceCollapsed, setIsDeviceCollapsed] = useState(true); // Collapsed by default
+    const [isOrientationCollapsed, setIsOrientationCollapsed] = useState(true); // Collapsed by default
+    const [isShowCollapsed, setIsShowCollapsed] = useState(true); // Collapsed by default
+    const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(true); // Collapsed by default
+
+    // Toggle all sections collapsed/expanded (excluding HUD appearance)
+    const toggleAllSections = () => {
+        // Check if any section is expanded (excluding HUD)
+        const anyExpanded = !isBackgroundImageCollapsed ||
+                           !isBackgroundMusicCollapsed || !isDeviceCollapsed ||
+                           !isOrientationCollapsed || !isShowCollapsed || !isLayoutCollapsed;
+
+        // If any are expanded, collapse all. Otherwise, expand all.
+        const newState = anyExpanded;
+        setIsBackgroundImageCollapsed(newState);
+        setIsBackgroundMusicCollapsed(newState);
+        setIsDeviceCollapsed(newState);
+        setIsOrientationCollapsed(newState);
+        setIsShowCollapsed(newState);
+        setIsLayoutCollapsed(newState);
+    };
+
     // Snap to Road State
     const [snapToRoadMode, setSnapToRoadMode] = useState(false);
     const [selectionBox, setSelectionBox] = useState<{ start: { x: number; y: number } | null; current: { x: number; y: number } | null }>({ start: null, current: null });
+
+    // Task Settings Modal State
+    const [showTaskSettingsModal, setShowTaskSettingsModal] = useState(false);
+    const [settingsModalTaskId, setSettingsModalTaskId] = useState<string | null>(null);
+    const [showTaskViewModal, setShowTaskViewModal] = useState(false);
 
     // Refs
     const fileInputRef = useRef<HTMLInputElement>(null);
     const iconInputRef = useRef<HTMLInputElement>(null);
     const audioInputRef = useRef<HTMLInputElement>(null);
     const taskIconInputRef = useRef<HTMLInputElement>(null);
+    const completedTaskIconInputRef = useRef<HTMLInputElement>(null);
     const canvasRef = useRef<HTMLDivElement>(null);
     const backgroundRef = useRef<HTMLDivElement>(null);
 
     const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+    const [dragVisualPosition, setDragVisualPosition] = useState<{ x: number; y: number } | null>(null);
     const dragTaskRef = useRef<{
         id: string | null;
         offsetX: number;
@@ -144,42 +288,212 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (!activePlaygroundId && game.playgrounds && game.playgrounds.length > 0) {
             setActivePlaygroundId(game.playgrounds[0].id);
         } else if (!game.playgrounds || game.playgrounds.length === 0) {
-            // Auto-create if none exists
+            // Auto-create if none exists with full device layouts configuration
+
             const newPg: Playground = {
                 id: `pg-${Date.now()}`,
                 title: 'Global 1',
                 buttonVisible: true,
                 iconId: 'default',
                 location: { lat: 0, lng: 0 },
-                orientationLock: 'landscape'
+                orientationLock: 'landscape',
+                deviceLayouts: {
+                    mobile: {
+                        orientationLock: 'landscape',
+                        qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
+                        qrScannerSize: { width: 140, height: 48 },
+                        qrScannerColor: '#f97316', // Orange-500 default
+                        iconPositions: {},
+                        buttonVisible: true,
+                        iconScale: 1.0,
+                    },
+                    tablet: {
+                        orientationLock: 'landscape',
+                        qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
+                        qrScannerSize: { width: 140, height: 48 },
+                        qrScannerColor: '#f97316', // Orange-500 default
+                        iconPositions: {},
+                        buttonVisible: true,
+                        iconScale: 1.0,
+                    },
+                    desktop: {
+                        orientationLock: 'landscape',
+                        qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
+                        qrScannerSize: { width: 140, height: 48 },
+                        qrScannerColor: '#f97316', // Orange-500 default
+                        iconPositions: {},
+                        buttonVisible: true,
+                        iconScale: 1.0,
+                    },
+                },
             };
-            onUpdateGame({ ...game, playgrounds: [newPg] });
+
+            // Initialize default toolbar positions for new games
+        const defaultPos = getDefaultEditorToolbarPositions();
+        const defaultToolbarPositions = {
+            editorOrientationPos: defaultPos.orientation,
+            editorShowPos: defaultPos.show,
+            editorToolsPos: defaultPos.tools,
+        };
+
+            onUpdateGame({
+                ...game,
+                playgrounds: [newPg],
+                toolbarPositions: defaultToolbarPositions
+            });
             setActivePlaygroundId(newPg.id);
+
+            // Drawers open by default (already set in useState, but kept for clarity)
+            setIsDrawerOpen(true);
+            setIsTasksDrawerOpen(true);
         }
     }, [game.playgrounds]);
 
-    // Load toolbar positions from game
+    // ESC key listener for draw mode
     useEffect(() => {
-        if (game.toolbarPositions?.editorOrientationPos) {
-            setOrientationToolbarPos(game.toolbarPositions.editorOrientationPos);
+        const handleEscKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && drawMode.active) {
+                setDrawMode({ active: false, trigger: null, sourceTaskId: null, mousePosition: null });
+            }
+        };
+
+        window.addEventListener('keydown', handleEscKey);
+        return () => window.removeEventListener('keydown', handleEscKey);
+    }, [drawMode.active]);
+
+    const didSeedEditorToolbarPositionsRef = useRef(false);
+
+    // Load toolbar positions from game (device-aware)
+    useEffect(() => {
+        const pos = game.toolbarPositions;
+
+        // Default positions - spread out horizontally on the top row
+        const defaults = getDefaultEditorToolbarPositions();
+        const defaultOrientationPos = defaults.orientation;
+        const defaultShowPos = defaults.show;
+        const defaultToolsPos = defaults.tools;
+
+        // Try device-specific positions first, fall back to default, then to hardcoded defaults
+        if (pos?.editorOrientationPosPerDevice?.[selectedDevice]) {
+            setOrientationToolbarPos(pos.editorOrientationPosPerDevice[selectedDevice]);
+        } else if (pos?.editorOrientationPos) {
+            setOrientationToolbarPos(pos.editorOrientationPos);
+        } else {
+            setOrientationToolbarPos(defaultOrientationPos);
         }
-        if (game.toolbarPositions?.editorShowPos) {
-            setShowToolbarPos(game.toolbarPositions.editorShowPos);
+
+        if (pos?.editorShowPosPerDevice?.[selectedDevice]) {
+            setShowToolbarPos(pos.editorShowPosPerDevice[selectedDevice]);
+        } else if (pos?.editorShowPos) {
+            setShowToolbarPos(pos.editorShowPos);
+        } else {
+            setShowToolbarPos(defaultShowPos);
         }
-        if (game.toolbarPositions?.editorToolsPos) {
-            setToolsToolbarPos(game.toolbarPositions.editorToolsPos);
+
+        if (pos?.editorToolsPosPerDevice?.[selectedDevice]) {
+            setToolsToolbarPos(pos.editorToolsPosPerDevice[selectedDevice]);
+        } else if (pos?.editorToolsPos) {
+            setToolsToolbarPos(pos.editorToolsPos);
+        } else {
+            setToolsToolbarPos(defaultToolsPos);
         }
+
+        if (pos?.editorQRScannerPosPerDevice?.[selectedDevice]) {
+            setQRScannerPos(pos.editorQRScannerPosPerDevice[selectedDevice]);
+        } else if (pos?.editorQRScannerPos) {
+            setQRScannerPos(pos.editorQRScannerPos);
+        }
+    }, [game.id, game.toolbarPositions, selectedDevice]);
+
+    // Ensure NEW playzone games/templates get persisted default toolbar positions (so they never stack)
+    useEffect(() => {
+        if (didSeedEditorToolbarPositionsRef.current) return;
+
+        const pos = game.toolbarPositions;
+        const hasEditorToolbarPositions = !!(
+            pos?.editorOrientationPos ||
+            pos?.editorShowPos ||
+            pos?.editorToolsPos ||
+            pos?.editorOrientationPosPerDevice ||
+            pos?.editorShowPosPerDevice ||
+            pos?.editorToolsPosPerDevice
+        );
+
+        if (hasEditorToolbarPositions) {
+            didSeedEditorToolbarPositionsRef.current = true;
+            return;
+        }
+
+        const defaults = getDefaultEditorToolbarPositions();
+
+        const updatedToolbarPositions = {
+            ...(pos || {}),
+            editorOrientationPos: defaults.orientation,
+            editorShowPos: defaults.show,
+            editorToolsPos: defaults.tools,
+            editorOrientationPosPerDevice: {
+                ...(pos?.editorOrientationPosPerDevice || {}),
+                mobile: defaults.orientation,
+                tablet: defaults.orientation,
+                desktop: defaults.orientation,
+            },
+            editorShowPosPerDevice: {
+                ...(pos?.editorShowPosPerDevice || {}),
+                mobile: defaults.show,
+                tablet: defaults.show,
+                desktop: defaults.show,
+            },
+            editorToolsPosPerDevice: {
+                ...(pos?.editorToolsPosPerDevice || {}),
+                mobile: defaults.tools,
+                tablet: defaults.tools,
+                desktop: defaults.tools,
+            },
+        };
+
+        // Immediately update local state (so the UI is correct even before parent re-renders)
+        setOrientationToolbarPos(defaults.orientation);
+        setShowToolbarPos(defaults.show);
+        setToolsToolbarPos(defaults.tools);
+
+        didSeedEditorToolbarPositionsRef.current = true;
+        onUpdateGame({
+            ...game,
+            toolbarPositions: updatedToolbarPositions,
+        });
     }, [game.id]);
 
-    // Save toolbar positions to game
+    // Save toolbar positions to game (device-aware)
     const saveToolbarPositions = () => {
+        const existingPos = game.toolbarPositions || {};
+
+        // Save per-device positions
         const updatedGame = {
             ...game,
             toolbarPositions: {
-                ...game.toolbarPositions,
+                ...existingPos,
+                // Keep default positions for backward compatibility
                 editorOrientationPos: orientationToolbarPos,
                 editorShowPos: showToolbarPos,
-                editorToolsPos: toolsToolbarPos
+                editorToolsPos: toolsToolbarPos,
+                editorQRScannerPos: qrScannerPos,
+                // Save device-specific positions
+                editorOrientationPosPerDevice: {
+                    ...(existingPos.editorOrientationPosPerDevice || {}),
+                    [selectedDevice]: orientationToolbarPos,
+                },
+                editorShowPosPerDevice: {
+                    ...(existingPos.editorShowPosPerDevice || {}),
+                    [selectedDevice]: showToolbarPos,
+                },
+                editorToolsPosPerDevice: {
+                    ...(existingPos.editorToolsPosPerDevice || {}),
+                    [selectedDevice]: toolsToolbarPos,
+                },
+                editorQRScannerPosPerDevice: {
+                    ...(existingPos.editorQRScannerPosPerDevice || {}),
+                    [selectedDevice]: qrScannerPos,
+                },
             }
         };
         onUpdateGame(updatedGame);
@@ -269,66 +583,320 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         saveToolbarPositions();
     };
 
+    // Drag handlers for QR Scanner (percentage-based, like tasks)
+    const handleQRScannerPointerDown = (e: React.PointerEvent) => {
+        const target = e.target as HTMLElement | null;
+        // Allow dragging from the QR button itself, but prevent dragging from other interactive elements
+        const isResizeHandle = target?.closest('.qr-resize-handle');
+        if (isResizeHandle) return; // Let resize handle work
+
+        // Only start dragging if NOT clicking on the button itself
+        // The button will handle its own pointer events for click detection
+        const isButton = target?.closest('button');
+        if (isButton) return; // Button handles its own clicks
+
+        e.stopPropagation();
+        e.preventDefault();
+        qrScannerDidDrag.current = false; // Reset drag flag
+        setIsDraggingQRScanner(true);
+
+        // Calculate offset in percentage space
+        if (backgroundRef.current) {
+            const rect = backgroundRef.current.getBoundingClientRect();
+            const currentX = (qrScannerPos.x / 100) * rect.width + rect.left;
+            const currentY = (qrScannerPos.y / 100) * rect.height + rect.top;
+            qrScannerDragOffset.current = { x: e.clientX - currentX, y: e.clientY - currentY };
+        }
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+    const handleQRScannerPointerMove = (e: React.PointerEvent) => {
+        if (!isDraggingQRScanner || !backgroundRef.current) return;
+
+        const target = e.target as HTMLElement | null;
+        // Don't drag if moving from the button itself
+        const isButton = target?.closest('button');
+        if (isButton) return;
+
+        e.stopPropagation();
+        e.preventDefault();
+
+        qrScannerDidDrag.current = true; // Mark that we actually dragged
+
+        // Convert client coordinates to percentage within canvas
+        const rect = backgroundRef.current.getBoundingClientRect();
+        const x = ((e.clientX - qrScannerDragOffset.current.x - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - qrScannerDragOffset.current.y - rect.top) / rect.height) * 100;
+
+        // Clamp to canvas boundaries
+        setQRScannerPos({
+            x: Math.max(5, Math.min(95, x)),
+            y: Math.max(5, Math.min(95, y))
+        });
+    };
+    const handleQRScannerPointerUp = (e: React.PointerEvent) => {
+        if (!isDraggingQRScanner) return;
+        setIsDraggingQRScanner(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
+        // IMPORTANT: Reset drag flag for next click interaction
+        // This ensures clicking the button after dragging will still open the color picker
+        qrScannerDidDrag.current = false;
+        // Reset click count after dragging so double-click works properly next time
+        qrScannerClickCount.current = 0;
+        if (qrScannerClickTimer.current) {
+            clearTimeout(qrScannerClickTimer.current);
+            qrScannerClickTimer.current = null;
+        }
+        saveQRScannerSettings();
+    };
+
+    // QR Scanner resize handlers
+    const handleQRScannerResizeDown = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizingQRScanner(true);
+        qrScannerResizeStart.current = {
+            width: qrScannerSize.width,
+            height: qrScannerSize.height,
+            x: e.clientX,
+            y: e.clientY
+        };
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+
+    const handleQRScannerResizeMove = (e: React.PointerEvent) => {
+        if (!isResizingQRScanner) return;
+        e.stopPropagation();
+        e.preventDefault();
+
+        const deltaX = e.clientX - qrScannerResizeStart.current.x;
+        const deltaY = e.clientY - qrScannerResizeStart.current.y;
+        const newWidth = Math.max(100, qrScannerResizeStart.current.width + deltaX);
+        const newHeight = Math.max(40, qrScannerResizeStart.current.height + deltaY);
+
+        setQRScannerSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleQRScannerResizeUp = (e: React.PointerEvent) => {
+        if (!isResizingQRScanner) return;
+        setIsResizingQRScanner(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
+        saveQRScannerSettings();
+    };
+
+    // Save QR Scanner settings to playground device layout
+    const saveQRScannerSettings = () => {
+        if (activePlayground) {
+            const newLayouts = { ...activePlayground.deviceLayouts } || {};
+            // Ensure device layout exists before updating
+            if (!newLayouts[selectedDevice]) {
+                newLayouts[selectedDevice] = {};
+            }
+            newLayouts[selectedDevice] = {
+                ...newLayouts[selectedDevice],
+                qrScannerPos: qrScannerPos,
+                qrScannerSize: qrScannerSize,
+                qrScannerColor: qrScannerColor
+            };
+            console.log('[PlaygroundEditor] Saving QR Scanner settings:', { qrScannerColor, selectedDevice, newLayouts });
+            updatePlayground({ deviceLayouts: newLayouts });
+        }
+    };
+
+    // QR Scanner function - Show color picker in editor mode, scanner in simulation mode
+    const handleQRScanClick = async () => {
+        // In simulation mode, show scanner
+        if (isSimulationActive) {
+            console.log('🎮 Simulation Mode: Opening QR Scanner');
+            setIsQRScannerActive(!isQRScannerActive);
+            return;
+        }
+
+        // In editor mode, show color picker
+        setShowQRColorPicker(true);
+    };
+
+    // Handle QR scan result
+    const handleQRScan = (data: string) => {
+        setQRScannedValue(data);
+        console.log('📷 QR Code scanned:', data);
+        // TODO: In simulation mode, you could use the scanned data to trigger actions
+        // For example, navigate to a task, update score, etc.
+    };
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            // Cleanup is now handled by QRScannerModal
+        };
+    }, []);
+
+    // Get active playground
     const activePlayground = game.playgrounds?.find(p => p.id === activePlaygroundId) || game.playgrounds?.[0];
 
-    // CRITICAL NULL CHECK: Prevent crash if no playground exists
-    if (!activePlayground) {
-        return (
-            <div style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999
-            }}>
-                <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    padding: '2rem',
-                    maxWidth: '400px',
-                    textAlign: 'center',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.2)'
-                }}>
-                    <h2 style={{ color: '#1f2937', marginBottom: '1rem' }}>No Playground Available</h2>
-                    <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
-                        This game doesn't have any playgrounds yet. Please create one first.
-                    </p>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            background: '#667eea',
-                            color: 'white',
-                            padding: '0.625rem 1.5rem',
-                            borderRadius: '8px',
-                            border: 'none',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Go Back
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    // Check orientation lock from device-specific layout first, then fallback to playground-level
+    const isOrientationLocked = (() => {
+        if (!activePlayground) return false;
+        const deviceLayout = activePlayground.deviceLayouts?.[selectedDevice];
+        const orientationSetting = deviceLayout?.orientationLock || activePlayground.orientationLock;
+        return !!orientationSetting && orientationSetting !== 'none';
+    })();
 
-    const isOrientationLocked = !!activePlayground.orientationLock && activePlayground.orientationLock !== 'none';
-
-    const playgroundPoints = game.points.filter(p => p.playgroundId === activePlayground.id);
+    const playgroundPoints = activePlayground && game.points ? game.points.filter(p => p.playgroundId === activePlayground.id) : [];
 
     useEffect(() => {
         if (!activePlayground) return;
-        if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
+
+        // Get orientation from device-specific layout if available
+        if (activePlayground.deviceLayouts?.[selectedDevice]) {
+            const deviceLayout = activePlayground.deviceLayouts[selectedDevice];
+            // Only change orientation if there's a locked orientation set
+            // When unlocked (orientationLock === 'none'), keep the current editorOrientation
+            if (deviceLayout.orientationLock && deviceLayout.orientationLock !== 'none') {
+                setEditorOrientation(deviceLayout.orientationLock);
+            }
+            // Note: Removed the 'else' block that reset to default orientation
+            // This preserves the current orientation when unlocking
+
+            // Load QR scanner settings from device layout
+            if (deviceLayout.qrScannerPos) {
+                setQRScannerPos(deviceLayout.qrScannerPos);
+            }
+            if (deviceLayout.qrScannerSize) {
+                setQRScannerSize(deviceLayout.qrScannerSize);
+            }
+            if (deviceLayout.qrScannerColor) {
+                console.log('[PlaygroundEditor] Loading saved QR color:', deviceLayout.qrScannerColor);
+                setQRScannerColor(deviceLayout.qrScannerColor);
+            } else {
+                console.log('[PlaygroundEditor] No saved QR color, using default');
+            }
+        } else if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
+            // Fallback to playground-level orientation for backward compatibility
             setEditorOrientation(activePlayground.orientationLock);
-        } else {
-            setEditorOrientation('landscape');
         }
-    }, [activePlayground?.id, activePlayground?.orientationLock]);
+        // Note: Removed the final 'else' block that reset to default orientation
+        // This allows orientation to persist when switching devices
+
+        // Initialize visibility states from playground (defaults to true if not set)
+        setShowTaskScores(activePlayground.showTaskScores !== false);
+        setShowTaskOrder(activePlayground.showTaskOrder !== false);
+        setShowTaskActions(activePlayground.showTaskActions !== false);
+        setShowTaskNames(activePlayground.showTaskNames !== false);
+        setShowTaskStatus(activePlayground.showTaskStatus !== false);
+        setShowBackground(activePlayground.showBackground !== false);
+        setShowQRScanner(activePlayground.showQRScanner !== false);
+    }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerColor, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerPos, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerSize, selectedDevice, activePlayground?.showTaskScores, activePlayground?.showTaskOrder, activePlayground?.showTaskActions, activePlayground?.showTaskNames, activePlayground?.showTaskStatus, activePlayground?.showBackground, activePlayground?.showQRScanner]);
+
+    // Load last used device when switching playgrounds
+    useEffect(() => {
+        if (activePlayground) {
+            const playgroundTasks = game.points?.filter(p => p.playgroundId === activePlayground.id) || [];
+            const isNewPlayground = playgroundTasks.length === 0;
+
+            if (isNewPlayground) {
+                // New playground: start with tablet mode (default for new playzone games)
+                setSelectedDevice('tablet');
+            } else {
+                // Existing playground: load last used device from localStorage
+                const storageKey = `playzone_device_${activePlayground.id}`;
+                const savedDevice = localStorage.getItem(storageKey);
+                if (savedDevice) {
+                    setSelectedDevice(savedDevice as DeviceType);
+                }
+            }
+        }
+    }, [activePlayground?.id]);
+
+    // Save selected device to localStorage whenever it changes
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_device_${activePlayground.id}`;
+            localStorage.setItem(storageKey, selectedDevice);
+        }
+    }, [selectedDevice, activePlayground?.id]);
+
+    // Load and save task sort mode preference
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_sortmode_${activePlayground.id}`;
+            const savedSortMode = localStorage.getItem(storageKey);
+            if (savedSortMode) {
+                setTaskSortMode(savedSortMode as 'order' | 'actions');
+            }
+        }
+    }, [activePlayground?.id]);
+
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_sortmode_${activePlayground.id}`;
+            localStorage.setItem(storageKey, taskSortMode);
+        }
+    }, [taskSortMode, activePlayground?.id]);
+
+    // Load and save zoom level
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_zoom_${activePlayground.id}`;
+            const savedZoom = localStorage.getItem(storageKey);
+            if (savedZoom) {
+                setZoom(parseFloat(savedZoom));
+            }
+        }
+    }, [activePlayground?.id]);
+
+    useEffect(() => {
+        if (activePlayground) {
+            const storageKey = `playzone_zoom_${activePlayground.id}`;
+            localStorage.setItem(storageKey, zoom.toString());
+        }
+    }, [zoom, activePlayground?.id]);
+
+    // Auto-collapse all source tasks on mount when in actions mode
+    useEffect(() => {
+        if (activePlayground && taskSortMode === 'actions') {
+            const uniquePlaygroundPoints = game.points.filter(p => p.playgroundId === activePlayground.id);
+            const sourceTasks = uniquePlaygroundPoints.filter(p =>
+                p.logic?.onOpen?.length > 0 ||
+                p.logic?.onCorrect?.length > 0 ||
+                p.logic?.onIncorrect?.length > 0
+            );
+            setCollapsedSources(new Set(sourceTasks.map(t => t.id)));
+        }
+    }, [activePlayground?.id, taskSortMode, game.points]);
 
     // Deduplicate to prevent "same key" errors
     const uniquePlaygroundPoints = Array.from(new Map(playgroundPoints.map(p => [p.id, p])).values());
+
+    // Device-specific position helpers
+    const getDevicePosition = (point: GamePoint): { x: number; y: number } => {
+        // Priority: devicePositions[selectedDevice] > playgroundPosition > default
+        if (point.devicePositions?.[selectedDevice]) {
+            return point.devicePositions[selectedDevice];
+        }
+        // Fallback to legacy playgroundPosition
+        if (point.playgroundPosition) {
+            return point.playgroundPosition;
+        }
+        // Default position
+        return { x: 50, y: 50 };
+    };
+
+    const setDevicePosition = (point: GamePoint, position: { x: number; y: number }): Partial<GamePoint> => {
+        // Store in device-specific position
+        const devicePositions = {
+            ...point.devicePositions,
+            [selectedDevice]: position
+        };
+        return { devicePositions };
+    };
 
     // Handlers
     const updatePlayground = (updates: Partial<Playground>) => {
@@ -341,18 +909,53 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const existingZones = game.playgrounds || [];
         const zoneNumber = existingZones.length + 1;
 
+        // Initialize device layouts with default configurations
+
         const newZone: Playground = {
             id: `pg-${Date.now()}`,
             title: `Global ${zoneNumber}`,
             buttonVisible: true,
             iconId: 'default',
             location: { lat: 0, lng: 0 },
-            orientationLock: 'landscape'
+            orientationLock: 'landscape',
+            deviceLayouts: {
+                mobile: {
+                    orientationLock: 'landscape',
+                    qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
+                    qrScannerSize: { width: 140, height: 48 },
+                    qrScannerColor: '#f97316', // Orange-500 default
+                    iconPositions: {},
+                    buttonVisible: true,
+                    iconScale: 1.0,
+                },
+                tablet: {
+                    orientationLock: 'landscape',
+                    qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
+                    qrScannerSize: { width: 140, height: 48 },
+                    qrScannerColor: '#f97316', // Orange-500 default
+                    iconPositions: {},
+                    buttonVisible: true,
+                    iconScale: 1.0,
+                },
+                desktop: {
+                    orientationLock: 'landscape',
+                    qrScannerPos: { x: 85, y: 85 }, // Percentage-based (85%, 85%)
+                    qrScannerSize: { width: 140, height: 48 },
+                    qrScannerColor: '#f97316', // Orange-500 default
+                    iconPositions: {},
+                    buttonVisible: true,
+                    iconScale: 1.0,
+                },
+            },
         };
 
         const updatedPlaygrounds = [...existingZones, newZone];
         onUpdateGame({ ...game, playgrounds: updatedPlaygrounds });
         setActivePlaygroundId(newZone.id);
+
+        // Open drawers by default for new zones
+        setIsDrawerOpen(true);
+        setIsTasksDrawerOpen(true);
     };
 
     const handleResetBackground = () => {
@@ -409,15 +1012,29 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 console.warn('[PlaygroundEditor] AI returned null - check console for details');
                 alert('⚠️ Image generation failed\n\nGemini 2.5 Flash Image did not return image data. This could mean:\n\n1. The prompt may have been filtered by safety settings\n2. Your API key may have reached its quota\n3. The content may be too complex or ambiguous\n\nCheck the browser console (F12) for detailed error logs.\n\nTry:\n• Using simpler, descriptive keywords (e.g., "forest sunset", "medieval castle", "ocean waves")\n• Avoiding potentially sensitive content\n• Being more specific in your description\n• Uploading an image instead');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('[PlaygroundEditor] Error generating background:', error);
-            alert('Error generating background. Please check your API key and try again.');
+            const errorMessage = error?.message || '';
+            if (errorMessage.includes('AI API Key missing')) {
+                setPendingBackgroundKeywords(keywords);
+                setShowGeminiKeyModal(true);
+            } else {
+                alert('Error generating background. Please check your API key and try again.');
+            }
         } finally {
             setIsGeneratingBackground(false);
         }
     };
 
-    const selectedTask = game.points.find(p => p.id === selectedTaskId && p.playgroundId === activePlayground?.id);
+    const handleApiKeySaved = () => {
+        // Retry the background generation with the pending keywords
+        if (pendingBackgroundKeywords) {
+            handleGenerateAiBackground(pendingBackgroundKeywords);
+            setPendingBackgroundKeywords(null);
+        }
+    };
+
+    const selectedTask = game.points?.find(p => p.id === selectedTaskId && p.playgroundId === activePlayground?.id);
 
     const updateTask = (updates: Partial<GamePoint>) => {
         if (!selectedTask) return;
@@ -430,7 +1047,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const updatePointDirectly = (pointId: string, updates: Partial<GamePoint>) => {
         onUpdateGame({
             ...game,
-            points: game.points.map(p => p.id === pointId ? { ...p, ...updates } : p)
+            points: game.points?.map(p => p.id === pointId ? { ...p, ...updates } : p)
         });
     };
 
@@ -449,7 +1066,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const applyBulkIcon = () => {
         if (!bulkIconSourceId || bulkIconTargets.size === 0) return;
 
-        const sourceTask = game.points.find(p => p.id === bulkIconSourceId);
+        const sourceTask = game.points?.find(p => p.id === bulkIconSourceId);
         if (!sourceTask) return;
 
         const iconPayload = {
@@ -459,7 +1076,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         onUpdateGame({
             ...game,
-            points: game.points.map(p =>
+            points: game.points?.map(p =>
                 bulkIconTargets.has(p.id) ? { ...p, ...iconPayload } : p
             )
         });
@@ -479,6 +1096,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (taskIconInputRef.current) taskIconInputRef.current.value = '';
     };
 
+    const handleCompletedTaskIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file && selectedTask) {
+            const url = await uploadImage(file);
+            if (url) updateTask({ completedIconUrl: url });
+        }
+        if (completedTaskIconInputRef.current) completedTaskIconInputRef.current.value = '';
+    };
+
     const handleGenerateTaskIcon = async (prompt: string) => {
         if (!prompt.trim()) {
             alert('Please enter a description for the icon');
@@ -487,20 +1113,33 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         setIsGeneratingIcon(true);
         try {
+            console.log('[PlaygroundEditor] Generating AI icon for:', prompt);
             const iconUrl = await generateAiImage(prompt, 'simple icon style, transparent background');
+
             if (iconUrl) {
+                console.log('[PlaygroundEditor] Icon generated successfully');
                 // If a task is selected, update task icon; otherwise update zone icon
                 if (selectedTask) {
-                    updateTask({ iconUrl });
+                    if (editingCompletedIcon) {
+                        updateTask({ completedIconUrl: iconUrl });
+                    } else {
+                        updateTask({ iconUrl });
+                    }
                 } else {
                     updatePlayground({ iconUrl });
                 }
             } else {
-                alert('Icon generation failed. Please try again.');
+                console.warn('[PlaygroundEditor] AI returned null - check console for details');
+                alert('⚠️ Image generation failed\n\nGemini 2.5 Flash Image did not return image data. This could mean:\n\n1. The prompt may have been filtered by safety settings\n2. Your API key may have reached its quota\n3. The content may be too complex or ambiguous\n\nCheck the browser console (F12) for detailed error logs.\n\nTry:\n• Using simpler, descriptive keywords\n• Avoiding potentially sensitive content\n• Being more specific in your description');
             }
-        } catch (error) {
-            console.error('Icon generation error:', error);
-            alert('Failed to generate icon. Check your API key or try again.');
+        } catch (error: any) {
+            console.error('[PlaygroundEditor] Icon generation error:', error);
+            const errorMessage = error?.message || '';
+            if (errorMessage.includes('AI API Key missing')) {
+                setShowGeminiKeyModal(true);
+            } else {
+                alert('Error generating icon. Please check your API key and try again.\n\n' + errorMessage);
+            }
         } finally {
             setIsGeneratingIcon(false);
         }
@@ -520,7 +1159,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
             if (logoUrl) {
                 console.log('[Logo Search] Found logo:', logoUrl);
-                updateTask({ iconUrl: logoUrl });
+                if (editingCompletedIcon) {
+                    updateTask({ completedIconUrl: logoUrl });
+                } else {
+                    updateTask({ iconUrl: logoUrl });
+                }
                 setShowLogoPrompt(false);
                 setLogoCompanyName('');
             } else {
@@ -545,9 +1188,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
             onUpdateGame({
                 ...game,
-                points: game.points.map(p => {
+                points: game.points?.map(p => {
                     if (updates[p.id]) {
-                        return { ...p, playgroundPosition: updates[p.id] };
+                        // Store in device-specific position
+                        return { ...p, ...setDevicePosition(p, updates[p.id]) };
                     }
                     return p;
                 })
@@ -604,10 +1248,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         // Sort points by current Y position (top to bottom), then X (left to right)
         const sortedPoints = [...uniquePlaygroundPoints].sort((a, b) => {
-            const aY = a.playgroundPosition?.y || 50;
-            const bY = b.playgroundPosition?.y || 50;
-            const aX = a.playgroundPosition?.x || 50;
-            const bX = b.playgroundPosition?.x || 50;
+            const aPos = getDevicePosition(a);
+            const bPos = getDevicePosition(b);
+            const aY = aPos.y;
+            const bY = bPos.y;
+            const aX = aPos.x;
+            const bX = bPos.x;
 
             // Group into rows (every 15% difference = new row)
             const rowDiff = Math.abs(aY - bY);
@@ -627,17 +1273,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
             return {
                 ...point,
-                playgroundPosition: {
+                ...setDevicePosition(point, {
                     x: Math.round(x * 10) / 10,
                     y: Math.round(y * 10) / 10
-                }
+                })
             };
         });
 
         // Update game with snapped points
         onUpdateGame({
             ...game,
-            points: game.points.map(p => {
+            points: game.points?.map(p => {
                 const snapped = snappedPoints.find(sp => sp.id === p.id);
                 return snapped ? { ...p, playgroundPosition: snapped.playgroundPosition } : p;
             })
@@ -658,17 +1304,17 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const rows: GamePoint[][] = [];
 
         const sortedByY = [...markedPoints].sort((a, b) => {
-            const aY = a.playgroundPosition?.y || 50;
-            const bY = b.playgroundPosition?.y || 50;
+            const aY = getDevicePosition(a).y;
+            const bY = getDevicePosition(b).y;
             return aY - bY;
         });
 
         sortedByY.forEach(point => {
-            const pointY = point.playgroundPosition?.y || 50;
+            const pointY = getDevicePosition(point).y;
             let foundRow = false;
 
             for (const row of rows) {
-                const rowY = row[0]?.playgroundPosition?.y || 50;
+                const rowY = getDevicePosition(row[0]).y;
                 if (Math.abs(pointY - rowY) <= rowTolerance) {
                     row.push(point);
                     foundRow = true;
@@ -681,25 +1327,43 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             }
         });
 
-        // Within each row, sort by X and distribute horizontally
-        const PADDING = 5;
-        const snappedMarkedPoints = rows.flatMap((row, rowIndex) => {
-            const baseY = row[0].playgroundPosition?.y || 50;
-            const sortedByX = [...row].sort((a, b) => {
-                const aX = a.playgroundPosition?.x || 50;
-                const bX = b.playgroundPosition?.x || 50;
+        // Sort each row by X position
+        rows.forEach(row => {
+            row.sort((a, b) => {
+                const aX = getDevicePosition(a).x;
+                const bX = getDevicePosition(b).x;
                 return aX - bX;
             });
+        });
 
-            const colWidth = (100 - (PADDING * 2)) / sortedByX.length;
-            return sortedByX.map((point, colIndex) => {
-                const x = PADDING + (colIndex * colWidth) + (colWidth / 2);
+        // Detect grid dimensions: find max columns in any row
+        const numRows = rows.length;
+        const numCols = Math.max(...rows.map(row => row.length));
+
+        // Padding from edges (increased to prevent text labels cutoff)
+        const PADDING = 12; // 12% padding from all edges (~2cm on most screens)
+        const availableWidth = 100 - (PADDING * 2);
+        const availableHeight = 100 - (PADDING * 2);
+
+        // Calculate spacing between icons (not icon positions)
+        const colSpacing = numCols > 1 ? availableWidth / (numCols - 1) : 0;
+        const rowSpacing = numRows > 1 ? availableHeight / (numRows - 1) : 0;
+
+        // Position all icons in a proper rectangular grid
+        const snappedMarkedPoints = rows.flatMap((row, rowIndex) => {
+            // Calculate Y position for this row
+            const rowY = numRows === 1 ? 50 : PADDING + (rowIndex * rowSpacing);
+
+            return row.map((point, colIndex) => {
+                // Calculate X position for this column
+                const colX = numCols === 1 ? 50 : PADDING + (colIndex * colSpacing);
+
                 return {
                     ...point,
-                    playgroundPosition: {
-                        x: Math.round(x * 10) / 10,
-                        y: Math.round(baseY * 10) / 10
-                    }
+                    ...setDevicePosition(point, {
+                        x: Math.round(colX * 10) / 10, // Round to 1 decimal
+                        y: Math.round(rowY * 10) / 10  // Round to 1 decimal
+                    })
                 };
             });
         });
@@ -707,9 +1371,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         // Update game with snapped marked points
         onUpdateGame({
             ...game,
-            points: game.points.map(p => {
+            points: game.points?.map(p => {
                 const snapped = snappedMarkedPoints.find(sp => sp.id === p.id);
-                return snapped ? { ...p, playgroundPosition: snapped.playgroundPosition } : p;
+                if (snapped && snapped.devicePositions) {
+                    return { ...p, devicePositions: snapped.devicePositions };
+                }
+                return p;
             })
         });
 
@@ -720,24 +1387,37 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     // Pan/Zoom, etc.
     const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const scaleAmount = -e.deltaY * 0.001;
-            setZoom(z => Math.max(0.2, Math.min(5, z * (1 + scaleAmount))));
-        } else {
-            // Pan
-            setPan(p => ({ x: p.x - e.deltaX, y: p.y - e.deltaY }));
-        }
+        // Default behavior: zoom in/out
+        e.preventDefault();
+        const scaleAmount = -e.deltaY * 0.001;
+        setZoom(z => Math.max(0.2, Math.min(5, z * (1 + scaleAmount))));
+
+        // Note: Removed panning on scroll - users can drag to pan instead
+        // This makes mousewheel zoom the primary interaction, which is more intuitive
     };
 
     const handleMouseDown = (e: React.MouseEvent) => {
         if (dragTaskRef.current.id) return;
+        if (isBackgroundLocked) return;
         setIsDragging(true);
         setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     };
 
     const handleMouseMove = (e: React.MouseEvent) => {
         if (dragTaskRef.current.id) return;
+
+        // Track mouse position in draw mode
+        if (drawMode.active && drawMode.sourceTaskId && canvasRef.current) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            setDrawMode(prev => ({
+                ...prev,
+                mousePosition: {
+                    x: ((e.clientX - rect.left) / rect.width) * 100,
+                    y: ((e.clientY - rect.top) / rect.height) * 100
+                }
+            }));
+        }
+
         if (isDragging) {
             setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
         }
@@ -747,15 +1427,45 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setIsDragging(false);
     };
 
-    if (!activePlayground) return null;
+    const handleCenterBackground = () => {
+        setPan({ x: 0, y: 0 });
+        setZoom(1);
+    };
+
+    // Calculate viewport dimensions based on device type and orientation
+    const getViewportDimensions = () => {
+        // Desktop mode: use 100% to fill available space
+        if (selectedDevice === 'desktop') {
+            return { width: '100%', height: '100%', aspectRatio: 'auto' };
+        }
+
+        // Mobile and Tablet: use fixed device dimensions
+        const specs = DEVICE_SPECS[selectedDevice];
+        if (!specs) return { width: '100%', height: '100%', aspectRatio: 'auto' };
+
+        const width = editorOrientation === 'portrait'
+            ? Math.min(specs.width, specs.height)
+            : Math.max(specs.width, specs.height);
+        const height = editorOrientation === 'portrait'
+            ? Math.max(specs.width, specs.height)
+            : Math.min(specs.width, specs.height);
+
+        return {
+            width: `${width}px`,
+            height: `${height}px`,
+            aspectRatio: `${width} / ${height}` as any
+        };
+    };
+
+    const viewportDims = getViewportDimensions();
 
     const bgStyle: React.CSSProperties = {
-        backgroundImage: showBackground && activePlayground.imageUrl ? `url(${activePlayground.imageUrl})` : 'none',
-        backgroundSize: activePlayground.backgroundStyle === 'stretch' ? '100% 100%' : (activePlayground.backgroundStyle === 'cover' ? 'cover' : 'contain'),
+        backgroundImage: showBackground && activePlayground?.imageUrl ? `url(${activePlayground.imageUrl})` : 'none',
+        backgroundSize: activePlayground?.backgroundStyle === 'stretch' ? '100% 100%' : (activePlayground?.backgroundStyle === 'cover' ? 'cover' : 'contain'),
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
-        width: '100%',
-        height: '100%',
+        width: viewportDims.width,
+        height: viewportDims.height,
         transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
         transition: isDragging ? 'none' : 'transform 0.1s ease-out'
     };
@@ -767,8 +1477,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const rect = backgroundRef.current?.getBoundingClientRect();
         if (!rect) return;
 
-        const currentX = point.playgroundPosition?.x ?? 50;
-        const currentY = point.playgroundPosition?.y ?? 50;
+        const devicePos = getDevicePosition(point);
+        const currentX = devicePos.x;
+        const currentY = devicePos.y;
 
         const centerX = rect.left + (currentX / 100) * rect.width;
         const centerY = rect.top + (currentY / 100) * rect.height;
@@ -783,6 +1494,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         };
 
         setDraggingTaskId(point.id);
+        setDragVisualPosition(null); // Start with game state position
         (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     };
 
@@ -807,6 +1519,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             y: Math.max(0, Math.min(100, Math.round(y * 10) / 10))
         };
 
+        // Update visual position immediately for smooth dragging
+        setDragVisualPosition(clamped);
+
+        // Batch game state updates with throttle
         updatePointPlaygroundPosition(id, clamped);
 
         // Check if dragging over delete zone
@@ -831,7 +1547,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         if (isOverDeleteZone) {
             onUpdateGame({
                 ...game,
-                points: game.points.filter(p => p.id !== id)
+                points: game.points?.filter(p => p.id !== id)
             });
             setSelectedTaskId(null);
         } else {
@@ -848,6 +1564,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
         dragTaskRef.current = { id: null, offsetX: 0, offsetY: 0, startClientX: 0, startClientY: 0, moved: false };
         setDraggingTaskId(null);
+        setDragVisualPosition(null);
         setIsOverDeleteZone(false);
     };
 
@@ -890,7 +1607,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         const endY = (selectionBox.current.y - rect.top) / zoom + pan.y;
 
         // Find tasks within the selection box
-        const tasksToSnap = game.points.filter(point => {
+        const tasksToSnap = game.points?.filter(point => {
             const pos = point.playgroundPosition;
             if (!pos) return false;
 
@@ -916,7 +1633,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             const snappedLocations = await snapPointsToRoad(originalPoints);
 
             // Update the game with snapped locations
-            const updatedPoints = game.points.map(point => {
+            const updatedPoints = game.points?.map(point => {
                 const taskIndex = tasksToSnap.findIndex(t => t.id === point.id);
                 if (taskIndex >= 0) {
                     return {
@@ -961,6 +1678,86 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     return (
         <div className="fixed inset-0 z-[5000] bg-[#0f172a] text-white flex flex-row overflow-hidden font-sans animate-in fade-in">
 
+            {/* Top-Right Settings Gear - Fixed Position */}
+            {!isSimulationActive && onOpenGameSettings && (
+                <button
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onOpenGameSettings();
+                    }}
+                    className="absolute top-6 right-6 z-[6000] p-2 text-orange-500 hover:text-orange-400 transition-all hover:scale-110 pointer-events-auto group"
+                    title="Open Game Settings - Configure game rules, timing, and appearance"
+                >
+                    <Settings className="w-6 h-6" />
+                </button>
+            )}
+
+            {/* Simulation Mode Banner - Absolute Positioned */}
+            {isSimulationActive && (
+                <div className="absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between z-[6000] bg-purple-600 border-b-4 border-purple-500 animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-4">
+                        <PlayCircle className="w-6 h-6 text-white animate-pulse" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-wider text-white">
+                                🎮 SIMULATION MODE ACTIVE
+                            </h3>
+                            <p className="text-sm font-bold text-white/90">
+                                Click tasks to open and solve them. Score: {simulationScore} | Team: {simulationTeam?.name}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setIsSimulationActive(false);
+                            setSimulationScore(0);
+                            setSimulationTeam(null);
+                            setActiveSimulationTaskId(null);
+                            setShowRanking(false);
+
+                            // Stop background music
+                            if (simulationBgAudioRef.current) {
+                                simulationBgAudioRef.current.pause();
+                                simulationBgAudioRef.current.currentTime = 0;
+                                simulationBgAudioRef.current = null;
+                            }
+                        }}
+                        className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 border-2 border-white/30"
+                    >
+                        <X className="w-5 h-5" /> EXIT SIMULATION
+                    </button>
+                </div>
+            )}
+
+            {/* Draw Mode Banner - Absolute Positioned */}
+            {drawMode.active && drawMode.sourceTaskId && (
+                <div className={`absolute top-0 left-0 right-0 px-6 py-4 flex items-center justify-between z-[6000] border-b-4 animate-in slide-in-from-top-4 ${
+                    drawMode.trigger === 'onCorrect'
+                        ? 'bg-green-600 border-green-500'
+                        : drawMode.trigger === 'onIncorrect'
+                        ? 'bg-red-600 border-red-500'
+                        : 'bg-yellow-600 border-yellow-500'
+                }`}>
+                    <div className="flex items-center gap-4">
+                        <PenTool className="w-6 h-6 text-white animate-pulse" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-wider text-white">
+                                {drawMode.trigger === 'onCorrect' ? '✓ IF CORRECT' : drawMode.trigger === 'onIncorrect' ? '✗ IF INCORRECT' : '⚡ WHEN OPENED'} DRAW MODE
+                            </h3>
+                            <p className="text-sm font-bold text-white/90">
+                                Click tasks to connect them. Click multiple to create a flow. Press ESC or click Exit to finish.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setDrawMode({ active: false, trigger: null, sourceTaskId: null, mousePosition: null })}
+                        className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-2 border-2 border-white/30"
+                    >
+                        <X className="w-5 h-5" /> EXIT DRAW MODE
+                    </button>
+                </div>
+            )}
+
             {/* LEFT SIDEBAR EDITOR - COLLAPSIBLE DRAWER */}
             <div className={`flex flex-col border-r border-slate-800 bg-[#0f172a] shadow-2xl z-20 transition-all duration-300 ease-in-out ${
                 isDrawerOpen ? 'w-[360px]' : 'w-0'
@@ -974,20 +1771,48 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{game.playgrounds?.length || 0} ZONES ACTIVE</p>
                         </div>
                     </div>
-                    <button
-                        onClick={() => setIsDrawerOpen(false)}
-                        className="text-orange-500 hover:text-orange-400 transition-colors p-2 -mr-2"
-                        title="Close Settings"
-                    >
-                        <ChevronLeft className="w-6 h-6" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        {/* Game Settings Clockwheel */}
+                        {onOpenGameSettings && (
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onOpenGameSettings();
+                                }}
+                                className="text-orange-500 hover:text-orange-400 transition-all p-2 hover:scale-110"
+                                title="Open Game Settings"
+                            >
+                                <Settings className="w-5 h-5" />
+                            </button>
+                        )}
+                        <button
+                            onClick={toggleAllSections}
+                            className="text-slate-400 hover:text-orange-400 transition-colors p-2"
+                            title={(() => {
+                                const anyExpanded = !isBackgroundImageCollapsed ||
+                                                   !isBackgroundMusicCollapsed || !isDeviceCollapsed ||
+                                                   !isOrientationCollapsed || !isShowCollapsed || !isLayoutCollapsed;
+                                return anyExpanded ? "Collapse All Sections" : "Expand All Sections";
+                            })()}
+                        >
+                            <ChevronsUpDown className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => setIsDrawerOpen(false)}
+                            className="text-orange-500 hover:text-orange-400 transition-colors p-2 -mr-2"
+                            title="Close Settings"
+                        >
+                            <ChevronLeft className="w-6 h-6" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                     {/* Active Zone Card */}
-                    <div className="bg-[#1e293b]/50 border border-slate-700 rounded-xl p-4 space-y-4">
-                        <div className="flex justify-between items-start">
+                    <div className="bg-[#1e293b]/50 border border-slate-700 rounded-xl p-4">
+                        <div className="flex justify-between items-center gap-2">
                             <div className="flex flex-col flex-1">
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">ZONE TITLE</span>
                                 <input
@@ -997,18 +1822,37 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     className="bg-transparent border-b border-slate-600 text-sm font-bold text-white uppercase focus:border-orange-500 outline-none pb-1 w-full"
                                 />
                             </div>
+                            {onOpenGameSettings && (
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onOpenGameSettings();
+                                    }}
+                                    className="p-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg transition-all shadow-lg"
+                                    title="Game Settings"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
 
                         {/* HUD Appearance */}
                         <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                            <button
+                                onClick={() => setIsHudAppearanceCollapsed(!isHudAppearanceCollapsed)}
+                                className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                            >
+                                <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest flex items-center gap-1">
                                     <MousePointerClick className="w-3 h-3" /> HUD BUTTON APPEARANCE
                                 </span>
-                            </div>
+                                <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isHudAppearanceCollapsed ? '-rotate-90' : ''}`} />
+                            </button>
 
-                            {/* Custom Icon Preview */}
-                            {activePlayground.iconUrl && (
+                            {!isHudAppearanceCollapsed && (
+                                <div className="space-y-3">
+                                    {/* Custom Icon Preview */}
+                                    {activePlayground.iconUrl && (
                                 <div className="mb-3 p-3 bg-slate-800 rounded-lg border border-slate-700 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <img src={activePlayground.iconUrl} alt="Custom Icon" className="w-8 h-8 object-contain" />
@@ -1111,113 +1955,457 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
                                 />
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Background Image */}
-                    <div>
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">BACKGROUND IMAGE</span>
-                        </div>
-
-                        <div
-                            className="aspect-video bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative group cursor-pointer hover:border-slate-500 transition-colors"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            {activePlayground.imageUrl ? (
-                                <img src={activePlayground.imageUrl} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-600">
-                                    <ImageIcon className="w-8 h-8" />
                                 </div>
                             )}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <span className="text-[9px] font-bold text-white uppercase tracking-widest">UPLOAD IMAGE</span>
-                            </div>
                         </div>
-                        <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                    </div>
 
-                        {/* AI Background & Upload Buttons */}
-                        <div className="flex gap-2 mt-3">
-                            <button
-                                onClick={() => setShowAiBackgroundPrompt(true)}
-                                disabled={isGeneratingBackground}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide flex items-center justify-center gap-2 transition-colors shadow-lg"
-                            >
-                                <Wand2 className="w-4 h-4" />
-                                {isGeneratingBackground ? 'GENERATING...' : 'AI BACKGROUND'}
-                            </button>
-                        </div>
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
 
-                        {/* Scaling Options */}
-                        <div className="flex bg-slate-800 rounded-lg p-1 mt-3 border border-slate-700">
-                            {['contain', 'cover', 'stretch'].map((style) => (
+                    {/* Device Selection */}
+                    <div>
+                        <button
+                            onClick={() => setIsDeviceCollapsed(!isDeviceCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">DEVICE</span>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isDeviceCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+
+                        {!isDeviceCollapsed && (
+                            <div className="grid grid-cols-3 gap-2">
                                 <button
-                                    key={style}
-                                    onClick={() => updatePlayground({ backgroundStyle: style as any })}
-                                    className={`flex-1 py-1.5 text-[9px] font-bold uppercase rounded transition-colors ${activePlayground.backgroundStyle === style || (!activePlayground.backgroundStyle && style === 'contain') ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                    onClick={() => setSelectedDevice('mobile')}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                        selectedDevice === 'mobile'
+                                            ? 'bg-blue-600 text-white shadow-lg ring-2 ring-blue-400'
+                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                    }`}
+                                    title="Mobile (375×812)"
                                 >
-                                    {style}
+                                    <Smartphone className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase">MOBILE</span>
                                 </button>
-                            ))}
-                        </div>
+                                <button
+                                    onClick={() => setSelectedDevice('tablet')}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                        selectedDevice === 'tablet'
+                                            ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
+                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                    }`}
+                                    title="Tablet (1024×768)"
+                                >
+                                    <Tablet className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase">TABLET</span>
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDevice('desktop')}
+                                    className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                        selectedDevice === 'desktop'
+                                            ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-400'
+                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                    }`}
+                                    title="Desktop (1920×1080)"
+                                >
+                                    <Monitor className="w-6 h-6" />
+                                    <span className="text-[10px] font-black uppercase">DESKTOP</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Grid Controls */}
-                    <div className={`grid gap-3 ${isMarkMode ? 'grid-cols-2' : 'grid-cols-2'}`}>
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
+
+                    {/* Orientation Selection */}
+                    <div>
                         <button
-                            onClick={() => setShowGrid(!showGrid)}
-                            className={`py-3 border rounded-xl flex items-center justify-center gap-2 transition-colors ${
-                                showGrid
-                                    ? 'bg-blue-600 border-blue-500 text-white'
-                                    : 'bg-slate-800 border-slate-700 text-white hover:bg-slate-700'
-                            }`}
+                            onClick={() => setIsOrientationCollapsed(!isOrientationCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
                         >
-                            <Grid className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">GRID</span>
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">ORIENTATION</span>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isOrientationCollapsed ? '-rotate-90' : ''}`} />
                         </button>
-                        <button
-                            onClick={() => {
-                                if (isMarkMode) {
-                                    setIsMarkMode(false);
-                                    setMarkedTaskIds(new Set());
-                                } else {
-                                    setIsMarkMode(true);
-                                }
-                            }}
-                            className={`py-3 border rounded-xl flex items-center justify-center gap-2 transition-all ${
-                                isMarkMode
-                                    ? 'bg-orange-600 border-orange-500 text-white shadow-lg shadow-orange-500/50 animate-pulse'
-                                    : 'bg-slate-800 border-slate-700 text-white hover:bg-slate-700'
-                            }`}
-                            title={isMarkMode ? 'Exit mark mode' : 'Select tasks to snap to line-based grid'}
-                        >
-                            <MousePointer2 className="w-4 h-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">MARK & SNAP</span>
-                        </button>
+
+                        {!isOrientationCollapsed && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setEditorOrientation('portrait');
+                                            if (activePlayground) {
+                                                const newLayouts = { ...activePlayground.deviceLayouts };
+                                                // If already locked, update the lock to the new orientation
+                                                if (isOrientationLocked) {
+                                                    newLayouts[selectedDevice] = {
+                                                        ...newLayouts[selectedDevice],
+                                                        orientationLock: 'portrait',
+                                                    };
+                                                    updatePlayground({ deviceLayouts: newLayouts });
+                                                }
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                            editorOrientation === 'portrait'
+                                                ? 'bg-orange-600 text-white shadow-lg ring-2 ring-orange-400'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                        }`}
+                                        title="Portrait orientation"
+                                    >
+                                        <Smartphone className="w-6 h-6" />
+                                        <span className="text-[10px] font-black uppercase">PORTRAIT</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setEditorOrientation('landscape');
+                                            if (activePlayground) {
+                                                const newLayouts = { ...activePlayground.deviceLayouts };
+                                                // If already locked, update the lock to the new orientation
+                                                if (isOrientationLocked) {
+                                                    newLayouts[selectedDevice] = {
+                                                        ...newLayouts[selectedDevice],
+                                                        orientationLock: 'landscape',
+                                                    };
+                                                    updatePlayground({ deviceLayouts: newLayouts });
+                                                }
+                                            }
+                                        }}
+                                        className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                            editorOrientation === 'landscape'
+                                                ? 'bg-orange-600 text-white shadow-lg ring-2 ring-orange-400'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                        }`}
+                                        title="Landscape orientation"
+                                    >
+                                        <Monitor className="w-6 h-6" />
+                                        <span className="text-[10px] font-black uppercase">LAND</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (!activePlayground) return;
+                                            const newLayouts = { ...activePlayground.deviceLayouts };
+                                            if (isOrientationLocked) {
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'none',
+                                                };
+                                            } else {
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: editorOrientation,
+                                                };
+                                            }
+                                            updatePlayground({ deviceLayouts: newLayouts });
+                                        }}
+                                        className={`flex flex-col items-center gap-2 py-4 rounded-xl transition-all ${
+                                            isOrientationLocked
+                                                ? 'bg-orange-600 text-white shadow-lg ring-2 ring-orange-400'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-700'
+                                        }`}
+                                        title={isOrientationLocked ? 'Unlock orientation' : 'Lock to selected orientation'}
+                                    >
+                                        <Lock className="w-6 h-6" />
+                                        <span className="text-[10px] font-black uppercase">LOCK</span>
+                                    </button>
+                                </div>
+                                {isOrientationLocked && (
+                                    <div className="bg-orange-900/30 border border-orange-500/50 rounded-lg p-3 text-[9px] text-orange-300 uppercase font-bold tracking-wide">
+                                        ⚠️ Locked to {activePlayground?.deviceLayouts?.[selectedDevice]?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Snap Selected Button (only shown in mark mode) */}
-                    {isMarkMode && markedTaskIds.size > 0 && (
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
+
+                    {/* SHOW IN GAME Section */}
+                    <div>
                         <button
-                            onClick={handleSnapMarkedToGrid}
-                            className="w-full py-3 bg-green-600 hover:bg-green-700 border border-green-500 rounded-xl flex items-center justify-center gap-2 text-white transition-all font-black uppercase tracking-widest text-[10px] shadow-lg"
-                            title={`Snap ${markedTaskIds.size} selected task(s) to grid`}
+                            onClick={() => setIsShowCollapsed(!isShowCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
                         >
-                            <Check className="w-4 h-4" />
-                            <span>SNAP SELECTED ({markedTaskIds.size})</span>
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">SHOW IN GAME</span>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isShowCollapsed ? '-rotate-90' : ''}`} />
                         </button>
-                    )}
+
+                        {!isShowCollapsed && (
+                            <div className="grid grid-cols-4 gap-2">
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showTaskScores;
+                                        setShowTaskScores(newValue);
+                                        updatePlayground({ showTaskScores: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showTaskScores ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                    title="Show/Hide Scores"
+                                >
+                                    <span className="text-base font-bold">$</span>
+                                    <span className="text-[8px] font-black uppercase">SCORE</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showTaskOrder;
+                                        setShowTaskOrder(newValue);
+                                        updatePlayground({ showTaskOrder: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showTaskOrder ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <span className="text-base font-bold">#</span>
+                                    <span className="text-[8px] font-black uppercase">ORDER</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showTaskActions;
+                                        setShowTaskActions(newValue);
+                                        updatePlayground({ showTaskActions: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showTaskActions ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <Zap className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">ACTIONS</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showTaskNames;
+                                        setShowTaskNames(newValue);
+                                        updatePlayground({ showTaskNames: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showTaskNames ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <Type className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">NAME</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showTaskStatus;
+                                        setShowTaskStatus(newValue);
+                                        updatePlayground({ showTaskStatus: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showTaskStatus ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">ANSWERS</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showBackground;
+                                        setShowBackground(newValue);
+                                        updatePlayground({ showBackground: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showBackground ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <ImageIcon className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">BG</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newValue = !showQRScanner;
+                                        setShowQRScanner(newValue);
+                                        updatePlayground({ showQRScanner: newValue });
+                                    }}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showQRScanner ? 'bg-orange-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <QrCode className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">QR</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowRanking(!showRanking)}
+                                    className={`flex flex-col items-center gap-1 py-2 rounded-lg transition-all ${
+                                        showRanking ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                    title="Show/Hide Ranking Popup"
+                                >
+                                    <Trophy className="w-4 h-4" />
+                                    <span className="text-[8px] font-black uppercase">RANK</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30 my-4" />
+
+                    {/* LAYOUT Section */}
+                    <div>
+                        <button
+                            onClick={() => setIsLayoutCollapsed(!isLayoutCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest">LAYOUT</span>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isLayoutCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
+
+                        {!isLayoutCollapsed && (
+                            <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => setShowGrid(!showGrid)}
+                                        className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${
+                                            showGrid ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                        }`}
+                                    >
+                                        <Grid className="w-5 h-5" />
+                                        <span className="text-[10px] font-black uppercase">GRID</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            if (isMarkMode) {
+                                                setIsMarkMode(false);
+                                                setMarkedTaskIds(new Set());
+                                            } else {
+                                                setIsMarkMode(true);
+                                            }
+                                        }}
+                                        className={`flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${
+                                            isMarkMode ? 'bg-orange-600 text-white shadow-lg animate-pulse' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                        }`}
+                                        title={isMarkMode ? 'Exit mark mode' : 'Select tasks to snap to grid'}
+                                    >
+                                        <MousePointer2 className="w-5 h-5" />
+                                        <span className="text-[10px] font-black uppercase">MARK</span>
+                                    </button>
+                                </div>
+                                {isMarkMode && (
+                                    <div className="space-y-2">
+                                        {/* Mark All / Unmark All Button */}
+                                        <button
+                                            onClick={() => {
+                                                if (markedTaskIds.size === uniquePlaygroundPoints.length) {
+                                                    // If all are marked, unmark all
+                                                    setMarkedTaskIds(new Set());
+                                                } else {
+                                                    // Mark all icons in current playground
+                                                    setMarkedTaskIds(new Set(uniquePlaygroundPoints.map(p => p.id)));
+                                                }
+                                            }}
+                                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase text-[10px] shadow-lg transition-colors"
+                                            title={markedTaskIds.size === uniquePlaygroundPoints.length ? 'Unmark all tasks' : 'Mark all tasks'}
+                                        >
+                                            <Target className="w-4 h-4" />
+                                            {markedTaskIds.size === uniquePlaygroundPoints.length ? 'UNMARK ALL' : 'MARK ALL'}
+                                        </button>
+
+                                        {/* Snap Button - only show when tasks are marked */}
+                                        {markedTaskIds.size > 0 && (
+                                            <button
+                                                onClick={handleSnapMarkedToGrid}
+                                                className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl flex items-center justify-center gap-2 font-black uppercase text-[10px] shadow-lg transition-colors"
+                                                title={`Snap ${markedTaskIds.size} selected task(s) to grid`}
+                                            >
+                                                <Check className="w-4 h-4" />
+                                                SNAP ({markedTaskIds.size})
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => setIsBackgroundImageCollapsed(!isBackgroundImageCollapsed)}
+                                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${
+                                        !isBackgroundImageCollapsed ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                                >
+                                    <ImageIcon className="w-5 h-5" />
+                                    <span className="text-[10px] font-black uppercase">BACKGROUND</span>
+                                </button>
+
+                                {/* Background Image Content - Revealed when BACKGROUND button is clicked */}
+                                {!isBackgroundImageCollapsed && (
+                                    <div className="space-y-3 mt-3 p-3 bg-slate-900/50 border border-slate-700 rounded-xl">
+                                        <div
+                                            className="aspect-video bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative group cursor-pointer hover:border-slate-500 transition-colors"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            {activePlayground.imageUrl ? (
+                                                <img src={activePlayground.imageUrl} className="w-full h-full object-cover opacity-50 group-hover:opacity-100 transition-opacity" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-600">
+                                                    <ImageIcon className="w-8 h-8" />
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <span className="text-[9px] font-bold text-white uppercase tracking-widest">UPLOAD IMAGE</span>
+                                            </div>
+                                        </div>
+                                        <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+
+                                        {/* AI Background & Upload Buttons */}
+                                        <div className="space-y-2">
+                                            {/* API Key Status Indicator */}
+                                            <div className="flex items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-lg p-2">
+                                                <div className={`w-2 h-2 rounded-full ${typeof window !== 'undefined' && localStorage.getItem('GEMINI_API_KEY') ? 'bg-green-500' : 'bg-red-500'}`} />
+                                                <span className="text-[9px] font-bold uppercase text-slate-400 flex-1">
+                                                    {typeof window !== 'undefined' && localStorage.getItem('GEMINI_API_KEY') ? 'API Key Configured' : 'No API Key'}
+                                                </span>
+                                                <button
+                                                    onClick={() => setShowGeminiKeyModal(true)}
+                                                    className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[8px] font-bold uppercase tracking-wider transition-colors"
+                                                    title="Configure Gemini API Key"
+                                                >
+                                                    {typeof window !== 'undefined' && localStorage.getItem('GEMINI_API_KEY') ? 'Update' : 'Set Key'}
+                                                </button>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setShowAiBackgroundPrompt(true)}
+                                                    disabled={isGeneratingBackground}
+                                                    className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 disabled:opacity-50 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide flex items-center justify-center gap-2 transition-colors shadow-lg"
+                                                >
+                                                    <Wand2 className="w-4 h-4" />
+                                                    {isGeneratingBackground ? 'GENERATING...' : 'AI BACKGROUND'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Scaling Options */}
+                                        <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                            {['contain', 'cover', 'stretch'].map((style) => (
+                                                <button
+                                                    key={style}
+                                                    onClick={() => updatePlayground({ backgroundStyle: style as any })}
+                                                    className={`flex-1 py-1.5 text-[9px] font-bold uppercase rounded transition-colors ${activePlayground.backgroundStyle === style || (!activePlayground.backgroundStyle && style === 'contain') ? 'bg-slate-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'}`}
+                                                >
+                                                    {style}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Background Audio Section - At Bottom */}
                     <div>
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                        <button
+                            onClick={() => setIsBackgroundMusicCollapsed(!isBackgroundMusicCollapsed)}
+                            className="flex justify-between items-center mb-2 w-full hover:bg-slate-800/50 rounded-lg p-2 -mx-2 transition-colors group"
+                        >
+                            <span className="text-[10px] font-black text-slate-500 group-hover:text-slate-400 uppercase tracking-widest flex items-center gap-1">
                                 <Music className="w-3 h-3" /> BACKGROUND MUSIC
                             </span>
-                        </div>
+                            <ChevronDown className={`w-5 h-5 text-orange-500 group-hover:text-orange-400 transition-transform ${isBackgroundMusicCollapsed ? '-rotate-90' : ''}`} />
+                        </button>
 
-                        <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
+                        {!isBackgroundMusicCollapsed && (
+                            <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 space-y-3">
                             {/* Add New Track Button */}
                             <button
                                 onClick={() => audioInputRef.current?.click()}
@@ -1271,13 +2459,125 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                 </div>
 
                 {/* Footer Buttons - Fixed at bottom */}
-                <div className="p-5 border-t border-slate-800 flex-shrink-0">
-                    <div className="flex gap-3">
+                <div className="p-5 border-t border-slate-800 flex-shrink-0 space-y-3">
+                    {/* SIMULATOR Button */}
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            if (isSimulationActive) {
+                                // Stop simulation
+                                setIsSimulationActive(false);
+                                setSimulationScore(0);
+                                setSimulationTeam(null);
+                                setActiveSimulationTaskId(null);
+                                setShowRanking(false);
+
+                                // Stop background music
+                                if (simulationBgAudioRef.current) {
+                                    simulationBgAudioRef.current.pause();
+                                    simulationBgAudioRef.current.currentTime = 0;
+                                    simulationBgAudioRef.current = null;
+                                }
+                            } else {
+                                // Start simulation
+                                const testTeam = {
+                                    id: 'sim-test-team',
+                                    gameId: game.id,
+                                    name: 'TEST',
+                                    joinCode: 'TEST00',
+                                    score: 0,
+                                    members: [{ name: 'Simulator', deviceId: 'sim-device', photo: '' }],
+                                    updatedAt: new Date().toISOString()
+                                };
+                                setSimulationTeam(testTeam);
+                                setSimulationScore(0);
+                                setIsSimulationActive(true);
+                                setShowRanking(true);
+
+                                // Play background music if available
+                                if (activePlayground?.audioUrl) {
+                                    try {
+                                        const audio = new Audio(activePlayground.audioUrl);
+                                        audio.loop = activePlayground.audioLoop !== false;
+                                        audio.volume = (getGlobalVolume() / 100) * 0.8; // 80% of global volume for BG music
+                                        audio.play().catch(err => console.warn('Auto-play prevented:', err));
+                                        simulationBgAudioRef.current = audio;
+                                    } catch (err) {
+                                        console.warn('Failed to play background music:', err);
+                                    }
+                                }
+                            }
+                        }}
+                        className={`w-full px-4 py-4 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 font-black uppercase tracking-widest text-xs shadow-lg ${
+                            isSimulationActive
+                                ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/20'
+                                : 'bg-purple-600 text-white hover:bg-purple-700 shadow-purple-500/20'
+                        }`}
+                        title={isSimulationActive ? 'Stop Simulation Mode' : 'Start Simulation Mode - Play the game with all tasks and rules enabled'}
+                        type="button"
+                    >
+                        {isSimulationActive ? <X className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
+                        <span>{isSimulationActive ? 'STOP SIMULATOR' : 'START SIMULATOR'}</span>
+                    </button>
+
+                    {/* SAVE AS TEMPLATE Button */}
+                    <button
+                        onClick={async () => {
+                            if (!activePlayground) {
+                                alert('No playzone selected to save as template');
+                                return;
+                            }
+
+                            const templateName = prompt(
+                                `💾 SAVE AS GLOBAL TEMPLATE\n\n` +
+                                `This will create a reusable template that includes:\n` +
+                                `• All zone settings and design\n` +
+                                `• All ${game.points.filter(p => p.playgroundId === activePlayground.id).length} tasks\n` +
+                                `• All task actions and logic\n\n` +
+                                `Enter a name for this template:`,
+                                activePlayground.title
+                            );
+
+                            if (!templateName || !templateName.trim()) return;
+
+                            try {
+                                const zoneTasks = game.points.filter(p => p.playgroundId === activePlayground.id);
+                                const template: PlaygroundTemplate = {
+                                    id: `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                    title: templateName.trim(),
+                                    playgroundData: JSON.parse(JSON.stringify(activePlayground)),
+                                    tasks: JSON.parse(JSON.stringify(zoneTasks)),
+                                    createdAt: Date.now(),
+                                    isGlobal: true
+                                };
+                                await db.savePlaygroundTemplate(template);
+                                alert(`✅ Template "${templateName}" saved successfully!\n\nYou can now use this template to create new playzones.`);
+                            } catch (error) {
+                                console.error('Failed to save template:', error);
+                                alert('❌ Failed to save template. Please try again.');
+                            }
+                        }}
+                        className="w-full px-4 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                        title="Save this playzone with all tasks and settings as a reusable global template"
+                        type="button"
+                    >
+                        <Library className="w-5 h-5" />
+                        <span>SAVE AS TEMPLATE</span>
+                    </button>
+
+                    {/* Orange Divider */}
+                    <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30" />
+
+                    {/* Update/Delete Buttons */}
+                    <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={async () => {
                                 setIsSaving(true);
@@ -1287,7 +2587,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     await Promise.resolve(onUpdateGame(game));
                                     // Then save to database if in template mode
                                     if (isTemplateMode && onSaveTemplate) {
-                                        await Promise.resolve(onSaveTemplate(game.name));
+                                        // Use the actual playzone title instead of the template name
+                                        const templateName = activePlayground?.title || game.name;
+                                        await Promise.resolve(onSaveTemplate(templateName));
                                     }
                                     setSaveStatus('success');
                                     setTimeout(() => {
@@ -1323,7 +2625,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             )}
                             {saveStatus === 'idle' && (
                                 <>
-                                    <Save className="w-4 h-4" /> {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
+                                    <Save className="w-4 h-4 translate-x-0.5" />
+                                    {isTemplateMode ? 'UPDATE TEMPLATE' : 'UPDATE ZONE'}
                                 </>
                             )}
                         </button>
@@ -1331,15 +2634,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         {activePlayground && (
                             <button
                                 onClick={() => {
-                                    if(window.confirm(`Delete zone "${activePlayground.title}"? This cannot be undone.`)) {
+                                    const zoneName = activePlayground.title || 'this zone';
+                                    const taskCount = game.points.filter(p => p.playgroundId === activePlayground.id).length;
+                                    const confirmMessage = `⚠️ DELETE ZONE: "${zoneName}"?\n\n` +
+                                                         `This will permanently delete:\n` +
+                                                         `• The zone and all its settings\n` +
+                                                         `• ${taskCount} task${taskCount !== 1 ? 's' : ''} inside this zone\n\n` +
+                                                         `This action CANNOT be undone!\n\n` +
+                                                         `Are you absolutely sure?`;
+
+                                    if(window.confirm(confirmMessage)) {
                                         const remaining = game.playgrounds?.filter(p => p.id !== activePlayground.id) || [];
                                         onUpdateGame({ ...game, playgrounds: remaining });
                                         if (remaining.length > 0) setActivePlaygroundId(remaining[0].id);
                                         else setActivePlaygroundId(null);
                                     }
                                 }}
-                                className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border border-red-500"
-                                title="Delete this zone permanently"
+                                className="flex-1 py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 border-2 border-red-500 shadow-lg shadow-red-500/20"
+                                title="Delete this zone permanently - WARNING: This cannot be undone!"
                             >
                                 <Trash2 className="w-4 h-4" /> DELETE ZONE
                             </button>
@@ -1349,7 +2661,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             </div>
 
             {/* RIGHT MAIN CANVAS */}
-            <div className="flex-1 relative flex flex-col bg-[#050505]">
+            <div ref={editorRootRef} className="flex-1 relative flex flex-col bg-[#050505]">
                 {/* Drawer Toggle Button - Always Visible */}
                 <button
                     onClick={() => setIsDrawerOpen(!isDrawerOpen)}
@@ -1360,10 +2672,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 </button>
 
                 {/* Top Overlay Bar - Title, Zone Tabs (centered), and Home */}
-                <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 z-10">
                     <div className="p-4 flex items-center gap-4 relative">
                         {/* Left: Title */}
-                        <div className="flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm border border-orange-500/30 rounded-xl px-4 py-2 shadow-xl pointer-events-auto flex-shrink-0">
+                        <div className="hidden flex items-center gap-3 bg-slate-900/80 backdrop-blur-sm border border-orange-500/30 rounded-xl px-4 py-2 shadow-xl pointer-events-auto flex-shrink-0">
                             <LayoutGrid className="w-5 h-5 text-orange-500" />
                             <div>
                                 <h1 className="text-sm font-black text-white uppercase tracking-widest">
@@ -1377,17 +2689,21 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
                         {/* Center: Zone Tabs - Centered in Editor Window */}
                         <div className="absolute left-1/2 -translate-x-1/2 flex gap-2 overflow-x-auto pointer-events-auto hide-scrollbar">
-                            {/* ADD NEW Button First */}
-                            <button
-                                onClick={addNewZone}
-                                className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 bg-green-600 hover:bg-green-700 text-white shadow-lg border-2 border-green-500 flex items-center gap-2"
-                                title="Add a new zone to the game"
-                            >
-                                <Plus className="w-4 h-4" /> ADD NEW
-                            </button>
+                            {/* ADD NEW Button First (hide when editing/creating playzone templates) */}
+                            {!isTemplateMode && (
+                                <button
+                                    onClick={addNewZone}
+                                    className="px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide whitespace-nowrap transition-all flex-shrink-0 bg-green-600 hover:bg-green-700 text-white shadow-lg border-2 border-green-500 flex items-center gap-2"
+                                    title="Add a new zone to the game"
+                                >
+                                    <Plus className="w-4 h-4" /> ADD NEW
+                                </button>
+                            )}
 
                             {/* Zone Tabs */}
-                            {game.playgrounds?.map((pg, index) => (
+                            {game.playgrounds?.map((pg, index) => {
+                                const TabIcon = ICON_COMPONENTS[pg.iconId || 'default'] || ICON_COMPONENTS.default;
+                                return (
                                 <button
                                     key={pg.id}
                                     onClick={() => setActivePlaygroundId(pg.id)}
@@ -1398,10 +2714,12 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     }`}
                                     title={`Switch to ${pg.title}`}
                                 >
+                                    <TabIcon className="w-3 h-3 flex-shrink-0" />
                                     <span className="text-[10px] font-black opacity-70">{String(index + 1).padStart(2, '0')}</span>
                                     {pg.title}
                                 </button>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Right: Home Button */}
@@ -1415,9 +2733,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     </div>
                 </div>
 
-                {/* Draggable ORIENTATION Toolbar */}
+                {/* Draggable ORIENTATION Toolbar - HIDDEN - Now in left drawer */}
                 <div
-                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    className="hidden absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: orientationToolbarPos.x, top: orientationToolbarPos.y }}
                     onPointerDown={handleOrientationPointerDown}
                     onPointerMove={handleOrientationPointerMove}
@@ -1428,6 +2746,66 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             <GripHorizontal className="w-3 h-3" />
                         </div>
                         <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">DEVICE</span>
+                            <div className="flex gap-2 border-r border-orange-500/30 pr-2">
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedDevice('mobile');
+                                        }}
+                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
+                                            selectedDevice === 'mobile'
+                                                ? 'bg-blue-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Mobile (375×812)"
+                                        type="button"
+                                    >
+                                        <Smartphone className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[7px] font-black uppercase tracking-widest whitespace-nowrap ${selectedDevice === 'mobile' ? 'text-blue-300' : 'text-slate-500'}`}>MOBILE</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedDevice('tablet');
+                                        }}
+                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
+                                            selectedDevice === 'tablet'
+                                                ? 'bg-cyan-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Tablet (1024×768)"
+                                        type="button"
+                                    >
+                                        <Tablet className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[7px] font-black uppercase tracking-widest ${selectedDevice === 'tablet' ? 'text-cyan-300' : 'text-slate-500'}`}>TABLET</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setSelectedDevice('desktop');
+                                        }}
+                                        className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
+                                            selectedDevice === 'desktop'
+                                                ? 'bg-purple-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Desktop (1920×1080)"
+                                        type="button"
+                                    >
+                                        <Monitor className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[7px] font-black uppercase tracking-widest ${selectedDevice === 'desktop' ? 'text-purple-300' : 'text-slate-500'}`}>DESKTOP</span>
+                                </div>
+                            </div>
                             <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">ORIENTATION</span>
                             <div className="flex gap-3">
                                 <div className="flex flex-col items-center gap-0.5">
@@ -1436,7 +2814,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setEditorOrientation('portrait');
-                                            if (isOrientationLocked) updatePlayground({ orientationLock: 'portrait' });
+                                            if (isOrientationLocked && activePlayground) {
+                                                const newLayouts = { ...activePlayground.deviceLayouts };
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'portrait',
+                                                };
+                                                updatePlayground({ deviceLayouts: newLayouts });
+                                            }
                                         }}
                                         className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
                                             editorOrientation === 'portrait'
@@ -1456,7 +2841,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setEditorOrientation('landscape');
-                                            if (isOrientationLocked) updatePlayground({ orientationLock: 'landscape' });
+                                            if (isOrientationLocked && activePlayground) {
+                                                const newLayouts = { ...activePlayground.deviceLayouts };
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'landscape',
+                                                };
+                                                updatePlayground({ deviceLayouts: newLayouts });
+                                            }
                                         }}
                                         className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
                                             editorOrientation === 'landscape'
@@ -1475,39 +2867,49 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            if (!activePlayground) return;
+                                            const newLayouts = { ...activePlayground.deviceLayouts };
                                             if (isOrientationLocked) {
-                                                updatePlayground({ orientationLock: 'none' });
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: 'none',
+                                                };
                                             } else {
-                                                updatePlayground({ orientationLock: editorOrientation });
+                                                newLayouts[selectedDevice] = {
+                                                    ...newLayouts[selectedDevice],
+                                                    orientationLock: editorOrientation,
+                                                };
                                             }
+                                            updatePlayground({ deviceLayouts: newLayouts });
                                         }}
                                         className={`p-2 rounded transition-all cursor-pointer pointer-events-auto ${
                                             isOrientationLocked
-                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                ? 'bg-red-600 text-white shadow-lg ring-2 ring-red-400'
                                                 : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
                                         }`}
-                                        title={isOrientationLocked ? 'Unlock orientation' : 'Lock to selected orientation'}
+                                        title={isOrientationLocked ? 'Unlock orientation - Device can rotate freely' : 'Lock to selected orientation - Forces chosen orientation in game'}
                                         type="button"
                                     >
                                         <Lock className="w-4 h-4" />
                                     </button>
-                                    <span className={`text-[8px] font-black uppercase tracking-widest ${isOrientationLocked ? 'text-orange-300' : 'text-slate-500'}`}>LOCK</span>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${isOrientationLocked ? 'text-red-300' : 'text-slate-500'}`}>LOCK</span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Orientation Lock Warning */}
-                {isOrientationLocked && (
-                    <div className="absolute top-24 left-6 bg-orange-900/80 border border-orange-500 rounded-lg p-3 text-[9px] text-orange-200 uppercase font-bold tracking-wide shadow-lg max-w-xs pointer-events-auto z-40">
-                        ⚠️ Orientation is LOCKED to {activePlayground?.orientationLock === 'landscape' ? 'LANDSCAPE' : 'PORTRAIT'} when playing
+                {/* Orientation Lock Warning - HIDDEN - Now shown inline in left drawer */}
+
+                {isBackgroundLocked && (
+                    <div className="absolute top-4 left-4 bg-red-900/90 border-2 border-red-500 rounded-xl p-4 text-[10px] text-red-100 uppercase font-black tracking-widest shadow-2xl max-w-xs pointer-events-auto z-50 backdrop-blur-sm">
+                        🔒 BACKGROUND IS LOCKED - DRAGGING DISABLED
                     </div>
                 )}
 
-                {/* Draggable SHOW Toolbar */}
+                {/* Draggable SHOW Toolbar - HIDDEN - Now in left drawer */}
                 <div
-                    className="absolute z-[1100] pointer-events-auto touch-none"
+                    className="hidden absolute z-[1100] pointer-events-auto touch-none"
                     style={{ left: showToolbarPos.x, top: showToolbarPos.y }}
                     onPointerDown={handleShowPointerDown}
                     onPointerMove={handleShowPointerMove}
@@ -1525,6 +2927,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showTaskScores) {
+                                                setEditorOrientation('landscape');
+                                            }
                                             setShowTaskScores(!showTaskScores);
                                         }}
                                         className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
@@ -1544,6 +2950,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showTaskOrder) {
+                                                setEditorOrientation('landscape');
+                                            }
                                             setShowTaskOrder(!showTaskOrder);
                                         }}
                                         className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
@@ -1563,6 +2973,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showTaskActions) {
+                                                setEditorOrientation('landscape');
+                                            }
                                             setShowTaskActions(!showTaskActions);
                                         }}
                                         className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
@@ -1582,6 +2996,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showTaskNames) {
+                                                setEditorOrientation('landscape');
+                                            }
                                             setShowTaskNames(!showTaskNames);
                                         }}
                                         className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
@@ -1601,6 +3019,35 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showTaskStatus) {
+                                                setEditorOrientation('landscape');
+                                            }
+                                            setShowTaskStatus(!showTaskStatus);
+                                        }}
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                            showTaskStatus
+                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Show/Hide answer markers (✓ correct / ✗ wrong) in editor preview. Each task can enable/disable this in settings."
+                                        type="button"
+                                    >
+                                        <CheckCircle className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${
+                                        showTaskStatus ? 'text-orange-300' : 'text-slate-500'
+                                    }`}>ANSWERS</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showBackground) {
+                                                setEditorOrientation('landscape');
+                                            }
                                             setShowBackground(!showBackground);
                                         }}
                                         className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
@@ -1615,73 +3062,67 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     </button>
                                     <span className={`text-[8px] font-black uppercase tracking-widest ${showBackground ? 'text-orange-300' : 'text-slate-500'}`}>BACKGROUND</span>
                                 </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showQRScanner) {
+                                                setEditorOrientation('landscape');
+                                            }
+                                            setShowQRScanner(!showQRScanner);
+                                        }}
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                            showQRScanner
+                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Show/Hide QR Scanner"
+                                        type="button"
+                                    >
+                                        <QrCode className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${showQRScanner ? 'text-orange-300' : 'text-slate-500'}`}>QR</span>
+                                </div>
+                                <div className="flex flex-col items-center gap-0.5">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            // Auto-switch to landscape if on tablet in portrait mode
+                                            if (selectedDevice === 'tablet' && editorOrientation === 'portrait' && !showRanking) {
+                                                setEditorOrientation('landscape');
+                                            }
+                                            setShowRanking(!showRanking);
+                                        }}
+                                        className={`w-9 h-9 rounded transition-all cursor-pointer pointer-events-auto flex items-center justify-center ${
+                                            showRanking
+                                                ? 'bg-orange-600 text-white shadow-lg'
+                                                : 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white'
+                                        }`}
+                                        title="Show/Hide Ranking Leaderboard"
+                                        type="button"
+                                    >
+                                        <Trophy className="w-4 h-4" />
+                                    </button>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest ${showRanking ? 'text-orange-300' : 'text-slate-500'}`}>RANKING</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Draggable TOOLS Toolbar */}
-                {onStartSimulation && !isTemplateMode && (
-                    <div
-                        className="absolute z-[1100] pointer-events-auto touch-none"
-                        style={{ left: toolsToolbarPos.x, top: toolsToolbarPos.y }}
-                        onPointerDown={handleToolsPointerDown}
-                        onPointerMove={handleToolsPointerMove}
-                        onPointerUp={handleToolsPointerUp}
-                    >
-                        <div className="bg-black/40 backdrop-blur-sm border border-orange-500/30 rounded-lg shadow-2xl p-2 cursor-move group relative">
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-full px-2 border border-orange-500/30 pointer-events-none">
-                                <GripHorizontal className="w-3 h-3" />
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-widest px-1">TOOLS</span>
-                                <div className="flex gap-3">
-                                    <div className="flex flex-col items-center gap-0.5">
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                setSnapToRoadMode(!snapToRoadMode);
-                                                setSelectionBox({ start: null, current: null });
-                                            }}
-                                            className={`px-3 py-2 rounded transition-all cursor-pointer pointer-events-auto flex items-center gap-2 ${
-                                                snapToRoadMode
-                                                    ? 'bg-cyan-600 text-white shadow-lg hover:bg-cyan-700'
-                                                    : 'bg-slate-700 text-slate-300 shadow-lg hover:bg-slate-600'
-                                            }`}
-                                            title={snapToRoadMode ? 'Click and drag on map to select tasks' : 'Snap selected tasks to road network'}
-                                            type="button"
-                                        >
-                                            <Navigation className="w-4 h-4" />
-                                            <span className="text-xs font-black uppercase tracking-wider">SNAP ROAD</span>
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-col items-center gap-0.5">
-                                        <button
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                onStartSimulation();
-                                            }}
-                                            className="px-3 py-2 rounded transition-all cursor-pointer pointer-events-auto bg-purple-600 text-white shadow-lg hover:bg-purple-700 hover:shadow-xl active:scale-95 flex items-center gap-2"
-                                            title="Start Simulation Mode - Play the game with all tasks and rules enabled"
-                                            type="button"
-                                        >
-                                            <PlayCircle className="w-4 h-4" />
-                                            <span className="text-xs font-black uppercase tracking-wider">SIMULATOR</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* TOOLS Toolbar - REMOVED */}
 
                 {/* Canvas Area */}
                 <div
                     ref={canvasRef}
-                    className={`flex-1 overflow-hidden relative bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:40px_40px] [background-position:center] flex items-center justify-center p-8 ${
-                        snapToRoadMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'
+                    className={`flex-1 overflow-hidden relative bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:40px_40px] [background-position:center] flex items-center justify-center p-4 ${
+                        snapToRoadMode ? 'cursor-crosshair'
+                        : drawMode.active ? 'cursor-crosshair'
+                        : 'cursor-grab active:cursor-grabbing'
                     }`}
                     onWheel={snapToRoadMode ? undefined : handleWheel}
                     onMouseDown={snapToRoadMode ? handleSnapToRoadStart : handleMouseDown}
@@ -1689,24 +3130,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     onMouseUp={snapToRoadMode ? handleSnapToRoadEnd : handleMouseUp}
                     onMouseLeave={snapToRoadMode ? undefined : handleMouseUp}
                 >
-                    {/* Tablet Frame Container */}
-                    <div className={`relative border-8 border-slate-950 rounded-3xl overflow-hidden flex-shrink-0 ${
-                        editorOrientation === 'landscape'
-                            ? 'w-[1024px] h-[768px]'
-                            : 'w-[768px] h-[1024px]'
-                    }`}
-                    style={{
-                        boxShadow: '0 0 0 12px #1f2937, 0 0 0 16px #000000, inset 0 0 0 1px #444'
-                    }}>
-                        {/* Device Notch/Speaker */}
-                        {editorOrientation === 'landscape' && (
-                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-2 bg-black rounded-b-xl z-10"></div>
-                        )}
-                        {editorOrientation === 'portrait' && (
-                            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-2 bg-black rounded-t-xl z-10"></div>
-                        )}
-
+                    {/* Device Frame Scaling Wrapper - ensures full tablet portrait frame is visible */}
                     <div
+                        className="flex items-center justify-center"
+                        style={{
+                            transform: selectedDevice === 'tablet' && editorOrientation === 'portrait' ? 'scale(0.72)' : 'scale(1)',
+                            transformOrigin: 'center center',
+                            transition: 'transform 0.3s ease-out',
+                            width: selectedDevice === 'desktop' ? '100%' : 'auto',
+                            height: selectedDevice === 'desktop' ? '100%' : 'auto'
+                        }}
+                    >
+                        {/* Device Frame Container - Responsive to Selected Device */}
+                        <div className={`relative border-8 border-slate-950 rounded-3xl overflow-hidden flex-shrink-0`}
+                        style={{
+                            width: viewportDims.width,
+                            height: viewportDims.height,
+                            boxShadow: '0 0 0 12px #1f2937, 0 0 0 16px #000000, inset 0 0 0 1px #444'
+                        }}>
+                        <div
                         ref={backgroundRef}
                         style={{
                             ...bgStyle,
@@ -1715,7 +3157,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         }}
                         className="relative"
                     >
-                        {!activePlayground.imageUrl && (
+                        {!activePlayground?.imageUrl && (
                             <div className="absolute inset-0 flex items-center justify-center border-4 border-dashed border-slate-700/50 m-20 rounded-3xl">
                                 <div className="text-center opacity-30">
                                     <ImageIcon className="w-24 h-24 mx-auto mb-4" />
@@ -1755,12 +3197,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <circle cx="1" cy="1" r="0.5" fill="#ef4444" opacity="0.8"/>
                                     </pattern>
                                     <pattern id="action-dots" width="8" height="2" patternUnits="userSpaceOnUse">
-                                        <circle cx="1" cy="1" r="0.5" fill="#f59e0b" opacity="0.8"/>
+                                        <circle cx="1" cy="1" r="0.5" fill="#eab308" opacity="0.8"/>
                                     </pattern>
                                 </defs>
                                 {uniquePlaygroundPoints.flatMap((source) => {
-                                    const sourceX = (source.playgroundPosition?.x || 50);
-                                    const sourceY = (source.playgroundPosition?.y || 50);
+                                    const sourcePos = getDevicePosition(source);
+                                    const sourceX = sourcePos.x;
+                                    const sourceY = sourcePos.y;
 
                                     // Extract target IDs from GameAction objects
                                     const getTargetIds = (actions: any[] | undefined) => {
@@ -1771,65 +3214,123 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     };
 
                                     return [
-                                        ...getTargetIds(source.logic?.onCorrect).map((targetId) => {
-                                            const target = game.points.find(p => p.id === targetId);
+                                        ...getTargetIds(source.logic?.onCorrect).map((targetId, idx) => {
+                                            const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
-                                            const targetX = (target.playgroundPosition?.x || 50);
-                                            const targetY = (target.playgroundPosition?.y || 50);
+                                            const targetPos = getDevicePosition(target);
+                                            const targetX = targetPos.x;
+                                            const targetY = targetPos.y;
                                             return (
                                                 <line
-                                                    key={`correct-${source.id}-${targetId}`}
+                                                    key={`correct-${source.id}-${targetId}-${idx}`}
                                                     x1={sourceX}
                                                     y1={sourceY}
                                                     x2={targetX}
                                                     y2={targetY}
                                                     stroke="#10b981"
-                                                    strokeWidth="0.3"
-                                                    strokeDasharray="1,1"
-                                                    opacity="0.8"
+                                                    strokeWidth="1.2"
+                                                    strokeDasharray="4,3"
+                                                    opacity="0.9"
+                                                    className="animate-pulse"
                                                 />
                                             );
                                         }),
-                                        ...getTargetIds(source.logic?.onIncorrect).map((targetId) => {
-                                            const target = game.points.find(p => p.id === targetId);
+                                        ...getTargetIds(source.logic?.onIncorrect).map((targetId, idx) => {
+                                            const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
-                                            const targetX = (target.playgroundPosition?.x || 50);
-                                            const targetY = (target.playgroundPosition?.y || 50);
+                                            const targetPos = getDevicePosition(target);
+                                            const targetX = targetPos.x;
+                                            const targetY = targetPos.y;
                                             return (
                                                 <line
-                                                    key={`incorrect-${source.id}-${targetId}`}
+                                                    key={`incorrect-${source.id}-${targetId}-${idx}`}
                                                     x1={sourceX}
                                                     y1={sourceY}
                                                     x2={targetX}
                                                     y2={targetY}
                                                     stroke="#ef4444"
-                                                    strokeWidth="0.3"
-                                                    strokeDasharray="1,1"
-                                                    opacity="0.8"
+                                                    strokeWidth="1.2"
+                                                    strokeDasharray="4,3"
+                                                    opacity="0.9"
+                                                    className="animate-pulse"
                                                 />
                                             );
                                         }),
-                                        ...getTargetIds(source.logic?.onOpen).map((targetId) => {
-                                            const target = game.points.find(p => p.id === targetId);
+                                        ...getTargetIds(source.logic?.onOpen).map((targetId, idx) => {
+                                            const target = game.points?.find(p => p.id === targetId);
                                             if (!target) return null;
-                                            const targetX = (target.playgroundPosition?.x || 50);
-                                            const targetY = (target.playgroundPosition?.y || 50);
+                                            const targetPos = getDevicePosition(target);
+                                            const targetX = targetPos.x;
+                                            const targetY = targetPos.y;
                                             return (
                                                 <line
-                                                    key={`open-${source.id}-${targetId}`}
+                                                    key={`open-${source.id}-${targetId}-${idx}`}
                                                     x1={sourceX}
                                                     y1={sourceY}
                                                     x2={targetX}
                                                     y2={targetY}
-                                                    stroke="#f59e0b"
-                                                    strokeWidth="0.3"
-                                                    strokeDasharray="1,1"
-                                                    opacity="0.8"
+                                                    stroke="#eab308"
+                                                    strokeWidth="1.2"
+                                                    strokeDasharray="4,3"
+                                                    opacity="0.9"
+                                                    className="animate-pulse"
                                                 />
                                             );
                                         })
                                     ].filter(Boolean);
                                 })}
+                            </svg>
+                        )}
+
+                        {/* Temporary Draw Line - Shows line from source to mouse cursor */}
+                        {drawMode.active && drawMode.sourceTaskId && drawMode.mousePosition && (
+                            <svg
+                                className="absolute inset-0 w-full h-full pointer-events-none"
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                {(() => {
+                                    const sourceTask = uniquePlaygroundPoints.find(p => p.id === drawMode.sourceTaskId);
+                                    if (!sourceTask) return null;
+
+                                    const sourcePos = getDevicePosition(sourceTask);
+                                    const sourceX = sourcePos.x;
+                                    const sourceY = sourcePos.y;
+                                    const mouseX = drawMode.mousePosition.x;
+                                    const mouseY = drawMode.mousePosition.y;
+
+                                    const lineColor = drawMode.trigger === 'onCorrect'
+                                        ? '#10b981'
+                                        : drawMode.trigger === 'onIncorrect'
+                                        ? '#ef4444'
+                                        : '#eab308';
+
+                                    return (
+                                        <>
+                                            {/* Animated line */}
+                                            <line
+                                                x1={sourceX}
+                                                y1={sourceY}
+                                                x2={mouseX}
+                                                y2={mouseY}
+                                                stroke={lineColor}
+                                                strokeWidth="1.2"
+                                                strokeDasharray="4,3"
+                                                opacity="0.9"
+                                                className="animate-pulse"
+                                            />
+                                            {/* End point circle */}
+                                            <circle
+                                                cx={mouseX}
+                                                cy={mouseY}
+                                                r="1.5"
+                                                fill={lineColor}
+                                                opacity="0.7"
+                                            />
+                                        </>
+                                    );
+                                })()}
                             </svg>
                         )}
 
@@ -1841,6 +3342,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             const displaySize = (point.playgroundScale || 1) * 48;
                             const isDraggingThis = draggingTaskId === point.id;
 
+                            // Draw mode visual states
+                            const isDrawSource = drawMode.active && drawMode.sourceTaskId === point.id;
+                            const isDrawTarget = drawMode.active && drawMode.sourceTaskId && point.id !== drawMode.sourceTaskId;
+                            const isHoveredTarget = isDrawTarget && hoveredTaskId === point.id;
+
                             // Check if this task is a target of any action from other tasks
                             const isActionTarget = uniquePlaygroundPoints.some(source =>
                                 source.id !== point.id && source.logic && (
@@ -1849,21 +3355,75 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     (source.logic.onOpen?.some((a: any) => a.targetId === point.id || a === point.id))
                                 )
                             );
+                            // Use visual position while dragging, otherwise use device-specific position
+                            const devicePos = getDevicePosition(point);
+                            const displayX = isDraggingThis && dragVisualPosition ? dragVisualPosition.x : devicePos.x;
+                            const displayY = isDraggingThis && dragVisualPosition ? dragVisualPosition.y : devicePos.y;
+
                             return (
                                 <div
                                     key={point.id}
-                                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 group ${isDraggingThis ? 'cursor-grabbing' : isMarkMode ? 'cursor-pointer' : 'cursor-grab'}`}
-                                    style={{ left: `${point.playgroundPosition?.x || 50}%`, top: `${point.playgroundPosition?.y || 50}%` }}
+                                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 group ${
+                                        isSimulationActive ? 'cursor-pointer'
+                                        : isDraggingThis ? 'cursor-grabbing'
+                                        : isDrawTarget ? 'cursor-pointer'
+                                        : isMarkMode ? 'cursor-pointer'
+                                        : drawMode.active ? 'cursor-default'
+                                        : 'cursor-grab'
+                                    }`}
+                                    style={{ left: `${displayX}%`, top: `${displayY}%` }}
                                     onMouseDown={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
                                     }}
+                                    onMouseEnter={() => setHoveredTaskId(point.id)}
+                                    onMouseLeave={() => setHoveredTaskId(null)}
                                     onPointerDown={(e) => {
-                                        if (isMarkMode && !isDraggingThis) {
+                                        // SIMULATION MODE: Click task to open it
+                                        if (isSimulationActive) {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setActiveSimulationTaskId(point.id);
+                                            return;
+                                        }
+
+                                        if (drawMode.active && drawMode.sourceTaskId && point.id !== drawMode.sourceTaskId) {
+                                            // In draw mode: clicking a target task creates the connection
+                                            e.preventDefault();
+                                            e.stopPropagation();
+
+                                            const sourceTask = uniquePlaygroundPoints.find(p => p.id === drawMode.sourceTaskId);
+                                            if (sourceTask && drawMode.trigger) {
+                                                // Create a new "unlock" action with this target
+                                                const newAction: any = {
+                                                    id: `act-${Date.now()}`,
+                                                    type: 'unlock',
+                                                    targetId: point.id
+                                                };
+
+                                                const updatedLogic = {
+                                                    ...sourceTask.logic,
+                                                    [drawMode.trigger]: [...(sourceTask.logic?.[drawMode.trigger] || []), newAction]
+                                                };
+
+                                                // Update the game with the new logic
+                                                onUpdateGame({
+                                                    ...game,
+                                                    points: game.points.map(p =>
+                                                        p.id === sourceTask.id
+                                                            ? { ...p, logic: updatedLogic }
+                                                            : p
+                                                    )
+                                                });
+
+                                                // Keep draw mode active so user can continue connecting
+                                                console.log(`Connected ${sourceTask.title} → ${point.title} via ${drawMode.trigger}`);
+                                            }
+                                        } else if (isMarkMode && !isDraggingThis) {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             toggleMarkTask(point.id);
-                                        } else {
+                                        } else if (!drawMode.active) {
                                             handleTaskPointerDown(e, point);
                                         }
                                     }}
@@ -1871,77 +3431,108 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                     onPointerUp={handleTaskPointerUp}
                                     onPointerCancel={handleTaskPointerUp}
                                 >
-                                    <div className={`rounded-full flex items-center justify-center border-4 shadow-xl transition-all relative ${
-                                        isMarked
+                                    <div className={`rounded-full flex items-center justify-center border-4 shadow-xl transition-all relative overflow-hidden ${
+                                        isDrawSource && drawMode.trigger === 'onCorrect'
+                                            ? 'border-green-500 shadow-green-500/70 scale-125 animate-pulse'
+                                            : isDrawSource && drawMode.trigger === 'onIncorrect'
+                                            ? 'border-red-500 shadow-red-500/70 scale-125 animate-pulse'
+                                            : isDrawSource && drawMode.trigger === 'onOpen'
+                                            ? 'border-yellow-500 shadow-yellow-500/70 scale-125 animate-pulse'
+                                            : isHoveredTarget && drawMode.trigger === 'onCorrect'
+                                            ? 'border-green-400 shadow-green-400/70 scale-125 ring-4 ring-green-400/30'
+                                            : isHoveredTarget && drawMode.trigger === 'onIncorrect'
+                                            ? 'border-red-400 shadow-red-400/70 scale-125 ring-4 ring-red-400/30'
+                                            : isHoveredTarget && drawMode.trigger === 'onOpen'
+                                            ? 'border-yellow-400 shadow-yellow-400/70 scale-125 ring-4 ring-yellow-400/30'
+                                            : isDrawTarget
+                                            ? 'border-slate-500 opacity-60'
+                                            : hoveredTaskId === point.id
+                                            ? 'border-orange-400 shadow-orange-400/70 scale-125'
+                                            : isMarked
                                             ? 'border-orange-400 shadow-orange-400/70 scale-120 animate-pulse'
                                             : isSelected
                                             ? 'border-orange-500 shadow-orange-500/50 scale-125'
                                             : 'border-slate-900 group-hover:scale-110'
-                                    } ${point.isCompleted ? 'bg-green-500' : isActionTarget ? 'bg-slate-400/40' : 'bg-white'} ${isActionTarget ? 'opacity-50' : ''}`}
+                                    } ${point.isCompleted ? 'bg-green-500' : isActionTarget ? 'bg-slate-400/40' : 'bg-white'} ${isActionTarget && !isDrawTarget ? 'opacity-50' : ''}`}
                                     style={{ width: displaySize, height: displaySize }}>
-                                        {point.iconUrl ? (
-                                            <img src={point.iconUrl} alt={point.title} className={`w-2/3 h-2/3 object-contain ${isActionTarget ? 'opacity-50' : ''}`} />
+                                        {/* Display icon based on answer status: solved icon if correct, unsolved if incorrect */}
+                                        {((point.isCompleted && !((point as any).answeredIncorrectly)) && point.completedIconUrl) ? (
+                                            // Correct answer - show solved icon
+                                            <img
+                                                src={point.completedIconUrl}
+                                                alt={`${point.title} (Solved)`}
+                                                className={`object-cover object-center rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
+                                                style={{
+                                                    width: `${(point.iconImageScale || 0.9) * 100}%`,
+                                                    height: `${(point.iconImageScale || 0.9) * 100}%`
+                                                }}
+                                            />
+                                        ) : point.iconUrl ? (
+                                            // Unsolved or incorrect answer - show regular icon
+                                            <img
+                                                src={point.iconUrl}
+                                                alt={point.title}
+                                                className={`object-cover object-center rounded-full ${isActionTarget ? 'opacity-50' : ''}`}
+                                                style={{
+                                                    width: `${(point.iconImageScale || 0.9) * 100}%`,
+                                                    height: `${(point.iconImageScale || 0.9) * 100}%`
+                                                }}
+                                            />
                                         ) : (
-                                            <Icon className={`w-6 h-6 ${point.isCompleted ? 'text-white' : isActionTarget ? 'text-slate-400' : 'text-slate-900'}`} />
-                                        )}
-
-                                        {/* Mark Indicator Badge */}
-                                        {isMarked && (
-                                            <div className="absolute -top-2 -right-2 bg-orange-400 text-white text-[10px] font-black rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-lg">
-                                                ✓
-                                            </div>
-                                        )}
-
-                                        {/* Task Order Badge */}
-                                        {showTaskOrder && (
-                                            <div className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg">
-                                                {String(index + 1).padStart(2, '0')}
-                                            </div>
-                                        )}
-
-                                        {/* Task Score Badge */}
-                                        {showTaskScores && (
-                                            <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-slate-900 text-[8px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg">
-                                                {point.points}
-                                            </div>
-                                        )}
-
-                                        {/* Task Actions Badge */}
-                                        {showTaskActions && point.logic && (point.logic.onOpen?.length || point.logic.onCorrect?.length || point.logic.onIncorrect?.length) && (
-                                            <div className="absolute -bottom-1 -left-1 bg-purple-600 text-white text-[8px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg">
-                                                ⚡
-                                            </div>
+                                            <Icon className={`w-6 h-6 ${point.isCompleted && !((point as any).answeredIncorrectly) ? 'text-white' : isActionTarget ? 'text-slate-400' : 'text-slate-900'}`} />
                                         )}
 
                                         {/* OK/Wrong Answer Marker - Green Check (correct) or Red X (wrong) */}
-                                        {(point.showStatusMarkers ?? true) && (point.isCompleted || (point as any).answeredIncorrectly) && (
-                                            <div className={`absolute inset-0 flex items-center justify-center pointer-events-none ${
-                                                (point as any).answeredIncorrectly ? 'opacity-90' : 'opacity-80'
-                                            }`}>
+                                        {showTaskStatus && (point.showStatusMarkers ?? true) && (point.isCompleted || (point as any).answeredIncorrectly) && (
+                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                                                 {(point as any).answeredIncorrectly ? (
-                                                    // Red X for incorrect
-                                                    <div className="relative">
-                                                        <XCircle className="w-16 h-16 text-red-500 drop-shadow-[0_2px_8px_rgba(239,68,68,0.8)]" strokeWidth={3} />
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="w-12 h-12 bg-red-500/20 rounded-full blur-xl"></div>
-                                                        </div>
-                                                    </div>
+                                                    // Red X for incorrect - fills entire icon
+                                                    <XCircle className="w-full h-full text-red-500 drop-shadow-[0_4px_12px_rgba(239,68,68,0.9)]" strokeWidth={2} />
                                                 ) : (
-                                                    // Green check for correct
-                                                    <div className="relative">
-                                                        <CheckCircle className="w-16 h-16 text-green-500 drop-shadow-[0_2px_8px_rgba(34,197,94,0.8)]" strokeWidth={3} />
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <div className="w-12 h-12 bg-green-500/20 rounded-full blur-xl"></div>
-                                                        </div>
-                                                    </div>
+                                                    // Green checkmark for correct - fills entire icon
+                                                    <CheckCircle className="w-full h-full text-green-500 drop-shadow-[0_4px_12px_rgba(34,197,94,0.9)]" strokeWidth={2} />
                                                 )}
                                             </div>
                                         )}
                                     </div>
 
+                                    {/* Badges - Positioned outside overflow-hidden container to render on top */}
+                                    {/* Mark Indicator Badge */}
+                                    {isMarked && (
+                                        <div className="absolute -top-2 -right-2 bg-orange-400 text-white text-[10px] font-black rounded-full w-6 h-6 flex items-center justify-center border-2 border-white shadow-lg pointer-events-none">
+                                            ✓
+                                        </div>
+                                    )}
+
+                                    {/* Task Order Badge */}
+                                    {showTaskOrder && (
+                                        <div className="absolute -top-1 -right-1 bg-orange-600 text-white text-[8px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg pointer-events-none">
+                                            {String(index + 1).padStart(2, '0')}
+                                        </div>
+                                    )}
+
+                                    {/* Task Score Badge */}
+                                    {showTaskScores && (
+                                        <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-slate-900 text-[8px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg pointer-events-none">
+                                            {point.points}
+                                        </div>
+                                    )}
+
+                                    {/* Task Actions Badge */}
+                                    {showTaskActions && point.logic && (point.logic.onOpen?.length || point.logic.onCorrect?.length || point.logic.onIncorrect?.length) && (
+                                        <div className="absolute -bottom-1 -left-1 bg-purple-600 text-white text-[8px] font-black rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-lg pointer-events-none">
+                                            ⚡
+                                        </div>
+                                    )}
+
                                     {/* Task Name - Always Visible when showTaskNames is true */}
                                     {showTaskNames && (
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 text-white text-[9px] font-bold px-2 py-1 rounded uppercase whitespace-nowrap pointer-events-none shadow-lg border border-orange-500/30">
+                                        <div
+                                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-black/90 text-white font-bold px-2 py-1 rounded uppercase whitespace-nowrap pointer-events-none shadow-lg border border-orange-500/30"
+                                            style={{
+                                                fontSize: `${(point.textLabelScale || 1) * 9}px`
+                                            }}
+                                        >
                                             {point.title}
                                         </div>
                                     )}
@@ -1955,6 +3546,118 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             );
                         })}
+
+                        {/* Draggable QR Scanner Button - Inside Game Canvas */}
+                        {showQRScanner && (
+                            <div
+                                className="absolute transform -translate-x-1/2 -translate-y-1/2 z-40 pointer-events-auto group"
+                                style={{
+                                    left: `${qrScannerPos.x}%`,
+                                    top: `${qrScannerPos.y}%`,
+                                    width: `${qrScannerSize.width}px`,
+                                    height: `${qrScannerSize.height}px`,
+                                }}
+                                onPointerDown={isSimulationActive ? undefined : handleQRScannerPointerDown}
+                                onPointerMove={isSimulationActive ? undefined : handleQRScannerPointerMove}
+                                onPointerUp={isSimulationActive ? undefined : handleQRScannerPointerUp}
+                                onPointerCancel={isSimulationActive ? undefined : handleQRScannerPointerUp}
+                            >
+                                {/* QR Scan Button - Resizable, draggable, color customizable */}
+                                <button
+                                    onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        // Track button position for click detection (separate from wrapper's drag)
+                                        qrScannerButtonDownPos.current = { x: e.clientX, y: e.clientY };
+                                        qrScannerHasMoved.current = false;
+                                    }}
+                                    onPointerMove={(e) => {
+                                        // Track if user moved significantly (threshold: 5px)
+                                        const deltaX = Math.abs(e.clientX - qrScannerButtonDownPos.current.x);
+                                        const deltaY = Math.abs(e.clientY - qrScannerButtonDownPos.current.y);
+                                        if (deltaX > 5 || deltaY > 5) {
+                                            qrScannerHasMoved.current = true;
+                                        }
+                                    }}
+                                    onPointerUp={(e) => {
+                                        e.stopPropagation();
+
+                                        // Only count as click if there was minimal movement
+                                        if (qrScannerHasMoved.current) {
+                                            return; // This was a drag, not a click
+                                        }
+
+                                        // In simulation mode, always open scanner on single click
+                                        if (isSimulationActive) {
+                                            handleQRScanClick();
+                                            return;
+                                        }
+
+                                        // In editor mode, detect double-click for color picker
+                                        qrScannerClickCount.current++;
+
+                                        if (qrScannerClickCount.current === 1) {
+                                            // First click - set timer to detect double-click
+                                            if (qrScannerClickTimer.current) {
+                                                clearTimeout(qrScannerClickTimer.current);
+                                            }
+                                            qrScannerClickTimer.current = setTimeout(() => {
+                                                // Single click - do nothing, just allow drag/resize
+                                                qrScannerClickCount.current = 0;
+                                            }, 300);
+                                        } else if (qrScannerClickCount.current === 2) {
+                                            // Double-click detected - open color picker
+                                            if (qrScannerClickTimer.current) {
+                                                clearTimeout(qrScannerClickTimer.current);
+                                            }
+                                            qrScannerClickCount.current = 0;
+                                            handleQRScanClick(); // Opens color picker
+                                        }
+                                    }}
+                                    style={{
+                                        backgroundColor: qrScannerColor,
+                                        width: '100%',
+                                        height: '100%',
+                                        boxShadow: `inset 0 0 0 2px rgba(0, 0, 0, 0.8), 0 0 8px rgba(0, 0, 0, 0.9), 0 0 16px rgba(0, 0, 0, 0.7)`
+                                    }}
+                                    className={`flex items-center justify-center gap-1 rounded-xl text-white font-bold uppercase shadow-xl transition-all hover:ring-2 hover:ring-yellow-400 relative ${
+                                        isSimulationActive ? 'cursor-pointer' : 'cursor-move'
+                                    }`}
+                                    title={isSimulationActive ? 'Click to scan QR code' : 'Double-click to change color | Drag to move | Resize from corner'}
+                                    type="button"
+                                >
+                                    {(() => {
+                                        // Scale icon and text proportionally based on button height
+                                        const baseHeight = 48;
+                                        const scale = qrScannerSize.height / baseHeight;
+                                        const iconSize = Math.max(12, Math.min(32, 16 * scale));
+                                        const fontSize = Math.max(8, Math.min(14, 10 * scale));
+
+                                        return (
+                                            <>
+                                                <QrCode style={{ width: `${iconSize}px`, height: `${iconSize}px` }} />
+                                                <span style={{ fontSize: `${fontSize}px` }}>
+                                                    SCAN QR
+                                                </span>
+                                            </>
+                                        );
+                                    })()}
+                                </button>
+
+                                {/* Resize handle - bottom-right corner (hidden in simulation mode) */}
+                                {!isSimulationActive && (
+                                    <div
+                                        className="qr-resize-handle absolute bottom-0 right-0 w-4 h-4 bg-yellow-400 border-2 border-yellow-600 rounded-tl rounded-br cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onPointerDown={handleQRScannerResizeDown}
+                                        onPointerMove={handleQRScannerResizeMove}
+                                        onPointerUp={handleQRScannerResizeUp}
+                                        onPointerCancel={handleQRScannerResizeUp}
+                                        title="Drag to resize"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                )}
+                            </div>
+                        )}
+                        </div>
                     </div>
                     </div>
                 </div>
@@ -1962,7 +3665,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 {/* Right Side Tools hidden - functionality moved to right tasks drawer */}
 
                 {/* Delete Zone - Bottom Right */}
-                {/* Zoom Controls - Bottom Center */}
+                {/* Zoom Controls & Tools - Bottom Center */}
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2 pointer-events-auto">
                     <button
                         onClick={() => setZoom(z => Math.max(0.2, z - 0.1))}
@@ -1971,13 +3674,29 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     >
                         <ZoomOut className="w-5 h-5" />
                     </button>
+
+                    {/* CENTER Button */}
                     <button
-                        onClick={handleResetBackground}
+                        onClick={handleCenterBackground}
                         className="p-3 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-xl border border-slate-700 transition-colors"
-                        title="Reset and center background"
+                        title="Center Background"
                     >
-                        <Maximize className="w-5 h-5" />
+                        <Target className="w-5 h-5" />
                     </button>
+
+                    {/* LOCK Background Button */}
+                    <button
+                        onClick={() => setIsBackgroundLocked(!isBackgroundLocked)}
+                        className={`p-3 rounded-full shadow-xl border-2 transition-colors ${
+                            isBackgroundLocked
+                                ? 'bg-red-600 border-red-500 text-white hover:bg-red-700'
+                                : 'bg-slate-900 border-slate-700 text-white hover:bg-slate-800'
+                        }`}
+                        title={isBackgroundLocked ? 'Unlock background (draggable)' : 'Lock background (not draggable)'}
+                    >
+                        {isBackgroundLocked ? <Lock className="w-5 h-5" /> : <Unlock className="w-5 h-5" />}
+                    </button>
+
                     <button
                         onClick={() => setZoom(z => Math.min(5, z + 0.1))}
                         className="p-3 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-xl border border-slate-700 transition-colors"
@@ -2029,7 +3748,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                 isTasksDrawerOpen ? 'w-[360px]' : 'w-0'
             } overflow-hidden`}>
                 {/* Header */}
-                <div className="p-5 border-b border-slate-800 bg-[#0f172a] relative">
+                <div className="p-3 border-b border-slate-800 bg-[#0f172a] relative">
                     <button
                         onClick={() => setIsTasksDrawerOpen(false)}
                         className="absolute left-5 top-1/2 -translate-y-1/2 text-orange-500 hover:text-orange-400 transition-colors p-2"
@@ -2040,25 +3759,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     <div className="flex flex-col items-center gap-2">
                         <h2 className="text-sm font-black uppercase tracking-widest text-white">TASKS</h2>
                         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{uniquePlaygroundPoints.length} in zone</p>
-
-                        {/* Status Markers Toggle - Editor Preview Only */}
-                        <button
-                            onClick={() => setShowTaskStatus(!showTaskStatus)}
-                            className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-all border-2 flex items-center gap-2 ${
-                                showTaskStatus
-                                    ? 'bg-green-600 border-green-500 text-white shadow-lg'
-                                    : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
-                            }`}
-                            title="Toggle visibility in editor (per-task control in settings)"
-                        >
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Preview Markers</span>
-                        </button>
                     </div>
                 </div>
 
                 {/* Content - Task Creation or Task Editor */}
-                <div className="flex-1 overflow-y-auto p-5 space-y-3 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                     {selectedTask ? (
                         // Task Editor Panel
                         <div className="space-y-4">
@@ -2071,22 +3776,58 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             </button>
 
                             {/* Task Title */}
-                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-2">
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-3">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TASK TITLE</label>
                                 <input
                                     value={selectedTask.title}
                                     onChange={(e) => updateTask({ title: e.target.value })}
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-bold text-white outline-none focus:border-orange-500"
                                 />
+
+                                {/* Task Action Buttons */}
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-700">
+                                    {/* SETTINGS Button (Orange) */}
+                                    <button
+                                        onClick={() => {
+                                            setSettingsModalTaskId(selectedTask.id);
+                                            setShowTaskSettingsModal(true);
+                                        }}
+                                        className="py-2 bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 hover:text-orange-300 border border-orange-600/40 hover:border-orange-500 rounded-lg font-bold uppercase tracking-wider text-[9px] flex flex-col items-center justify-center gap-1 transition-all"
+                                        title="Open task settings"
+                                    >
+                                        <Settings className="w-4 h-4" />
+                                        <span>SETTINGS</span>
+                                    </button>
+
+                                    {/* ACTIONS Button (Green) */}
+                                    <button
+                                        onClick={() => setShowActionModal(true)}
+                                        className="py-2 bg-green-600/20 hover:bg-green-600/40 text-green-400 hover:text-green-300 border border-green-600/40 hover:border-green-500 rounded-lg font-bold uppercase tracking-wider text-[9px] flex flex-col items-center justify-center gap-1 transition-all"
+                                        title="Set up if/then logic and actions"
+                                    >
+                                        <Zap className="w-4 h-4" />
+                                        <span>ACTIONS</span>
+                                    </button>
+
+                                    {/* VIEW Button (Blue) */}
+                                    <button
+                                        onClick={() => setShowTaskViewModal(true)}
+                                        className="py-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 hover:text-blue-300 border border-blue-600/40 hover:border-blue-500 rounded-lg font-bold uppercase tracking-wider text-[9px] flex flex-col items-center justify-center gap-1 transition-all"
+                                        title="Preview task view"
+                                    >
+                                        <Eye className="w-4 h-4" />
+                                        <span>VIEW</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Task Status Markers Toggle */}
+                            {/* Task Answer Markers - Per-Task Setting */}
                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-3">
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
-                                    <CheckCircle className="w-3 h-3" /> SHOW OK/WRONG ANSWER MARKERS
+                                    <CheckCircle className="w-3 h-3" /> ANSWER MARKERS IN GAMEPLAY
                                 </label>
                                 <p className="text-[8px] text-slate-400">
-                                    When enabled, this task will display visual markers (✓ OK / ✗ WRONG) when teams re-enter the playzone after solving it.
+                                    When enabled, this task will show ✓ OK or ✗ WRONG markers when teams re-enter the playzone after solving it. Toggle visibility in editor using SHOW toolbar → ANSWERS button.
                                 </p>
                                 <button
                                     onClick={() => updateTask({ showStatusMarkers: !(selectedTask.showStatusMarkers ?? true) })}
@@ -2120,98 +3861,357 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 />
                             </div>
 
-                            {/* Icon Editor */}
+                            {/* Text Label Size Slider - NEW */}
                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-2">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">TASK ICON</label>
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                        <Type className="w-3 h-3" /> TEXT LABEL SIZE
+                                    </label>
+                                    <span className="text-[10px] font-bold text-cyan-400">{Math.round((selectedTask.textLabelScale || 1) * 100)}%</span>
+                                </div>
+                                <p className="text-[8px] text-slate-400">
+                                    Adjust text label size to prevent overlapping in Portrait mode
+                                </p>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="2"
+                                    step="0.1"
+                                    value={selectedTask.textLabelScale || 1}
+                                    onChange={(e) => updateTask({ textLabelScale: parseFloat(e.target.value) })}
+                                    className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                                />
 
-                                {/* Current Icon Preview */}
-                                {selectedTask.iconUrl && (
-                                    <div className="p-3 bg-slate-700 rounded-lg flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-3">
-                                            <img src={selectedTask.iconUrl} alt="Task Icon" className="w-8 h-8 object-contain" />
-                                            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">CUSTOM ICON</span>
+                                {/* Bulk Apply to Marked Tasks */}
+                                {markedTaskIds.size > 0 && (
+                                    <div className="pt-2 border-t border-slate-700 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <p className="text-[8px] text-orange-400 font-bold uppercase tracking-wider">
+                                                    {markedTaskIds.size} {markedTaskIds.size === 1 ? 'task' : 'tasks'} marked
+                                                </p>
+                                                <p className="text-[7px] text-slate-500 mt-0.5">
+                                                    Apply current size to all selected
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const currentScale = selectedTask.textLabelScale || 1;
+                                                    const updatedPoints = game.points.map(p =>
+                                                        markedTaskIds.has(p.id) ? { ...p, textLabelScale: currentScale } : p
+                                                    );
+                                                    onUpdateGame({ ...game, points: updatedPoints });
+                                                    alert(`Applied ${Math.round(currentScale * 100)}% text size to ${markedTaskIds.size} task(s)`);
+                                                }}
+                                                className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1 shadow-lg"
+                                                title={`Apply ${Math.round((selectedTask.textLabelScale || 1) * 100)}% to ${markedTaskIds.size} selected task(s)`}
+                                            >
+                                                <Check className="w-3 h-3" />
+                                                APPLY
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => updateTask({ iconUrl: undefined, iconId: 'default' })}
-                                            className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
                                     </div>
                                 )}
+                            </div>
 
-                                {/* Icon Buttons */}
-                                <div className="grid grid-cols-3 gap-2">
-                                    <button
-                                        onClick={() => taskIconInputRef.current?.click()}
-                                        className="py-2 px-3 border border-dashed border-slate-600 rounded-lg text-[10px] font-bold text-slate-400 hover:text-white hover:border-slate-400 transition-colors flex items-center justify-center gap-1"
-                                        title="Upload custom icon"
-                                    >
-                                        <Upload className="w-3 h-3" /> UPLOAD
-                                    </button>
-                                    <input ref={taskIconInputRef} type="file" className="hidden" accept="image/*" onChange={handleTaskIconUpload} />
+                            {/* Icon Image Size Slider - NEW */}
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-2">
+                                <div className="flex justify-between items-center">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                                        <ImageIcon className="w-3 h-3" /> ICON IMAGE SIZE
+                                    </label>
+                                    <span className="text-[10px] font-bold text-purple-400">{Math.round((selectedTask.iconImageScale || 0.9) * 100)}%</span>
+                                </div>
+                                <p className="text-[8px] text-slate-400">
+                                    Zoom & center picture from 50% to 200% (crops to stay within circles)
+                                </p>
+                                <input
+                                    type="range"
+                                    min="0.5"
+                                    max="2.0"
+                                    step="0.05"
+                                    value={selectedTask.iconImageScale || 0.9}
+                                    onChange={(e) => updateTask({ iconImageScale: parseFloat(e.target.value) })}
+                                    className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                />
 
-                                    <button
-                                        onClick={() => {
-                                            setLogoCompanyName('');
-                                            setShowLogoPrompt(true);
-                                        }}
-                                        disabled={isSearchingLogo}
-                                        className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-1 transition-all ${
-                                            isSearchingLogo
-                                                ? 'bg-blue-600/50 text-blue-300 cursor-wait'
-                                                : 'border border-dashed border-blue-600 text-blue-400 hover:text-blue-300 hover:border-blue-400'
-                                        }`}
-                                        title="Search for company logo online"
-                                        type="button"
-                                    >
-                                        {isSearchingLogo ? (
-                                            <>
-                                                <div className="w-3 h-3 border-2 border-blue-300 border-t-transparent rounded-full animate-spin" />
-                                                <span className="text-[9px]">SEARCHING...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Globe className="w-3 h-3" /> LOGO
-                                            </>
-                                        )}
-                                    </button>
+                                {/* Bulk Apply to Marked Tasks */}
+                                {markedTaskIds.size > 0 && (
+                                    <div className="pt-2 border-t border-slate-700 space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1">
+                                                <p className="text-[8px] text-orange-400 font-bold uppercase tracking-wider">
+                                                    {markedTaskIds.size} {markedTaskIds.size === 1 ? 'task' : 'tasks'} marked
+                                                </p>
+                                                <p className="text-[7px] text-slate-500 mt-0.5">
+                                                    Apply current image size to all selected
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    const currentScale = selectedTask.iconImageScale || 0.9;
+                                                    const updatedPoints = game.points.map(p =>
+                                                        markedTaskIds.has(p.id) ? { ...p, iconImageScale: currentScale } : p
+                                                    );
+                                                    onUpdateGame({ ...game, points: updatedPoints });
+                                                    alert(`Applied ${Math.round(currentScale * 100)}% image size to ${markedTaskIds.size} task(s)`);
+                                                }}
+                                                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-[9px] font-black uppercase tracking-wider transition-colors flex items-center gap-1 shadow-lg"
+                                                title={`Apply ${Math.round((selectedTask.iconImageScale || 0.9) * 100)}% to ${markedTaskIds.size} selected task(s)`}
+                                            >
+                                                <Check className="w-3 h-3" />
+                                                APPLY
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
-                                    <button
-                                        onClick={() => {
-                                            setAiIconPromptValue('');
-                                            setShowAiIconPrompt(true);
-                                        }}
-                                        disabled={isGeneratingIcon}
-                                        className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-1 transition-all ${
-                                            isGeneratingIcon
-                                                ? 'bg-purple-600/50 text-purple-300 cursor-wait'
-                                                : 'border border-dashed border-purple-600 text-purple-400 hover:text-purple-300 hover:border-purple-400'
-                                        }`}
-                                        title="Generate icon with AI"
-                                        type="button"
-                                    >
-                                        {isGeneratingIcon ? (
-                                            <>
-                                                <div className="w-3 h-3 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
-                                                <span className="text-[9px]">GENERATING...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Wand2 className="w-3 h-3" /> AI ICON
-                                            </>
-                                        )}
-                                    </button>
+                            {/* Icon Editor - Dual State */}
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 space-y-3">
+                                {/* INCORRECT ANSWER ICON Section */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-red-400 uppercase tracking-widest">❌ INCORRECT ANSWER</label>
+
+                                    {/* Current Icon Preview */}
+                                    {selectedTask.iconUrl && (
+                                        <div className="p-3 bg-slate-700 rounded-lg flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <img src={selectedTask.iconUrl} alt="Incorrect Answer Icon" className="w-8 h-8 object-contain" />
+                                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">CUSTOM ICON</span>
+                                            </div>
+                                            <button
+                                                onClick={() => updateTask({ iconUrl: undefined, iconId: 'default' })}
+                                                className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Icon Buttons */}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setEditingCompletedIcon(false);
+                                                taskIconInputRef.current?.click();
+                                            }}
+                                            className="py-2 px-3 border border-dashed border-slate-600 rounded-lg text-[10px] font-bold text-slate-400 hover:text-white hover:border-slate-400 transition-colors flex items-center justify-center gap-1"
+                                            title="Upload custom icon for incorrect answer"
+                                        >
+                                            <Upload className="w-3 h-3" /> UPLOAD
+                                        </button>
+                                        <input ref={taskIconInputRef} type="file" className="hidden" accept="image/*" onChange={handleTaskIconUpload} />
+
+                                        <button
+                                            onClick={() => {
+                                                setEditingCompletedIcon(false);
+                                                setLogoCompanyName('');
+                                                setShowLogoPrompt(true);
+                                            }}
+                                            disabled={isSearchingLogo && !editingCompletedIcon}
+                                            className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-1 transition-all ${
+                                                isSearchingLogo && !editingCompletedIcon
+                                                    ? 'bg-blue-600/50 text-blue-300 cursor-wait'
+                                                    : 'border border-dashed border-blue-600 text-blue-400 hover:text-blue-300 hover:border-blue-400'
+                                            }`}
+                                            title="Search for company logo online"
+                                            type="button"
+                                        >
+                                            {isSearchingLogo && !editingCompletedIcon ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-blue-300 border-t-transparent rounded-full animate-spin" />
+                                                    <span className="text-[9px]">SEARCHING...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Globe className="w-3 h-3" /> LOGO
+                                                </>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                setEditingCompletedIcon(false);
+                                                setAiIconPromptValue('');
+                                                setShowAiIconPrompt(true);
+                                            }}
+                                            disabled={isGeneratingIcon && !editingCompletedIcon}
+                                            className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-1 transition-all ${
+                                                isGeneratingIcon && !editingCompletedIcon
+                                                    ? 'bg-purple-600/50 text-purple-300 cursor-wait'
+                                                    : 'border border-dashed border-purple-600 text-purple-400 hover:text-purple-300 hover:border-purple-400'
+                                            }`}
+                                            title="Generate icon with AI for incorrect answer"
+                                            type="button"
+                                        >
+                                            {isGeneratingIcon && !editingCompletedIcon ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
+                                                    <span className="text-[9px]">GENERATING...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Wand2 className="w-3 h-3" /> AI ICON
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Divider */}
+                                <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent"></div>
+
+                                {/* CORRECT ANSWER ICON Section */}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-green-400 uppercase tracking-widest">✅ CORRECT ANSWER</label>
+
+                                    {/* Current Completed Icon Preview */}
+                                    {selectedTask.completedIconUrl && (
+                                        <div className="p-3 bg-slate-700 rounded-lg flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-3">
+                                                <img src={selectedTask.completedIconUrl} alt="Correct Answer Icon" className="w-8 h-8 object-contain" />
+                                                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">CUSTOM ICON</span>
+                                            </div>
+                                            <button
+                                                onClick={() => updateTask({ completedIconUrl: undefined, completedIconId: 'default' })}
+                                                className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Icon Buttons */}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setEditingCompletedIcon(true);
+                                                completedTaskIconInputRef.current?.click();
+                                            }}
+                                            className="py-2 px-3 border border-dashed border-slate-600 rounded-lg text-[10px] font-bold text-slate-400 hover:text-white hover:border-slate-400 transition-colors flex items-center justify-center gap-1"
+                                            title="Upload custom icon for correct answer"
+                                        >
+                                            <Upload className="w-3 h-3" /> UPLOAD
+                                        </button>
+                                        <input ref={completedTaskIconInputRef} type="file" className="hidden" accept="image/*" onChange={handleCompletedTaskIconUpload} />
+
+                                        <button
+                                            onClick={() => {
+                                                setEditingCompletedIcon(true);
+                                                setLogoCompanyName('');
+                                                setShowLogoPrompt(true);
+                                            }}
+                                            disabled={isSearchingLogo && editingCompletedIcon}
+                                            className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-1 transition-all ${
+                                                isSearchingLogo && editingCompletedIcon
+                                                    ? 'bg-blue-600/50 text-blue-300 cursor-wait'
+                                                    : 'border border-dashed border-blue-600 text-blue-400 hover:text-blue-300 hover:border-blue-400'
+                                            }`}
+                                            title="Search for company logo online"
+                                            type="button"
+                                        >
+                                            {isSearchingLogo && editingCompletedIcon ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-blue-300 border-t-transparent rounded-full animate-spin" />
+                                                    <span className="text-[9px]">SEARCHING...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Globe className="w-3 h-3" /> LOGO
+                                                </>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                setEditingCompletedIcon(true);
+                                                setAiIconPromptValue('');
+                                                setShowAiIconPrompt(true);
+                                            }}
+                                            disabled={isGeneratingIcon && editingCompletedIcon}
+                                            className={`py-2 px-3 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-1 transition-all ${
+                                                isGeneratingIcon && editingCompletedIcon
+                                                    ? 'bg-purple-600/50 text-purple-300 cursor-wait'
+                                                    : 'border border-dashed border-purple-600 text-purple-400 hover:text-purple-300 hover:border-purple-400'
+                                            }`}
+                                            title="Generate icon with AI for correct answer"
+                                            type="button"
+                                        >
+                                            {isGeneratingIcon && editingCompletedIcon ? (
+                                                <>
+                                                    <div className="w-3 h-3 border-2 border-purple-300 border-t-transparent rounded-full animate-spin" />
+                                                    <span className="text-[9px]">GENERATING...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Wand2 className="w-3 h-3" /> AI ICON
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Actions Button */}
+                            {/* Copy Task Button */}
                             <button
-                                onClick={() => setShowActionModal(true)}
-                                className="w-full py-3 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-400 hover:text-indigo-300 border border-indigo-600/40 hover:border-indigo-500 rounded-lg font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all"
-                                title="Set up if/then logic and actions"
+                                onClick={() => {
+                                    const now = Date.now();
+                                    const nextOrder = Math.max(0, ...game.points.map(p => (typeof p.order === 'number' ? p.order : 0))) + 1;
+
+                                    const originalPos = getDevicePosition(selectedTask);
+                                    const copiedPos = {
+                                        x: Math.min(98, Math.round((originalPos.x + 2) * 10) / 10),
+                                        y: Math.min(98, Math.round((originalPos.y + 2) * 10) / 10)
+                                    };
+
+                                    // Create a copy of the selected task with a new ID
+                                    const newTask: GamePoint = {
+                                        ...selectedTask,
+                                        id: `task-${now}-${Math.random().toString(36).slice(2, 8)}`,
+                                        title: `Copy of ${selectedTask.title}`,
+                                        order: nextOrder,
+                                        isCompleted: false,
+                                        isUnlocked: true,
+                                        devicePositions: {
+                                            [selectedDevice]: copiedPos
+                                        }
+                                    };
+
+                                    onUpdateGame({
+                                        ...game,
+                                        points: [...game.points, newTask]
+                                    });
+
+                                    // Save to library - create a template from the copied task
+                                    (async () => {
+                                        const taskTemplate: TaskTemplate = {
+                                            id: `template-${Date.now()}`,
+                                            title: newTask.title,
+                                            task: newTask.task,
+                                            feedback: newTask.feedback,
+                                            points: newTask.points,
+                                            tags: newTask.tags,
+                                            iconId: newTask.iconId,
+                                            iconUrl: newTask.iconUrl,
+                                            settings: newTask.settings,
+                                            logic: newTask.logic
+                                        };
+                                        const { ok } = await db.saveTemplates([taskTemplate]);
+                                        if (!ok) {
+                                            console.error('[PlaygroundEditor] Failed to save copied task to library');
+                                        } else {
+                                            console.log('[PlaygroundEditor] Copied task saved to library');
+                                        }
+                                    })();
+
+                                    setSelectedTaskId(newTask.id);
+                                }}
+                                className="w-full py-3 bg-green-600/20 hover:bg-green-600/40 text-green-400 hover:text-green-300 border border-green-600/40 hover:border-green-500 rounded-lg font-bold uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all"
+                                title="Create a copy of this task in the current game"
+                                type="button"
                             >
-                                <Zap className="w-4 h-4" /> CONFIGURE ACTIONS
+                                <Copy className="w-4 h-4" /> COPY TASK
                             </button>
 
                             {/* Delete Task Button */}
@@ -2273,13 +4273,24 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 {/* Add New Task Button */}
                                 <button
                                     onClick={() => onAddTask('MANUAL', activePlayground.id)}
-                                    className="py-4 px-3 bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 hover:text-orange-300 border border-orange-600/40 hover:border-orange-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all group flex-col"
+                                    className="py-4 px-3 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-400 hover:text-yellow-300 border border-yellow-600/40 hover:border-yellow-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all group flex-col"
                                     title="Create a new task"
                                 >
                                     <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" />
                                     <span>NEW TASK</span>
                                 </button>
                             </div>
+
+                            {/* Export to Library Button */}
+                            {onExportGameToLibrary && (
+                                <button
+                                    onClick={onExportGameToLibrary}
+                                    className="w-full py-3 bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 hover:text-orange-300 border border-orange-600/40 hover:border-orange-500 rounded-lg font-bold uppercase tracking-widest text-[9px] flex items-center justify-center gap-2 transition-all"
+                                    title="Export all tasks to Global Library and sync to Supabase"
+                                >
+                                    <Download className="w-4 h-4" /> EXPORT TO LIBRARY
+                                </button>
+                            )}
 
                             {/* Divider */}
                             <div className="h-px bg-gradient-to-r from-transparent via-slate-700 to-transparent my-4"></div>
@@ -2351,6 +4362,33 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 </div>
                             )}
 
+                            {/* Task Sort Control */}
+                            <div className="mb-3 flex items-center gap-2">
+                                <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Sort By:</label>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => setTaskSortMode('order')}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                            taskSortMode === 'order'
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        Task Order
+                                    </button>
+                                    <button
+                                        onClick={() => setTaskSortMode('actions')}
+                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all ${
+                                            taskSortMode === 'actions'
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                                        }`}
+                                    >
+                                        Actions
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Tasks List */}
                             <div className="space-y-3">
                                 {uniquePlaygroundPoints.length === 0 ? (
@@ -2359,51 +4397,97 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         <p className="text-[9px] text-slate-600 mt-2">Use the buttons above to add your first task</p>
                                     </div>
                                 ) : (
-                                    <div className="space-y-2">
-                                        {uniquePlaygroundPoints.map((point, index) => {
-                                            const hasActions = point.logic && (point.logic.onOpen?.length || point.logic.onCorrect?.length || point.logic.onIncorrect?.length);
-                                            const isMarked = markedTaskIds.has(point.id);
-                                            return (
-                                                <div
-                                                    key={point.id}
-                                                    className={`p-3 border rounded-lg transition-colors group ${
-                                                        bulkIconMode
-                                                            ? bulkIconSourceId === point.id
-                                                                ? 'bg-blue-500/20 border-blue-500 cursor-pointer'
-                                                                : 'bg-slate-800/50 border-slate-700 cursor-pointer'
-                                                            : (isMarked
-                                                                ? 'bg-orange-500/20 border-orange-500'
-                                                                : 'bg-slate-800/50 border-slate-700 hover:border-orange-500 hover:bg-slate-800')
-                                                    }`}
-                                                    onClick={() => {
-                                                        if (bulkIconMode) {
-                                                            if (bulkIconSourceId === null) {
-                                                                setBulkIconSourceId(point.id);
-                                                            } else if (bulkIconSourceId === point.id) {
-                                                                setBulkIconSourceId(null);
+                                    <div className="space-y-1">
+                                        {(() => {
+                                            // Helper function to get original task index
+                                            const getOriginalTaskIndex = (taskId: string): number => {
+                                                return uniquePlaygroundPoints.findIndex(p => p.id === taskId);
+                                            };
+
+                                            // Helper function to render a single task item
+                                            const renderTaskItem = (
+                                                point: GamePoint,
+                                                renderContext: {
+                                                    isNested?: boolean;
+                                                    sourceTask?: GamePoint;
+                                                    actionType?: 'onOpen' | 'onCorrect' | 'onIncorrect';
+                                                } = {}
+                                            ) => {
+                                                const { isNested = false, sourceTask, actionType } = renderContext;
+                                                const originalIndex = getOriginalTaskIndex(point.id);
+                                                const taskNumber = String(originalIndex + 1).padStart(2, '0');
+
+                                                // Calculate action info
+                                                const hasSourceOnOpen = point.logic?.onOpen?.length > 0;
+                                                const hasSourceOnCorrect = point.logic?.onCorrect?.length > 0;
+                                                const hasSourceOnIncorrect = point.logic?.onIncorrect?.length > 0;
+
+                                                const hasTargetOnOpen = uniquePlaygroundPoints.some(p =>
+                                                    p.id !== point.id && p.logic?.onOpen?.some((a: any) => (a.targetId || a) === point.id)
+                                                );
+                                                const hasTargetOnCorrect = uniquePlaygroundPoints.some(p =>
+                                                    p.id !== point.id && p.logic?.onCorrect?.some((a: any) => (a.targetId || a) === point.id)
+                                                );
+                                                const hasTargetOnIncorrect = uniquePlaygroundPoints.some(p =>
+                                                    p.id !== point.id && p.logic?.onIncorrect?.some((a: any) => (a.targetId || a) === point.id)
+                                                );
+
+                                                const isMarked = markedTaskIds.has(point.id);
+                                                const isHovered = hoveredTaskId === point.id;
+                                                const hasActions = hasSourceOnOpen || hasSourceOnCorrect || hasSourceOnIncorrect;
+                                                const isSourceTask = taskSortMode === 'actions' && hasActions && !isNested;
+
+                                                const uniqueKey = isNested
+                                                    ? `${point.id}-nested-${sourceTask?.id}-${actionType}`
+                                                    : point.id;
+
+                                                return (
+                                                    <div
+                                                        key={uniqueKey}
+                                                        className={`px-3 py-2 border rounded transition-colors group flex items-center gap-2 ${
+                                                            isNested ? 'ml-6 border-l-2 border-l-orange-500' : ''
+                                                        } ${
+                                                            bulkIconMode
+                                                                ? bulkIconSourceId === point.id
+                                                                    ? 'bg-blue-500/20 border-blue-500 cursor-pointer'
+                                                                    : 'bg-slate-800/50 border-slate-700 cursor-pointer'
+                                                                : (isHovered
+                                                                    ? 'bg-orange-500/20 border-orange-500'
+                                                                    : isMarked
+                                                                    ? 'bg-orange-500/20 border-orange-500'
+                                                                    : 'bg-slate-800/50 border-slate-700 hover:border-orange-500 hover:bg-slate-800')
+                                                        }`}
+                                                        onMouseEnter={() => setHoveredTaskId(point.id)}
+                                                        onMouseLeave={() => setHoveredTaskId(null)}
+                                                        onClick={() => {
+                                                            if (bulkIconMode) {
+                                                                if (bulkIconSourceId === null) {
+                                                                    setBulkIconSourceId(point.id);
+                                                                } else if (bulkIconSourceId === point.id) {
+                                                                    setBulkIconSourceId(null);
+                                                                } else {
+                                                                    toggleBulkIconTarget(point.id);
+                                                                }
                                                             } else {
-                                                                toggleBulkIconTarget(point.id);
+                                                                setSelectedTaskId(point.id);
                                                             }
-                                                        } else {
-                                                            setSelectedTaskId(point.id);
-                                                        }
-                                                    }}
-                                                >
-                                                    <div className="flex items-start justify-between gap-3">
+                                                        }}
+                                                    >
+                                                        {/* Checkbox for bulk/mark mode */}
                                                         {bulkIconMode ? (
                                                             <>
                                                                 {bulkIconSourceId === null ? (
-                                                                    <div className="w-8 h-8 bg-blue-900/50 border-2 border-blue-400 rounded flex items-center justify-center flex-shrink-0 text-[9px] font-bold text-blue-300 cursor-pointer hover:bg-blue-800/50">
+                                                                    <div className="w-6 h-6 bg-blue-900/50 border-2 border-blue-400 rounded flex items-center justify-center flex-shrink-0 text-[8px] font-bold text-blue-300 cursor-pointer hover:bg-blue-800/50">
                                                                         📌
                                                                     </div>
                                                                 ) : bulkIconSourceId === point.id ? (
-                                                                    <div className="w-8 h-8 bg-blue-600 border-2 border-blue-400 rounded flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/50">
+                                                                    <div className="w-6 h-6 bg-blue-600 border-2 border-blue-400 rounded flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/50">
                                                                         {point.iconUrl ? (
-                                                                            <img src={point.iconUrl} alt="" className="w-5 h-5 object-contain" />
+                                                                            <img src={point.iconUrl} alt="" className="w-4 h-4 object-contain" />
                                                                         ) : (
                                                                             (() => {
                                                                                 const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
-                                                                                return <Icon className="w-5 h-5 text-white" />;
+                                                                                return <Icon className="w-4 h-4 text-white" />;
                                                                             })()
                                                                         )}
                                                                     </div>
@@ -2416,7 +4500,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                                             toggleBulkIconTarget(point.id);
                                                                         }}
                                                                         onClick={(e) => e.stopPropagation()}
-                                                                        className="mt-1 w-4 h-4 rounded border-2 border-orange-500 bg-slate-900 cursor-pointer accent-orange-500 flex-shrink-0"
+                                                                        className="w-4 h-4 rounded border-2 border-orange-500 bg-slate-900 cursor-pointer accent-orange-500 flex-shrink-0"
                                                                         title="Click checkbox or task to select target"
                                                                     />
                                                                 )}
@@ -2429,27 +4513,25 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                                     e.stopPropagation();
                                                                     toggleMarkTask(point.id);
                                                                 }}
-                                                                className="mt-1 w-4 h-4 rounded border-2 border-orange-400 bg-slate-900 cursor-pointer accent-orange-500 flex-shrink-0"
+                                                                className="w-4 h-4 rounded border-2 border-orange-400 bg-slate-900 cursor-pointer accent-orange-500 flex-shrink-0"
                                                                 title="Mark for snapping"
                                                             />
                                                         )}
-                                                        <div className="flex-1 min-w-0">
-                                                            {showTaskOrder && (
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase">TASK {String(index + 1).padStart(2, '0')}</p>
-                                                                    {bulkIconMode && (
-                                                                        <span className={`text-[8px] font-bold uppercase px-1.5 py-0.5 rounded ${
-                                                                            bulkIconSourceId === point.id
-                                                                                ? 'bg-blue-600 text-white'
-                                                                                : bulkIconSourceId && bulkIconTargets.has(point.id)
-                                                                                    ? 'bg-orange-600 text-white'
-                                                                                    : 'bg-slate-700 text-slate-400'
-                                                                        }`}>
-                                                                            {bulkIconSourceId === null ? 'SELECT SOURCE' : bulkIconSourceId === point.id ? 'SOURCE ✓' : 'TARGET'}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+
+                                                        {/* Icon */}
+                                                        <div className="w-5 h-5 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 border border-slate-600">
+                                                            {point.iconUrl ? (
+                                                                <img src={point.iconUrl} alt="" className="w-3 h-3 object-contain" />
+                                                            ) : (
+                                                                (() => {
+                                                                    const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
+                                                                    return <Icon className="w-3 h-3 text-slate-400" />;
+                                                                })()
                                                             )}
+                                                        </div>
+
+                                                        {/* Task number and title on one line */}
+                                                        <div className="flex-1 min-w-0">
                                                             {editingTitleId === point.id ? (
                                                                 <input
                                                                     type="text"
@@ -2472,56 +4554,226 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                                                         }
                                                                     }}
                                                                     onClick={(e) => e.stopPropagation()}
-                                                                    className="w-full bg-slate-700 border border-orange-500 rounded px-2 py-1 text-xs font-bold text-white outline-none focus:border-orange-400"
+                                                                    className="w-full bg-slate-700 border border-orange-500 rounded px-1.5 py-0.5 text-[11px] font-bold text-white outline-none focus:border-orange-400"
                                                                     autoFocus
                                                                 />
                                                             ) : (
-                                                                <p
-                                                                    className="text-xs font-bold text-white truncate group-hover:text-orange-300 transition-colors cursor-text"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        setEditingTitleId(point.id);
-                                                                        setEditingTitleValue(point.title);
-                                                                    }}
-                                                                    title="Click to edit task title"
-                                                                >
-                                                                    {point.title}
-                                                                </p>
-                                                            )}
-                                                            {showTaskScores && (
-                                                                <p className="text-[9px] font-bold text-orange-400 uppercase mt-1 flex items-center gap-1">
-                                                                    <span>$</span>
-                                                                    <span>{point.points}</span>
-                                                                </p>
-                                                            )}
-
-                                                            {/* Icon Thumbnail */}
-                                                            <div className="mt-2 flex items-center gap-2">
-                                                                <div className="w-6 h-6 bg-slate-700 rounded flex items-center justify-center flex-shrink-0 border border-slate-600">
-                                                                    {point.iconUrl ? (
-                                                                        <img src={point.iconUrl} alt="" className="w-4 h-4 object-contain" />
-                                                                    ) : (
-                                                                        (() => {
-                                                                            const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
-                                                                            return <Icon className="w-4 h-4 text-slate-400" />;
-                                                                        })()
-                                                                    )}
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <p className="text-[10px] font-bold text-slate-400 uppercase flex-shrink-0">TASK {taskNumber}</p>
+                                                                    <p
+                                                                        className="text-[11px] font-bold text-white truncate group-hover:text-orange-300 transition-colors cursor-text flex-1"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setEditingTitleId(point.id);
+                                                                            setEditingTitleValue(point.title);
+                                                                        }}
+                                                                        title="Click to edit task title"
+                                                                    >
+                                                                        {point.title}
+                                                                    </p>
                                                                 </div>
-                                                                <span className="text-[8px] text-slate-500 uppercase font-bold">Icon</span>
-                                                            </div>
-
-                                                            {showTaskActions && hasActions && (
-                                                                <p className="text-[9px] font-bold text-purple-400 uppercase mt-2 flex items-center gap-1">
-                                                                    <Zap className="w-2.5 h-2.5" />
-                                                                    <span>HAS ACTIONS</span>
-                                                                </p>
                                                             )}
                                                         </div>
-                                                        <Edit2 className="w-4 h-4 text-slate-500 group-hover:text-orange-500 transition-colors flex-shrink-0" />
+
+                                                        {/* Score */}
+                                                        {showTaskScores && (
+                                                            <p className="text-[10px] font-bold text-orange-400 uppercase flex-shrink-0">
+                                                                ${point.points}
+                                                            </p>
+                                                        )}
+
+                                                        {/* Action indicators - tri-color system */}
+                                                        {showTaskActions && (
+                                                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                                {/* SOURCE indicators (this task triggers actions) */}
+                                                                {hasSourceOnOpen && (
+                                                                    <div
+                                                                        className={`w-2 h-2 rounded-full bg-yellow-400 border-2 border-yellow-600 ${isSourceTask ? 'ring-2 ring-yellow-400 ring-offset-1 ring-offset-slate-800' : ''}`}
+                                                                        title="SOURCE: When Opened action"
+                                                                    />
+                                                                )}
+                                                                {hasSourceOnCorrect && (
+                                                                    <div
+                                                                        className={`w-2 h-2 rounded-full bg-green-400 border-2 border-green-600 ${isSourceTask ? 'ring-2 ring-green-400 ring-offset-1 ring-offset-slate-800' : ''}`}
+                                                                        title="SOURCE: If Correct action"
+                                                                    />
+                                                                )}
+                                                                {hasSourceOnIncorrect && (
+                                                                    <div
+                                                                        className={`w-2 h-2 rounded-full bg-red-400 border-2 border-red-600 ${isSourceTask ? 'ring-2 ring-red-400 ring-offset-1 ring-offset-slate-800' : ''}`}
+                                                                        title="SOURCE: If Incorrect action"
+                                                                    />
+                                                                )}
+
+                                                                {/* Divider if both source and target */}
+                                                                {(hasSourceOnOpen || hasSourceOnCorrect || hasSourceOnIncorrect) &&
+                                                                 (hasTargetOnOpen || hasTargetOnCorrect || hasTargetOnIncorrect) && (
+                                                                    <div className="w-px h-3 bg-slate-600" />
+                                                                )}
+
+                                                                {/* TARGET indicators (other tasks point to this task) */}
+                                                                {hasTargetOnOpen && (
+                                                                    <div
+                                                                        className="w-2 h-2 rounded-full bg-yellow-400/40 border border-yellow-500"
+                                                                        title="TARGET: Unlocked by 'When Opened' action"
+                                                                    />
+                                                                )}
+                                                                {hasTargetOnCorrect && (
+                                                                    <div
+                                                                        className="w-2 h-2 rounded-full bg-green-400/40 border border-green-500"
+                                                                        title="TARGET: Unlocked by 'If Correct' action"
+                                                                    />
+                                                                )}
+                                                                {hasTargetOnIncorrect && (
+                                                                    <div
+                                                                        className="w-2 h-2 rounded-full bg-red-400/40 border border-red-500"
+                                                                        title="TARGET: Unlocked by 'If Incorrect' action"
+                                                                    />
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Edit button */}
+                                                        <Edit2 className="w-3.5 h-3.5 text-slate-500 group-hover:text-orange-500 transition-colors flex-shrink-0" />
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            };
+
+                                            if (taskSortMode === 'order') {
+                                                // Simple list in original order
+                                                return uniquePlaygroundPoints.map((point) => renderTaskItem(point));
+                                            } else {
+                                                // Hierarchical action-based view
+                                                const renderedItems: JSX.Element[] = [];
+
+                                                // First, render SOURCE tasks with their targets
+                                                const sourceTasks = uniquePlaygroundPoints.filter(p =>
+                                                    p.logic?.onOpen?.length > 0 ||
+                                                    p.logic?.onCorrect?.length > 0 ||
+                                                    p.logic?.onIncorrect?.length > 0
+                                                );
+
+                                                if (sourceTasks.length > 0) {
+                                                    renderedItems.push(
+                                                        <div key="header-source" className="flex items-center gap-2 py-2 px-2 mt-3 mb-1">
+                                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent" />
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                                ⚡ SOURCE Tasks
+                                                            </span>
+                                                            <div className="flex-1 h-px bg-gradient-to-r from-slate-600 via-transparent to-transparent" />
+                                                        </div>
+                                                    );
+
+                                                    sourceTasks.forEach(sourceTask => {
+                                                        const isCollapsed = collapsedSources.has(sourceTask.id);
+
+                                                        // Render source task with collapse/expand button
+                                                        renderedItems.push(
+                                                            <div key={`source-${sourceTask.id}`} className="space-y-1">
+                                                                <div className="flex items-start gap-1">
+                                                                    {/* Collapse/Expand button */}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const newCollapsed = new Set(collapsedSources);
+                                                                            if (isCollapsed) {
+                                                                                newCollapsed.delete(sourceTask.id);
+                                                                            } else {
+                                                                                newCollapsed.add(sourceTask.id);
+                                                                            }
+                                                                            setCollapsedSources(newCollapsed);
+                                                                        }}
+                                                                        className="mt-2 p-1 rounded hover:bg-slate-700 transition-colors flex-shrink-0"
+                                                                        title={isCollapsed ? 'Expand to show target tasks' : 'Collapse to hide target tasks'}
+                                                                    >
+                                                                        <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${!isCollapsed ? 'rotate-90' : ''}`} />
+                                                                    </button>
+                                                                    <div className="flex-1">
+                                                                        {renderTaskItem(sourceTask)}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Render target tasks when expanded */}
+                                                                {!isCollapsed && (
+                                                                    <div className="space-y-1">
+                                                                        {/* onOpen targets */}
+                                                                        {sourceTask.logic?.onOpen?.map((action: any) => {
+                                                                            const targetId = action.targetId || action;
+                                                                            const targetTask = uniquePlaygroundPoints.find(p => p.id === targetId);
+                                                                            if (!targetTask) return null;
+                                                                            return renderTaskItem(targetTask, {
+                                                                                isNested: true,
+                                                                                sourceTask,
+                                                                                actionType: 'onOpen'
+                                                                            });
+                                                                        })}
+
+                                                                        {/* onCorrect targets */}
+                                                                        {sourceTask.logic?.onCorrect?.map((action: any) => {
+                                                                            const targetId = action.targetId || action;
+                                                                            const targetTask = uniquePlaygroundPoints.find(p => p.id === targetId);
+                                                                            if (!targetTask) return null;
+                                                                            return renderTaskItem(targetTask, {
+                                                                                isNested: true,
+                                                                                sourceTask,
+                                                                                actionType: 'onCorrect'
+                                                                            });
+                                                                        })}
+
+                                                                        {/* onIncorrect targets */}
+                                                                        {sourceTask.logic?.onIncorrect?.map((action: any) => {
+                                                                            const targetId = action.targetId || action;
+                                                                            const targetTask = uniquePlaygroundPoints.find(p => p.id === targetId);
+                                                                            if (!targetTask) return null;
+                                                                            return renderTaskItem(targetTask, {
+                                                                                isNested: true,
+                                                                                sourceTask,
+                                                                                actionType: 'onIncorrect'
+                                                                            });
+                                                                        })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    });
+                                                }
+
+                                                // TARGET TASKS section removed - all targets are now only visible under their source tasks
+
+                                                // Finally, render tasks with no actions
+                                                const noActionTasks = uniquePlaygroundPoints.filter(p => {
+                                                    const isSource = p.logic?.onOpen?.length > 0 ||
+                                                                   p.logic?.onCorrect?.length > 0 ||
+                                                                   p.logic?.onIncorrect?.length > 0;
+                                                    const isTarget = uniquePlaygroundPoints.some(other =>
+                                                        other.id !== p.id && (
+                                                            other.logic?.onOpen?.some((a: any) => (a.targetId || a) === p.id) ||
+                                                            other.logic?.onCorrect?.some((a: any) => (a.targetId || a) === p.id) ||
+                                                            other.logic?.onIncorrect?.some((a: any) => (a.targetId || a) === p.id)
+                                                        )
+                                                    );
+                                                    return !isSource && !isTarget;
+                                                });
+
+                                                if (noActionTasks.length > 0) {
+                                                    renderedItems.push(
+                                                        <div key="header-noaction" className="flex items-center gap-2 py-2 px-2 mt-3 mb-1">
+                                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent" />
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                                                                📋 No Actions
+                                                            </span>
+                                                            <div className="flex-1 h-px bg-gradient-to-r from-slate-600 via-transparent to-transparent" />
+                                                        </div>
+                                                    );
+
+                                                    noActionTasks.forEach(task => {
+                                                        renderedItems.push(renderTaskItem(task));
+                                                    });
+                                                }
+
+                                                return renderedItems;
+                                            }
+                                        })()}
                                     </div>
                                 )}
                             </div>
@@ -2743,8 +4995,448 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         });
                         setShowActionModal(false);
                     }}
-                    onStartDrawMode={() => {}}
+                    onStartDrawMode={(trigger) => {
+                        // Enter draw mode: highlight source, allow clicking targets
+                        setDrawMode({
+                            active: true,
+                            trigger,
+                            sourceTaskId: selectedTask.id,
+                            mousePosition: null
+                        });
+                        setShowActionModal(false);
+                        // Show toast/instruction
+                        console.log(`Draw mode activated for ${trigger}. Click tasks to connect.`);
+                    }}
                 />
+            )}
+
+            {/* Task Settings Modal */}
+            {showTaskSettingsModal && settingsModalTaskId && selectedTask?.id === settingsModalTaskId && selectedTask && (
+                <TaskEditor
+                    point={selectedTask}
+                    requestedTab="SETTINGS"
+                    gameMode="playzone"
+                    onSave={(updatedPoint) => {
+                        onUpdateGame({
+                            ...game,
+                            points: game.points.map(p => p.id === updatedPoint.id ? updatedPoint : p)
+                        });
+                        setShowTaskSettingsModal(false);
+                        setSettingsModalTaskId(null);
+                    }}
+                    onDelete={(pointId) => {
+                        onUpdateGame({
+                            ...game,
+                            points: game.points.filter(p => p.id !== pointId)
+                        });
+                        setShowTaskSettingsModal(false);
+                        setSettingsModalTaskId(null);
+                    }}
+                    onClose={() => {
+                        setShowTaskSettingsModal(false);
+                        setSettingsModalTaskId(null);
+                    }}
+                />
+            )}
+
+            {/* Task View Modal - Preview Task */}
+            {showTaskViewModal && selectedTask && (
+                <div className="fixed inset-0 z-[6500] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-blue-600/50 w-full max-w-2xl max-h-[90vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+                        {/* Header */}
+                        <div className="p-5 border-b border-slate-800 bg-gradient-to-r from-blue-600 to-blue-700 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                                    <Eye className="w-5 h-5 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-black text-white uppercase tracking-widest">TASK PREVIEW</h2>
+                                    <p className="text-xs text-blue-100 font-bold uppercase tracking-wider mt-0.5">{selectedTask.title}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowTaskViewModal(false)}
+                                className="p-2 hover:bg-white/10 rounded-full text-white/80 hover:text-white transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            {/* Task Type Badge */}
+                            <div className="flex items-center gap-3">
+                                <span className="px-4 py-2 bg-blue-600/20 border border-blue-600/40 text-blue-300 rounded-lg font-black uppercase text-xs tracking-widest">
+                                    {selectedTask.task.type === 'text' && '✍️ TEXT ANSWER'}
+                                    {selectedTask.task.type === 'multiple_choice' && '☑️ MULTIPLE CHOICE'}
+                                    {selectedTask.task.type === 'boolean' && '✓/✗ TRUE/FALSE'}
+                                    {selectedTask.task.type === 'slider' && '🎚️ SLIDER'}
+                                    {selectedTask.task.type === 'checkbox' && '☑️ CHECKBOXES'}
+                                    {selectedTask.task.type === 'dropdown' && '📋 DROPDOWN'}
+                                </span>
+                                <span className="px-3 py-1.5 bg-orange-600/20 border border-orange-600/40 text-orange-300 rounded-lg font-bold text-xs">
+                                    {selectedTask.points || 100} POINTS
+                                </span>
+                            </div>
+
+                            {/* Question */}
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-2">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">QUESTION</label>
+                                <div
+                                    className="text-base font-bold text-white leading-relaxed"
+                                    dangerouslySetInnerHTML={{ __html: selectedTask.task.question || 'No question set' }}
+                                />
+                            </div>
+
+                            {/* Task Image */}
+                            {selectedTask.task.imageUrl && (
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">TASK IMAGE</label>
+                                    <img
+                                        src={selectedTask.task.imageUrl}
+                                        alt="Task illustration"
+                                        className="w-full rounded-lg max-h-64 object-cover"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Answer Options & Correct Answers */}
+                            {(selectedTask.task.type === 'multiple_choice' || selectedTask.task.type === 'checkbox' || selectedTask.task.type === 'dropdown') && selectedTask.task.options && selectedTask.task.options.length > 0 && (
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-3">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">ANSWER OPTIONS</label>
+                                    <div className="space-y-2">
+                                        {selectedTask.task.options.map((option, idx) => {
+                                            const isCorrect = selectedTask.task.correctAnswers?.includes(option);
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`p-3 rounded-lg border-2 flex items-center gap-3 ${
+                                                        isCorrect
+                                                            ? 'bg-green-600/20 border-green-500 text-green-300'
+                                                            : 'bg-slate-700/50 border-slate-600 text-slate-300'
+                                                    }`}
+                                                >
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
+                                                        isCorrect ? 'bg-green-500 text-white' : 'bg-slate-600 text-slate-400'
+                                                    }`}>
+                                                        {isCorrect ? '✓' : String.fromCharCode(65 + idx)}
+                                                    </div>
+                                                    <span className="font-bold text-sm flex-1">{option}</span>
+                                                    {isCorrect && (
+                                                        <span className="px-2 py-1 bg-green-600 text-white rounded text-[8px] font-black uppercase tracking-wider">
+                                                            CORRECT
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Text Answer */}
+                            {selectedTask.task.type === 'text' && selectedTask.task.answer && (
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">CORRECT ANSWER</label>
+                                    <div className="p-3 bg-green-600/20 border-2 border-green-500 rounded-lg">
+                                        <p className="text-green-300 font-bold">{selectedTask.task.answer}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Boolean Answer */}
+                            {selectedTask.task.type === 'boolean' && selectedTask.task.answer !== undefined && (
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">CORRECT ANSWER</label>
+                                    <div className="p-3 bg-green-600/20 border-2 border-green-500 rounded-lg">
+                                        <p className="text-green-300 font-black text-lg uppercase">
+                                            {selectedTask.task.answer === 'true' || selectedTask.task.answer === true ? '✓ TRUE' : '✗ FALSE'}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Slider Range */}
+                            {selectedTask.task.type === 'slider' && selectedTask.task.range && (
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 space-y-3">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">SLIDER SETTINGS</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div className="p-3 bg-slate-700 rounded-lg">
+                                            <p className="text-[9px] text-slate-400 uppercase font-bold mb-1">Minimum</p>
+                                            <p className="text-white font-black text-lg">{selectedTask.task.range.min}</p>
+                                        </div>
+                                        <div className="p-3 bg-green-600/20 border-2 border-green-500 rounded-lg">
+                                            <p className="text-[9px] text-green-400 uppercase font-bold mb-1">Correct</p>
+                                            <p className="text-green-300 font-black text-lg">{selectedTask.task.range.correctValue}</p>
+                                        </div>
+                                        <div className="p-3 bg-slate-700 rounded-lg">
+                                            <p className="text-[9px] text-slate-400 uppercase font-bold mb-1">Maximum</p>
+                                            <p className="text-white font-black text-lg">{selectedTask.task.range.max}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Hint */}
+                            {selectedTask.feedback?.hint && (
+                                <div className="bg-yellow-600/10 border border-yellow-600/30 rounded-xl p-5 space-y-2">
+                                    <label className="text-[10px] font-black text-yellow-500 uppercase tracking-widest flex items-center gap-2">
+                                        💡 HINT
+                                        {selectedTask.feedback.hintCost > 0 && (
+                                            <span className="text-[8px] px-2 py-0.5 bg-yellow-600/30 rounded">
+                                                -{selectedTask.feedback.hintCost} PTS
+                                            </span>
+                                        )}
+                                    </label>
+                                    <p className="text-yellow-200 font-medium text-sm">{selectedTask.feedback.hint}</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-4 bg-slate-950 border-t border-slate-800">
+                            <button
+                                onClick={() => setShowTaskViewModal(false)}
+                                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black uppercase text-xs tracking-widest transition-colors"
+                            >
+                                CLOSE PREVIEW
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Playzone Selector Modal - For choosing which playzone to add tasks to */}
+            {showPlayzoneSelector && (
+                <div className="fixed inset-0 z-[9000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border-2 border-orange-500">
+                        {/* Header */}
+                        <div className="bg-orange-600 px-6 py-4">
+                            <h2 className="text-lg font-black text-white uppercase tracking-widest">SELECT DESTINATION</h2>
+                            <p className="text-[10px] text-orange-100 font-bold uppercase tracking-wider mt-1">{pendingTasksToAdd.length} task{pendingTasksToAdd.length !== 1 ? 's' : ''} ready to add</p>
+                        </div>
+
+                        {/* Content */}
+                        <div className={`p-6 ${isAddingTaskList ? 'grid grid-cols-1' : 'grid grid-cols-1 md:grid-cols-2'} gap-6`}>
+                          {/* MAP Section - Only show when not adding from playzone editor */}
+                          {!isAddingTaskList && (
+                          <div>
+                            <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 pb-2 border-b border-slate-700">MAP</h3>
+                            <button
+                              onClick={() => {
+                                // Add the pending tasks to the MAP (no playgroundId)
+                                const mapPoints = game.points?.filter(p => !p.playgroundId);
+                                const baseOrder = mapPoints?.length || 0;
+
+                                // Filter out duplicates (by title match)
+                                const newTasksToAdd = pendingTasksToAdd.filter(t =>
+                                  !game.points?.some(p => p.title === t.title)
+                                );
+
+                                if (newTasksToAdd.length === 0) {
+                                  alert('All tasks already exist in this game. No duplicates were added.');
+                                  return;
+                                }
+
+                                const newPoints: GamePoint[] = newTasksToAdd.map((t, i) => {
+                                  const templateAny = t as any;
+                                  const radiusMeters = typeof templateAny.radiusMeters === 'number' ? templateAny.radiusMeters : 30;
+                                  const areaColor = typeof templateAny.areaColor === 'string' ? templateAny.areaColor : undefined;
+                                  const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
+
+                                  return {
+                                    id: `m-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                    title: t.title,
+                                    shortIntro: (t as any).intro,
+                                    task: t.task,
+                                    location: { lat: 0, lng: 0 },
+                                    radiusMeters,
+                                    activationTypes: t.activationTypes || ['radius'], // Use task's activation types or default to radius for map
+                                    manualUnlockCode: undefined,
+                                    iconId: t.iconId || 'default',
+                                    iconUrl: (t as any).iconUrl,
+                                    areaColor,
+                                    openingAudioUrl,
+                                    points: t.points || 100,
+                                    isUnlocked: true,
+                                    isCompleted: false,
+                                    order: baseOrder + i,
+                                    tags: t.tags,
+                                    feedback: t.feedback,
+                                    settings: t.settings,
+                                    logic: t.logic,
+                                    completionLogic: (t as any).completionLogic
+                                  } as GamePoint;
+                                });
+
+                                onUpdateGame({
+                                  ...game,
+                                  points: [...game.points, ...newPoints]
+                                });
+
+                                // Save templates to library and sync to Supabase
+                                (async () => {
+                                  const { ok } = await db.saveTemplates(newTasksToAdd);
+                                  if (!ok) {
+                                    console.error('[PlaygroundEditor] Failed to save tasks to library');
+                                  } else {
+                                    console.log('[PlaygroundEditor] Tasks saved to library:', newTasksToAdd.length);
+                                  }
+                                })();
+
+                                // Reset state
+                                setShowPlayzoneSelector(false);
+                                setPendingTasksToAdd([]);
+                                setIsAddingAITasks(false);
+                                setIsAddingTaskList(false);
+                                if (isAddingAITasks) {
+                                  setShowAiTaskGenerator(false);
+                                } else {
+                                  setShowTaskMaster(false);
+                                }
+                              }}
+                              className="w-full p-4 bg-blue-900/40 hover:bg-blue-800/60 border-2 border-blue-500/50 hover:border-blue-500 rounded-lg transition-colors text-left"
+                            >
+                              <div className="font-bold text-white uppercase tracking-widest text-sm">MAP TASKS</div>
+                              <div className="text-[10px] text-slate-400 mt-1">
+                                {game.points.filter(p => !p.playgroundId).length} tasks on map
+                              </div>
+                            </button>
+                          </div>
+                          )}
+
+                          {/* PLAYZONES Section */}
+                          <div>
+                            <h3 className="text-xs font-black text-slate-300 uppercase tracking-widest mb-3 pb-2 border-b border-slate-700">PLAYZONES</h3>
+                            <div className="space-y-3">
+                              {game.playgrounds && game.playgrounds.length > 0 ? (
+                                game.playgrounds.map((playzone) => (
+                                  <button
+                                    key={playzone.id}
+                                    onClick={() => {
+                                      // Add the pending tasks to the selected playzone
+                                      // Filter out duplicates (by title match)
+                                      const newTasksToAdd = pendingTasksToAdd.filter(t =>
+                                        !game.points?.some(p => p.title === t.title)
+                                      );
+
+                                      if (newTasksToAdd.length === 0) {
+                                        alert('All tasks already exist in this game. No duplicates were added.');
+                                        return;
+                                      }
+
+                                      const baseOrder = uniquePlaygroundPoints.filter(p => p.playgroundId === playzone.id).length;
+                                      const COLS = 3;
+                                      const PADDING = 10;
+                                      const ROW_HEIGHT = 18;
+
+                                      const newPoints: GamePoint[] = newTasksToAdd.map((t, i) => {
+                                        const row = Math.floor((baseOrder + i) / COLS);
+                                        const col = (baseOrder + i) % COLS;
+                                        const colWidth = (100 - PADDING * 2) / COLS;
+
+                                        const x = PADDING + col * colWidth + colWidth / 2;
+                                        const y = PADDING + row * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+                                        const templateAny = t as any;
+                                        const radiusMeters = typeof templateAny.radiusMeters === 'number' ? templateAny.radiusMeters : 30;
+                                        const areaColor = typeof templateAny.areaColor === 'string' ? templateAny.areaColor : undefined;
+                                        const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
+
+                                        return {
+                                          id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                          title: t.title,
+                                          shortIntro: (t as any).intro,
+                                          task: t.task,
+                                          location: { lat: 0, lng: 0 },
+                                          radiusMeters,
+                                          activationTypes: t.activationTypes || ['click'],
+                                          manualUnlockCode: undefined,
+                                          playgroundId: playzone.id,
+                                          devicePositions: {
+                                              [selectedDevice]: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
+                                          },
+                                          playgroundScale: 1,
+                                          isHiddenBeforeScan: false,
+                                          iconId: t.iconId || 'default',
+                                          iconUrl: (t as any).iconUrl,
+                                          areaColor,
+                                          openingAudioUrl,
+                                          points: t.points || 100,
+                                          isUnlocked: true,
+                                          isCompleted: false,
+                                          order: baseOrder + i,
+                                          tags: t.tags,
+                                          feedback: t.feedback,
+                                          settings: t.settings,
+                                          logic: t.logic,
+                                          completionLogic: (t as any).completionLogic
+                                        } as GamePoint;
+                                      });
+
+                                      onUpdateGame({
+                                        ...game,
+                                        points: [...game.points, ...newPoints]
+                                      });
+
+                                      // Save templates to library and sync to Supabase
+                                      (async () => {
+                                        const { ok } = await db.saveTemplates(newTasksToAdd);
+                                        if (!ok) {
+                                          console.error('[PlaygroundEditor] Failed to save tasks to library');
+                                        } else {
+                                          console.log('[PlaygroundEditor] Tasks saved to library:', newTasksToAdd.length);
+                                        }
+                                      })();
+
+                                      // Reset state
+                                      setShowPlayzoneSelector(false);
+                                      setPendingTasksToAdd([]);
+                                      setIsAddingAITasks(false);
+                                      setIsAddingTaskList(false);
+                                      if (isAddingAITasks) {
+                                        setShowAiTaskGenerator(false);
+                                      } else {
+                                        setShowTaskMaster(false);
+                                      }
+                                    }}
+                                    className="w-full p-3 bg-orange-900/40 hover:bg-orange-800/60 border-2 border-orange-500/50 hover:border-orange-500 rounded-lg transition-colors text-left"
+                                    type="button"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-5 h-5 bg-orange-500 rounded-md flex items-center justify-center flex-shrink-0">
+                                        <MapPin className="w-3 h-3 text-white" />
+                                      </div>
+                                      <div className="font-bold text-white uppercase tracking-widest text-sm">{playzone.title || `Playzone ${game.playgrounds?.indexOf(playzone) + 1}`}</div>
+                                    </div>
+                                    <div className="text-[10px] text-slate-400 mt-1">
+                                      {uniquePlaygroundPoints.filter(p => p.playgroundId === playzone.id).length} tasks
+                                    </div>
+                                  </button>
+                                ))
+                              ) : (
+                                <p className="text-slate-400 text-xs italic">No playzones available</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="border-t border-slate-700 px-6 py-3 bg-slate-950 flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowPlayzoneSelector(false);
+                                    setPendingTasksToAdd([]);
+                                    setIsAddingAITasks(false);
+                                    setIsAddingTaskList(false);
+                                }}
+                                className="px-4 py-2 text-slate-300 hover:text-white font-bold uppercase text-xs transition-colors"
+                            >
+                                CANCEL
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Advanced AI Task Generator (TaskMaster version) */}
@@ -2755,6 +5447,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     initialPlaygroundId={activePlayground?.id || null}
                     targetMode="GAME"
                     onAddTasks={(tasks, targetPlaygroundId) => {
+                        // If no specific playzone selected, show selector to choose MAP or PLAYZONE
+                        if (!targetPlaygroundId) {
+                            setPendingTasksToAdd(tasks);
+                            setIsAddingAITasks(true);
+                            setShowPlayzoneSelector(true);
+                            return;
+                        }
+
+                        // Otherwise, add directly to the specified or active playzone
                         const baseOrder = uniquePlaygroundPoints.length;
                         const COLS = 3;
                         const PADDING = 10;
@@ -2782,7 +5483,9 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 activationTypes: ['radius'],
                                 manualUnlockCode: undefined,
                                 playgroundId: targetPlaygroundId || activePlayground?.id,
-                                playgroundPosition: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 },
+                                devicePositions: {
+                                    [selectedDevice]: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
+                                },
                                 playgroundScale: 1,
                                 isHiddenBeforeScan: false,
                                 iconId: t.iconId || 'default',
@@ -2804,11 +5507,20 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             ...game,
                             points: [...game.points, ...newPoints]
                         });
+
+                        // Save templates to library and sync to Supabase
+                        (async () => {
+                            const { ok } = await db.saveTemplates(tasks);
+                            if (!ok) {
+                                console.error('[PlaygroundEditor] Failed to save tasks to library');
+                            } else {
+                                console.log('[PlaygroundEditor] Tasks saved to library:', tasks.length);
+                            }
+                        })();
                     }}
                     onAddToLibrary={async (tasks) => {
-                        for (const t of tasks) {
-                            await db.saveTemplate(t);
-                        }
+                        const { ok } = await db.saveTemplates(tasks);
+                        if (!ok) console.error('[PlaygroundEditor] Failed to save templates to library');
                     }}
                 />
             )}
@@ -2816,62 +5528,107 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             {/* TaskMaster Modal for LIBRARY and TASKLIST */}
             {showTaskMaster && (
                 <TaskMaster
-                    onClose={() => setShowTaskMaster(false)}
-                    onImportTasks={(tasks) => {
-                        // Add selected tasks to the current playground
-                        const baseOrder = uniquePlaygroundPoints.length;
-                        const COLS = 3;
-                        const PADDING = 10;
-                        const ROW_HEIGHT = 18;
-
-                        const newPoints: GamePoint[] = tasks.map((t, i) => {
-                            const row = Math.floor((baseOrder + i) / COLS);
-                            const col = (baseOrder + i) % COLS;
-                            const colWidth = (100 - PADDING * 2) / COLS;
-
-                            const x = PADDING + col * colWidth + colWidth / 2;
-                            const y = PADDING + row * ROW_HEIGHT + ROW_HEIGHT / 2;
-
-                            const templateAny = t as any;
-                            const radiusMeters = typeof templateAny.radiusMeters === 'number' ? templateAny.radiusMeters : 30;
-                            const areaColor = typeof templateAny.areaColor === 'string' ? templateAny.areaColor : undefined;
-                            const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
-
-                            return {
-                                id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
-                                title: t.title,
-                                shortIntro: (t as any).intro,
-                                task: t.task,
-                                location: { lat: 0, lng: 0 },
-                                radiusMeters,
-                                activationTypes: ['radius'],
-                                manualUnlockCode: undefined,
-                                playgroundId: activePlayground?.id,
-                                playgroundPosition: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 },
-                                playgroundScale: 1,
-                                isHiddenBeforeScan: false,
-                                iconId: t.iconId || 'default',
-                                iconUrl: (t as any).iconUrl,
-                                areaColor,
-                                points: t.points || 100,
-                                isUnlocked: true,
-                                isCompleted: false,
-                                order: baseOrder + i,
-                                tags: t.tags,
-                                feedback: t.feedback,
-                                settings: t.settings,
-                                logic: t.logic,
-                                completionLogic: (t as any).completionLogic,
-                                openingAudioUrl
-                            } as GamePoint;
-                        });
-
-                        onUpdateGame({
-                            ...game,
-                            points: [...game.points, ...newPoints]
-                        });
-
+                    onClose={() => {
                         setShowTaskMaster(false);
+                        setIsAddingTaskList(false);
+                    }}
+                    isPlayzoneEditor={true}
+                    onImportTasks={(tasks) => {
+                        setPendingTasksToAdd(tasks);
+                        setIsAddingAITasks(false);
+                        setIsAddingTaskList(false);
+                        setShowPlayzoneSelector(true);
+                    }}
+                    onImportTaskList={(list, destination) => {
+                        if (destination === '__PLAYZONE__') {
+                            const targetPlaygroundId = activePlayground?.id;
+                            if (!targetPlaygroundId) {
+                                alert('No active playzone selected.');
+                                return;
+                            }
+
+                            const newTasksToAdd = (list.tasks || []).filter(t =>
+                                !game.points?.some(p => p.title === t.title)
+                            );
+
+                            if (newTasksToAdd.length === 0) {
+                                alert('All tasks already exist in this game. No duplicates were added.');
+                                return;
+                            }
+
+                            const baseOrder = uniquePlaygroundPoints.filter(p => p.playgroundId === targetPlaygroundId).length;
+                            const COLS = 3;
+                            const PADDING = 10;
+                            const ROW_HEIGHT = 18;
+
+                            const newPoints: GamePoint[] = newTasksToAdd.map((t, i) => {
+                                const row = Math.floor((baseOrder + i) / COLS);
+                                const col = (baseOrder + i) % COLS;
+                                const colWidth = (100 - PADDING * 2) / COLS;
+
+                                const x = PADDING + col * colWidth + colWidth / 2;
+                                const y = PADDING + row * ROW_HEIGHT + ROW_HEIGHT / 2;
+
+                                const templateAny = t as any;
+                                const radiusMeters = typeof templateAny.radiusMeters === 'number' ? templateAny.radiusMeters : 30;
+                                const areaColor = typeof templateAny.areaColor === 'string' ? templateAny.areaColor : undefined;
+                                const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
+
+                                return {
+                                    id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                    title: t.title,
+                                    shortIntro: (t as any).intro,
+                                    task: t.task,
+                                    location: { lat: 0, lng: 0 },
+                                    radiusMeters,
+                                    activationTypes: t.activationTypes || ['click'],
+                                    manualUnlockCode: undefined,
+                                    playgroundId: targetPlaygroundId,
+                                    devicePositions: {
+                                        [selectedDevice]: { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 }
+                                    },
+                                    playgroundScale: 1,
+                                    isHiddenBeforeScan: false,
+                                    iconId: t.iconId || 'default',
+                                    iconUrl: (t as any).iconUrl,
+                                    areaColor,
+                                    openingAudioUrl,
+                                    points: t.points || 100,
+                                    isUnlocked: true,
+                                    isCompleted: false,
+                                    order: baseOrder + i,
+                                    tags: t.tags,
+                                    feedback: t.feedback,
+                                    settings: t.settings,
+                                    logic: t.logic,
+                                    completionLogic: (t as any).completionLogic
+                                } as GamePoint;
+                            });
+
+                            onUpdateGame({
+                                ...game,
+                                points: [...game.points, ...newPoints]
+                            });
+
+                            // Save templates to library and sync to Supabase
+                            (async () => {
+                                const { ok } = await db.saveTemplates(newTasksToAdd);
+                                if (!ok) {
+                                    console.error('[PlaygroundEditor] Failed to save tasks to library');
+                                } else {
+                                    console.log('[PlaygroundEditor] Tasks saved to library:', newTasksToAdd.length);
+                                }
+                            })();
+
+                            setShowTaskMaster(false);
+                            return;
+                        }
+
+                        // '__GAME__' (or default): open existing destination selector (MAP or PLAYZONES)
+                        setPendingTasksToAdd(list.tasks || []);
+                        setIsAddingAITasks(false);
+                        setIsAddingTaskList(false);
+                        setShowPlayzoneSelector(true);
                     }}
                     taskLists={taskLists}
                     onUpdateTaskLists={onUpdateTaskLists}
@@ -2879,6 +5636,231 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                     onUpdateTaskLibrary={onUpdateTaskLibrary}
                     games={[game]}
                     initialTab={taskMasterTab}
+                />
+            )}
+
+
+            {/* Gemini API Key Modal */}
+            <GeminiApiKeyModal
+                isOpen={showGeminiKeyModal}
+                onClose={() => setShowGeminiKeyModal(false)}
+                onSave={handleApiKeySaved}
+            />
+
+            {/* QR Scanner Color Picker Modal */}
+            {showQRColorPicker && (
+                <div className="fixed inset-0 z-[9999] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto">
+                    <div className="w-full max-w-sm bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border-2 border-yellow-500">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-yellow-500 to-orange-500 px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <QrCode className="w-5 h-5 text-white" />
+                                <h3 className="text-lg font-black text-white uppercase tracking-widest">Button Color</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowQRColorPicker(false)}
+                                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                                title="Close"
+                                type="button"
+                            >
+                                <X className="w-5 h-5 text-white" />
+                            </button>
+                        </div>
+
+                        {/* Color Picker Content */}
+                        <div className="p-6 space-y-4">
+                            <p className="text-sm text-slate-300 font-bold uppercase tracking-wider">Choose QR Scanner Button Color</p>
+
+                            {/* Current Color Preview */}
+                            <div className="flex items-center gap-3">
+                                <div
+                                    className="w-16 h-16 rounded-xl border-2 border-slate-700 shadow-lg"
+                                    style={{ backgroundColor: qrScannerColor }}
+                                />
+                                <div className="flex-1">
+                                    <p className="text-xs text-slate-400 font-bold uppercase mb-1">Current Color</p>
+                                    <p className="text-sm text-white font-mono bg-slate-800 px-3 py-1.5 rounded-lg">{qrScannerColor}</p>
+                                </div>
+                            </div>
+
+                            {/* Color Input */}
+                            <div className="space-y-2">
+                                <label className="text-xs text-slate-400 font-bold uppercase">Select Color</label>
+                                <input
+                                    type="color"
+                                    value={qrScannerColor}
+                                    onChange={(e) => setQRScannerColor(e.target.value)}
+                                    className="w-full h-16 bg-slate-800 border-2 border-slate-700 rounded-xl cursor-pointer hover:border-yellow-500 transition-colors"
+                                />
+                            </div>
+
+                            {/* Preset Colors */}
+                            <div className="space-y-2">
+                                <label className="text-xs text-slate-400 font-bold uppercase">Quick Presets</label>
+                                <div className="grid grid-cols-6 gap-2">
+                                    {[
+                                        { name: 'Orange', color: '#f97316' },
+                                        { name: 'Red', color: '#ef4444' },
+                                        { name: 'Pink', color: '#ec4899' },
+                                        { name: 'Purple', color: '#a855f7' },
+                                        { name: 'Blue', color: '#3b82f6' },
+                                        { name: 'Cyan', color: '#06b6d4' },
+                                        { name: 'Teal', color: '#14b8a6' },
+                                        { name: 'Green', color: '#10b981' },
+                                        { name: 'Lime', color: '#84cc16' },
+                                        { name: 'Yellow', color: '#eab308' },
+                                        { name: 'Amber', color: '#f59e0b' },
+                                        { name: 'Gray', color: '#6b7280' }
+                                    ].map((preset) => (
+                                        <button
+                                            key={preset.color}
+                                            onClick={() => setQRScannerColor(preset.color)}
+                                            className="w-10 h-10 rounded-lg border-2 border-slate-700 hover:border-yellow-500 hover:scale-110 transition-all shadow-md"
+                                            style={{ backgroundColor: preset.color }}
+                                            title={preset.name}
+                                            type="button"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => {
+                                        saveQRScannerSettings();
+                                        setShowQRColorPicker(false);
+                                    }}
+                                    className="flex-1 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-black uppercase text-sm rounded-xl transition-all shadow-lg"
+                                    type="button"
+                                >
+                                    Apply
+                                </button>
+                                <button
+                                    onClick={() => setShowQRColorPicker(false)}
+                                    className="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold uppercase text-sm rounded-xl transition-colors"
+                                    type="button"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Ranking Leaderboard - Draggable Popup */}
+            {showRanking && (
+                <div
+                    className="fixed z-[9999] pointer-events-auto"
+                    style={{ left: rankingPos.x, top: rankingPos.y }}
+                >
+                    <div className="w-80 bg-slate-900 rounded-xl shadow-2xl overflow-hidden border-2 border-yellow-500">
+                        {/* Draggable Header */}
+                        <div
+                            className="bg-gradient-to-r from-yellow-500 to-orange-500 px-4 py-3 flex items-center justify-between cursor-move touch-none"
+                            onPointerDown={(e) => {
+                                setIsDraggingRanking(true);
+                                rankingDragOffset.current = { x: e.clientX - rankingPos.x, y: e.clientY - rankingPos.y };
+                                (e.currentTarget as Element).setPointerCapture(e.pointerId);
+                            }}
+                            onPointerMove={(e) => {
+                                if (!isDraggingRanking) return;
+                                setRankingPos({ x: e.clientX - rankingDragOffset.current.x, y: e.clientY - rankingDragOffset.current.y });
+                            }}
+                            onPointerUp={(e) => {
+                                setIsDraggingRanking(false);
+                                try {
+                                    (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+                                } catch {}
+                            }}
+                        >
+                            <div className="flex items-center gap-2">
+                                <Trophy className="w-5 h-5 text-white" />
+                                <h3 className="text-lg font-black text-white uppercase tracking-widest">Ranking</h3>
+                            </div>
+                            <button
+                                onClick={() => setShowRanking(false)}
+                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                                title="Close"
+                                type="button"
+                            >
+                                <X className="w-4 h-4 text-white" />
+                            </button>
+                        </div>
+
+                        {/* Leaderboard Content */}
+                        <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
+                            {isSimulationActive && simulationTeam ? (
+                                <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border-2 border-yellow-500 rounded-lg p-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-2xl font-black text-yellow-400">#1</div>
+                                            <div>
+                                                <p className="text-sm font-black text-white uppercase">{simulationTeam.name}</p>
+                                                <p className="text-xs text-slate-400">Simulation Mode</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-2xl font-black text-yellow-400">{simulationScore}</p>
+                                            <p className="text-[10px] text-slate-400 uppercase">Points</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <Trophy className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                                    <p className="text-sm text-slate-400 font-bold">Start simulation to see ranking</p>
+                                    <p className="text-xs text-slate-500 mt-1">Use SIMULATOR button in TOOLS</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Simulation Task Modal */}
+            {isSimulationActive && activeSimulationTaskId && (() => {
+                const task = uniquePlaygroundPoints.find(p => p.id === activeSimulationTaskId);
+                if (!task) return null;
+
+                return (
+                    <TaskModal
+                        point={task}
+                        onClose={() => setActiveSimulationTaskId(null)}
+                        onComplete={(pointId, customScore) => {
+                            // Update simulation score
+                            const scoreDelta = customScore !== undefined ? customScore : (task.score || 0);
+                            setSimulationScore(prev => prev + scoreDelta);
+
+                            // Update task status
+                            const updatedPoints = game.points.map(p =>
+                                p.id === pointId
+                                    ? { ...p, isCompleted: true, isCorrect: true }
+                                    : p
+                            );
+                            onUpdateGame({ ...game, points: updatedPoints });
+
+                            // Close modal
+                            setActiveSimulationTaskId(null);
+                        }}
+                        onPenalty={(amount) => {
+                            // Handle penalties in simulation mode
+                            setSimulationScore(prev => Math.max(0, prev - amount));
+                        }}
+                        distance={0}
+                        mode={GameMode.SIMULATION}
+                        game={game}
+                    />
+                );
+            })()}
+
+            {/* QR Scanner Modal - Active in simulation mode */}
+            {isSimulationActive && (
+                <QRScannerModal
+                    isOpen={isQRScannerActive}
+                    onClose={() => setIsQRScannerActive(false)}
+                    onScan={handleQRScan}
                 />
             )}
         </div>

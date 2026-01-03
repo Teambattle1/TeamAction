@@ -15,6 +15,8 @@ import {
   LayoutTemplate
 } from 'lucide-react';
 import { getGameModeIcon } from '../utils/gameModeIcons';
+import { getGameDisplayId, formatGameNameWithId } from '../utils/gameIdUtils';
+import ConfirmationModal from './ConfirmationModal';
 
 interface GameManagerProps {
   games: Game[];
@@ -44,6 +46,7 @@ interface GameManagerProps {
   onSetMode: (mode: GameMode) => void;
   onOpenAiGenerator?: () => void;
   onOpenGameCreator?: () => void;
+  onEditGameSetup?: (gameId: string) => void;
 }
 
 type GameStatusTab = 'TODAY' | 'PLANNED' | 'COMPLETED';
@@ -102,7 +105,8 @@ const GameSummaryCard: React.FC<{
   isActive: boolean;
   onPrimaryAction: () => void;
   onDelete: () => void;
-}> = ({ game, isActive, onPrimaryAction, onDelete }) => {
+  onSettings?: () => void;
+}> = ({ game, isActive, onPrimaryAction, onDelete, onSettings }) => {
   // CRITICAL: Guard against undefined/null game data - must be first check
   if (!game || typeof game !== 'object') {
     console.error('[GameSummaryCard] Invalid game data:', game);
@@ -153,7 +157,9 @@ const GameSummaryCard: React.FC<{
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-bold text-gray-800 dark:text-white uppercase truncate">{game.name || 'Unnamed Game'}</h3>
+            <h3 className="font-bold text-gray-800 dark:text-white uppercase truncate">
+              <span className="text-orange-600 dark:text-orange-400 font-black">[{getGameDisplayId(game.id)}]</span> {game.name || 'Unnamed Game'}
+            </h3>
             {(() => {
               const { Icon, label, color, bgColor, borderColor } = getGameModeIcon(game.gameMode);
               return (
@@ -178,6 +184,15 @@ const GameSummaryCard: React.FC<{
         >
           <Play className="w-4 h-4" />
         </button>
+        {onSettings && (
+          <button
+            onClick={onSettings}
+            className="p-2 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-lg hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
+            title="Game Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        )}
         <button
           onClick={onDelete}
           className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
@@ -199,12 +214,14 @@ const GameManager: React.FC<GameManagerProps> = ({
   onClose,
   onCreateGame,
   onCreateFromTemplate,
-  onOpenGameCreator
+  onOpenGameCreator,
+  onEditGameSetup
 }) => {
   const [section, setSection] = useState<'GAMES' | 'TEMPLATES'>('GAMES');
   const [view, setView] = useState<'LIST' | 'CREATE'>('LIST');
   const [statusTab, setStatusTab] = useState<GameStatusTab>('TODAY');
   const [newName, setNewName] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; gameId?: string; isTemplate?: boolean }>({ isOpen: false });
 
   const { todayGames, plannedGames, completedGames, templateList } = useMemo(() => {
     const now = new Date();
@@ -226,7 +243,9 @@ const GameManager: React.FC<GameManagerProps> = ({
       const ad = getGameSessionDate(a).getTime();
       const bd = getGameSessionDate(b).getTime();
       if (ad !== bd) return ad - bd;
-      return a.name.localeCompare(b.name);
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB);
     };
 
     today.sort(byDateThenName);
@@ -235,7 +254,9 @@ const GameManager: React.FC<GameManagerProps> = ({
       const ad = getGameSessionDate(a).getTime();
       const bd = getGameSessionDate(b).getTime();
       if (ad !== bd) return bd - ad;
-      return a.name.localeCompare(b.name);
+      const nameA = a.name || '';
+      const nameB = b.name || '';
+      return nameA.localeCompare(nameB);
     });
 
     return {
@@ -388,8 +409,16 @@ const GameManager: React.FC<GameManagerProps> = ({
                     game={game}
                     isActive={game.id === activeGameId}
                     onPrimaryAction={() => primaryActionForGame(game.id)}
+                    onSettings={() => {
+                      onSelectGame(game.id);
+                      if (onEditGameSetup) {
+                        onEditGameSetup(game.id);
+                      } else if (onEditGame) {
+                        onEditGame(game.id);
+                      }
+                    }}
                     onDelete={() => {
-                      if (confirm('Delete game?')) onDeleteGame(game.id);
+                      setConfirmModal({ isOpen: true, gameId: game.id, isTemplate: false });
                     }}
                   />
                 ))}
@@ -433,7 +462,9 @@ const GameManager: React.FC<GameManagerProps> = ({
                   }`}
                 >
                   <div>
-                    <h3 className="font-bold text-gray-800 dark:text-white uppercase">{template.name}</h3>
+                    <h3 className="font-bold text-gray-800 dark:text-white uppercase">
+                      <span className="text-purple-600 dark:text-purple-400 font-black">[{getGameDisplayId(template.id)}]</span> {template.name}
+                    </h3>
                     <p className="text-xs text-gray-500">
                       {new Date(template.createdAt).toLocaleDateString()} • {template.points.length} Tasks
                     </p>
@@ -458,7 +489,7 @@ const GameManager: React.FC<GameManagerProps> = ({
 
                     <button
                       onClick={() => {
-                        if (confirm('Delete template?')) onDeleteGame(template.id);
+                        setConfirmModal({ isOpen: true, gameId: template.id, isTemplate: true });
                       }}
                       className="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
                       title="Delete Template"
@@ -472,6 +503,26 @@ const GameManager: React.FC<GameManagerProps> = ({
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.isTemplate ? 'Delete Template?' : 'Delete Game?'}
+        message={`Are you sure you want to delete this ${confirmModal.isTemplate ? 'template' : 'game'}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={true}
+        icon="warning"
+        onConfirm={() => {
+          if (confirmModal.gameId) {
+            onDeleteGame(confirmModal.gameId);
+            setConfirmModal({ isOpen: false });
+          }
+        }}
+        onCancel={() => {
+          setConfirmModal({ isOpen: false });
+        }}
+      />
     </div>
   );
 };

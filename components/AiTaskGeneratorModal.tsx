@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GamePoint, TaskTemplate } from '../types';
 import { X, Wand2, Loader, Plus, CheckCircle } from 'lucide-react';
 import { generateAiTasks } from '../services/ai';
+import GeminiApiKeyModal from './GeminiApiKeyModal';
 
 interface AiTaskGeneratorModalProps {
     onClose: () => void;
@@ -19,6 +20,8 @@ const AiTaskGeneratorModal: React.FC<AiTaskGeneratorModalProps> = ({
     const [generatedTasks, setGeneratedTasks] = useState<TaskTemplate[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+    const [showGeminiKeyModal, setShowGeminiKeyModal] = useState(false);
+    const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
 
     const handleGenerate = async () => {
         if (!prompt.trim()) {
@@ -36,9 +39,15 @@ const AiTaskGeneratorModal: React.FC<AiTaskGeneratorModalProps> = ({
             if (tasks.length === 0) {
                 setError('No tasks were generated. Please try a different description.');
             }
-        } catch (err) {
-            setError('Failed to generate tasks. Please check your API key and try again.');
-            console.error('AI generation error:', err);
+        } catch (err: any) {
+            const errorMessage = err?.message || 'Failed to generate tasks.';
+            if (errorMessage.includes('AI API Key missing')) {
+                setPendingPrompt(prompt);
+                setShowGeminiKeyModal(true);
+            } else {
+                setError('Failed to generate tasks. Please check your API key and try again.');
+                console.error('AI generation error:', err);
+            }
         } finally {
             setIsGenerating(false);
         }
@@ -50,6 +59,16 @@ const AiTaskGeneratorModal: React.FC<AiTaskGeneratorModalProps> = ({
         setGeneratedTasks([]);
         setSelectedTaskId(null);
         onClose();
+    };
+
+    const handleApiKeySaved = () => {
+        if (pendingPrompt) {
+            setPrompt(pendingPrompt);
+            setPendingPrompt(null);
+            setTimeout(() => {
+                handleGenerate();
+            }, 100);
+        }
     };
 
     return (
@@ -188,6 +207,13 @@ const AiTaskGeneratorModal: React.FC<AiTaskGeneratorModalProps> = ({
                         </div>
                     )}
                 </div>
+
+                {/* Gemini API Key Modal */}
+                <GeminiApiKeyModal
+                    isOpen={showGeminiKeyModal}
+                    onClose={() => setShowGeminiKeyModal(false)}
+                    onSave={handleApiKeySaved}
+                />
             </div>
         </div>
     );

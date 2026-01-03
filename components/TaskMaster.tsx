@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { TaskList, TaskTemplate, Game, GamePoint, Coordinate } from '../types';
+import { TaskList, TaskTemplate, Game, GamePoint, Coordinate, TaskColorScheme } from '../types';
 import * as db from '../services/db';
 import { uploadImage } from '../services/storage'; // IMPORTED
 import {
     X, Plus, Search, Layers, Library, Edit2, Trash2, ArrowLeft, Save,
     ImageIcon, Upload, Filter, Tag, LayoutList, RefreshCw, Check, Copy,
-    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings, Loader2
+    ArrowUpDown, ArrowUp, ArrowDown, AlertCircle, Gamepad2, Settings, Loader2, Sparkles, LayoutGrid, Palette, Lock, Unlock, Zap
 } from 'lucide-react';
 import { ICON_COMPONENTS } from '../utils/icons';
 import AiTaskGenerator from './AiTaskGenerator';
@@ -14,8 +14,11 @@ import AccountTags from './AccountTags';
 import Dashboard from './Dashboard';
 import TaskEditor from './TaskEditor';
 import TaskModal from './TaskModal';
+import ColorSchemeEditor from './ColorSchemeEditor';
 import { runCompleteLanguageMigration } from '../services/languageMigrationScript';
-import NotificationModal from './NotificationModal'; 
+import NotificationModal from './NotificationModal';
+import { useTagColors } from '../contexts/TagColorsContext';
+import ConfirmationModal from './ConfirmationModal'; 
 
 interface TaskMasterProps {
     onClose: () => void;
@@ -29,8 +32,9 @@ interface TaskMasterProps {
     activeGame?: Game | null;  // Active game to add tasks to
     initialTab?: 'LIBRARY' | 'LISTS' | 'TAGS' | 'CLIENT';
     initialModal?: 'AI' | 'LOQUIZ' | null;
-    onDeleteTagGlobally?: (tagName: string) => Promise<void>;
-    onRenameTagGlobally?: (oldTag: string, newTag: string) => Promise<void>;
+    onDeleteTagGlobally?: (tagName: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
+    onRenameTagGlobally?: (oldTag: string, newTag: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
+    isPlayzoneEditor?: boolean; // When used inside Playzone Editor, show playzone/game placement actions for Task Lists
 }
 
 const TaskMaster: React.FC<TaskMasterProps> = ({
@@ -46,7 +50,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     initialTab = 'LIBRARY',
     initialModal = null,
     onDeleteTagGlobally,
-    onRenameTagGlobally
+    onRenameTagGlobally,
+    isPlayzoneEditor = false
 }) => {
     const [tab, setTab] = useState<'LIBRARY' | 'LISTS' | 'TAGS' | 'CLIENT'>(initialTab);
     const [library, setLibrary] = useState<TaskTemplate[]>(cachedLibrary || []); // Initialize with cache or empty array
@@ -61,6 +66,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     // Modals
     const [showAiGen, setShowAiGen] = useState(initialModal === 'AI');
     const [showLoquiz, setShowLoquiz] = useState(initialModal === 'LOQUIZ');
+    const [showAiGenForList, setShowAiGenForList] = useState(false);
 
     // View State
     const [libraryViewMode, setLibraryViewMode] = useState<'grid' | 'list'>('list');
@@ -81,7 +87,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [taskListFilter, setTaskListFilter] = useState<string>(''); // Filter by task list ID
     const [activationFilters, setActivationFilters] = useState<Record<string, boolean>>({}); // Filter by activation types
     const [showOnlyWithActivations, setShowOnlyWithActivations] = useState(false); // Show only tasks with activations
+    const [showOnlyInvalidAnswers, setShowOnlyInvalidAnswers] = useState(false); // Show only tasks with missing/invalid answers
     const [taskListViewMode, setTaskListViewMode] = useState<'grid' | 'list'>('list'); // List view as default
+    const [activationFiltersCollapsed, setActivationFiltersCollapsed] = useState(true); // Collapse activation filters by default
+    const [showFiltersMenu, setShowFiltersMenu] = useState(false);
     const [showSettingsMenu, setShowSettingsMenu] = useState(false);
     const [showGameSelector, setShowGameSelector] = useState(false);
     const [gameForBulkAdd, setGameForBulkAdd] = useState<Game | null>(null);
@@ -116,8 +125,24 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
     const [migrationResults, setMigrationResults] = useState<{totalUpdated: number; totalErrors: number} | null>(null);
 
-    // Tag Colors State
-    const [tagColors, setTagColors] = useState<Record<string, string>>({});
+    // Confirmation Modal for deleting task lists
+    const [deleteListConfirm, setDeleteListConfirm] = useState<{ isOpen: boolean; listId?: string }>({ isOpen: false });
+
+    // Color Scheme Editor
+    const [showColorSchemeEditor, setShowColorSchemeEditor] = useState(false);
+    const [editingColorScheme, setEditingColorScheme] = useState<TaskColorScheme | undefined>();
+    const [colorSchemeTaskIds, setColorSchemeTaskIds] = useState<string[]>([]);
+
+    // Bulk Tag Editor
+    const [showBulkTagModal, setShowBulkTagModal] = useState(false);
+    const [bulkTagInput, setBulkTagInput] = useState('');
+
+    // Bulk Activation Editor
+    const [showBulkActivationModal, setShowBulkActivationModal] = useState(false);
+    const [bulkActivationTypes, setBulkActivationTypes] = useState<string[]>([]);
+
+    // Tag Colors (shared across app + persisted to database)
+    const { tagColors } = useTagColors();
 
     const handleRunMigration = async () => {
         setMigrationRunning(true);
@@ -167,17 +192,6 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         };
     }, []);
 
-    // Load tag colors from localStorage
-    useEffect(() => {
-        try {
-            const stored = localStorage.getItem('geohunt_tag_colors');
-            if (stored) {
-                setTagColors(JSON.parse(stored));
-            }
-        } catch (e) {
-            console.error('[TaskMaster] Error loading tag colors:', e);
-        }
-    }, []);
 
     const loadLibrary = async (forceRefresh = false) => {
         if (!forceRefresh && cachedLibrary && Array.isArray(cachedLibrary) && cachedLibrary.length > 0) {
@@ -245,12 +259,12 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
         // Check for duplicates (by ID or by title+question match)
         const duplicates = selected.filter(task =>
-            editingList.tasks.some(t =>
+            (editingList.tasks || []).some(t =>
                 t.id === task.id || (t.title === task.title && t.task?.question === task.task?.question)
             )
         );
         const newTasks = selected.filter(task =>
-            !editingList.tasks.some(t =>
+            !(editingList.tasks || []).some(t =>
                 t.id === task.id || (t.title === task.title && t.task?.question === task.task?.question)
             )
         );
@@ -302,12 +316,74 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         }
     };
 
+    const handleTaskQuestionClick = (task: TaskTemplate) => {
+        // Show task view immediately on click
+        setHoveredTask(task);
+        setShowPreview(true);
+    };
+
     const handleClosePreview = () => {
         setShowPreview(false);
         setHoveredTask(null);
         if (hoverTimerRef.current) {
             clearTimeout(hoverTimerRef.current);
             hoverTimerRef.current = null;
+        }
+    };
+
+    const cloneTemplateWithCopyTitle = (template: TaskTemplate, index: number): TaskTemplate => {
+        const id = `task-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
+
+        return {
+            ...template,
+            id,
+            title: `Copy of ${template.title}`,
+            createdAt: Date.now(),
+            task: {
+                ...template.task,
+                options: Array.isArray(template.task?.options) ? [...template.task.options] : [],
+                correctAnswers: Array.isArray((template.task as any)?.correctAnswers)
+                    ? [...(template.task as any).correctAnswers]
+                    : (template.task as any)?.correctAnswers,
+                range: template.task?.range ? { ...template.task.range } : undefined,
+                timelineItems: Array.isArray((template.task as any)?.timelineItems)
+                    ? [...(template.task as any).timelineItems]
+                    : (template.task as any)?.timelineItems
+            },
+            feedback: template.feedback ? { ...template.feedback } : undefined,
+            settings: template.settings ? { ...template.settings } : undefined,
+            logic: template.logic ? { ...template.logic } : undefined
+        };
+    };
+
+    const handleBulkCopySelected = async () => {
+        const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+        if (selectedTasks.length === 0) return;
+
+        // Check if all selected tasks have at least one tag
+        const tasksWithoutTags = selectedTasks.filter(t => !Array.isArray(t.tags) || t.tags.length === 0);
+        if (tasksWithoutTags.length > 0) {
+            setNotification({
+                message: `❌ Cannot copy: ${tasksWithoutTags.length} task(s) have no tags. Please add tags before copying.`,
+                type: 'error'
+            });
+            return;
+        }
+
+        const copies = selectedTasks.map((t, i) => cloneTemplateWithCopyTitle(t, i));
+
+        try {
+            const { ok } = await db.saveTemplates(copies);
+            if (!ok) throw new Error('Database save failed');
+
+            const updatedLibrary = [...library, ...copies];
+            setLibrary(updatedLibrary);
+            onUpdateTaskLibrary(updatedLibrary);
+
+            setNotification({ message: `✓ Copied ${copies.length} task${copies.length !== 1 ? 's' : ''} to new tasks`, type: 'success' });
+        } catch (e) {
+            console.error('Bulk copy failed', e);
+            setNotification({ message: 'Failed to copy tasks. Please try again.', type: 'error' });
         }
     };
 
@@ -319,7 +395,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             task: template.task,
             location: { lat: 0, lng: 0 },
             radiusMeters: 50,
-            activationTypes: ['click'],
+            activationTypes: template.activationTypes || ['click'], // Use template's activation types or default to click
             iconId: template.iconId,
             points: template.points || 10,
             isUnlocked: true,
@@ -328,7 +404,10 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             tags: template.tags,
             feedback: template.feedback,
             settings: template.settings,
-            logic: template.logic
+            logic: template.logic,
+            qrCodeString: template.qrCodeString,
+            nfcTagId: template.nfcTagId,
+            ibeaconUUID: template.ibeaconUUID
         };
     };
 
@@ -345,7 +424,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
             intro: point.shortIntro,
             feedback: point.feedback,
             settings: point.settings,
-            logic: point.logic
+            logic: point.logic,
+            activationTypes: point.activationTypes, // Preserve activation types
+            qrCodeString: point.qrCodeString,
+            nfcTagId: point.nfcTagId,
+            ibeaconUUID: point.ibeaconUUID
         };
     };
 
@@ -419,6 +502,11 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         };
     };
 
+    const getInvalidAnswersCount = (): number => {
+        if (!library || !Array.isArray(library)) return 0;
+        return library.filter(task => !hasValidAnswers(task)).length;
+    };
+
     const getLanguageFlag = (language: string): string => {
         const flagMap: Record<string, string> = {
             'English': '🇬🇧',
@@ -455,12 +543,14 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         if (!sourceTask) return 0;
 
         games.forEach(game => {
-            // Count how many times this task appears in the game's points
-            const taskCount = game.points.filter(p => {
+            // Check if this game contains at least one instance of this task
+            const hasTask = (game.points || []).some(p => {
                 // Check if point was created from this template or has the same title/question
                 return p.task.question === sourceTask.task.question;
-            }).length;
-            count += taskCount;
+            });
+            if (hasTask) {
+                count++; // Count this game (not the number of instances)
+            }
         });
         return count;
     };
@@ -472,28 +562,67 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         if (!sourceTask) return [];
 
         return taskLists.filter(list =>
-            list.tasks.some(t =>
+            (list.tasks || []).some(t =>
                 t.id === taskId || (t.title === sourceTask.title && t.task?.question === sourceTask.task?.question)
             )
         );
     };
 
+    // Validation: Check if task has valid answers based on type
+    const hasValidAnswers = (task: TaskTemplate): boolean => {
+        const { type, answer, options, correctAnswers, range, timelineItems } = task.task;
+
+        switch (type) {
+            case 'text':
+                // Text tasks need an answer string
+                return !!(answer && answer.trim().length > 0);
+
+            case 'boolean':
+                // YES/NO tasks need answer to be 'YES' or 'NO'
+                return answer === 'YES' || answer === 'NO';
+
+            case 'multiple_choice':
+            case 'dropdown':
+                // Need at least 2 options and 1 correct answer
+                return !!(options && options.length >= 2 && answer && options.includes(answer));
+
+            case 'checkbox':
+            case 'multi_select_dropdown':
+                // Need at least 2 options and at least 1 correct answer
+                return !!(options && options.length >= 2 && correctAnswers && correctAnswers.length > 0 && correctAnswers.every(ca => options.includes(ca)));
+
+            case 'slider':
+                // Need valid range with correct value
+                return !!(range && typeof range.correctValue === 'number' && range.correctValue >= range.min && range.correctValue <= range.max);
+
+            case 'timeline':
+                // Need at least 2 timeline items
+                return !!(timelineItems && timelineItems.length >= 2);
+
+            default:
+                return true; // Unknown types are considered valid
+        }
+    };
+
     const getActivationBadges = (task: TaskTemplate): string[] => {
         const badges: string[] = [];
 
-        if (task.activationTypes?.includes('qr') || task.qrCodeString) {
+        // Default to click activation if no activation types are set
+        const activationTypes = task.activationTypes || ['click'];
+
+        if (activationTypes.includes('qr') || task.qrCodeString) {
             badges.push('QR');
         }
-        if (task.activationTypes?.includes('nfc') || task.nfcTagId) {
+        if (activationTypes.includes('nfc') || task.nfcTagId) {
             badges.push('NFC');
         }
-        if (task.activationTypes?.includes('ibeacon') || task.ibeaconUUID) {
+        if (activationTypes.includes('ibeacon') || task.ibeaconUUID) {
             badges.push('iBeacon');
         }
-        if (task.activationTypes?.includes('radius')) {
+        if (activationTypes.includes('radius')) {
             badges.push('GPS');
         }
-        if (task.activationTypes?.includes('click')) {
+        if (activationTypes.includes('click')) {
             badges.push('TAP');
         }
 
@@ -541,7 +670,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 const selectedList = taskLists.find(list => list.id === taskListFilter);
                 if (selectedList) {
                     // Check if this task is in the selected list
-                    const taskInList = selectedList.tasks.some(listTask =>
+                    const taskInList = (selectedList.tasks || []).some(listTask =>
                         listTask.task.question === task.task.question && listTask.title === task.title
                     );
                     if (!taskInList) {
@@ -555,6 +684,13 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 const taskActivations = getActivationBadges(task);
                 if (taskActivations.length === 0) {
                     return false;
+                }
+            }
+
+            // Apply "show only invalid answers" filter
+            if (showOnlyInvalidAnswers) {
+                if (hasValidAnswers(task)) {
+                    return false; // Hide tasks with valid answers
                 }
             }
 
@@ -608,8 +744,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     bVal = countTaskUsage(b.id);
                     break;
                 case 'tags':
-                    aVal = a.tags.join(',').toLowerCase();
-                    bVal = b.tags.join(',').toLowerCase();
+                    aVal = (Array.isArray(a.tags) ? a.tags : []).join(',').toLowerCase();
+                    bVal = (Array.isArray(b.tags) ? b.tags : []).join(',').toLowerCase();
                     break;
             }
 
@@ -635,6 +771,49 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setBulkSelectionMode(false);
     };
 
+    const handleBulkEditColorScheme = () => {
+        const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+        if (selectedTasks.length === 0) return;
+
+        // Use the first selected task's color scheme as initial, or undefined
+        const initialScheme = selectedTasks[0].colorScheme;
+        setEditingColorScheme(initialScheme);
+        setColorSchemeTaskIds(selectedTemplateIds);
+        setShowColorSchemeEditor(true);
+    };
+
+    const handleSaveColorScheme = async (scheme: TaskColorScheme) => {
+        // Apply color scheme to all selected tasks
+        const updatedLibrary = library.map(task => {
+            if (colorSchemeTaskIds.includes(task.id)) {
+                return { ...task, colorScheme: scheme };
+            }
+            return task;
+        });
+
+        setLibrary(updatedLibrary);
+        onUpdateTaskLibrary(updatedLibrary);
+
+        // Update in database
+        for (const taskId of colorSchemeTaskIds) {
+            const task = updatedLibrary.find(t => t.id === taskId);
+            if (task) {
+                await db.saveTemplate(task);
+            }
+        }
+
+        setShowColorSchemeEditor(false);
+        setColorSchemeTaskIds([]);
+        setEditingColorScheme(undefined);
+
+        // Show notification
+        setNotification({
+            message: `Color scheme applied to ${colorSchemeTaskIds.length} task${colorSchemeTaskIds.length > 1 ? 's' : ''}`,
+            type: 'success'
+        });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
     const handleBulkAddToGame = async (game: Game) => {
         const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
 
@@ -653,6 +832,93 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         setSelectedTemplateIds([]);
         setBulkSelectionMode(false);
         setShowGameSelector(false);
+    };
+
+    const handleBulkAddTags = async () => {
+        if (!bulkTagInput.trim()) {
+            setNotification({ message: 'Please enter at least one tag', type: 'warning' });
+            return;
+        }
+
+        // Parse tags from input (comma or space separated)
+        const newTags = bulkTagInput
+            .split(/[,\s]+/)
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0);
+
+        if (newTags.length === 0) {
+            setNotification({ message: 'Please enter at least one tag', type: 'warning' });
+            return;
+        }
+
+        // Update selected tasks with new tags (merge with existing)
+        const updatedLibrary = library.map(task => {
+            if (selectedTemplateIds.includes(task.id)) {
+                const existingTags = Array.isArray(task.tags) ? task.tags : [];
+                const uniqueTags = [...new Set([...existingTags, ...newTags])];
+                return { ...task, tags: uniqueTags };
+            }
+            return task;
+        });
+
+        setLibrary(updatedLibrary);
+        onUpdateTaskLibrary(updatedLibrary);
+
+        // Update in database
+        for (const taskId of selectedTemplateIds) {
+            const task = updatedLibrary.find(t => t.id === taskId);
+            if (task) {
+                await db.saveTemplate(task);
+            }
+        }
+
+        setNotification({
+            message: `✓ Added ${newTags.length} tag${newTags.length > 1 ? 's' : ''} to ${selectedTemplateIds.length} task${selectedTemplateIds.length > 1 ? 's' : ''}`,
+            type: 'success'
+        });
+
+        // Reset
+        setBulkTagInput('');
+        setShowBulkTagModal(false);
+        setSelectedTemplateIds([]);
+        setBulkSelectionMode(false);
+    };
+
+    const handleBulkSetActivation = async () => {
+        if (bulkActivationTypes.length === 0) {
+            setNotification({ message: 'Please select at least one activation type', type: 'warning' });
+            return;
+        }
+
+        // Update selected tasks with new activation types
+        const updatedLibrary = library.map(task => {
+            if (selectedTemplateIds.includes(task.id)) {
+                return { ...task, activationTypes: bulkActivationTypes as any };
+            }
+            return task;
+        });
+
+        setLibrary(updatedLibrary);
+        onUpdateTaskLibrary(updatedLibrary);
+
+        // Update in database
+        for (const taskId of selectedTemplateIds) {
+            const task = updatedLibrary.find(t => t.id === taskId);
+            if (task) {
+                await db.saveTemplate(task);
+            }
+        }
+
+        setNotification({
+            message: `✓ Updated activation types for ${selectedTemplateIds.length} task${selectedTemplateIds.length > 1 ? 's' : ''}`,
+            type: 'success'
+        });
+
+        // Reset
+        setBulkActivationTypes([]);
+        setShowBulkActivationModal(false);
+        setSelectedTemplateIds([]);
+        setBulkSelectionMode(false);
     };
 
     const handleAddSingleTaskToGame = async (game: Game) => {
@@ -743,16 +1009,16 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
         } else if (addToDestinationType === 'TASKLIST' && 'tasks' in destination) {
             // Add to tasklist
             const destinationList = destination as TaskList;
-            const existingTaskIds = new Set(destinationList.tasks.map(t => t.id));
+            const existingTaskIds = new Set((destinationList.tasks || []).map(t => t.id));
 
             // Separate duplicates from new tasks (by ID or by title+question match)
             const duplicateTasks = addToTasksSelection.filter(task =>
                 existingTaskIds.has(task.id) ||
-                destinationList.tasks.some(t => t.title === task.title && t.task?.question === task.task?.question)
+                (destinationList.tasks || []).some(t => t.title === task.title && t.task?.question === task.task?.question)
             );
             const newTasks = addToTasksSelection.filter(task =>
                 !existingTaskIds.has(task.id) &&
-                !destinationList.tasks.some(t => t.title === task.title && t.task?.question === task.task?.question)
+                !(destinationList.tasks || []).some(t => t.title === task.title && t.task?.question === task.task?.question)
             );
 
             // Show warning if there are duplicates
@@ -793,7 +1059,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 {filtered.map(task => {
                     const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
                     const isSelected = selectedTemplateIds.includes(task.id);
-                    const isAlreadyInList = editingList && editingList.tasks.some(t =>
+                    const isAlreadyInList = editingList && (editingList.tasks || []).some(t =>
                         t.id === task.id || (t.title === task.title && t.task?.question === task.task?.question)
                     );
 
@@ -816,15 +1082,19 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             
                             <h4
                                 onClick={(e) => { e.stopPropagation(); setEditingTemplate(task); }}
-                                className="font-bold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase"
+                                className="font-bold text-gray-900 dark:text-white text-sm mb-1 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase flex items-start gap-1"
                                 title="Click to edit"
                             >
-                                {task.title}
+                                {!hasValidAnswers(task) && (
+                                    <span className="text-red-500 flex-shrink-0 mt-0.5" title="Invalid or missing answer">
+                                        <AlertCircle className="w-3.5 h-3.5" />
+                                    </span>
+                                )}
+                                <span className="line-clamp-2">{task.title}</span>
                             </h4>
                             <p
-                                className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1"
-                                onMouseEnter={() => handleTaskMouseEnter(task)}
-                                onMouseLeave={handleTaskMouseLeave}
+                                className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3 flex-1 cursor-pointer hover:text-gray-300 transition-colors"
+                                onClick={() => handleTaskQuestionClick(task)}
                             >
                                 {task.task.question}
                             </p>
@@ -847,7 +1117,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             </div>
 
                             <div className="flex flex-wrap gap-1 mt-auto">
-                                {task.tags.map((tag, index) => {
+                                {Array.isArray(task.tags) && task.tags.map((tag, index) => {
                                     const tagKey = tag.toLowerCase();
                                     const tagColor = tagColors[tagKey] || '#64748b';
                                     // Calculate brightness to decide text color (white or black)
@@ -869,6 +1139,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                         </span>
                                     );
                                 })}
+                                {(!Array.isArray(task.tags) || task.tags.length === 0) && (
+                                    <span className="text-[9px] text-slate-500">-</span>
+                                )}
                             </div>
 
                             {!selectionMode && !bulkSelectionMode && (
@@ -927,7 +1200,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                             const Icon = ICON_COMPONENTS[task.iconId] || ICON_COMPONENTS.default;
                             const isSelected = selectedTemplateIds.includes(task.id);
                             const usageCount = countTaskUsage(task.id);
-                            const isAlreadyInList = editingList && editingList.tasks.some(t =>
+                            const isAlreadyInList = editingList && (editingList.tasks || []).some(t =>
                                 t.id === task.id || (t.title === task.title && t.task?.question === task.task?.question)
                             );
 
@@ -969,12 +1242,18 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                         onClick={() => !selectionMode && setEditingTemplate(task)}
                                         title="Click to edit"
                                     >
-                                        {task.title}
+                                        <div className="flex items-center gap-2">
+                                            {!hasValidAnswers(task) && (
+                                                <span className="text-red-500 flex-shrink-0" title="Invalid or missing answer">
+                                                    <AlertCircle className="w-4 h-4" />
+                                                </span>
+                                            )}
+                                            <span className="truncate">{task.title}</span>
+                                        </div>
                                     </td>
                                     <td
-                                        className="px-4 py-3 text-slate-400 truncate max-w-sm"
-                                        onMouseEnter={() => handleTaskMouseEnter(task)}
-                                        onMouseLeave={handleTaskMouseLeave}
+                                        className="px-4 py-3 text-slate-400 truncate max-w-sm cursor-pointer hover:text-slate-300 transition-colors"
+                                        onClick={() => handleTaskQuestionClick(task)}
                                     >
                                         {task.task.question}
                                     </td>
@@ -1019,7 +1298,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex flex-wrap gap-1">
-                                            {task.tags.map((tag, index) => {
+                                            {Array.isArray(task.tags) && task.tags.map((tag, index) => {
                                                 const tagKey = tag.toLowerCase();
                                                 const tagColor = tagColors[tagKey] || '#64748b';
                                                 // Calculate brightness to decide text color (white or black)
@@ -1041,6 +1320,9 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                     </span>
                                                 );
                                             })}
+                                            {(!Array.isArray(task.tags) || task.tags.length === 0) && (
+                                                <span className="text-[9px] text-slate-500">-</span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
@@ -1069,14 +1351,45 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                             );
                                         })()}
                                     </td>
-                                    <td className="px-4 py-3 text-center">
+                                    <td className="px-4 py-3">
                                         {!selectionMode && !bulkSelectionMode && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleShowAddToModal([task]); }}
-                                                className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors"
-                                            >
-                                                USE
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                {/* Color Scheme Lock Toggle */}
+                                                <button
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        const updatedTask = { ...task, isColorSchemeLocked: !task.isColorSchemeLocked };
+                                                        const updatedLibrary = library.map(t => t.id === task.id ? updatedTask : t);
+                                                        setLibrary(updatedLibrary);
+                                                        onUpdateTaskLibrary(updatedLibrary);
+                                                        await db.saveTemplate(updatedTask);
+                                                    }}
+                                                    className={`p-1.5 rounded transition-all ${
+                                                        task.isColorSchemeLocked
+                                                            ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                                            : 'bg-slate-700 hover:bg-slate-600 text-slate-400'
+                                                    }`}
+                                                    title={task.isColorSchemeLocked ? 'Color scheme locked (won\'t be overridden in games)' : 'Color scheme unlocked'}
+                                                >
+                                                    {task.isColorSchemeLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                                                </button>
+
+                                                {/* Color Scheme Indicator */}
+                                                {task.colorScheme && (
+                                                    <div
+                                                        className="w-3 h-3 rounded-full border border-white/30"
+                                                        style={{ backgroundColor: task.colorScheme.backgroundColor }}
+                                                        title="Has custom color scheme"
+                                                    />
+                                                )}
+
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleShowAddToModal([task]); }}
+                                                    className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white text-[10px] font-bold uppercase rounded transition-colors"
+                                                >
+                                                    USE
+                                                </button>
+                                            </div>
                                         )}
                                     </td>
                                 </tr>
@@ -1187,12 +1500,20 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-gray-500 uppercase text-xs tracking-widest">Tasks ({editingList.tasks.length})</h3>
-                                    <button 
-                                        onClick={() => setIsSelectingForCurrentList(true)}
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-indigo-700 shadow-md flex items-center gap-2"
-                                    >
-                                        <Library className="w-4 h-4" /> Add From Library
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setIsSelectingForCurrentList(true)}
+                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wide hover:bg-indigo-700 shadow-md flex items-center gap-2 transition-all"
+                                        >
+                                            <Library className="w-4 h-4" /> Add From Library
+                                        </button>
+                                        <button
+                                            onClick={() => setShowAiGenForList(true)}
+                                            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-xs font-bold uppercase tracking-wide shadow-md flex items-center gap-2 transition-all"
+                                        >
+                                            <Sparkles className="w-4 h-4" /> AI Tasks
+                                        </button>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-3">
@@ -1231,8 +1552,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     ))}
                                     {editingList.tasks.length === 0 && (
                                         <div className="text-center py-10 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl text-gray-400">
-                                            <p className="text-xs font-bold uppercase">List is empty</p>
-                                            <button onClick={() => setIsSelectingForCurrentList(true)} className="mt-2 text-blue-500 hover:underline text-xs font-bold uppercase">Click to add tasks</button>
+                                            <p className="text-sm font-bold uppercase mb-4">List is empty</p>
+                                            <p className="text-xs text-gray-500">Use the buttons above to add tasks from library or generate with AI</p>
                                         </div>
                                     )}
                                 </div>
@@ -1240,6 +1561,78 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                         )}
                     </div>
                 </div>
+
+                {/* AI Generator for Task List Editor (must live here because editingList uses early return) */}
+                {showAiGenForList && (
+                    <AiTaskGenerator
+                        onClose={() => setShowAiGenForList(false)}
+                        onAddTasks={(tasks) => {
+                            setEditingList({
+                                ...editingList,
+                                tasks: [...editingList.tasks, ...tasks]
+                            });
+                            setShowAiGenForList(false);
+                            setNotification({ message: `✨ ${tasks.length} AI-generated tasks added to list!`, type: 'success' });
+                        }}
+                        onAddTasksToList={(listId, tasks) => {
+                            const updatedLists = taskLists.map(l =>
+                                l.id === listId ? { ...l, tasks: [...l.tasks, ...tasks] } : l
+                            );
+                            onUpdateTaskLists(updatedLists);
+                            setShowAiGenForList(false);
+                            setNotification({ message: `✨ ${tasks.length} AI-generated tasks added!`, type: 'success' });
+                        }}
+                        onCreateListWithTasks={(name, tasks) => {
+                            const newList: TaskList = {
+                                id: `list_${Date.now()}`,
+                                name: name,
+                                description: `AI-generated tasks about ${name}`,
+                                tasks: tasks,
+                                imageUrl: '',
+                                createdAt: new Date().toISOString()
+                            };
+                            onUpdateTaskLists([...taskLists, newList]);
+                            setShowAiGenForList(false);
+                            setNotification({ message: `✨ New list "${name}" created with ${tasks.length} AI tasks!`, type: 'success' });
+                        }}
+                        onAddToLibrary={async (tasks) => {
+                            const { ok } = await db.saveTemplates(tasks);
+                            if (!ok) console.error('[TaskMaster] Failed to save templates to library');
+                            await loadLibrary(true);
+                        }}
+                        taskLists={taskLists}
+                        targetMode="LIST"
+                    />
+                )}
+
+                {/* Task Settings Modal (click task in list) */}
+                {editingTaskIndex !== null && editingList.tasks[editingTaskIndex] && (
+                    <TaskEditor
+                        point={templateToGamePoint(editingList.tasks[editingTaskIndex])}
+                        onSave={handleSaveTaskInList}
+                        onDelete={async (pointId) => {
+                            if (editingTaskIndex !== null) {
+                                const updatedTasks = editingList.tasks.filter(t => t.id !== pointId);
+                                setEditingList({ ...editingList, tasks: updatedTasks });
+                                setEditingTaskIndex(null);
+                            }
+                        }}
+                        onClose={() => setEditingTaskIndex(null)}
+                        isTemplateMode={true}
+                        requestedTab="SETTINGS"
+                    />
+                )}
+
+                {/* Notification Modal */}
+                {notification && (
+                    <NotificationModal
+                        message={notification.message}
+                        type={notification.type}
+                        onClose={() => setNotification(null)}
+                        autoClose={true}
+                        duration={3000}
+                    />
+                )}
             </div>
         );
     }
@@ -1298,148 +1691,200 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                     />
                                 </div>
 
-                                {/* Task List Filter */}
-                                <div className="w-full sm:w-auto">
-                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Filter by Task List:</p>
-                                            {taskListFilter && (
-                                                <button
-                                                    onClick={() => setTaskListFilter('')}
-                                                    className="text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase"
-                                                >
-                                                    Clear
-                                                </button>
-                                            )}
-                                        </div>
-                                        <select
-                                            value={taskListFilter}
-                                            onChange={(e) => setTaskListFilter(e.target.value)}
-                                            className={`w-full sm:w-48 bg-slate-800 border rounded-lg px-3 py-2 text-xs font-bold text-white outline-none transition-all ${taskListFilter ? 'border-purple-500' : 'border-slate-700 focus:border-purple-500'}`}
-                                        >
-                                            <option value="">All Tasks</option>
-                                            {taskLists.map(list => (
-                                                <option key={list.id} value={list.id}>
-                                                    {list.name} ({list.tasks.length})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
+                                {/* Filters Menu (Task List / Language / Activation) */}
+                                <div className="relative w-full sm:w-auto">
+                                    <button
+                                        onClick={() => setShowFiltersMenu(prev => !prev)}
+                                        className="px-4 py-3 bg-slate-900 border border-slate-800 hover:border-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center gap-2 shadow-lg w-full sm:w-auto"
+                                        type="button"
+                                        title="Filters"
+                                    >
+                                        <Filter className="w-4 h-4 text-slate-300" />
+                                        Filters
+                                        <span className="text-[10px] font-black text-slate-300 bg-slate-800 px-2 py-1 rounded">
+                                            {getFilteredAndSortedLibrary().length}/{library.length}
+                                        </span>
+                                    </button>
 
-                                {/* Language Filter */}
-                                <div className="w-full sm:w-auto">
-                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-                                        <p className="text-[9px] font-bold text-slate-400 uppercase mb-2">Filter by Language:</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {getUsedLanguagesInLibrary().map(lang => (
-                                                <label key={lang} className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={languageFilters[lang] || false}
-                                                        onChange={(e) => setLanguageFilters(prev => ({
-                                                            ...prev,
-                                                            [lang]: e.target.checked
-                                                        }))}
-                                                        className="w-4 h-4 rounded border-slate-600 bg-slate-800 cursor-pointer accent-blue-600"
-                                                    />
-                                                    <span>{getLanguageFlag(lang)} {lang}</span>
-                                                </label>
-                                            ))}
-                                            {Object.keys(languageFilters).some(lang => languageFilters[lang]) && (
-                                                <button
-                                                    onClick={() => setLanguageFilters({})}
-                                                    className="text-[9px] font-bold text-orange-400 hover:text-orange-300 uppercase ml-2"
-                                                >
-                                                    Clear Filters
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
+                                    {showFiltersMenu && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowFiltersMenu(false)} />
+                                            <div className="absolute right-0 top-full mt-2 w-full sm:w-[560px] bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl z-50 overflow-hidden">
+                                                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                                                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-300 flex items-center gap-2">
+                                                        <Filter className="w-4 h-4" />
+                                                        Filters
+                                                    </div>
+                                                    <button
+                                                        onClick={() => {
+                                                            setTaskListFilter('');
+                                                            setLanguageFilters({});
+                                                            setActivationFilters({});
+                                                            setShowOnlyWithActivations(false);
+                                                            setShowOnlyInvalidAnswers(false);
+                                                        }}
+                                                        className="text-[9px] font-bold text-orange-400 hover:text-orange-300 uppercase"
+                                                        type="button"
+                                                    >
+                                                        Clear All
+                                                    </button>
+                                                </div>
 
-                                {/* Activation Type Filter */}
-                                <div className="w-full sm:w-auto">
-                                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase">🔧 Activation Filters</p>
-                                            <span className="text-[8px] font-bold text-slate-500 bg-slate-800 px-2 py-1 rounded">
-                                                {getFilteredAndSortedLibrary().length} / {library.length}
-                                            </span>
-                                        </div>
+                                                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    {/* Task List */}
+                                                    <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Task List</p>
+                                                            {taskListFilter && (
+                                                                <button
+                                                                    onClick={() => setTaskListFilter('')}
+                                                                    className="text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase"
+                                                                    type="button"
+                                                                >
+                                                                    Clear
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <select
+                                                            value={taskListFilter}
+                                                            onChange={(e) => setTaskListFilter(e.target.value)}
+                                                            className={`w-full bg-slate-800 border rounded-lg px-3 py-2 text-xs font-bold text-white outline-none transition-all ${taskListFilter ? 'border-purple-500' : 'border-slate-700 focus:border-purple-500'}`}
+                                                        >
+                                                            <option value="">All Tasks</option>
+                                                            {taskLists.map(list => (
+                                                                <option key={list.id} value={list.id}>
+                                                                    {list.name} ({list.tasks.length})
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
 
-                                        {/* Activation Stats Summary */}
-                                        {getActivationStats().withActivations > 0 && (
-                                            <div className="bg-slate-800/50 rounded border border-slate-700 p-2 text-[8px] space-y-1">
-                                                <p className="font-bold text-slate-300">Activation Statistics:</p>
-                                                <div className="flex justify-between text-slate-400">
-                                                    <span>✓ With Activations: <span className="text-green-400 font-bold">{getActivationStats().withActivations}</span></span>
-                                                    <span>✗ Without: <span className="text-slate-500 font-bold">{getActivationStats().withoutActivations}</span></span>
+                                                    {/* Language */}
+                                                    <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                                                        <div className="flex items-center justify-between mb-2">
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">Language</p>
+                                                            {Object.keys(languageFilters).some(lang => languageFilters[lang]) && (
+                                                                <button
+                                                                    onClick={() => setLanguageFilters({})}
+                                                                    className="text-[9px] font-bold text-orange-400 hover:text-orange-300 uppercase"
+                                                                    type="button"
+                                                                >
+                                                                    Clear
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {getUsedLanguagesInLibrary().map(lang => (
+                                                                <label key={lang} className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={languageFilters[lang] || false}
+                                                                        onChange={(e) => setLanguageFilters(prev => ({
+                                                                            ...prev,
+                                                                            [lang]: e.target.checked
+                                                                        }))}
+                                                                        className="w-4 h-4 rounded border-slate-600 bg-slate-800 cursor-pointer accent-blue-600"
+                                                                    />
+                                                                    <span>{getLanguageFlag(lang)} {lang}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Activation (full width) */}
+                                                    <div className="sm:col-span-2 bg-slate-950/40 border border-slate-800 rounded-xl p-3">
+                                                        <button
+                                                            onClick={() => setActivationFiltersCollapsed(!activationFiltersCollapsed)}
+                                                            className="w-full flex items-center justify-between hover:opacity-80 transition-opacity"
+                                                            type="button"
+                                                        >
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">🔧 Activation Filters</p>
+                                                            <span className="text-slate-400 text-xs font-bold">{activationFiltersCollapsed ? '▶' : '▼'}</span>
+                                                        </button>
+
+                                                        {!activationFiltersCollapsed && (
+                                                            <div className="mt-3">
+                                                                <label className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400 mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={showOnlyWithActivations}
+                                                                        onChange={(e) => setShowOnlyWithActivations(e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-slate-600 bg-slate-800 cursor-pointer accent-purple-600"
+                                                                    />
+                                                                    <span>Only With Activations</span>
+                                                                </label>
+
+                                                                <label className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400 mb-3 p-2 bg-red-900/20 rounded border border-red-500/50">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={showOnlyInvalidAnswers}
+                                                                        onChange={(e) => setShowOnlyInvalidAnswers(e.target.checked)}
+                                                                        className="w-4 h-4 rounded border-red-600 bg-slate-800 cursor-pointer accent-red-600"
+                                                                    />
+                                                                    <span className="text-red-400 flex-1">⚠️ Only With Invalid Answers</span>
+                                                                    {getInvalidAnswersCount() > 0 && (
+                                                                        <span className="bg-red-600 text-white text-[9px] px-2 py-0.5 rounded-full font-black">
+                                                                            {getInvalidAnswersCount()}
+                                                                        </span>
+                                                                    )}
+                                                                </label>
+
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {getUsedActivationsInLibrary().map(activation => {
+                                                                        const badgeColors: Record<string, string> = {
+                                                                            'QR': 'text-purple-400 border-purple-500/50',
+                                                                            'NFC': 'text-green-400 border-green-500/50',
+                                                                            'iBeacon': 'text-indigo-400 border-indigo-500/50',
+                                                                            'GPS': 'text-blue-400 border-blue-500/50',
+                                                                            'TAP': 'text-orange-400 border-orange-500/50'
+                                                                        };
+                                                                        const bgColors: Record<string, string> = {
+                                                                            'QR': 'hover:bg-purple-900/30',
+                                                                            'NFC': 'hover:bg-green-900/30',
+                                                                            'iBeacon': 'hover:bg-indigo-900/30',
+                                                                            'GPS': 'hover:bg-blue-900/30',
+                                                                            'TAP': 'hover:bg-orange-900/30'
+                                                                        };
+                                                                        return (
+                                                                            <label
+                                                                                key={activation}
+                                                                                className={`flex items-center gap-2 text-[10px] font-bold cursor-pointer transition-all px-2 py-1 rounded border ${activationFilters[activation] ? badgeColors[activation] + ' bg-slate-700/50' : 'text-slate-400 border-slate-600 ' + bgColors[activation]}`}
+                                                                            >
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={activationFilters[activation] || false}
+                                                                                    onChange={(e) => setActivationFilters(prev => ({
+                                                                                        ...prev,
+                                                                                        [activation]: e.target.checked
+                                                                                    }))}
+                                                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 cursor-pointer accent-purple-600"
+                                                                                />
+                                                                                <span>{activation}</span>
+                                                                            </label>
+                                                                        );
+                                                                    })}
+                                                                </div>
+
+                                                                {(Object.keys(activationFilters).some(type => activationFilters[type]) || showOnlyWithActivations || showOnlyInvalidAnswers) && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setActivationFilters({});
+                                                                            setShowOnlyWithActivations(false);
+                                                                            setShowOnlyInvalidAnswers(false);
+                                                                        }}
+                                                                        className="mt-2 w-full text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase py-1.5 bg-slate-800/50 rounded border border-purple-500/30 hover:border-purple-500/60 transition-all"
+                                                                        type="button"
+                                                                    >
+                                                                        ✕ CLEAR ALL FILTERS
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        )}
-
-                                        {/* Show Only With Activations Toggle */}
-                                        <label className="flex items-center gap-2 text-[10px] font-bold cursor-pointer hover:text-white text-slate-400 mb-2 p-2 bg-slate-800/50 rounded border border-slate-700">
-                                            <input
-                                                type="checkbox"
-                                                checked={showOnlyWithActivations}
-                                                onChange={(e) => setShowOnlyWithActivations(e.target.checked)}
-                                                className="w-4 h-4 rounded border-slate-600 bg-slate-800 cursor-pointer accent-purple-600"
-                                            />
-                                            <span>Only With Activations</span>
-                                        </label>
-
-                                        {getUsedActivationsInLibrary().length > 0 && (
-                                            <>
-                                                <p className="text-[8px] font-bold text-slate-500 uppercase mb-2">Filter by Type:</p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {getUsedActivationsInLibrary().map(activation => {
-                                                        const badgeColors: Record<string, string> = {
-                                                            'QR': 'text-purple-400 border-purple-500/50',
-                                                            'NFC': 'text-green-400 border-green-500/50',
-                                                            'iBeacon': 'text-indigo-400 border-indigo-500/50',
-                                                            'GPS': 'text-blue-400 border-blue-500/50',
-                                                            'TAP': 'text-orange-400 border-orange-500/50'
-                                                        };
-                                                        const bgColors: Record<string, string> = {
-                                                            'QR': 'hover:bg-purple-900/30',
-                                                            'NFC': 'hover:bg-green-900/30',
-                                                            'iBeacon': 'hover:bg-indigo-900/30',
-                                                            'GPS': 'hover:bg-blue-900/30',
-                                                            'TAP': 'hover:bg-orange-900/30'
-                                                        };
-                                                        return (
-                                                            <label key={activation} className={`flex items-center gap-2 text-[10px] font-bold cursor-pointer transition-all px-2 py-1 rounded border ${activationFilters[activation] ? badgeColors[activation] + ' bg-slate-700/50' : 'text-slate-400 border-slate-600 ' + bgColors[activation]}`}>
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={activationFilters[activation] || false}
-                                                                    onChange={(e) => setActivationFilters(prev => ({
-                                                                        ...prev,
-                                                                        [activation]: e.target.checked
-                                                                    }))}
-                                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-800 cursor-pointer accent-purple-600"
-                                                                />
-                                                                <span>{activation}</span>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {(Object.keys(activationFilters).some(type => activationFilters[type]) || showOnlyWithActivations) && (
-                                            <button
-                                                onClick={() => {
-                                                    setActivationFilters({});
-                                                    setShowOnlyWithActivations(false);
-                                                }}
-                                                className="mt-2 w-full text-[9px] font-bold text-purple-400 hover:text-purple-300 uppercase py-1.5 bg-slate-800/50 rounded border border-purple-500/30 hover:border-purple-500/60 transition-all"
-                                            >
-                                                ✕ CLEAR ALL FILTERS
-                                            </button>
-                                        )}
-                                    </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Settings Button with Dropdown */}
@@ -1521,7 +1966,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                 iconId: 'default',
                                                 createdAt: Date.now(),
                                                 points: 10,
-                                                activationTypes: ['radius'], // GPS enabled by default
+                                                activationTypes: ['click'], // Click/Tap activation by default
                                                 feedback: {
                                                     correctMessage: 'Correct!',
                                                     showCorrectMessage: true,
@@ -1576,8 +2021,64 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                 handleShowAddToModal(selectedTasks);
                                             }}
                                             className="px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
                                         >
                                             <Plus className="w-4 h-4" /> ADD TO
+                                        </button>
+                                        <button
+                                            onClick={() => setShowBulkTagModal(true)}
+                                            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
+                                            title="Add tags to selected tasks"
+                                        >
+                                            <Tag className="w-4 h-4" /> ADD TAGS
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                // Pre-populate with first selected task's activation types if available
+                                                const firstTask = library.find(t => t.id === selectedTemplateIds[0]);
+                                                setBulkActivationTypes(firstTask?.activationTypes || ['click']);
+                                                setShowBulkActivationModal(true);
+                                            }}
+                                            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-600 hover:to-cyan-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
+                                            title="Edit activation types for selected tasks"
+                                        >
+                                            <Zap className="w-4 h-4" /> ACTIVATION
+                                        </button>
+                                        <button
+                                            onClick={handleBulkEditColorScheme}
+                                            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all"
+                                            type="button"
+                                            title="Edit color scheme for selected tasks"
+                                        >
+                                            <Palette className="w-4 h-4" /> COLOUR SCHEME
+                                        </button>
+                                        <button
+                                            onClick={handleBulkCopySelected}
+                                            disabled={(() => {
+                                                const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+                                                return selectedTasks.some(t => !Array.isArray(t.tags) || t.tags.length === 0);
+                                            })()}
+                                            className={`px-6 py-3 rounded-xl font-bold uppercase text-xs tracking-wide flex items-center gap-2 shadow-lg transition-all ${
+                                                (() => {
+                                                    const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+                                                    const hasTasksWithoutTags = selectedTasks.some(t => !Array.isArray(t.tags) || t.tags.length === 0);
+                                                    return hasTasksWithoutTags
+                                                        ? 'bg-slate-600 text-slate-400 cursor-not-allowed opacity-50'
+                                                        : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer';
+                                                })()
+                                            }`}
+                                            type="button"
+                                            title={(() => {
+                                                const selectedTasks = library.filter(t => selectedTemplateIds.includes(t.id));
+                                                const hasTasksWithoutTags = selectedTasks.some(t => !Array.isArray(t.tags) || t.tags.length === 0);
+                                                return hasTasksWithoutTags
+                                                    ? 'Cannot copy tasks without tags'
+                                                    : 'Create copies of the selected tasks';
+                                            })()}
+                                        >
+                                            <Copy className="w-4 h-4" /> COPY
                                         </button>
                                         <button
                                             onClick={() => setShowBulkDeleteConfirm(true)}
@@ -1690,7 +2191,27 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
                                             {/* Actions */}
                                             <div className="flex gap-2 flex-shrink-0">
-                                                {onImportTaskList && (
+                                                {onImportTaskList && isPlayzoneEditor && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => onImportTaskList(list, '__PLAYZONE__')}
+                                                            className="p-2 bg-slate-800 hover:bg-orange-600 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                                            title="Add this task list to the current playzone"
+                                                            type="button"
+                                                        >
+                                                            <LayoutGrid className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => onImportTaskList(list, '__GAME__')}
+                                                            className="p-2 bg-slate-800 hover:bg-green-600 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                                            title="Add this task list to the game (choose MAP or PLAYZONE)"
+                                                            type="button"
+                                                        >
+                                                            <Gamepad2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )}
+                                                {onImportTaskList && !isPlayzoneEditor && (
                                                     <button
                                                         onClick={() => {
                                                             handleImportListWithGameSelect(list);
@@ -1732,11 +2253,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                 </button>
                                                 <button
                                                     onClick={() => {
-                                                        if (confirm('Delete this list?')) {
-                                                            const updated = taskLists.filter(l => l.id !== list.id);
-                                                            onUpdateTaskLists(updated);
-                                                            db.deleteTaskList(list.id);
-                                                        }
+                                                        setDeleteListConfirm({ isOpen: true, listId: list.id });
                                                     }}
                                                     className="p-1.5 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg transition-colors"
                                                 >
@@ -1780,7 +2297,29 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                 )}
 
                                                 <div className="flex gap-2 mt-auto">
-                                                    {onImportTaskList && (
+                                                    {onImportTaskList && isPlayzoneEditor && (
+                                                        <>
+                                                            <button
+                                                                onClick={() => onImportTaskList(list, '__PLAYZONE__')}
+                                                                className="flex-1 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide transition-colors flex items-center justify-center gap-2"
+                                                                title="Add this task list to the current playzone"
+                                                                type="button"
+                                                            >
+                                                                <LayoutGrid className="w-4 h-4" />
+                                                                ADD
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onImportTaskList(list, '__GAME__')}
+                                                                className="flex-1 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold uppercase text-[10px] tracking-wide transition-colors flex items-center justify-center gap-2"
+                                                                title="Add this task list to the game (choose MAP or PLAYZONE)"
+                                                                type="button"
+                                                            >
+                                                                <Gamepad2 className="w-4 h-4" />
+                                                                GAME
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {onImportTaskList && !isPlayzoneEditor && (
                                                         <button
                                                             onClick={() => {
                                                                 handleImportListWithGameSelect(list);
@@ -1822,11 +2361,7 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                                                     </button>
                                                     <button
                                                         onClick={() => {
-                                                            if (confirm('Delete this list?')) {
-                                                                const updated = taskLists.filter(l => l.id !== list.id);
-                                                                onUpdateTaskLists(updated);
-                                                                db.deleteTaskList(list.id);
-                                                            }
+                                                            setDeleteListConfirm({ isOpen: true, listId: list.id });
                                                         }}
                                                         className="p-2 bg-slate-800 hover:bg-red-600 text-slate-400 hover:text-white rounded-lg transition-colors"
                                                     >
@@ -1865,15 +2400,63 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
 
             {/* AI Generator Modal */}
             {showAiGen && (
-                <AiTaskGenerator 
+                <AiTaskGenerator
                     onClose={() => setShowAiGen(false)}
                     onAddTasks={(tasks) => {}}
                     onAddToLibrary={async (tasks) => {
-                        for (const t of tasks) await db.saveTemplate(t);
+                        const { ok } = await db.saveTemplates(tasks);
+                        if (!ok) console.error('[TaskMaster] Failed to save templates to library');
                         await loadLibrary(true); // Force refresh cache
                         setShowAiGen(false);
                     }}
                     targetMode='LIBRARY'
+                />
+            )}
+
+            {/* AI Generator for Task List Editor */}
+            {showAiGenForList && editingList && (
+                <AiTaskGenerator
+                    onClose={() => setShowAiGenForList(false)}
+                    onAddTasks={(tasks) => {
+                        // Add AI-generated tasks to the current editing list
+                        setEditingList({
+                            ...editingList,
+                            tasks: [...editingList.tasks, ...tasks]
+                        });
+                        setShowAiGenForList(false);
+                        setNotification({ message: `✨ ${tasks.length} AI-generated tasks added to list!`, type: 'success' });
+                    }}
+                    onAddTasksToList={(listId, tasks) => {
+                        // Add AI-generated tasks to a specific list
+                        const updatedLists = taskLists.map(l =>
+                            l.id === listId ? { ...l, tasks: [...l.tasks, ...tasks] } : l
+                        );
+                        onUpdateTaskLists(updatedLists);
+                        setShowAiGenForList(false);
+                        setNotification({ message: `✨ ${tasks.length} AI-generated tasks added!`, type: 'success' });
+                    }}
+                    onCreateListWithTasks={(name, tasks) => {
+                        // Create a new list with AI-generated tasks
+                        const newList: TaskList = {
+                            id: `list_${Date.now()}`,
+                            name: name,
+                            description: `AI-generated tasks about ${name}`,
+                            tasks: tasks,
+                            imageUrl: '',
+                            createdAt: new Date().toISOString()
+                        };
+                        onUpdateTaskLists([...taskLists, newList]);
+                        setShowAiGenForList(false);
+                        setNotification({ message: `✨ New list "${name}" created with ${tasks.length} AI tasks!`, type: 'success' });
+                    }}
+                    onAddToLibrary={async (tasks) => {
+                        // Save to library
+                        const { ok } = await db.saveTemplates(tasks);
+                        if (!ok) console.error('[TaskMaster] Failed to save templates to library');
+                        await loadLibrary(true);
+                    }}
+                    taskLists={taskLists}
+                    targetMode='LIST'
                 />
             )}
 
@@ -1882,7 +2465,8 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 <LoquizImporter
                     onClose={() => setShowLoquiz(false)}
                     onImportTasks={async (tasks) => {
-                        for (const t of tasks) await db.saveTemplate(t);
+                        const { ok } = await db.saveTemplates(tasks);
+                        if (!ok) console.error('[TaskMaster] Failed to save templates to library');
                         await loadLibrary(true); // Force refresh cache
                         setShowLoquiz(false);
                     }}
@@ -2310,6 +2894,143 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                 </div>
             )}
 
+            {/* Bulk Tag Modal */}
+            {showBulkTagModal && (
+                <div className="fixed inset-0 z-[7000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-slate-900 border border-emerald-600/50 rounded-2xl shadow-2xl max-w-md w-full">
+                        <div className="p-6 border-b border-slate-700">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Tag className="w-6 h-6 text-emerald-500" />
+                                <h3 className="text-lg font-black text-white uppercase">ADD TAGS TO {selectedTemplateIds.length} TASK{selectedTemplateIds.length > 1 ? 'S' : ''}</h3>
+                            </div>
+                            <p className="text-slate-400 text-sm">Enter tags separated by commas or spaces. Tags will be added to all selected tasks.</p>
+                        </div>
+                        <div className="p-6">
+                            <input
+                                type="text"
+                                value={bulkTagInput}
+                                onChange={(e) => setBulkTagInput(e.target.value)}
+                                placeholder="e.g. history, europe, advanced"
+                                className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none transition-colors"
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        handleBulkAddTags();
+                                    }
+                                }}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="p-6 pt-0 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowBulkTagModal(false);
+                                    setBulkTagInput('');
+                                }}
+                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkAddTags}
+                                disabled={!bulkTagInput.trim()}
+                                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Add Tags
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Activation Modal */}
+            {showBulkActivationModal && (
+                <div className="fixed inset-0 z-[7000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-slate-900 border border-cyan-600/50 rounded-2xl shadow-2xl max-w-md w-full">
+                        <div className="p-6 border-b border-slate-700">
+                            <div className="flex items-center gap-3 mb-2">
+                                <Zap className="w-6 h-6 text-cyan-500" />
+                                <h3 className="text-lg font-black text-white uppercase">SET ACTIVATION FOR {selectedTemplateIds.length} TASK{selectedTemplateIds.length > 1 ? 'S' : ''}</h3>
+                            </div>
+                            <p className="text-slate-400 text-sm">Select one or more activation types. These will replace existing activation settings for all selected tasks.</p>
+                        </div>
+                        <div className="p-6 space-y-3">
+                            {[
+                                { type: 'click', label: 'TAP', icon: '👆', color: 'orange', description: 'Tap to activate (Playzone)' },
+                                { type: 'radius', label: 'GPS', icon: '📍', color: 'blue', description: 'Proximity-based (Map)' },
+                                { type: 'qr', label: 'QR CODE', icon: '⊞', color: 'purple', description: 'Scan QR code' },
+                                { type: 'nfc', label: 'NFC', icon: '📱', color: 'green', description: 'NFC tag scan' },
+                                { type: 'ibeacon', label: 'iBeacon', icon: '📡', color: 'indigo', description: 'Bluetooth beacon' }
+                            ].map(({ type, label, icon, color, description }) => {
+                                const isSelected = bulkActivationTypes.includes(type);
+                                const colorClasses = {
+                                    orange: isSelected ? 'bg-orange-600 border-orange-500' : 'bg-slate-800 border-slate-700 hover:border-orange-500',
+                                    blue: isSelected ? 'bg-blue-600 border-blue-500' : 'bg-slate-800 border-slate-700 hover:border-blue-500',
+                                    purple: isSelected ? 'bg-purple-600 border-purple-500' : 'bg-slate-800 border-slate-700 hover:border-purple-500',
+                                    green: isSelected ? 'bg-green-600 border-green-500' : 'bg-slate-800 border-slate-700 hover:border-green-500',
+                                    indigo: isSelected ? 'bg-indigo-600 border-indigo-500' : 'bg-slate-800 border-slate-700 hover:border-indigo-500'
+                                };
+
+                                return (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => {
+                                            setBulkActivationTypes(prev =>
+                                                prev.includes(type)
+                                                    ? prev.filter(t => t !== type)
+                                                    : [...prev, type]
+                                            );
+                                        }}
+                                        className={`w-full px-4 py-3 border-2 rounded-xl transition-all ${colorClasses[color as keyof typeof colorClasses]} ${isSelected ? 'text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-2xl">{icon}</span>
+                                            <div className="flex-1 text-left">
+                                                <div className="font-bold text-sm uppercase">{label}</div>
+                                                <div className="text-xs opacity-80">{description}</div>
+                                            </div>
+                                            {isSelected && <Check className="w-5 h-5 text-white" />}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="p-6 pt-0 flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowBulkActivationModal(false);
+                                    setBulkActivationTypes([]);
+                                }}
+                                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleBulkSetActivation}
+                                disabled={bulkActivationTypes.length === 0}
+                                className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold uppercase text-xs transition-colors"
+                            >
+                                Apply to {selectedTemplateIds.length} Task{selectedTemplateIds.length > 1 ? 's' : ''}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Color Scheme Editor Modal */}
+            {showColorSchemeEditor && (
+                <ColorSchemeEditor
+                    initialScheme={editingColorScheme}
+                    onSave={handleSaveColorScheme}
+                    onClose={() => {
+                        setShowColorSchemeEditor(false);
+                        setColorSchemeTaskIds([]);
+                        setEditingColorScheme(undefined);
+                    }}
+                    title={`Edit Color Scheme (${colorSchemeTaskIds.length} task${colorSchemeTaskIds.length > 1 ? 's' : ''})`}
+                />
+            )}
+
             {/* Notification Modal */}
             {notification && (
                 <NotificationModal
@@ -2320,6 +3041,28 @@ const TaskMaster: React.FC<TaskMasterProps> = ({
                     duration={3000}
                 />
             )}
+
+            {/* Confirmation Modal for deleting task lists */}
+            <ConfirmationModal
+                isOpen={deleteListConfirm.isOpen}
+                title="Delete Task List?"
+                message="Are you sure you want to delete this task list? This action cannot be undone."
+                confirmText="Delete"
+                cancelText="Cancel"
+                isDangerous={true}
+                icon="warning"
+                onConfirm={() => {
+                    if (deleteListConfirm.listId) {
+                        const updated = taskLists.filter(l => l.id !== deleteListConfirm.listId);
+                        onUpdateTaskLists(updated);
+                        db.deleteTaskList(deleteListConfirm.listId);
+                        setDeleteListConfirm({ isOpen: false });
+                    }
+                }}
+                onCancel={() => {
+                    setDeleteListConfirm({ isOpen: false });
+                }}
+            />
         </div>
     );
 };

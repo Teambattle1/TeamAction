@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import DOMPurify from 'dompurify';
 import { Game, Team, TeamMember, Coordinate, GameMode, TeamStatus } from '../types';
-import { X, Users, Eye, EyeOff, ToggleLeft, ToggleRight, Edit2, Gamepad2, Shield, User, Power, AlertTriangle, Loader2, BookOpen, CheckCircle } from 'lucide-react';
+import { X, Users, Eye, EyeOff, ToggleLeft, ToggleRight, Edit2, Gamepad2, Shield, User, Power, AlertTriangle, Loader2, BookOpen, CheckCircle, Monitor, ExternalLink, Image as ImageIcon } from 'lucide-react';
 import * as db from '../services/db';
 import { teamSync } from '../services/teamSync';
 import GameMap, { GameMapHandle } from './GameMap';
@@ -9,6 +9,7 @@ import PlaygroundModal from './PlaygroundModal';
 import LocationSearch from './LocationSearch';
 import { ICON_COMPONENTS } from '../utils/icons';
 import { haversineMeters } from '../utils/geo';
+import { getGameDisplayId } from '../utils/gameIdUtils';
 
 interface InstructorDashboardProps {
   game: Game;
@@ -329,7 +330,7 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                     INSTRUCTOR DASHBOARD
                 </h1>
                 <p className="text-xs text-slate-500 font-bold uppercase tracking-wide mt-1">
-                    GAME: <span className="text-white">{liveGame.name}</span>
+                    GAME: <span className="text-orange-400 font-black">[{getGameDisplayId(liveGame.id)}]</span> <span className="text-white">{liveGame.name}</span>
                 </p>
             </div>
             
@@ -371,14 +372,40 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
                             SHOW ALL TEAMS
                         </button>
 
-                        <button 
+                        <button
                             onClick={toggleShowRanking}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold uppercase transition-colors ${showRanking ? 'bg-purple-900/30 border-purple-500 text-purple-400' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-white'}`}
                             title="Show/Hide Ranking List for Players"
                         >
-                            {showRanking ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />} 
+                            {showRanking ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                             REVEAL RANKING
                         </button>
+
+                        <div className="h-6 w-px bg-slate-700 mx-2"></div>
+
+                        <a
+                            href={`#/client/${game.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg border bg-gradient-to-r from-purple-600 to-purple-700 border-purple-500 text-white hover:from-purple-700 hover:to-purple-800 text-xs font-bold uppercase transition-all shadow-lg"
+                            title="Open Client Lobby for Presentations"
+                        >
+                            <Monitor className="w-4 h-4" />
+                            CLIENT LOBBY
+                            <ExternalLink className="w-3 h-3" />
+                        </a>
+
+                        <a
+                            href={`#/client/${game.id}?tab=gallery`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-4 py-1.5 rounded-lg border bg-gradient-to-r from-teal-600 to-teal-700 border-teal-500 text-white hover:from-teal-700 hover:to-teal-800 text-xs font-bold uppercase transition-all shadow-lg"
+                            title="Open Media Gallery"
+                        >
+                            <ImageIcon className="w-4 h-4" />
+                            MEDIA GALLERY
+                            <ExternalLink className="w-3 h-3" />
+                        </a>
                     </div>
                 )}
 
@@ -543,12 +570,13 @@ const InstructorDashboard: React.FC<InstructorDashboardProps> = ({ game, onClose
         {/* ... (Team Control Modal and Playground Modal logic remains same) ... */}
         {/* Instructor Playground Viewer */}
         {activePlaygroundId && activePlayground && (
-            <PlaygroundModal 
+            <PlaygroundModal
                 playground={activePlayground}
                 points={liveGame.points}
                 onClose={() => setActivePlaygroundId(null)}
-                onPointClick={() => {}} 
+                onPointClick={() => {}}
                 mode={GameMode.INSTRUCTOR}
+                taskCooldowns={new Map()}
             />
         )}
     </div>

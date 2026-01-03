@@ -1,24 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import DOMPurify from 'dompurify';
-import { Game, TimerConfig, TimerMode, MapStyleId, Language, DesignConfig, GameTaskConfiguration, MapConfiguration } from '../types';
+import { Game, TimerConfig, TimerMode, MapStyleId, Language, DesignConfig, GameTaskConfiguration, MapConfiguration, TaskColorScheme } from '../types';
 import {
     X, Gamepad2, Calendar, Building2, Upload, Search, Loader2, Clock, Hourglass,
     StopCircle, CheckCircle, Image as ImageIcon, Save, Edit, Map as MapIcon,
     Layers, Globe, Trash2, Bold, Italic, Underline, Link as LinkIcon, Info,
     Tag, MessageSquare, Flag, MapPin, Users, PenTool, LayoutGrid, BarChart2,
     Settings, Play, Target, List, Palette, EyeOff, Eye, ScrollText, Check, AlertTriangle,
-    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus
+    Snowflake, Mountain, ExternalLink, Code, PlayCircle, ChevronRight, Plus, Wand2,
+    Copy, Monitor, Volume2, KeyRound, QrCode, Download
 } from 'lucide-react';
-import { searchLogoUrl } from '../services/ai';
+import { searchLogoUrl, generateAiLogo } from '../services/ai';
 import { uploadImage } from '../services/storage';
 import { fetchUniqueTags, countMapStyleUsage, replaceMapStyleInGames, fetchCustomMapStyles, saveCustomMapStyle, deleteCustomMapStyle } from '../services/db';
+import { useTagColors } from '../contexts/TagColorsContext';
 import { resizeImage } from '../utils/image';
 import GameLogViewer from './GameLogViewer';
 import MeetingPointMapPicker from './MeetingPointMapPicker';
+import GeminiApiKeyModal from './GeminiApiKeyModal';
+import ColorSchemeEditor from './ColorSchemeEditor';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './DatePickerStyles.css';
 import { formatDateTime, formatDateShort, formatTimeShort, getLocaleFromLanguage } from '../utils/date';
+import { CORRECT_SOUNDS, INCORRECT_SOUNDS, getGlobalCorrectSound, getGlobalIncorrectSound, getGlobalVolume, playSound } from '../utils/sounds';
 
 interface GameCreatorProps {
   onClose: () => void;
@@ -42,7 +47,12 @@ const MAP_STYLES: { id: MapStyleId; label: string; preview: string; className?: 
     // Use OSM tile but apply CSS filter for Winter look
     { id: 'winter', label: 'Winter', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'brightness-125 hue-rotate-180 saturate-50', icon: Snowflake },
     { id: 'ski', label: 'Ski Map', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', icon: Mountain },
-    { id: 'norwegian', label: 'Norwegian', preview: 'https://tiles.openskimap.org/map/13/4285/2722.png', className: 'saturate-115 brightness-108', icon: Snowflake },
+    // Ancient/Treasure map style
+    { id: 'treasure', label: 'Treasure', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'sepia-[.9] contrast-110 brightness-95 hue-rotate-30', icon: ScrollText },
+    // Desert map style
+    { id: 'desert', label: 'Desert', preview: 'https://a.tile.openstreetmap.org/13/4285/2722.png', className: 'saturate-150 hue-rotate-15 brightness-110 contrast-105', icon: Mountain },
+    // Clean/minimal style
+    { id: 'clean', label: 'Clean', preview: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/13/4285/2722.png', icon: Globe },
 ];
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
@@ -111,7 +121,11 @@ const TABS = [
     { id: 'PLAY', label: 'Play', icon: PlayCircle },
     { id: 'DESIGN', label: 'Game Setup', icon: PenTool },
     { id: 'TASKS', label: 'Tasks', icon: List },
+    { id: 'TASKDESIGN', label: 'Task Design', icon: Palette },
     { id: 'PLAYGROUNDS', label: 'Zones', icon: LayoutGrid },
+    { id: 'SOUNDS', label: 'Sounds', icon: Volume2 },
+    { id: 'ACCESS', label: 'Access', icon: KeyRound },
+    { id: 'CLIENT', label: 'Client', icon: Monitor },
     { id: 'SETTINGS', label: 'Settings', icon: Settings },
     { id: 'LOGS', label: 'Logs', icon: ScrollText },
 ];
@@ -234,7 +248,7 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   // Tags
   const [tags, setTags] = useState<string[]>(baseGame?.tags || []);
   const [tagInput, setTagInput] = useState('');
-  const [tagColors, setTagColors] = useState<Record<string, string>>({});
+  const { tagColors, setTagColor } = useTagColors();
   const [selectedTagColor, setSelectedTagColor] = useState(TAG_COLORS[0]);
   const [existingTags, setExistingTags] = useState<string[]>([]);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
@@ -247,6 +261,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [playingDate, setPlayingDate] = useState(baseGame?.client?.playingDate || getTodayDate());
   const [clientLogo, setClientLogo] = useState(baseGame?.client?.logoUrl || '');
   const [isSearchingLogo, setIsSearchingLogo] = useState(false);
+  const [isGeneratingAiLogo, setIsGeneratingAiLogo] = useState(false);
+  const [showGeminiKeyModal, setShowGeminiKeyModal] = useState(false);
   
   // Teams Config
   const [showOtherTeams, setShowOtherTeams] = useState(baseGame?.showOtherTeams || false);
@@ -259,6 +275,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [aboutTemplate, setAboutTemplate] = useState(baseGame?.aboutTemplate || '');
   const [instructorNotes, setInstructorNotes] = useState(baseGame?.instructorNotes || '');
   const [templateImages, setTemplateImages] = useState<string[]>(baseGame?.templateImageUrls || []);
+
+  // Client Lobby Link
+  const [clientLinkCopied, setClientLinkCopied] = useState(false);
 
   // End Location
   const [endLat, setEndLat] = useState<string>(baseGame?.endLocation?.lat?.toString?.() ?? '');
@@ -299,6 +318,17 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [allowNavigation, setAllowNavigation] = useState<boolean>(baseGame?.mapConfig?.allowNavigation || false);
   const [allowWeakGps, setAllowWeakGps] = useState<boolean>(baseGame?.mapConfig?.allowWeakGps || false);
 
+  // Task Design Configuration (Color Scheme)
+  const [defaultTaskColorScheme, setDefaultTaskColorScheme] = useState<TaskColorScheme | undefined>(baseGame?.defaultTaskColorScheme);
+  const [showColorSchemeEditor, setShowColorSchemeEditor] = useState(false);
+
+  // Sound Settings
+  const [soundSettings, setSoundSettings] = useState<import('../types').SoundSettings | undefined>(baseGame?.soundSettings);
+
+  // Access Code
+  const [accessCode, setAccessCode] = useState(baseGame?.accessCode || '');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+
   // Config
   const [timerMode, setTimerMode] = useState<TimerMode>(baseGame?.timerConfig?.mode || 'none');
   const [duration, setDuration] = useState<number>(baseGame?.timerConfig?.durationMinutes || 60);
@@ -318,6 +348,8 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isUploadingTemplate, setIsUploadingTemplate] = useState(false);
   const [isUploadingTaskBg, setIsUploadingTaskBg] = useState(false);
+  const [isUploadingCorrectSound, setIsUploadingCorrectSound] = useState(false);
+  const [isUploadingIncorrectSound, setIsUploadingIncorrectSound] = useState(false);
   const [showDateTimePicker, setShowDateTimePicker] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [showMapStylePreview, setShowMapStylePreview] = useState(false);
@@ -336,14 +368,13 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const mapPreviewInputRef = useRef<HTMLInputElement>(null);
   const taskBgInputRef = useRef<HTMLInputElement>(null);
   const customStylePreviewInputRef = useRef<HTMLInputElement>(null);
+  const correctSoundInputRef = useRef<HTMLInputElement>(null);
+  const incorrectSoundInputRef = useRef<HTMLInputElement>(null);
 
-  // Load Tag Colors & Fetch Unique Tags on mount
+  // Load settings on mount (tag colors are loaded globally via TagColorsProvider)
   useEffect(() => {
       const loadSettings = async () => {
           try {
-              const stored = localStorage.getItem('geohunt_tag_colors');
-              if (stored) setTagColors(JSON.parse(stored));
-
               // Load map previews (kept in localStorage for standard styles)
               const storedPreviews = localStorage.getItem('geohunt_map_previews');
               if (storedPreviews) setMapStylePreviews(JSON.parse(storedPreviews));
@@ -384,10 +415,34 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       loadUsageCounts();
   }, [customStyles]);
 
-  const saveTagColors = (newColors: Record<string, string>) => {
-      setTagColors(newColors);
-      localStorage.setItem('geohunt_tag_colors', JSON.stringify(newColors));
-  };
+  // Generate QR Code when access code changes
+  useEffect(() => {
+      const generateQRCode = async () => {
+          if (accessCode.trim()) {
+              try {
+                  const QRCode = (await import('qrcode')).default;
+                  const url = `${window.location.origin}/access?code=${accessCode.toUpperCase().trim()}`;
+                  const dataUrl = await QRCode.toDataURL(url, {
+                      width: 300,
+                      margin: 2,
+                      color: {
+                          dark: '#000000',
+                          light: '#FFFFFF'
+                      }
+                  });
+                  setQrCodeDataUrl(dataUrl);
+              } catch (error) {
+                  console.error('Failed to generate QR code:', error);
+                  setQrCodeDataUrl('');
+              }
+          } else {
+              setQrCodeDataUrl('');
+          }
+      };
+
+      generateQRCode();
+  }, [accessCode]);
+
 
   const handleMapPreviewUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -430,10 +485,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       if (!clientName.trim()) return;
       setIsSearchingLogo(true);
       const url = await searchLogoUrl(clientName);
-      if (url) {
+      if (url && url.trim()) {
           setClientLogo(url);
       } else {
-          alert("No logo found for this name. Try uploading one.");
+          setClientLogo(''); // Clear any existing logo
+          alert("No logo found for this name. Try uploading one or using AI Generate.");
       }
       setIsSearchingLogo(false);
   };
@@ -455,6 +511,29 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           const url = await uploadImage(file);
           if (url) setClientLogo(url);
           setIsUploadingLogo(false);
+      }
+  };
+
+  const handleGenerateAiLogo = async () => {
+      if (!clientName.trim()) return;
+      setIsGeneratingAiLogo(true);
+      try {
+          const url = await generateAiLogo(clientName, 'professional');
+          if (url) {
+              setClientLogo(url);
+          } else {
+              alert("Failed to generate logo. Please try again or upload one manually.");
+          }
+      } catch (error: any) {
+          // Check if it's an API key error
+          if (error?.message?.includes('API Key missing')) {
+              setShowGeminiKeyModal(true);
+          } else {
+              console.error('Error generating logo:', error);
+              alert("Failed to generate logo. Please try again or upload one manually.");
+          }
+      } finally {
+          setIsGeneratingAiLogo(false);
       }
   };
 
@@ -493,10 +572,74 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
       setTemplateImages(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const handleUploadCorrectSound = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Validate audio file
+      if (!file.type.startsWith('audio/')) {
+          alert('Please upload an audio file (MP3, WAV, etc.)');
+          return;
+      }
+
+      setIsUploadingCorrectSound(true);
+      try {
+          const url = await uploadImage(file, 'game-assets');
+          if (url) {
+              setSoundSettings({
+                  ...soundSettings,
+                  correctAnswerSound: url
+              });
+          } else {
+              alert('Failed to upload sound file');
+          }
+      } catch (error) {
+          console.error('Upload error:', error);
+          alert('Failed to upload sound file');
+      } finally {
+          setIsUploadingCorrectSound(false);
+          if (correctSoundInputRef.current) {
+              correctSoundInputRef.current.value = '';
+          }
+      }
+  };
+
+  const handleUploadIncorrectSound = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      // Validate audio file
+      if (!file.type.startsWith('audio/')) {
+          alert('Please upload an audio file (MP3, WAV, etc.)');
+          return;
+      }
+
+      setIsUploadingIncorrectSound(true);
+      try {
+          const url = await uploadImage(file, 'game-assets');
+          if (url) {
+              setSoundSettings({
+                  ...soundSettings,
+                  incorrectAnswerSound: url
+              });
+          } else {
+              alert('Failed to upload sound file');
+          }
+      } catch (error) {
+          console.error('Upload error:', error);
+          alert('Failed to upload sound file');
+      } finally {
+          setIsUploadingIncorrectSound(false);
+          if (incorrectSoundInputRef.current) {
+              incorrectSoundInputRef.current.value = '';
+          }
+      }
+  };
+
   const handleTagInputChange = (val: string) => {
       setTagInput(val);
       if (val.trim()) {
-          const matches = existingTags.filter(t => t.toLowerCase().includes(val.toLowerCase()) && !tags.includes(t));
+          const matches = existingTags.filter(t => t.toLowerCase().includes(val.toLowerCase()) && !tags.some(existing => existing.toLowerCase() === t.toLowerCase()));
           setFilteredSuggestions(matches.slice(0, 5)); // Limit to 5 suggestions
           setShowSuggestions(true);
       } else {
@@ -507,10 +650,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   const handleAddTag = (tagToAdd: string = tagInput) => {
       const val = tagToAdd.trim();
       if (val) {
-          if (!tags.includes(val)) {
+          const exists = tags.some(t => t.toLowerCase() === val.toLowerCase());
+          if (!exists) {
               setTags([...tags, val]);
-              // Save color preference for this tag
-              saveTagColors({ ...tagColors, [val]: selectedTagColor });
+              // Save color preference for this tag (persisted globally)
+              setTagColor(val, selectedTagColor);
           }
           setTagInput('');
           setShowSuggestions(false);
@@ -522,10 +666,11 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
   };
 
   const cycleTagColor = (tag: string) => {
-      const currentColor = tagColors[tag] || TAG_COLORS[0];
+      const key = tag.toLowerCase();
+      const currentColor = tagColors[key] || TAG_COLORS[0];
       const idx = TAG_COLORS.indexOf(currentColor);
       const nextColor = TAG_COLORS[(idx + 1) % TAG_COLORS.length];
-      saveTagColors({ ...tagColors, [tag]: nextColor });
+      setTagColor(tag, nextColor);
   };
 
   const validateJson = () => {
@@ -756,6 +901,9 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
           designConfig,
           taskConfig,
           mapConfig,
+          defaultTaskColorScheme,
+          soundSettings,
+          accessCode: accessCode.toUpperCase().trim() || undefined,
           client: {
               name: clientName,
               logoUrl: clientLogo,
@@ -856,20 +1004,26 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       <span className="text-[10px] text-slate-400">Indoor, touch-based on playground</span>
                                   </div>
                               </label>
-                              <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'elimination' ? '#ef4444' : '#475569', backgroundColor: gameMode === 'elimination' ? '#7f1d1d' : '#1e293b' }}>
-                                  <input
-                                      type="radio"
-                                      name="gameMode"
-                                      value="elimination"
-                                      checked={gameMode === 'elimination'}
-                                      onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone' | 'elimination')}
-                                      className="w-4 h-4"
-                                  />
-                                  <div>
-                                      <span className="font-bold text-white block">ELIMINATION GAME</span>
-                                      <span className="text-[10px] text-slate-400">GPS-based competitive CTF with bombs</span>
+                              <div className="relative">
+                                  <label className="flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all" style={{ borderColor: gameMode === 'elimination' ? '#ef4444' : '#475569', backgroundColor: gameMode === 'elimination' ? '#7f1d1d' : '#1e293b' }}>
+                                      <input
+                                          type="radio"
+                                          name="gameMode"
+                                          value="elimination"
+                                          checked={gameMode === 'elimination'}
+                                          onChange={(e) => setGameMode(e.target.value as 'standard' | 'playzone' | 'elimination')}
+                                          className="w-4 h-4"
+                                      />
+                                      <div>
+                                          <span className="font-bold text-white block">ELIMINATION GAME</span>
+                                          <span className="text-[10px] text-slate-400">GPS-based competitive CTF with bombs</span>
+                                      </div>
+                                  </label>
+                                  {/* Beta Badge */}
+                                  <div className="absolute -top-2 -right-2 bg-amber-500 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full shadow-lg border border-amber-400">
+                                      BETA
                                   </div>
-                              </label>
+                              </div>
                           </div>
                       </div>
 
@@ -915,19 +1069,27 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                                       />
                                   </div>
                                   <div className="flex gap-2">
-                                      <button 
+                                      <button
                                           onClick={handleLogoSearch}
                                           disabled={!clientName || isSearchingLogo}
-                                          className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[10px] font-bold uppercase text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-2"
+                                          className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[10px] font-bold uppercase text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                       >
-                                          {isSearchingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />} 
+                                          {isSearchingLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
                                           AUTO-SEARCH LOGO
                                       </button>
-                                      <button 
+                                      <button
                                           onClick={() => logoInputRef.current?.click()}
                                           className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-[10px] font-bold uppercase text-slate-300 hover:text-white transition-colors flex items-center justify-center gap-2"
                                       >
                                           <Upload className="w-3 h-3" /> UPLOAD LOGO
+                                      </button>
+                                      <button
+                                          onClick={handleGenerateAiLogo}
+                                          disabled={!clientName || isGeneratingAiLogo}
+                                          className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border border-purple-500 rounded-xl text-[10px] font-bold uppercase text-white transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      >
+                                          {isGeneratingAiLogo ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                                          AI GENERATE LOGO
                                       </button>
                                   </div>
                               </div>
@@ -1031,13 +1193,14 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                               <div className="flex flex-wrap gap-2 min-h-[32px]">
                                   {tags.length === 0 && <span className="text-xs text-slate-600 italic">No tags added yet.</span>}
                                   {tags.map((tag, index) => {
-                                      const color = tagColors[tag] || TAG_COLORS[0];
+                                      const colorKey = tag.toLowerCase();
+                                      const color = tagColors[colorKey] || TAG_COLORS[0];
                                       return (
                                           <span
                                             key={`${tag}-${index}`}
                                             onClick={() => cycleTagColor(tag)}
-                                            className="text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity select-none shadow-sm"
-                                            style={{ backgroundColor: color }}
+                                            className="text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity select-none shadow-sm bg-[var(--tag-bg)]"
+                                            style={{ ['--tag-bg' as any]: color }}
                                             title="Click to cycle color"
                                           >
                                               {tag}
@@ -1711,6 +1874,489 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
 
                   </div>
               );
+          case 'TASKDESIGN':
+              return (
+                  <div className="space-y-6 max-w-3xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-700/50 p-6 rounded-2xl">
+                          <div className="flex items-center gap-3 mb-2">
+                              <Palette className="w-6 h-6 text-purple-400" />
+                              <h3 className="text-xl font-black text-white uppercase">Task Design System</h3>
+                          </div>
+                          <p className="text-sm text-slate-300">
+                              Configure the default color scheme for all tasks in this game. Individual tasks can override these settings locally.
+                          </p>
+                      </div>
+
+                      {/* Color Scheme Configuration */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl">
+                          <div className="flex items-center justify-between mb-4">
+                              <div>
+                                  <label className="text-sm font-bold text-white uppercase block mb-1">Default Task Color Scheme</label>
+                                  <p className="text-xs text-slate-400">
+                                      This color scheme will be applied to all tasks in this game unless overridden
+                                  </p>
+                              </div>
+                              {defaultTaskColorScheme && (
+                                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-900/30 border border-green-700/50 rounded-lg">
+                                      <Check className="w-4 h-4 text-green-400" />
+                                      <span className="text-xs font-bold text-green-400 uppercase">Active</span>
+                                  </div>
+                              )}
+                          </div>
+
+                          <button
+                              onClick={() => setShowColorSchemeEditor(true)}
+                              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white py-4 rounded-xl font-black text-sm uppercase transition-all shadow-lg flex items-center justify-center gap-2"
+                          >
+                              <Palette className="w-5 h-5" />
+                              {defaultTaskColorScheme ? 'Edit Color Scheme' : 'Create Color Scheme'}
+                          </button>
+
+                          {defaultTaskColorScheme && (
+                              <div className="mt-4 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                                  <div className="text-xs font-bold text-slate-400 uppercase mb-3">Current Colors</div>
+                                  <div className="grid grid-cols-5 gap-2">
+                                      {Object.entries(defaultTaskColorScheme).map(([key, value]) => {
+                                          if (key === 'id' || key === 'name') return null;
+                                          return (
+                                              <div key={key} className="flex flex-col items-center gap-1">
+                                                  <div
+                                                      className="w-12 h-12 rounded-lg border-2 border-slate-600"
+                                                      style={{ backgroundColor: value as string }}
+                                                  />
+                                                  <span className="text-[8px] text-slate-500 uppercase text-center">
+                                                      {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                  </span>
+                                              </div>
+                                          );
+                                      })}
+                                  </div>
+                              </div>
+                          )}
+
+                          {defaultTaskColorScheme && (
+                              <button
+                                  onClick={() => setDefaultTaskColorScheme(undefined)}
+                                  className="w-full mt-3 bg-red-900/30 hover:bg-red-900/50 border border-red-700/50 text-red-400 py-3 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2"
+                              >
+                                  <Trash2 className="w-4 h-4" />
+                                  Remove Color Scheme
+                              </button>
+                          )}
+                      </div>
+
+                      {/* Info Card */}
+                      <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+                          <div className="text-xs text-blue-300 leading-relaxed space-y-1">
+                              <p><strong>💡 How it works:</strong></p>
+                              <p>• <strong>Game-wide:</strong> Set a default color scheme here for all tasks</p>
+                              <p>• <strong>Local Override:</strong> Individual tasks can have their own color schemes</p>
+                              <p>• <strong>Library Lock:</strong> Tasks from the global library can be locked to prevent color changes</p>
+                              <p>• <strong>Priority:</strong> Locked Library &gt; Local Task &gt; Game Default</p>
+                          </div>
+                      </div>
+                  </div>
+              );
+          case 'SOUNDS':
+              const currentCorrectSound = soundSettings?.correctAnswerSound || getGlobalCorrectSound();
+              const currentIncorrectSound = soundSettings?.incorrectAnswerSound || getGlobalIncorrectSound();
+              const currentVolume = soundSettings?.volume ?? getGlobalVolume();
+
+              return (
+                  <div className="space-y-6 max-w-3xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-purple-900/30 to-indigo-900/30 border border-purple-700/50 p-6 rounded-2xl">
+                          <div className="flex items-center gap-3 mb-2">
+                              <Volume2 className="w-6 h-6 text-purple-400" />
+                              <h3 className="text-xl font-black text-white uppercase">Sound Settings</h3>
+                          </div>
+                          <p className="text-sm text-slate-300">
+                              Configure answer sounds for this game. Leave empty to use global defaults from System Tools.
+                          </p>
+                      </div>
+
+                      {/* Using Global Sounds Notice */}
+                      {!soundSettings?.correctAnswerSound && !soundSettings?.incorrectAnswerSound && (
+                          <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+                              <div className="flex items-start gap-3">
+                                  <Info className="w-5 h-5 text-blue-400 mt-0.5" />
+                                  <div className="text-xs text-blue-300 leading-relaxed">
+                                      <p><strong>📢 Using Global Defaults</strong></p>
+                                      <p className="mt-1">This game is currently using the global sound settings configured in System Tools (Admin panel).</p>
+                                  </div>
+                              </div>
+                          </div>
+                      )}
+
+                      {/* Sound Configuration */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
+                          {/* Volume Slider */}
+                          <div>
+                              <div className="flex justify-between items-center mb-3">
+                                  <label className="text-sm font-bold text-white uppercase">Volume</label>
+                                  <span className="text-lg font-black text-purple-400">{currentVolume}%</span>
+                              </div>
+                              <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  step="10"
+                                  value={currentVolume}
+                                  onChange={(e) => setSoundSettings({
+                                      ...soundSettings,
+                                      volume: parseInt(e.target.value)
+                                  })}
+                                  className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                              />
+                              <p className="text-xs text-slate-500 mt-2">
+                                  Adjust playback volume for this game's answer sounds
+                              </p>
+                          </div>
+
+                          {/* Correct Answer Sound */}
+                          <div>
+                              <label className="block text-sm font-bold text-green-400 uppercase mb-2">
+                                  ✓ Correct Answer Sound
+                              </label>
+                              <select
+                                  value={currentCorrectSound}
+                                  onChange={(e) => setSoundSettings({
+                                      ...soundSettings,
+                                      correctAnswerSound: e.target.value
+                                  })}
+                                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white font-medium outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
+                              >
+                                  {CORRECT_SOUNDS.map(sound => (
+                                      <option key={sound.id} value={sound.url}>
+                                          {sound.name} - {sound.description}
+                                      </option>
+                                  ))}
+                                  {!CORRECT_SOUNDS.find(s => s.url === currentCorrectSound) && currentCorrectSound && (
+                                      <option value={currentCorrectSound}>Custom Upload</option>
+                                  )}
+                              </select>
+                              <div className="flex gap-3 mt-3">
+                                  <button
+                                      onClick={() => playSound(currentCorrectSound, currentVolume)}
+                                      className="flex-1 px-4 py-3 bg-green-600/20 hover:bg-green-600/30 border border-green-600/50 text-green-400 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2"
+                                  >
+                                      <Play className="w-4 h-4" /> Preview
+                                  </button>
+                                  <button
+                                      onClick={() => correctSoundInputRef.current?.click()}
+                                      disabled={isUploadingCorrectSound}
+                                      className="flex-1 px-4 py-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 text-purple-400 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                      {isUploadingCorrectSound ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                          <Upload className="w-4 h-4" />
+                                      )}
+                                      {isUploadingCorrectSound ? 'Uploading...' : 'Upload'}
+                                  </button>
+                              </div>
+                              <input
+                                  ref={correctSoundInputRef}
+                                  type="file"
+                                  accept="audio/*"
+                                  onChange={handleUploadCorrectSound}
+                                  className="hidden"
+                              />
+                          </div>
+
+                          {/* Incorrect Answer Sound */}
+                          <div>
+                              <label className="block text-sm font-bold text-red-400 uppercase mb-2">
+                                  ✗ Incorrect Answer Sound
+                              </label>
+                              <select
+                                  value={currentIncorrectSound}
+                                  onChange={(e) => setSoundSettings({
+                                      ...soundSettings,
+                                      incorrectAnswerSound: e.target.value
+                                  })}
+                                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white font-medium outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20"
+                              >
+                                  {INCORRECT_SOUNDS.map(sound => (
+                                      <option key={sound.id} value={sound.url}>
+                                          {sound.name} - {sound.description}
+                                      </option>
+                                  ))}
+                                  {!INCORRECT_SOUNDS.find(s => s.url === currentIncorrectSound) && currentIncorrectSound && (
+                                      <option value={currentIncorrectSound}>Custom Upload</option>
+                                  )}
+                              </select>
+                              <div className="flex gap-3 mt-3">
+                                  <button
+                                      onClick={() => playSound(currentIncorrectSound, currentVolume)}
+                                      className="flex-1 px-4 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 text-red-400 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2"
+                                  >
+                                      <Play className="w-4 h-4" /> Preview
+                                  </button>
+                                  <button
+                                      onClick={() => incorrectSoundInputRef.current?.click()}
+                                      disabled={isUploadingIncorrectSound}
+                                      className="flex-1 px-4 py-3 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-600/50 text-purple-400 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                      {isUploadingIncorrectSound ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                          <Upload className="w-4 h-4" />
+                                      )}
+                                      {isUploadingIncorrectSound ? 'Uploading...' : 'Upload'}
+                                  </button>
+                              </div>
+                              <input
+                                  ref={incorrectSoundInputRef}
+                                  type="file"
+                                  accept="audio/*"
+                                  onChange={handleUploadIncorrectSound}
+                                  className="hidden"
+                              />
+                          </div>
+
+                          {/* Reset to Global Defaults */}
+                          {(soundSettings?.correctAnswerSound || soundSettings?.incorrectAnswerSound || soundSettings?.volume !== undefined) && (
+                              <div className="pt-4 border-t border-slate-700">
+                                  <button
+                                      onClick={() => setSoundSettings(undefined)}
+                                      className="w-full px-4 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-300 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2"
+                                  >
+                                      <Trash2 className="w-4 h-4" />
+                                      Reset to Global Defaults
+                                  </button>
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Info Card */}
+                      <div className="bg-purple-900/20 border border-purple-700/50 rounded-xl p-4">
+                          <div className="text-xs text-purple-300 leading-relaxed space-y-1">
+                              <p><strong>💡 How it works:</strong></p>
+                              <p>• <strong>Global Defaults:</strong> Set in System Tools (Admin) → applies to all games</p>
+                              <p>• <strong>Game Override:</strong> Configure game-specific sounds here to override defaults</p>
+                              <p>• <strong>Custom Upload:</strong> Upload your own MP3/WAV files or choose from common sounds</p>
+                              <p>• <strong>Auto-Play:</strong> Sounds play automatically when players answer tasks</p>
+                              <p>• <strong>Volume Control:</strong> Set volume to 80% on game load (recommended)</p>
+                          </div>
+                      </div>
+                  </div>
+              );
+          case 'ACCESS':
+              return (
+                  <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2">
+                      {/* Header */}
+                      <div className="bg-gradient-to-r from-blue-900/30 to-cyan-900/30 border border-blue-700/50 p-6 rounded-2xl">
+                          <div className="flex items-center gap-3 mb-2">
+                              <KeyRound className="w-6 h-6 text-blue-400" />
+                              <h3 className="text-xl font-black text-white uppercase">Game Access</h3>
+                          </div>
+                          <p className="text-sm text-slate-300">
+                              Configure how players access and join this game
+                          </p>
+                      </div>
+
+                      {/* GAMECODE Section */}
+                      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
+                          <div>
+                              <div className="flex items-center justify-between mb-3">
+                                  <label className="text-sm font-bold text-white uppercase">Game Access Code</label>
+                                  <span className="bg-slate-800 text-slate-400 px-2 py-1 rounded text-[9px] uppercase font-bold">Optional</span>
+                              </div>
+                              <input
+                                  type="text"
+                                  value={accessCode}
+                                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                                  placeholder="e.g., GAME2026"
+                                  maxLength={20}
+                                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-4 text-white text-lg font-bold uppercase tracking-widest outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 text-center"
+                              />
+                              <p className="text-xs text-slate-500 mt-2">
+                                  Players will enter this code on the access page to join the game (not case-sensitive)
+                              </p>
+                          </div>
+
+                          {/* QR Code Display */}
+                          {qrCodeDataUrl && (
+                              <div className="pt-6 border-t border-slate-800">
+                                  <div className="flex items-center justify-between mb-3">
+                                      <label className="text-sm font-bold text-white uppercase flex items-center gap-2">
+                                          <QrCode className="w-5 h-5 text-blue-400" />
+                                          Game QR Code
+                                      </label>
+                                  </div>
+                                  <div className="flex flex-col items-center gap-4 bg-white p-6 rounded-xl">
+                                      <img
+                                          src={qrCodeDataUrl}
+                                          alt="Game Access QR Code"
+                                          className="w-64 h-64"
+                                      />
+                                      <div className="text-center">
+                                          <p className="text-sm font-bold text-slate-900 mb-1">{accessCode}</p>
+                                          <p className="text-xs text-slate-600">Scan to join the game</p>
+                                      </div>
+                                  </div>
+                                  <button
+                                      onClick={() => {
+                                          const link = document.createElement('a');
+                                          link.download = `game-qr-${accessCode}.png`;
+                                          link.href = qrCodeDataUrl;
+                                          link.click();
+                                      }}
+                                      className="w-full mt-4 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm uppercase tracking-wide transition-colors flex items-center justify-center gap-2"
+                                  >
+                                      <Download className="w-4 h-4" />
+                                      Download QR Code
+                                  </button>
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Info Card */}
+                      <div className="bg-blue-900/20 border border-blue-700/50 rounded-xl p-4">
+                          <div className="text-xs text-blue-300 leading-relaxed space-y-1">
+                              <p><strong>💡 How it works:</strong></p>
+                              <p>• <strong>Access Code:</strong> Set a unique code for players to join your game</p>
+                              <p>• <strong>QR Code:</strong> Automatically generated when you set an access code</p>
+                              <p>• <strong>Player Entry:</strong> Players can scan the QR or enter the code on the access page</p>
+                              <p>• <strong>Case-Insensitive:</strong> Codes are not case-sensitive when players enter them</p>
+                              <p>• <strong>Access Link:</strong> Players access via [Your Domain]/access</p>
+                          </div>
+                      </div>
+                  </div>
+              );
+          case 'CLIENT':
+              const clientLink = baseGame?.id ? `${window.location.origin}/#/client/${baseGame.id}` : '';
+              const handleCopyClientLink = () => {
+                  if (clientLink) {
+                      navigator.clipboard.writeText(clientLink);
+                      setClientLinkCopied(true);
+                      setTimeout(() => setClientLinkCopied(false), 2000);
+                  }
+              };
+
+              return (
+                  <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2">
+                      {!baseGame?.id ? (
+                          <div className="bg-amber-900/20 border border-amber-600/30 rounded-xl p-6">
+                              <div className="flex gap-3">
+                                  <AlertTriangle className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
+                                  <div>
+                                      <h3 className="font-bold text-amber-200 mb-1">Game Not Saved Yet</h3>
+                                      <p className="text-sm text-amber-300/80">
+                                          Save the game first to generate a client access link.
+                                      </p>
+                                  </div>
+                              </div>
+                          </div>
+                      ) : (
+                          <>
+                              <div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border border-purple-500/30 rounded-xl p-6">
+                                  <div className="flex items-start gap-4 mb-4">
+                                      <div className="p-3 bg-purple-600 rounded-xl">
+                                          <Monitor className="w-6 h-6 text-white" />
+                                      </div>
+                                      <div className="flex-1">
+                                          <h3 className="text-lg font-black text-white uppercase tracking-wide mb-1">
+                                              Client Lobby Access
+                                          </h3>
+                                          <p className="text-sm text-purple-200">
+                                              Share this link with clients to view live rankings, stats, and media gallery
+                                          </p>
+                                      </div>
+                                  </div>
+
+                                  {/* Copyable Link */}
+                                  <div className="bg-black/30 rounded-xl p-4 border border-purple-500/20">
+                                      <label className="block text-xs font-bold text-purple-300 uppercase mb-2">
+                                          Shareable Link
+                                      </label>
+                                      <div className="flex gap-2">
+                                          <input
+                                              type="text"
+                                              readOnly
+                                              value={clientLink}
+                                              className="flex-1 px-4 py-2 bg-slate-900 border border-purple-500/50 rounded-lg text-white font-mono text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                                          />
+                                          <button
+                                              onClick={handleCopyClientLink}
+                                              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold transition-colors flex items-center gap-2 min-w-[100px] justify-center"
+                                          >
+                                              {clientLinkCopied ? (
+                                                  <>
+                                                      <Check className="w-4 h-4" />
+                                                      Copied!
+                                                  </>
+                                              ) : (
+                                                  <>
+                                                      <Copy className="w-4 h-4" />
+                                                      Copy
+                                                  </>
+                                              )}
+                                          </button>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* Quick Actions */}
+                              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                                  <h3 className="text-sm font-black text-white uppercase tracking-widest mb-4">
+                                      Quick Actions
+                                  </h3>
+                                  <div className="space-y-3">
+                                      <a
+                                          href={clientLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg font-bold transition-all text-center"
+                                      >
+                                          <div className="flex items-center justify-center gap-2">
+                                              <ExternalLink className="w-5 h-5" />
+                                              Open Client Lobby in New Tab
+                                          </div>
+                                      </a>
+
+                                      <a
+                                          href={`${clientLink}?tab=gallery`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="block w-full px-4 py-3 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white rounded-lg font-bold transition-all text-center"
+                                      >
+                                          <div className="flex items-center justify-center gap-2">
+                                              <ImageIcon className="w-5 h-5" />
+                                              Open Media Gallery
+                                          </div>
+                                      </a>
+
+                                      <p className="text-xs text-gray-400 text-center">
+                                          Use this to present rankings and media on stage or projectors
+                                      </p>
+                                  </div>
+                              </div>
+
+                              {/* Usage Info */}
+                              <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl p-5">
+                                  <h4 className="text-xs font-bold text-slate-400 uppercase mb-3">Client Lobby Features</h4>
+                                  <ul className="space-y-2 text-sm text-slate-300">
+                                      <li className="flex items-start gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0"></div>
+                                          <span><strong className="text-white">Live Rankings:</strong> Real-time team scores and podium</span>
+                                      </li>
+                                      <li className="flex items-start gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0"></div>
+                                          <span><strong className="text-white">Task Stats:</strong> Color-coded task completion status</span>
+                                      </li>
+                                      <li className="flex items-start gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-purple-500 mt-1.5 flex-shrink-0"></div>
+                                          <span><strong className="text-white">Media Gallery:</strong> All submitted photos and videos with presentation mode</span>
+                                      </li>
+                                  </ul>
+                              </div>
+                          </>
+                      )}
+                  </div>
+              );
           case 'SETTINGS':
               return (
                   <div className="space-y-6 max-w-2xl animate-in fade-in slide-in-from-bottom-2">
@@ -2374,6 +3020,28 @@ const GameCreator: React.FC<GameCreatorProps> = ({ onClose, onCreate, baseGame, 
                     </div>
                 </div>
             </div>
+        )}
+
+        {/* Gemini API Key Modal */}
+        <GeminiApiKeyModal
+            isOpen={showGeminiKeyModal}
+            onClose={() => setShowGeminiKeyModal(false)}
+            onSave={() => {
+                // Retry logo generation after API key is saved
+                handleGenerateAiLogo();
+            }}
+        />
+        {/* Color Scheme Editor Modal */}
+        {showColorSchemeEditor && (
+            <ColorSchemeEditor
+                initialScheme={defaultTaskColorScheme}
+                onSave={(scheme) => {
+                    setDefaultTaskColorScheme(scheme);
+                    setShowColorSchemeEditor(false);
+                }}
+                onClose={() => setShowColorSchemeEditor(false)}
+                title="Game Default Color Scheme"
+            />
         )}
     </div>
   );

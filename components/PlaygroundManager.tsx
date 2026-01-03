@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { PlaygroundTemplate } from '../types';
+import { PlaygroundTemplate, Game } from '../types';
 import * as db from '../services/db';
-import { X, Plus, Globe, Trash2, Edit2, LayoutGrid, Image as ImageIcon, Loader2, PlayCircle } from 'lucide-react';
+import { X, Plus, Globe, Trash2, Edit2, LayoutGrid, Image as ImageIcon, Loader2, PlayCircle, Copy, AlertTriangle, Check } from 'lucide-react';
 
 interface PlaygroundManagerProps {
   onClose: () => void;
@@ -13,6 +13,13 @@ interface PlaygroundManagerProps {
 const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, onCreate, onUseInGame }) => {
   const [templates, setTemplates] = useState<PlaygroundTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteWarningTemplate, setDeleteWarningTemplate] = useState<PlaygroundTemplate | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
+  const [showGameSelector, setShowGameSelector] = useState(false);
+  const [selectedTemplateForGame, setSelectedTemplateForGame] = useState<PlaygroundTemplate | null>(null);
+  const [gamesLoading, setGamesLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'TODAY' | 'PLANNED' | 'COMPLETED'>('TODAY');
 
   useEffect(() => {
     loadTemplates();
@@ -25,14 +32,121 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
     setLoading(false);
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (template: PlaygroundTemplate, e: React.MouseEvent) => {
       e.stopPropagation();
       e.preventDefault();
-      
-      if (confirm('Are you sure you want to delete this global playzone template?')) {
-          await db.deletePlaygroundTemplate(id);
-          setTemplates(prev => prev.filter(t => t.id !== id));
+      setDeleteWarningTemplate(template);
+  };
+
+  const confirmDelete = async () => {
+      if (!deleteWarningTemplate) return;
+
+      try {
+          await db.deletePlaygroundTemplate(deleteWarningTemplate.id);
+          setTemplates(prev => prev.filter(t => t.id !== deleteWarningTemplate.id));
+          setDeleteWarningTemplate(null);
+      } catch (error) {
+          console.error('Error deleting template:', error);
+          alert('Failed to delete template');
       }
+  };
+
+  const handleCopy = async (template: PlaygroundTemplate, e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      try {
+          const newTemplate: PlaygroundTemplate = {
+              ...template,
+              id: `tpl-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              title: `${template.title} (Copy)`,
+              createdAt: Date.now(),
+          };
+
+          await db.savePlaygroundTemplate(newTemplate);
+          setTemplates(prev => [newTemplate, ...prev]);
+
+          // Show copy feedback
+          setCopiedId(template.id);
+          setTimeout(() => setCopiedId(null), 2000);
+      } catch (error) {
+          console.error('Error copying template:', error);
+          alert('Failed to copy template');
+      }
+  };
+
+  const handleAddToGame = async (template: PlaygroundTemplate, e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      setSelectedTemplateForGame(template);
+      setGamesLoading(true);
+
+      try {
+          const gamesList = await db.fetchGames();
+          setGames(gamesList.filter(g => !g.isGameTemplate));
+          setShowGameSelector(true);
+      } catch (error) {
+          console.error('Error loading games:', error);
+          alert('Failed to load games');
+      } finally {
+          setGamesLoading(false);
+      }
+  };
+
+  const confirmAddToGame = async (game: Game) => {
+      if (!selectedTemplateForGame) return;
+
+      try {
+          const newPlayground = {
+              id: `pg-${Date.now()}`,
+              ...selectedTemplateForGame.playgroundData,
+              title: selectedTemplateForGame.title,
+              buttonVisible: true
+          };
+
+          const updatedGame = {
+              ...game,
+              playgrounds: [...(game.playgrounds || []), newPlayground]
+          };
+
+          await db.saveGame(updatedGame);
+
+          setShowGameSelector(false);
+          setSelectedTemplateForGame(null);
+          alert(`Playzone "${selectedTemplateForGame.title}" added to "${game.name}"!`);
+      } catch (error) {
+          console.error('Error adding playzone to game:', error);
+          alert('Failed to add playzone to game');
+      }
+  };
+
+  // Helper functions for categorizing games
+  const getTodayGames = () => {
+      return games.filter(g => {
+          const gameDate = new Date(g.createdAt);
+          const now = new Date();
+          return gameDate.toDateString() === now.toDateString() || g.state === 'active';
+      });
+  };
+
+  const getPlannedGames = () => {
+      return games.filter(g => {
+          const gameDate = new Date(g.createdAt);
+          const now = new Date();
+          return gameDate.toDateString() !== now.toDateString() && gameDate > now && g.state !== 'active' && g.state !== 'ended';
+      });
+  };
+
+  const getCompletedGames = () => {
+      return games.filter(g => g.state === 'ended');
+  };
+
+  const getActiveTabGames = () => {
+      if (activeTab === 'TODAY') return getTodayGames();
+      if (activeTab === 'PLANNED') return getPlannedGames();
+      if (activeTab === 'COMPLETED') return getCompletedGames();
+      return [];
   };
 
   return (
@@ -100,13 +214,33 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
                                         <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border border-white/10 shadow-md">
                                             {tpl.tasks.length} TASKS
                                         </div>
-                                        <button 
-                                            onClick={(e) => handleDelete(tpl.id, e)}
-                                            className="absolute top-3 right-3 p-2 bg-red-600 text-white rounded-lg transition-all border border-white/10 hover:scale-110 hover:bg-red-700 z-50 shadow-lg cursor-pointer flex items-center justify-center"
-                                            title="Delete Template"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="absolute top-3 right-3 flex gap-2">
+                                            <button
+                                                onClick={(e) => handleCopy(tpl, e)}
+                                                className={`p-2 rounded-lg transition-all border border-white/10 hover:scale-110 z-50 shadow-lg cursor-pointer flex items-center justify-center ${
+                                                    copiedId === tpl.id
+                                                        ? 'bg-green-600 text-white'
+                                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                }`}
+                                                title="Copy Template"
+                                            >
+                                                {copiedId === tpl.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleAddToGame(tpl, e)}
+                                                className="p-2 bg-purple-600 text-white rounded-lg transition-all border border-white/10 hover:scale-110 hover:bg-purple-700 z-50 shadow-lg cursor-pointer flex items-center justify-center"
+                                                title="Add to Game"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDelete(tpl, e)}
+                                                className="p-2 bg-red-600 text-white rounded-lg transition-all border border-white/10 hover:scale-110 hover:bg-red-700 z-50 shadow-lg cursor-pointer flex items-center justify-center"
+                                                title="Delete Template"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="p-5 flex-1 flex flex-col justify-end">
                                         <h3 className="text-lg font-black text-white uppercase tracking-tight leading-tight mb-1 truncate group-hover:text-indigo-400 transition-colors">{tpl.title}</h3>
@@ -136,6 +270,164 @@ const PlaygroundManager: React.FC<PlaygroundManagerProps> = ({ onClose, onEdit, 
                 )}
             </div>
         </div>
+
+        {/* GAME SELECTOR MODAL */}
+        {showGameSelector && selectedTemplateForGame && (
+            <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-in fade-in">
+                <div className="bg-slate-900 border-2 border-purple-600 rounded-2xl shadow-2xl p-8 max-w-3xl w-full max-h-[85vh] overflow-y-auto animate-in zoom-in-95 flex flex-col">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-12 h-12 bg-purple-600/20 border border-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Plus className="w-6 h-6 text-purple-500" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-black text-white uppercase tracking-tight">ADD TO GAME</h2>
+                            <p className="text-xs text-slate-400 mt-0.5">Select which game to add "{selectedTemplateForGame.title}"</p>
+                        </div>
+                    </div>
+
+                    {/* TAB BAR */}
+                    <div className="flex gap-3 mb-6 border-b border-slate-800">
+                        <button
+                            onClick={() => setActiveTab('TODAY')}
+                            className={`px-6 py-3 font-black uppercase text-xs tracking-widest border-b-2 transition-all ${
+                                activeTab === 'TODAY'
+                                    ? 'border-purple-500 text-purple-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            TODAY
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('PLANNED')}
+                            className={`px-6 py-3 font-black uppercase text-xs tracking-widest border-b-2 transition-all ${
+                                activeTab === 'PLANNED'
+                                    ? 'border-blue-500 text-blue-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            PLANNED
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('COMPLETED')}
+                            className={`px-6 py-3 font-black uppercase text-xs tracking-widest border-b-2 transition-all ${
+                                activeTab === 'COMPLETED'
+                                    ? 'border-green-500 text-green-400'
+                                    : 'border-transparent text-slate-400 hover:text-slate-300'
+                            }`}
+                        >
+                            COMPLETED
+                        </button>
+                    </div>
+
+                    {/* CONTENT */}
+                    <div className="flex-1 mb-6">
+                        {gamesLoading ? (
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-3" />
+                                <span className="text-xs font-bold text-slate-400 uppercase">LOADING GAMES...</span>
+                            </div>
+                        ) : games.length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-sm text-slate-400">No games available. Create a game first.</p>
+                            </div>
+                        ) : getActiveTabGames().length === 0 ? (
+                            <div className="text-center py-8">
+                                <p className="text-sm text-slate-400">
+                                    No {activeTab.toLowerCase()} games available.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {getActiveTabGames().map(game => {
+                                    const tabColorMap = {
+                                        'TODAY': { bg: 'bg-purple-900/30', hover: 'hover:bg-purple-900/50', border: 'border-purple-600/50 hover:border-purple-500', text: 'group-hover:text-purple-300', shadow: 'hover:shadow-purple-500/20' },
+                                        'PLANNED': { bg: 'bg-blue-900/30', hover: 'hover:bg-blue-900/50', border: 'border-blue-600/50 hover:border-blue-500', text: 'group-hover:text-blue-300', shadow: 'hover:shadow-blue-500/20' },
+                                        'COMPLETED': { bg: 'bg-green-900/30', hover: 'hover:bg-green-900/50', border: 'border-green-600/50 hover:border-green-500', text: 'group-hover:text-green-300', shadow: 'hover:shadow-green-500/20' }
+                                    };
+                                    const colors = tabColorMap[activeTab];
+
+                                    return (
+                                        <button
+                                            key={game.id}
+                                            onClick={() => confirmAddToGame(game)}
+                                            className={`text-left p-4 ${colors.bg} ${colors.hover} border ${colors.border} rounded-lg transition-all hover:shadow-lg ${colors.shadow} group`}
+                                        >
+                                            <h3 className={`font-bold text-white uppercase text-sm mb-1 ${colors.text} transition-colors`}>{game.name}</h3>
+                                            <p className="text-xs text-slate-400 mb-2">{game.points?.length || 0} tasks • {game.playgrounds?.length || 0} zones</p>
+                                            <p className="text-xs text-slate-500">
+                                                {game.client?.name ? `By ${game.client.name}` : 'No client assigned'}
+                                            </p>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            setShowGameSelector(false);
+                            setSelectedTemplateForGame(null);
+                            setActiveTab('TODAY');
+                        }}
+                        className="w-full py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors"
+                    >
+                        CANCEL
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {/* DELETE WARNING MODAL */}
+        {deleteWarningTemplate && (
+            <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto animate-in fade-in">
+                <div className="bg-slate-900 border-2 border-red-600 rounded-2xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 bg-red-600/20 border border-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="w-6 h-6 text-red-500" />
+                        </div>
+                        <h2 className="text-xl font-black text-white uppercase tracking-tight">DELETE TEMPLATE?</h2>
+                    </div>
+
+                    <div className="space-y-3 mb-6">
+                        <p className="text-sm text-slate-300">
+                            You are about to <span className="font-bold text-red-400">permanently delete</span> the playzone template:
+                        </p>
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3">
+                            <p className="font-bold text-white text-sm uppercase tracking-wide">{deleteWarningTemplate.title}</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                                {deleteWarningTemplate.tasks.length} tasks • Created {new Date(deleteWarningTemplate.createdAt).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <div className="bg-red-600/10 border border-red-600/30 rounded-lg p-3">
+                            <p className="text-xs font-bold text-red-300 uppercase tracking-wide flex items-center gap-2 mb-2">
+                                <AlertTriangle className="w-4 h-4" /> WARNING
+                            </p>
+                            <ul className="text-xs text-red-200/80 space-y-1">
+                                <li>• This action cannot be undone</li>
+                                <li>• All games using this template will retain their copies</li>
+                                <li>• The template will be removed from the library</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => setDeleteWarningTemplate(null)}
+                            className="py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors"
+                        >
+                            CANCEL
+                        </button>
+                        <button
+                            onClick={confirmDelete}
+                            className="py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg uppercase tracking-widest text-sm transition-colors shadow-lg shadow-red-600/50 active:scale-95"
+                        >
+                            DELETE PERMANENTLY
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import AccountUsers from './AccountUsers';
 import AccountTags from './AccountTags';
 import * as db from '../services/db';
 import { formatDateShort } from '../utils/date';
+import { getGameDisplayId } from '../utils/gameIdUtils';
 import {
   LayoutDashboard, Gamepad2, LayoutTemplate, ListChecks,
   ExternalLink, Plus, ChevronRight, Settings, Clock, Star,
@@ -21,8 +22,8 @@ interface DashboardProps {
   onSelectGame?: (id: string) => void; // New prop
   userName: string;
   initialTab?: 'dashboard' | 'games' | 'templates' | 'tasks' | 'users' | 'tags' | 'client';
-  onDeleteTagGlobally?: (tagName: string) => Promise<void>;
-  onRenameTagGlobally?: (oldTag: string, newTag: string) => Promise<void>;
+  onDeleteTagGlobally?: (tagName: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
+  onRenameTagGlobally?: (oldTag: string, newTag: string, onProgress?: (progress: number, label: string) => void) => Promise<void>;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [], onBack, onAction, onSelectGame, userName, initialTab = 'dashboard', onDeleteTagGlobally, onRenameTagGlobally }) => {
@@ -286,7 +287,7 @@ const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [
           {recentGames.length > 0 ? recentGames.map(game => (
             <div key={game.id} className="p-6 hover:bg-white/[0.05] transition-colors flex items-center justify-between group cursor-pointer" onClick={() => handleGameClick(game.id)}>
               <div>
-                <h4 className="font-black text-sm uppercase tracking-wide group-hover:text-[#00adef] transition-colors">{game.name}</h4>
+                <h4 className="font-black text-sm uppercase tracking-wide group-hover:text-[#00adef] transition-colors"><span className="text-orange-500">[{getGameDisplayId(game.id)}]</span> {game.name}</h4>
                 <p className="text-[10px] text-gray-600 font-mono mt-1 uppercase">{game.id}</p>
               </div>
               <button className="p-2 text-gray-500 hover:text-white"><ExternalLink className="w-4 h-4" /></button>
@@ -392,7 +393,7 @@ const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [
               <div className="flex items-center justify-center"><div className="w-4 h-4 border border-white/10 rounded hover:border-blue-500 cursor-pointer"></div></div>
               
               <div className="min-w-0 pr-4">
-                <h4 className="text-sm font-black text-white uppercase tracking-wide truncate group-hover:text-[#00adef] transition-colors">{game.name}</h4>
+                <h4 className="text-sm font-black text-white uppercase tracking-wide truncate group-hover:text-[#00adef] transition-colors"><span className="text-orange-500">[{getGameDisplayId(game.id)}]</span> {game.name}</h4>
                 <div className="flex items-center gap-1 mt-1 text-gray-500">
                   <div className="w-4 h-4 bg-red-600 rounded-full flex items-center justify-center"><Gamepad2 className="w-2.5 h-2.5 text-white" /></div>
                   <span className="text-[10px] font-bold uppercase tracking-widest">Creator</span>
@@ -484,7 +485,7 @@ const Dashboard: React.FC<DashboardProps> = ({ games, taskLists, taskLibrary = [
                               <BarChart2 className="w-6 h-6 text-orange-500" /> GAME STATISTICS
                           </h3>
                           <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">
-                              SESSION: {gamesArr.find(g => g.id === statsGameId)?.name || 'UNKNOWN'}
+                              SESSION: <span className="text-orange-400">[{statsGameId && gamesArr.find(g => g.id === statsGameId) ? getGameDisplayId(statsGameId) : '???'}]</span> {gamesArr.find(g => g.id === statsGameId)?.name || 'UNKNOWN'}
                           </p>
                       </div>
                       <button onClick={() => setShowStatsModal(false)} className="p-2 hover:bg-white/10 rounded-full text-gray-500 hover:text-white">

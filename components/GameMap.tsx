@@ -6,6 +6,8 @@ import { getLeafletIcon } from '../utils/icons';
 import { Trash2, Crosshair, EyeOff, Image as ImageIcon, CheckCircle, HelpCircle, Zap, AlertTriangle, Lock, Users, Trophy, MessageSquare, MapPin } from 'lucide-react';
 import { useLocation } from '../contexts/LocationContext';
 import { isValidCoordinate } from '../utils/geo';
+import TeamHistoryOverlay from './TeamHistoryOverlay';
+import { isTaskVisibleByProximity } from '../utils/proximityTriggers';
 
 const UserIcon = L.divIcon({
   className: 'custom-user-icon',
@@ -70,6 +72,7 @@ export interface GameMapHandle {
 interface GameMapProps {
   userLocation?: Coordinate | null; // Keep optional prop for manual overrides (Editor)
   points: GamePoint[];
+  currentTeam?: Team | null; // Current team for proximity filtering
   teams?: { team: Team, location: Coordinate, status?: TeamStatus, stats?: any }[];
   teamTrails?: Record<string, Coordinate[]>;
   pointLabels?: Record<string, string>;
@@ -93,6 +96,7 @@ interface GameMapProps {
   relocateScopeCenter?: Coordinate | null; // Center point when relocating all tasks
   relocateAllTaskIds?: string[]; // Task IDs selected for relocation
   onPointClick: (point: GamePoint) => void;
+  onAreaColorClick?: (point: GamePoint) => void; // NEW: Click on area color circle to open task view
   onPointHoverPreview?: (point: GamePoint | null) => void; // NEW: For hover preview
   onTeamClick?: (teamId: string) => void;
   onMapClick?: (coord: Coordinate) => void;
@@ -111,6 +115,15 @@ interface GameMapProps {
   gameEnded?: boolean; // New prop
   returnPath?: Coordinate[]; // New prop for return line
   showUserLocation?: boolean; // New prop for user location visibility
+  teamHistory?: import('../types/teamHistory').TeamHistory[]; // NEW: Team movement history
+  showTeamPaths?: boolean; // NEW: Toggle for team path visibility
+  gameStartTime?: number; // Timestamp when game/team started for relative time display
+  fogOfWarEnabled?: boolean; // NEW: Fog of War mode
+  selectedTeamId?: string | null; // NEW: Team ID for fog of war perspective
+  selectedTeamCompletedPointIds?: string[]; // NEW: Completed points for selected team
+  showZoneLayer?: boolean; // NEW: Toggle danger zones visibility
+  showTaskLayer?: boolean; // NEW: Toggle task pins visibility
+  showLiveLayer?: boolean; // NEW: Toggle live team positions visibility
 }
 
 // Internal component to handle user location updates without re-rendering the whole map
@@ -226,16 +239,17 @@ const MAP_LAYERS: Record<string, { url: string; attribution: string, className?:
   osm: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors' },
   satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: '&copy; Esri' },
   dark: { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CartoDB' },
-  ancient: { url: 'https://stamen-tiles-{s}.a.ssl.fastly.net/watercolor/{z}/{x}/{y}.jpg', attribution: '&copy; Stamen Design' },
   clean: { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', attribution: '&copy; CartoDB' },
   // Updated: Winter now uses OSM with a cold CSS filter for reliability
   winter: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap contributors', className: 'map-filter-winter' },
   // Updated: Ski uses OpenSkiMap but falls back gracefully if down
   ski: { url: 'https://tiles.openskimap.org/map/{z}/{x}/{y}.png', attribution: '&copy; OpenSkiMap' },
-  // Norwegian: Nordic cross-country ski trails from OpenSkiMap with enhanced saturation
-  norwegian: { url: 'https://tiles.openskimap.org/map/{z}/{x}/{y}.png', attribution: '&copy; OpenSkiMap, OpenStreetMap contributors, Norwegian Mapping Authority', className: 'map-filter-nordic' },
   // Historic: Using OSM as base but we will apply CSS sepia filter in component
   historic: { url: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', className: 'map-filter-historic' },
+  // Treasure: Ancient treasure map style with strong sepia and vintage look
+  treasure: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', className: 'map-filter-treasure' },
+  // Desert: Warm sandy desert tones
+  desert: { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', attribution: '&copy; OpenStreetMap', className: 'map-filter-desert' },
   // Google Custom placeholder - uses dark by default but allows saving custom JSON
   google_custom: { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', attribution: '&copy; CartoDB' }
 };
@@ -268,6 +282,30 @@ const MapLayers: React.FC<{ mapStyle: string }> = React.memo(({ mapStyle }) => {
           </>
       )}
 
+      {/* Treasure Filter CSS Injection */}
+      {mapStyle === 'treasure' && (
+          <>
+            <style>{`
+                .map-filter-treasure {
+                    filter: sepia(0.9) contrast(1.1) brightness(0.95) hue-rotate(30deg) !important;
+                }
+            `}</style>
+            {/* Parchment Texture Overlay */}
+            <div className="absolute inset-0 z-[5] pointer-events-none opacity-25 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/old-map.png')]"></div>
+          </>
+      )}
+
+      {/* Desert Filter CSS Injection */}
+      {mapStyle === 'desert' && (
+          <>
+            <style>{`
+                .map-filter-desert {
+                    filter: saturate(1.5) hue-rotate(15deg) brightness(1.1) contrast(1.05) !important;
+                }
+            `}</style>
+          </>
+      )}
+
       {/* Winter Filter CSS Injection */}
       {mapStyle === 'winter' && (
           <style>{`
@@ -290,7 +328,7 @@ const MapLayers: React.FC<{ mapStyle: string }> = React.memo(({ mapStyle }) => {
 });
 
 // Task Marker Component
-const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSelected, isSnapSelected, isHovered, isMeasuring, isRelocating, snapToRoadMode, onClick, onMove, onDelete, onDragStart, onDragEnd, onHover }: any) => {
+const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSelected, isSnapSelected, isHovered, isMeasuring, isRelocating, snapToRoadMode, onClick, onAreaColorClick, onMove, onDelete, onDragStart, onDragEnd, onHover }: any) => {
     const isUnlocked = point.isUnlocked || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
     const isCompleted = point.isCompleted;
 
@@ -420,6 +458,14 @@ const MapTaskMarker = React.memo(({ point, mode, label, showScore, isRelocateSel
                     }}
                     interactive={true}
                     eventHandlers={{
+                        click: (e: any) => {
+                            e.originalEvent?.stopPropagation();
+                            if (onAreaColorClick) {
+                                onAreaColorClick(point);
+                            } else {
+                                onClick(point);
+                            }
+                        },
                         mouseover: () => {
                             if (onHover) onHover(point);
                         },
@@ -557,6 +603,7 @@ const DangerZoneMarker = React.memo(({ zone, onClick, onMove, mode, isHovered }:
 const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     userLocation: propLocation,
     points = [],
+    currentTeam = null,
     teams = [],
     teamTrails = {},
     pointLabels = {},
@@ -596,20 +643,48 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
     hoveredDangerZoneId,
     gameEnded = false, // Destructure new prop
     returnPath,
-    showUserLocation = true // Default true
+    showUserLocation = true, // Default true
+    teamHistory = [], // Team movement history data
+    showTeamPaths = false, // Toggle for team path visibility
+    gameStartTime, // Timestamp when game/team started
+    fogOfWarEnabled = false, // Fog of War mode
+    selectedTeamId = null, // Team ID for fog of war
+    selectedTeamCompletedPointIds = [], // Completed points for selected team
+    showZoneLayer = true, // Toggle danger zones visibility
+    showTaskLayer = true, // Toggle task pins visibility
+    showLiveLayer = true // Toggle live team positions visibility
 }, ref) => {
-  // NOTE: We do NOT consume useLocation() here directly to avoid re-rendering the entire MapContainer.
-  // Instead, we use the UserLocationMarker child component for the live dot.
-  // propLocation is used for "Center" logic only initially or if provided (instructor mode).
-  
+  // Get user location from context for proximity filtering
+  const { userLocation: ctxLocation } = useLocation();
+  const activeUserLocation = propLocation || ctxLocation;
+
   const center = propLocation || { lat: 55.6761, lng: 12.5683 };
   const [highlightedRouteId, setHighlightedRouteId] = useState<string | null>(null);
   const [draggingPointId, setDraggingPointId] = useState<string | null>(null);
   const [isOverTrash, setIsOverTrash] = useState(false);
 
-  // Filter logic for Game Ended state
+  // Filter logic for Fog of War, Game Ended state, and Proximity Triggers
   const mapPoints = points.filter(p => {
       if (p.isSectionHeader || p.playgroundId) return false;
+
+      // PROXIMITY TRIGGERS: Check if task should be visible based on distance
+      if (mode === GameMode.PLAY) {
+          const isVisibleByProximity = isTaskVisibleByProximity(p, activeUserLocation, currentTeam, mode.toString());
+          if (!isVisibleByProximity) {
+              return false;
+          }
+      }
+
+      // FOG OF WAR MODE: Show only what the selected team can see
+      if (fogOfWarEnabled && selectedTeamId) {
+          // In fog of war, only show points that are visible to this team:
+          // 1. Points that are unlocked (isUnlocked = true), OR
+          // 2. Points that have been completed by this team
+          const isCompletedByTeam = selectedTeamCompletedPointIds.includes(p.id);
+          const isVisible = p.isUnlocked || isCompletedByTeam;
+
+          if (!isVisible) return false;
+      }
 
       // If game ended, only show Info points (points == 0) or if explicitly flagged (if we add 'isInfo' later)
       // Assuming 0 points means 'Info'
@@ -765,8 +840,8 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 <Polyline positions={measurePath} pathOptions={{ color: '#f97316', dashArray: '10, 10', weight: 4 }} />
             )}
 
-            {/* Danger Zones */}
-            {dangerZones.map(zone => (
+            {/* Danger Zones - Toggle with Layer Control */}
+            {showZoneLayer && dangerZones.map(zone => (
                 <DangerZoneMarker
                     key={zone.id}
                     zone={zone}
@@ -847,8 +922,8 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 </>
             )}
 
-            {/* Tasks */}
-            {mapPoints.map(point => (
+            {/* Tasks - Toggle with Layer Control */}
+            {showTaskLayer && mapPoints.map(point => (
                 <MapTaskMarker
                     key={point.id}
                     point={point}
@@ -862,6 +937,7 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                     isRelocating={isRelocating}
                     snapToRoadMode={snapToRoadMode}
                     onClick={onPointClick}
+                    onAreaColorClick={onAreaColorClick}
                     onMove={onPointMove}
                     onDelete={onDeletePoint}
                     onHover={onPointHover}
@@ -914,8 +990,8 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
                 />
             ))}
 
-            {/* Teams (Instructor Mode OR Captain View of Teammates) */}
-            {teams && teams.map((t) => {
+            {/* Teams (Instructor Mode OR Captain View of Teammates) - Toggle with Layer Control */}
+            {showLiveLayer && teams && teams.map((t) => {
                 // If it's a "teammate" view (GameMode.PLAY for captain), use simpler icon
                 if (mode === GameMode.PLAY && t.team.id === 'teammates') {
                     return (
@@ -955,12 +1031,21 @@ const GameMap = React.memo(forwardRef<GameMapHandle, GameMapProps>(({
 
             {/* Team Trails */}
             {Object.keys(teamTrails).map(teamId => (
-                <Polyline 
-                    key={teamId} 
-                    positions={teamTrails[teamId]} 
-                    pathOptions={{ color: getTeamColor(teamId), weight: 3, opacity: 0.5, dashArray: '2, 8' }} 
+                <Polyline
+                    key={teamId}
+                    positions={teamTrails[teamId]}
+                    pathOptions={{ color: getTeamColor(teamId), weight: 3, opacity: 0.5, dashArray: '2, 8' }}
                 />
             ))}
+
+            {/* Team History Overlay - Historical movement paths and task attempts */}
+            {teamHistory && teamHistory.length > 0 && (
+                <TeamHistoryOverlay
+                    teams={teamHistory}
+                    visible={showTeamPaths || false}
+                    gameStartTime={gameStartTime}
+                />
+            )}
 
         </MapContainer>
 

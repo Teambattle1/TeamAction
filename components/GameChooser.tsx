@@ -21,12 +21,12 @@ const MAP_LABELS: Record<MapStyleId, string> = {
     osm: 'Standard',
     satellite: 'Satellite',
     dark: 'Dark Mode',
-    ancient: 'Ancient',
     clean: 'Clean',
     winter: 'Winter',
     ski: 'Ski Map',
-    norwegian: 'Norwegian',
     historic: 'Historic',
+    treasure: 'Treasure',
+    desert: 'Desert',
     google_custom: 'Google Custom',
     none: 'No Map'
 };

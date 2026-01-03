@@ -1,3 +1,6 @@
+// Global version variable injected at build time by Vite
+declare const __APP_VERSION__: string;
+
 export interface Coordinate {
   lat: number;
   lng: number;
@@ -5,9 +8,11 @@ export interface Coordinate {
 
 export type IconId = 'default' | 'star' | 'flag' | 'trophy' | 'camera' | 'question' | 'skull' | 'treasure' | 'music' | 'nature' | 'world';
 
-export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown' | 'timeline';
+export type DeviceType = 'mobile' | 'tablet' | 'desktop';
 
-export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'ancient' | 'clean' | 'winter' | 'ski' | 'norwegian' | 'historic' | 'google_custom' | 'none';
+export type TaskType = 'text' | 'multiple_choice' | 'checkbox' | 'boolean' | 'slider' | 'dropdown' | 'multi_select_dropdown' | 'timeline' | 'photo' | 'video';
+
+export type MapStyleId = 'osm' | 'satellite' | 'dark' | 'clean' | 'winter' | 'ski' | 'historic' | 'treasure' | 'desert' | 'google_custom' | 'none';
 
 export type Language = 'English' | 'Danish' | 'German' | 'Spanish' | 'French' | 'Swedish' | 'Norwegian' | 'Dutch' | 'Belgian' | 'Hebrew';
 
@@ -88,15 +93,15 @@ export interface TimelineItem {
 export interface GameTask {
   question: string;
   type: TaskType;
-  
+
   // Media
-  imageUrl?: string; 
+  imageUrl?: string;
   videoUrl?: string;
   audioUrl?: string;
   backgroundAudioUrl?: string;
-  
+
   // Answers
-  answer?: string; 
+  answer?: string;
   correctAnswers?: string[];
   options?: string[];
   placeholder?: string;
@@ -107,11 +112,46 @@ export interface GameTask {
     max: number;
     step: number;
     correctValue: number;
-    tolerance?: number; 
+    tolerance?: number;
   };
 
   // Timeline
   timelineItems?: TimelineItem[];
+
+  // Media Task Settings (for PHOTO/VIDEO tasks)
+  mediaSettings?: {
+    requireApproval: boolean; // true = manual approval, false = auto-approve
+    allowMultipleSubmissions?: boolean; // Allow teams to submit multiple times
+    maxFileSize?: number; // Max file size in MB (default: 10MB for photos, 50MB for videos)
+    partialScoreEnabled?: boolean; // Allow partial scores (slider from 0-100%)
+  };
+
+  // Translations
+  translations?: Record<Language, TaskTranslation>;
+}
+
+// Translation Entry for Multilingual Tasks
+export interface TaskTranslation {
+  question: string;
+  questionApproved?: boolean; // AI-generated translations default to false
+  options?: string[];
+  optionsApproved?: boolean;
+  answer?: string;
+  answerApproved?: boolean;
+  correctAnswers?: string[];
+  correctAnswersApproved?: boolean;
+  placeholder?: string;
+  placeholderApproved?: boolean;
+  timelineItems?: TimelineItem[];
+  timelineItemsApproved?: boolean;
+  feedback?: {
+    correctMessage: string;
+    correctMessageApproved?: boolean;
+    incorrectMessage: string;
+    incorrectMessageApproved?: boolean;
+    hint: string;
+    hintApproved?: boolean;
+  };
 }
 
 export interface TaskFeedback {
@@ -129,6 +169,24 @@ export interface TaskSettings {
   language: string;
   showAnswerStatus: boolean;
   showCorrectAnswerOnMiss: boolean;
+  maxAttempts?: number; // Number of attempts allowed (default 1, 0 = unlimited)
+  matchTolerance?: number; // Similarity threshold for text answers (0-100, default 80)
+}
+
+// Color Scheme for Task Visual Design
+export interface TaskColorScheme {
+  id?: string; // Optional ID for saving/loading schemes
+  name?: string; // Optional name for the scheme
+  backgroundColor: string; // Main task background
+  headerColor: string; // Task header/title area
+  questionColor: string; // Question text color
+  optionBackgroundColor: string; // Answer option background
+  optionTextColor: string; // Answer option text
+  correctColor: string; // Correct answer highlight
+  incorrectColor: string; // Incorrect answer highlight
+  buttonColor: string; // Submit/action buttons
+  buttonTextColor: string; // Button text
+  borderColor: string; // Borders and dividers
 }
 
 export type PointActivationType = 'radius' | 'nfc' | 'qr' | 'click' | 'ibeacon';
@@ -140,13 +198,15 @@ export type PointCompletionLogic =
   | 'allow_close';
 
 // --- LOGIC SYSTEM ---
-export type ActionType = 'unlock' | 'lock' | 'score' | 'message' | 'sound' | 'reveal' | 'double_trouble' | 'open_playground';
+export type ActionType = 'unlock' | 'lock' | 'score' | 'message' | 'sound' | 'reveal' | 'double_trouble' | 'open_playground' | 'cooldown';
 
 export interface GameAction {
   id: string;
   type: ActionType;
   targetId?: string;
   value?: string | number;
+  // Cooldown-specific settings
+  cooldownSeconds?: number; // Duration in seconds for cooldown action
 }
 
 export interface TaskLogic {
@@ -156,32 +216,78 @@ export interface TaskLogic {
 }
 // --------------------
 
+// Device-specific layout configuration for playgrounds
+export interface DeviceLayout {
+  orientationLock: 'portrait' | 'landscape' | 'none';
+  qrScannerPos?: { x: number; y: number }; // SCAN QR button position
+  qrScannerSize?: { width: number; height: number }; // SCAN QR button size
+  qrScannerColor?: string; // SCAN QR button background color (hex)
+  iconPositions?: Record<string, { x: number; y: number }>; // Per-icon positions by point ID
+  buttonVisible?: boolean; // Device-specific button visibility
+  buttonLabel?: string; // Device-specific label
+  iconScale?: number; // Device-specific icon scale (1.0 = 100%)
+}
+
 export interface Playground {
   id: string;
   title: string;
   imageUrl?: string;
-  backgroundStyle?: 'cover' | 'contain' | 'stretch'; 
-  buttonVisible: boolean; 
+  backgroundStyle?: 'cover' | 'contain' | 'stretch';
+  buttonVisible: boolean;
   buttonLabel?: string;
   iconId?: IconId;
-  iconUrl?: string; 
-  buttonSize?: number; 
-  orientationLock?: 'portrait' | 'landscape' | 'none'; 
-  location?: Coordinate; 
-  showLabels?: boolean; 
+  iconUrl?: string;
+  buttonSize?: number;
+  orientationLock?: 'portrait' | 'landscape' | 'none';
+  location?: Coordinate;
+  showLabels?: boolean;
   // Audio Support
   audioUrl?: string;
   audioLoop?: boolean; // true = continuous, false = once
+
+  // Task visibility settings (SHOW IN GAME)
+  showTaskScores?: boolean;
+  showTaskOrder?: boolean;
+  showTaskActions?: boolean;
+  showTaskNames?: boolean;
+  showTaskStatus?: boolean;
+  showBackground?: boolean;
+  showQRScanner?: boolean;
+
+  // Device-specific layouts (for multi-device support)
+  deviceLayouts?: Record<DeviceType, DeviceLayout>;
 }
 
 export interface DangerZone {
   id: string;
   location: Coordinate;
   radius: number;
-  penalty: number; 
+  penalty: number;
   duration: number; // Escape time (seconds)
   title?: string;
   penaltyType?: 'fixed' | 'time_based'; // Fixed = Escape timer, Time Based = Per second
+}
+
+// Shrinking Zone (Battle Royale Mechanic)
+export interface ShrinkingZone {
+  id: string;
+  currentCenter: Coordinate; // Current center of the safe zone
+  currentRadius: number; // Current radius in meters
+  targetCenter?: Coordinate; // Next center (for zone movement)
+  targetRadius?: number; // Next radius (for shrinking)
+  shrinkStartTime?: number; // When the shrink phase started
+  shrinkDuration?: number; // How long the shrink takes (seconds)
+  damagePerSecond: number; // Damage/penalty applied per second outside zone
+  phases: ShrinkingZonePhase[]; // Predefined shrink phases
+  currentPhase: number; // Index of current phase
+}
+
+export interface ShrinkingZonePhase {
+  radius: number; // Target radius for this phase
+  center?: Coordinate; // Optional new center
+  shrinkDuration: number; // How long to shrink to this radius (seconds)
+  waitDuration: number; // How long to wait before next phase (seconds)
+  damagePerSecond: number; // Damage rate during this phase
 }
 
 // NEW: Routes for Map Overlays (GPX)
@@ -226,14 +332,19 @@ export interface GamePoint {
   ibeaconProximity?: 'immediate' | 'near' | 'far'; // Required proximity to trigger task 
   
   // Playground Specific
-  playgroundId?: string; 
-  playgroundPosition?: { x: number; y: number }; 
-  playgroundScale?: number; 
+  playgroundId?: string;
+  playgroundPosition?: { x: number; y: number }; // Legacy: shared across all devices
+  devicePositions?: Record<DeviceType, { x: number; y: number }>; // NEW: device-specific positions
+  playgroundScale?: number;
+  textLabelScale?: number; // NEW: text label size scale (0.5 to 2.0, default 1.0)
+  iconImageScale?: number; // Image size within the icon circle (0.5 to 2.0, default 0.9)
   isHiddenBeforeScan?: boolean; 
 
   // Appearance
   iconId: IconId;
-  iconUrl?: string; 
+  iconUrl?: string;
+  completedIconId?: IconId; // Icon to show when task is completed
+  completedIconUrl?: string; // Custom icon URL to show when task is completed
   areaColor?: string; 
 
   // Logic & Scoring
@@ -249,10 +360,39 @@ export interface GamePoint {
   completionLogic?: PointCompletionLogic;
   instructorNotes?: string;
   showStatusMarkers?: boolean; // Show OK/Wrong answer markers (✓/✗) when task is completed
-  
+
+  // Task Visibility After Completion
+  keepOnScreenOnCorrect?: boolean; // If true, task stays visible (grayed) after correct answer
+  keepOnScreenOnIncorrect?: boolean; // If true, task stays visible (grayed) after incorrect answer
+  showBadgeOnGrayedTask?: boolean; // If true, show ✓/✗ badge on grayed-out task icon
+
+  // Visual Design
+  colorScheme?: TaskColorScheme; // Local color scheme override (only for this task in this game)
+  isColorSchemeLocked?: boolean; // If true, prevents color scheme changes when imported from library
+
   // Event Logic
   logic?: TaskLogic;
   
+  // Proximity Triggers (Discovery Mechanic)
+  proximityTriggerEnabled?: boolean; // If true, task is invisible until team gets close
+  proximityRevealRadius?: number; // Distance in meters at which task becomes visible (default: 100m)
+  proximityStaysVisible?: boolean; // If true, task stays visible after discovery (default: true)
+
+  // Time-Bomb (Countdown Timer)
+  timeBombEnabled?: boolean; // If true, task has a countdown timer
+  timeBombDuration?: number; // Duration in seconds (e.g., 300 = 5 minutes)
+  timeBombStartTrigger?: 'onUnlock' | 'onActivate' | 'manual'; // When the timer starts
+  timeBombPenalty?: number; // Score penalty if timer expires (negative points)
+  timeBombAutoFail?: boolean; // If true, task auto-fails on expiry; if false, just applies penalty
+  timeBombStartedAt?: number; // Timestamp when timer started (per team, stored in team data)
+
+  // Multi-Team Collaboration
+  multiTeamEnabled?: boolean; // If true, requires multiple teams in proximity
+  multiTeamRequiredCount?: number; // Number of teams required (e.g., 2, 3, 4)
+  multiTeamRadius?: number; // Distance in meters within which all teams must be (default: 50m)
+  multiTeamCompletionMode?: 'all' | 'first'; // 'all' = all teams complete together, 'first' = first team to satisfy triggers
+  multiTeamActiveTeams?: string[]; // Team IDs currently in proximity (tracked in real-time)
+
   // Structural
   isSectionHeader?: boolean;
 }
@@ -276,6 +416,10 @@ export interface TaskTemplate {
   nfcTagId?: string;
   ibeaconUUID?: string;
 
+  // Visual Design (global library)
+  colorScheme?: TaskColorScheme; // Color scheme for this template
+  isColorSchemeLocked?: boolean; // If true, prevents overriding when used in games
+
   // Client Submission Fields
   submissionStatus?: 'pending' | 'approved' | 'rejected';
   submitterName?: string;
@@ -287,15 +431,34 @@ export interface TaskList {
   name: string;
   description: string;
   tasks: TaskTemplate[];
-  color: string; 
+  color: string;
   iconId?: IconId;
-  imageUrl?: string; 
-  usageCount?: number; 
+  imageUrl?: string;
+  usageCount?: number;
   createdAt: number;
-  
+
   // Client Task List Fields
   isClientList?: boolean;
   shareToken?: string;
+}
+
+// Media Submission (Photo/Video) for Live Approval
+export interface MediaSubmission {
+  id: string;
+  gameId: string;
+  teamId: string;
+  teamName: string;
+  pointId: string; // Which task this submission is for
+  pointTitle: string;
+  mediaUrl: string; // URL of the uploaded photo/video
+  mediaType: 'photo' | 'video';
+  submittedAt: number; // Timestamp
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string; // Name of GM/Instructor who reviewed
+  reviewedAt?: number; // Timestamp of review
+  reviewComment?: string; // Optional comment from GM
+  partialScore?: number; // Partial score (0-100) if enabled, undefined = full score
+  downloadedByClient?: boolean; // Track if client has downloaded this media
 }
 
 // --- NEW CONFIG TYPES ---
@@ -347,6 +510,13 @@ export interface MapConfiguration {
   allowWeakGps: boolean;
 }
 
+// Sound Configuration
+export interface SoundSettings {
+  correctAnswerSound?: string; // URL to sound file
+  incorrectAnswerSound?: string; // URL to sound file
+  volume?: number; // 0-100, default 80
+}
+
 export interface GameChangeLogEntry {
     timestamp: number;
     user: string;
@@ -366,6 +536,14 @@ export interface ToolbarPositions {
   showToolboxPos?: ToolbarPosition;
   editorOrientationPos?: ToolbarPosition;
   editorShowPos?: ToolbarPosition;
+  editorToolsPos?: ToolbarPosition;
+  editorQRScannerPos?: ToolbarPosition;
+
+  // Device-specific editor toolbar positions
+  editorOrientationPosPerDevice?: Record<DeviceType, ToolbarPosition>;
+  editorShowPosPerDevice?: Record<DeviceType, ToolbarPosition>;
+  editorToolsPosPerDevice?: Record<DeviceType, ToolbarPosition>;
+  editorQRScannerPosPerDevice?: Record<DeviceType, ToolbarPosition>;
 }
 
 // ------------------------
@@ -378,13 +556,20 @@ export interface Game {
   tags?: string[]; // New: Game Tags
   language?: Language;
   points: GamePoint[];
-  playgrounds?: Playground[]; 
-  dangerZones?: DangerZone[]; 
-  routes?: GameRoute[]; 
+  playgrounds?: Playground[];
+  dangerZones?: DangerZone[];
+  routes?: GameRoute[];
   createdAt: number;
   defaultMapStyle?: MapStyleId;
   googleMapStyleJson?: string; // New: Custom Google Maps Style
   toolbarPositions?: ToolbarPositions; // Per-game toolbar positions
+  drawerStates?: {
+    settingsCollapsedSections?: Record<string, boolean>; // Settings drawer collapsed sections (mapmode, layers, location, pins, show, tools)
+    visibleToolbars?: Record<string, boolean>; // Visible toolbars on map (mapmode, layers, location, pins, show, tools)
+  };
+
+  // Game Access
+  accessCode?: string; // Uppercase alphanumeric code for game access (case-insensitive)
 
   // Game Mode Configuration
   gameMode?: 'standard' | 'playzone' | 'elimination'; // 'standard' = GPS-based, 'playzone' = playground-only indoor, 'elimination' = GPS-based CTF
@@ -421,7 +606,9 @@ export interface Game {
   designConfig?: DesignConfig;
   taskConfig?: GameTaskConfiguration; // New Task Configuration
   mapConfig?: MapConfiguration; // New Map Configuration
-  
+  defaultTaskColorScheme?: TaskColorScheme; // Default color scheme for all tasks in this game
+  soundSettings?: SoundSettings; // Game-specific sound overrides (uses global sounds if not set)
+
   // Game Lifecycle / End Game
   state?: 'active' | 'ending' | 'ended';
   endingAt?: number; // Timestamp when game will end (during countdown)

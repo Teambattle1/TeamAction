@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Ruler, Crosshair, Navigation } from 'lucide-react';
+import { Ruler, Crosshair, Navigation, Plus, Library } from 'lucide-react';
 import { Game, GamePoint, TaskList, TaskTemplate, AuthUser, GameMode, Coordinate, MapStyleId, DangerZone, GameRoute, Team, ChatMessage, PlaygroundTemplate } from './types';
+import { APP_VERSION } from './utils/version';
 import * as db from './services/db';
 import { supabase } from './lib/supabase';
 import { authService } from './services/auth';
 import { teamSync } from './services/teamSync';
 import { LocationProvider, useLocation } from './contexts/LocationContext';
+import { TagColorsProvider } from './contexts/TagColorsContext';
 import { haversineMeters, isWithinRadius, isValidCoordinate } from './utils/geo';
 import { snapPointsToRoad, isPointInBox } from './utils/mapbox';
+import { generateDemoTeamHistory } from './services/teamHistoryDemo';
 import GameMap, { GameMapHandle } from './components/GameMap';
 import GameHUD from './components/GameHUD';
 import GameManager from './components/GameManager';
@@ -30,6 +33,9 @@ import GameCreator from './components/GameCreator';
 import TaskActionModal from './components/TaskActionModal';
 import PlaygroundEditor from './components/PlaygroundEditor';
 import GameStatsModal from './components/GameStatsModal';
+import MapStyleLibrary from './components/MapStyleLibrary';
+import QRCodesTool from './components/QRCodesTool';
+import GameStatsTool from './components/GameStatsTool';
 import MessagePopup from './components/MessagePopup';
 import Dashboard from './components/Dashboard';
 import DangerZoneModal from './components/DangerZoneModal';
@@ -37,6 +43,18 @@ import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import MeasureBox from './components/MeasureBox';
 import SupabaseDiagnostic from './components/SupabaseDiagnostic';
+import SupabaseToolsModal from './components/SupabaseToolsModal';
+import ImpossibleTravelWarnings from './components/ImpossibleTravelWarnings';
+import RemoteOverrideModal from './components/RemoteOverrideModal';
+import ClientLobby from './components/ClientLobby';
+import ClientGameChooser from './components/ClientGameChooser';
+import Access from './components/Access';
+import PlayzoneSelector from './components/PlayzoneSelector';
+import TranslationsManager from './components/TranslationsManager';
+import MediaManager from './components/MediaManager';
+import MediaApprovalNotification from './components/MediaApprovalNotification';
+import { approveMediaSubmission, rejectMediaSubmission } from './services/mediaUpload';
+import { getConfiguredLanguagesForGame, validateTaskTranslations } from './utils/translationValidation';
 
 // Inner App Component that consumes LocationContext
 const GameApp: React.FC = () => {
@@ -45,6 +63,7 @@ const GameApp: React.FC = () => {
 
   // --- SUPABASE DIAGNOSTIC ---
   const [showSupabaseDiagnostic, setShowSupabaseDiagnostic] = useState(false);
+  const [showTranslationsManager, setShowTranslationsManager] = useState(false);
 
   // CRITICAL NULL CHECK: Validate props before rendering
   // This prevents crashes from undefined game/playground states
@@ -76,7 +95,16 @@ const GameApp: React.FC = () => {
   const [gameToEdit, setGameToEdit] = useState<Game | null>(null);
   const [initialGameMode, setInitialGameMode] = useState<'standard' | 'playzone' | 'elimination' | null>(null);
   const [showGameStats, setShowGameStats] = useState(false);
+  const [showMapStyleLibrary, setShowMapStyleLibrary] = useState(false);
+  const [showQRCodesTool, setShowQRCodesTool] = useState(false);
   const [gameStatsTeams, setGameStatsTeams] = useState<Team[]>([]);
+  const [showClientLobby, setShowClientLobby] = useState(false);
+  const [showClientGameChooser, setShowClientGameChooser] = useState(false);
+  const [clientGameId, setClientGameId] = useState<string | null>(null);
+  const [showMediaManager, setShowMediaManager] = useState(false);
+  const [showAccess, setShowAccess] = useState(false);
+  const [showPlayzoneChoiceModal, setShowPlayzoneChoiceModal] = useState(false);
+  const [showPlayzoneSelector, setShowPlayzoneSelector] = useState(false);
 
   const playableGames = useMemo(() => games.filter(g => !g.isGameTemplate), [games]);
   const gameTemplates = useMemo(() => games.filter(g => g.isGameTemplate), [games]);
@@ -102,6 +130,21 @@ const GameApp: React.FC = () => {
   const [showTaskId, setShowTaskId] = useState(true);
   const [showTaskTitle, setShowTaskTitle] = useState(true);
   const [showTaskActions, setShowTaskActions] = useState(true);
+  const [showTeamPaths, setShowTeamPaths] = useState(false);
+  const [showTeamPathSelector, setShowTeamPathSelector] = useState(false);
+  const [selectedTeamPaths, setSelectedTeamPaths] = useState<string[]>([]); // Array of team IDs to show paths for
+  const [fogOfWarEnabled, setFogOfWarEnabled] = useState(false);
+  const [selectedTeamForFogOfWar, setSelectedTeamForFogOfWar] = useState<string | null>(null);
+  const [teamsForFogOfWar, setTeamsForFogOfWar] = useState<Team[]>([]);
+  const [showRemoteOverride, setShowRemoteOverride] = useState(false);
+  const [hoveredPlaygroundId, setHoveredPlaygroundId] = useState<string | null>(null);
+
+  // Layer toggles (all default to true/visible)
+  const [showMapLayer, setShowMapLayer] = useState(true);
+  const [showZoneLayer, setShowZoneLayer] = useState(true);
+  const [showTaskLayer, setShowTaskLayer] = useState(true);
+  const [showLiveLayer, setShowLiveLayer] = useState(true);
+
   const [currentDangerZone, setCurrentDangerZone] = useState<DangerZone | null>(null);
   const [activeDangerZone, setActiveDangerZone] = useState<DangerZone | null>(null);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -133,6 +176,26 @@ const GameApp: React.FC = () => {
   const [hoveredDangerZoneId, setHoveredDangerZoneId] = useState<string | null>(null); // List → Map
   const [mapHoveredPointId, setMapHoveredPointId] = useState<string | null>(null); // Map → List (reverse)
 
+  // --- DRAWER & TOOLBAR STATE ---
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
+    mapmode: true,
+    layers: true,
+    location: true,
+    pins: true,
+    show: true,
+    tools: true,
+  });
+  const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': false });
+
+  // --- LOAD DRAWER STATES FROM ACTIVE GAME ---
+  useEffect(() => {
+    if (activeGame?.drawerStates) {
+      if (activeGame.drawerStates.settingsCollapsedSections) {
+        setCollapsedSections(activeGame.drawerStates.settingsCollapsedSections);
+      }
+    }
+  }, [activeGame?.id]);
+
   // --- SUPABASE ERROR DETECTION ---
   useEffect(() => {
     const handleSupabaseError = (event: CustomEvent) => {
@@ -154,17 +217,39 @@ const GameApp: React.FC = () => {
       if (user) {
         setAuthUser(user);
       }
-      const loadedGames = await db.fetchGames();
-      setGames(loadedGames);
-      const loadedLists = await db.fetchTaskLists();
-      setTaskLists(loadedLists);
-      const loadedLib = await db.fetchLibrary();
-      setTaskLibrary(loadedLib);
 
-      // Restore last selected game from localStorage
-      const savedGameId = localStorage.getItem('activeGameId');
-      if (savedGameId && loadedGames.some(g => g.id === savedGameId)) {
-        setActiveGameId(savedGameId);
+      try {
+        // Test database connection first
+        const connectionTest = await db.testDatabaseConnection();
+        if (!connectionTest.success) {
+          console.error('[App] Database connection test failed on startup');
+          setShowSupabaseDiagnostic(true);
+          // Use demo data if connection fails
+          setGames([]);
+          setTaskLists([]);
+          setTaskLibrary([]);
+          return;
+        }
+
+        const loadedGames = await db.fetchGames();
+        setGames(loadedGames);
+        const loadedLists = await db.fetchTaskLists();
+        setTaskLists(loadedLists);
+        const loadedLib = await db.fetchLibrary();
+        setTaskLibrary(loadedLib);
+
+        // Restore last selected game from localStorage
+        const savedGameId = localStorage.getItem('activeGameId');
+        if (savedGameId && loadedGames.some(g => g.id === savedGameId)) {
+          setActiveGameId(savedGameId);
+        }
+      } catch (error: any) {
+        console.error('[App] Initialization error:', error);
+        // Show diagnostic modal on initialization failure
+        setShowSupabaseDiagnostic(true);
+        setGames([]);
+        setTaskLists([]);
+        setTaskLibrary([]);
       }
     };
     init();
@@ -341,6 +426,26 @@ const GameApp: React.FC = () => {
       return () => clearInterval(interval);
   }, [userLocation, activeGame, mode]);
 
+  // --- FOG OF WAR TEAMS DATA FETCHING ---
+  useEffect(() => {
+      if (!fogOfWarEnabled || !activeGameId) {
+          setTeamsForFogOfWar([]);
+          return;
+      }
+
+      const loadTeams = async () => {
+          try {
+              const teams = await db.fetchTeams(activeGameId);
+              setTeamsForFogOfWar(teams);
+          } catch (error) {
+              console.error('Error loading teams for fog of war:', error);
+              setTeamsForFogOfWar([]);
+          }
+      };
+
+      loadTeams();
+  }, [fogOfWarEnabled, activeGameId]);
+
   // --- GAME STATS DATA FETCHING ---
   useEffect(() => {
       if (!showGameStats || !activeGameId) return;
@@ -389,6 +494,21 @@ const GameApp: React.FC = () => {
       if (!activeTaskModalId || !activeGame) return null;
       return activeGame?.points?.find(p => p.id === activeTaskModalId) || null;
   }, [activeTaskModalId, activeGame]);
+
+  // Generate demo team history data (for testing/demo purposes)
+  // TODO: Replace with actual team history from database
+  const demoTeamHistory = useMemo(() => {
+      if (!activeGame || selectedTeamPaths.length === 0) return [];
+
+      // Use first point as center, or default to Copenhagen
+      const gameCenter = activeGame.points?.[0]?.location || { lat: 55.6761, lng: 12.5683 };
+
+      // Generate history for all teams, then filter by selected
+      const allHistory = generateDemoTeamHistory(gameCenter, Math.max(teamsForFogOfWar.length, 3));
+
+      // Filter to only show selected team paths
+      return allHistory.filter(history => selectedTeamPaths.includes(history.teamId));
+  }, [activeGame, selectedTeamPaths, teamsForFogOfWar]);
 
 
   const ensureSession = (callback: () => void) => {
@@ -486,6 +606,47 @@ const GameApp: React.FC = () => {
       }
   };
 
+  // Export all game tasks to library and sync to Supabase
+  const handleExportGameToLibrary = async () => {
+      if (!activeGame || !activeGame.points || activeGame.points.length === 0) {
+          alert('No tasks to export');
+          return;
+      }
+
+      try {
+          const taskTemplates = activeGame.points.map(point => ({
+              id: `template-${point.id}`,
+              title: point.title,
+              task: point.task,
+              feedback: point.feedback,
+              points: point.points,
+              tags: Array.isArray(point.tags) ? point.tags : [],
+              iconId: point.iconId,
+              iconUrl: point.iconUrl,
+              completedIconId: (point as any).completedIconId,
+              completedIconUrl: (point as any).completedIconUrl,
+              settings: point.settings,
+              logic: point.logic
+          }));
+
+          const { ok } = await db.saveTemplates(taskTemplates);
+
+          if (ok) {
+              // Reload the global library to show newly exported tasks
+              const updatedLib = await db.fetchLibrary();
+              setTaskLibrary(updatedLib);
+
+              alert(`✅ Exported ${taskTemplates.length} tasks to Global Library and synced to Supabase!`);
+              console.log('[Export] Tasks exported to library:', taskTemplates.length);
+          } else {
+              alert('❌ Failed to export tasks to library');
+          }
+      } catch (error) {
+          console.error('[Export] Error exporting tasks:', error);
+          alert('Error exporting tasks to library');
+      }
+  };
+
   const handleDeleteItem = async (pointId: string) => {
       if (!activeGame) return;
       if (!pointId) {
@@ -579,6 +740,30 @@ const GameApp: React.FC = () => {
           }
       } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
           console.log('[handlePointClick] Setting activeTaskModalId:', point.id);
+          setActiveTaskModalId(point.id);
+      }
+  };
+
+  const handleAreaColorClick = (point: GamePoint) => {
+      console.log('[handleAreaColorClick] Area color circle clicked:', {
+          pointId: point.id,
+          mode,
+          isMeasuring,
+          isRelocating
+      });
+
+      // Skip if in measurement or relocation modes
+      if (isMeasuring || isRelocating) {
+          console.log('[handleAreaColorClick] Ignoring - measure or relocate mode active');
+          return;
+      }
+
+      // Always open task view (not action editor) when clicking area color circle
+      if (mode === GameMode.EDIT) {
+          console.log('[handleAreaColorClick] EDIT mode - Opening task editor:', point.id);
+          setActiveTask(point);
+      } else if (mode === GameMode.PLAY || mode === GameMode.INSTRUCTOR) {
+          console.log('[handleAreaColorClick] PLAY/INSTRUCTOR mode - Opening task modal:', point.id);
           setActiveTaskModalId(point.id);
       }
   };
@@ -699,6 +884,28 @@ const GameApp: React.FC = () => {
           setMeasurePointsCount(0);
           setSelectedMeasurePointIds([]);
       }
+  };
+
+  const handleToggleTeamPathSelector = () => {
+      setShowTeamPathSelector(!showTeamPathSelector);
+  };
+
+  const handleSelectTeamPath = (teamId: string) => {
+      setSelectedTeamPaths(prev => {
+          if (prev.includes(teamId)) {
+              // Deselect team
+              const newPaths = prev.filter(id => id !== teamId);
+              // Hide paths if no teams selected
+              if (newPaths.length === 0) {
+                  setShowTeamPaths(false);
+              }
+              return newPaths;
+          } else {
+              // Select team and show paths
+              setShowTeamPaths(true);
+              return [...prev, teamId];
+          }
+      });
   };
 
   const handleUpdateGameTime = async (newEndTime: number) => {
@@ -849,84 +1056,188 @@ const GameApp: React.FC = () => {
   };
 
   // --- TAG MANAGEMENT ---
-  const handleRenameTagGlobally = async (oldTag: string, newTag: string) => {
-      const renameInTasks = (tasks: TaskTemplate[]) => {
-          return tasks.map(t => ({
-              ...t,
-              tags: t.tags?.map(tag => tag === oldTag ? newTag : tag) || []
-          }));
+  const handleRenameTagGlobally = async (
+      oldTag: string,
+      newTag: string,
+      onProgress?: (progress: number, label: string) => void
+  ) => {
+      const oldLower = oldTag.toLowerCase();
+      const newLower = newTag.toLowerCase();
+
+      const replaceTag = (tags: string[] | undefined): { next: string[]; changed: boolean } => {
+          const current = tags || [];
+          let changed = false;
+          const next = current.map(t => {
+              if (t.toLowerCase() === oldLower) {
+                  changed = true;
+                  return newLower;
+              }
+              return t;
+          });
+          return { next, changed };
       };
 
-      const updatedLib = renameInTasks(taskLibrary);
-      // Save all templates that were updated in parallel
-      await Promise.all(updatedLib.filter(t => t.tags?.includes(newTag)).map(t => db.saveTemplate(t))).catch(err => {
-          console.error('Error saving templates:', err);
+      onProgress?.(0, 'Scanning items...');
+
+      const updatedLib: TaskTemplate[] = [];
+      const changedTemplates: TaskTemplate[] = [];
+      for (const t of taskLibrary) {
+          const { next, changed } = replaceTag(t.tags);
+          const updated = { ...t, tags: next };
+          updatedLib.push(updated);
+          if (changed) changedTemplates.push(updated);
+      }
+
+      const updatedLists = taskLists.map(list => {
+          let listChanged = false;
+          const updatedTasks = (list.tasks || []).map(task => {
+              const { next, changed } = replaceTag(task.tags);
+              if (changed) listChanged = true;
+              return { ...task, tags: next };
+          });
+          const updated = { ...list, tasks: updatedTasks };
+          return { updated, listChanged };
       });
+
+      const updatedGames = games.map(g => {
+          let gameChanged = false;
+          const updatedPoints = (g.points || []).map(p => {
+              const { next, changed } = replaceTag(p.tags as any);
+              if (changed) gameChanged = true;
+              return { ...p, tags: next };
+          });
+          const updated = { ...g, points: updatedPoints };
+          return { updated, gameChanged };
+      });
+
+      // Persist only what actually changed (this is the biggest speedup)
+      onProgress?.(0.05, 'Updating task library...');
+
+      if (changedTemplates.length > 0) {
+          const { ok } = await db.saveTemplates(changedTemplates, {
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.05 + pct * 0.55, `Updating tasks (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+          if (!ok) console.error('Error saving templates: saveTemplates failed');
+      }
+
+      const listChanges = updatedLists.filter(x => x.listChanged).map(x => x.updated);
+      if (listChanges.length > 0) {
+          const { ok } = await db.saveTaskLists(listChanges, {
+              chunkSize: 10,
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.65 + pct * 0.15, `Updating lists (${Math.min(total, completed)}/${total})`);
+              }
+          });
+          if (!ok) console.error('Error saving task lists: saveTaskLists failed');
+      }
+
+      const gameChanges = updatedGames.filter(x => x.gameChanged).map(x => x.updated);
+      if (gameChanges.length > 0) {
+          await db.saveGames(gameChanges, {
+              chunkSize: 2,
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.8 + pct * 0.2, `Updating games (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+      }
+
+      onProgress?.(1, 'Done');
+
       setTaskLibrary(updatedLib);
-
-      const updatedLists = taskLists.map(list => ({
-          ...list,
-          tasks: renameInTasks(list.tasks)
-      }));
-      // Save all lists in parallel
-      await Promise.all(updatedLists.map(list => db.saveTaskList(list))).catch(err => {
-          console.error('Error saving lists:', err);
-      });
-      setTaskLists(updatedLists);
-
-      const updatedGames = games.map(g => ({
-          ...g,
-          points: g.points.map(p => ({
-              ...p,
-              tags: p.tags?.map(tag => tag === oldTag ? newTag : tag) || []
-          }))
-      }));
-      // Save all games in parallel
-      await Promise.all(updatedGames.map(g => db.saveGame(g))).catch(err => {
-          console.error('Error saving games:', err);
-      });
-      setGames(updatedGames);
+      setTaskLists(updatedLists.map(x => x.updated));
+      setGames(updatedGames.map(x => x.updated));
   };
 
-  const handleDeleteTagGlobally = async (tagToDelete: string) => {
+  const handleDeleteTagGlobally = async (
+      tagToDelete: string,
+      onProgress?: (progress: number, label: string) => void
+  ) => {
       const tagToDeleteLower = tagToDelete.toLowerCase();
 
-      const removeInTasks = (tasks: TaskTemplate[]) => {
-          return tasks.map(t => ({
-              ...t,
-              tags: t.tags?.filter(tag => tag.toLowerCase() !== tagToDeleteLower) || []
-          }));
+      const stripTag = (tags: string[] | undefined): { next: string[]; changed: boolean } => {
+          const current = tags || [];
+          const next = current.filter(tag => tag.toLowerCase() !== tagToDeleteLower);
+          return { next, changed: next.length !== current.length };
       };
 
-      const updatedLib = removeInTasks(taskLibrary);
-      // Save all templates in parallel
-      await Promise.all(updatedLib.map(t => db.saveTemplate(t))).catch(err => {
-          console.error('Error saving templates:', err);
+      onProgress?.(0, 'Scanning items...');
+
+      const updatedLib: TaskTemplate[] = [];
+      const changedTemplates: TaskTemplate[] = [];
+      for (const t of taskLibrary) {
+          const { next, changed } = stripTag(t.tags);
+          const updated = { ...t, tags: next };
+          updatedLib.push(updated);
+          if (changed) changedTemplates.push(updated);
+      }
+
+      const updatedLists = taskLists.map(list => {
+          let listChanged = false;
+          const updatedTasks = (list.tasks || []).map(task => {
+              const { next, changed } = stripTag(task.tags);
+              if (changed) listChanged = true;
+              return { ...task, tags: next };
+          });
+          const updated = { ...list, tasks: updatedTasks };
+          return { updated, listChanged };
       });
+
+      const updatedGames = games.map(g => {
+          let gameChanged = false;
+          const updatedPoints = (g.points || []).map(p => {
+              const { next, changed } = stripTag(p.tags as any);
+              if (changed) gameChanged = true;
+              return { ...p, tags: next };
+          });
+          const updated = { ...g, points: updatedPoints };
+          return { updated, gameChanged };
+      });
+
+      onProgress?.(0.05, 'Updating task library...');
+
+      if (changedTemplates.length > 0) {
+          const { ok } = await db.saveTemplates(changedTemplates, {
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.05 + pct * 0.55, `Updating tasks (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+          if (!ok) console.error('Error saving templates: saveTemplates failed');
+      }
+
+      const listChanges = updatedLists.filter(x => x.listChanged).map(x => x.updated);
+      if (listChanges.length > 0) {
+          const { ok } = await db.saveTaskLists(listChanges, {
+              chunkSize: 10,
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.65 + pct * 0.15, `Updating lists (${Math.min(total, completed)}/${total})`);
+              }
+          });
+          if (!ok) console.error('Error saving task lists: saveTaskLists failed');
+      }
+
+      const gameChanges = updatedGames.filter(x => x.gameChanged).map(x => x.updated);
+      if (gameChanges.length > 0) {
+          await db.saveGames(gameChanges, {
+              chunkSize: 2,
+              onProgress: ({ completed, total }) => {
+                  const pct = total ? completed / total : 1;
+                  onProgress?.(0.8 + pct * 0.2, `Updating games (${Math.min(total, completed + 1)}/${total})`);
+              }
+          });
+      }
+
+      onProgress?.(1, 'Done');
+
       setTaskLibrary(updatedLib);
-
-      const updatedLists = taskLists.map(list => ({
-          ...list,
-          tasks: removeInTasks(list.tasks)
-      }));
-      // Save all lists in parallel
-      await Promise.all(updatedLists.map(list => db.saveTaskList(list))).catch(err => {
-          console.error('Error saving lists:', err);
-      });
-      setTaskLists(updatedLists);
-
-      const updatedGames = games.map(g => ({
-          ...g,
-          points: g.points.map(p => ({
-              ...p,
-              tags: p.tags?.filter(tag => tag.toLowerCase() !== tagToDeleteLower) || []
-          }))
-      }));
-      // Save all games in parallel
-      await Promise.all(updatedGames.map(g => db.saveGame(g))).catch(err => {
-          console.error('Error saving games:', err);
-      });
-      setGames(updatedGames);
+      setTaskLists(updatedLists.map(x => x.updated));
+      setGames(updatedGames.map(x => x.updated));
   };
 
   // Check for Client Submission URL
@@ -1004,6 +1315,15 @@ const GameApp: React.FC = () => {
                   onDeleteGame={handleDeleteGame}
                   onClose={() => setShowGameChooser(false)}
                   onEditGame={(id) => { setActiveGameId(id); setMode(GameMode.EDIT); setShowGameChooser(false); setShowLanding(false); }}
+                  onEditGameSetup={(id) => {
+                      const game = games.find(g => g.id === id);
+                      if (game) {
+                          setGameToEdit(game);
+                          setActiveGameId(id);
+                          setShowGameCreator(true);
+                          setShowGameChooser(false);
+                      }
+                  }}
                   onCreateFromTemplate={handleCreateGameFromTemplate}
                   onEditPoint={setActiveTask}
                   onReorderPoints={() => {}}
@@ -1077,6 +1397,39 @@ const GameApp: React.FC = () => {
                       const targetGame = gameId ? games.find(g => g.id === gameId) : activeGame;
 
                       if (targetGame) {
+                          // Check if game has multiple languages configured
+                          const configuredLanguages = getConfiguredLanguagesForGame(targetGame);
+
+                          if (configuredLanguages.length > 1) {
+                              // Validate each task has all required translations
+                              const invalidTasks: Array<{ task: any; missingLanguages: string[] }> = [];
+
+                              tasks.forEach(task => {
+                                  const validation = validateTaskTranslations(task.task, configuredLanguages);
+                                  if (!validation.valid) {
+                                      invalidTasks.push({
+                                          task,
+                                          missingLanguages: validation.missingLanguages,
+                                      });
+                                  }
+                              });
+
+                              if (invalidTasks.length > 0) {
+                                  // Show error message with details
+                                  const taskNames = invalidTasks.map(item => `• ${item.task.title}`).join('\n');
+                                  const languageList = configuredLanguages.filter(l => l !== 'English').join(', ');
+
+                                  alert(
+                                      `⚠️ Translation Required\n\n` +
+                                      `This game uses multiple languages: ${languageList}\n\n` +
+                                      `The following tasks are missing approved translations:\n${taskNames}\n\n` +
+                                      `Please add and approve translations for all tasks before adding them to this game.\n\n` +
+                                      `💡 Tip: Open each task in the Task Editor and go to the "Languages" tab to add translations.`
+                                  );
+                                  return; // Don't add tasks
+                              }
+                          }
+
                           const mapCenter = mapRef.current?.getCenter();
                           const newPoints = tasks.map((t, idx) => ({
                               ...t,
@@ -1109,6 +1462,39 @@ const GameApp: React.FC = () => {
                       const targetGame = gameId ? games.find(g => g.id === gameId) : activeGame;
 
                       if (targetGame) {
+                          // Check if game has multiple languages configured
+                          const configuredLanguages = getConfiguredLanguagesForGame(targetGame);
+
+                          if (configuredLanguages.length > 1) {
+                              // Validate each task has all required translations
+                              const invalidTasks: Array<{ task: any; missingLanguages: string[] }> = [];
+
+                              list.tasks.forEach(task => {
+                                  const validation = validateTaskTranslations(task.task, configuredLanguages);
+                                  if (!validation.valid) {
+                                      invalidTasks.push({
+                                          task,
+                                          missingLanguages: validation.missingLanguages,
+                                      });
+                                  }
+                              });
+
+                              if (invalidTasks.length > 0) {
+                                  // Show error message with details
+                                  const taskNames = invalidTasks.map(item => `• ${item.task.title}`).join('\n');
+                                  const languageList = configuredLanguages.filter(l => l !== 'English').join(', ');
+
+                                  alert(
+                                      `⚠️ Translation Required\n\n` +
+                                      `This game uses multiple languages: ${languageList}\n\n` +
+                                      `The following tasks from "${list.name}" are missing approved translations:\n${taskNames}\n\n` +
+                                      `Please add and approve translations for all tasks before adding them to this game.\n\n` +
+                                      `💡 Tip: Open each task in the Task Editor and go to the "Languages" tab to add translations.`
+                                  );
+                                  return; // Don't add tasks
+                              }
+                          }
+
                           const mapCenter = mapRef.current?.getCenter();
                           const newPoints = list.tasks.map((t, idx) => ({
                               ...t,
@@ -1177,17 +1563,25 @@ const GameApp: React.FC = () => {
                           } as Game;
 
                           await db.saveGame(newGame);
-                          setGames([...games, newGame]);
-                          setActiveGameId(newGame.id);
+                        setGames([...games, newGame]);
+                        setActiveGameId(newGame.id);
 
-                          // PLAYZONE: Open playground editor directly, skip GameChooser
-                          if (isPlayzone) {
-                              setMode(GameMode.EDIT);
-                              setViewingPlaygroundId(playgroundId);
-                              setShowLanding(false);
-                          } else {
-                              setShowGameChooser(true);
-                          }
+                        // PLAYZONE: Open playground editor directly, skip GameChooser
+                        if (isPlayzone) {
+                            setMode(GameMode.EDIT);
+                            setViewingPlaygroundId(playgroundId);
+                            setShowLanding(false);
+                        } else if (gameData.gameMode === 'elimination') {
+                            // ELIMINATION: Navigate directly to elimination game view
+                            setMode(GameMode.EDIT);
+                            setShowLanding(false);
+                            setShowGameChooser(false);
+                        } else {
+                            // STANDARD: Navigate directly to game edit view
+                            setMode(GameMode.EDIT);
+                            setShowLanding(false);
+                            setShowGameChooser(false);
+                        }
                       }
                       setShowGameCreator(false);
                       setGameToEdit(null);
@@ -1370,6 +1764,11 @@ const GameApp: React.FC = () => {
                   onUpdateTaskLists={setTaskLists}
                   taskLibrary={taskLibrary}
                   onUpdateTaskLibrary={setTaskLibrary}
+                  onOpenGameSettings={() => {
+                      // For template mode, show playground manager instead
+                      setPlaygroundTemplateToEdit(null);
+                      setShowPlaygroundManager(true);
+                  }}
               />
           )}
           {viewingPlaygroundId && activeGame && (
@@ -1437,6 +1836,13 @@ const GameApp: React.FC = () => {
                   onUpdateTaskLists={setTaskLists}
                   taskLibrary={taskLibrary}
                   onUpdateTaskLibrary={setTaskLibrary}
+                  onOpenGameSettings={() => {
+                      if (activeGame) {
+                          setGameToEdit(activeGame);
+                          setShowGameCreator(true);
+                      }
+                  }}
+                  onExportGameToLibrary={handleExportGameToLibrary}
               />
           )}
           {showChatDrawer && activeGameId && (
@@ -1502,7 +1908,7 @@ const GameApp: React.FC = () => {
       return (
           <>
             <InitialLanding
-                version="4.1"
+                version={APP_VERSION}
                 games={playableGames}
                 activeGameId={activeGameId}
                 onSelectGame={setActiveGameId}
@@ -1521,6 +1927,11 @@ const GameApp: React.FC = () => {
                     if (action === 'PREVIEW_TEAM') {
                         setShowLanding(false);
                         setMode(GameMode.PLAY);
+                        return;
+                    }
+                    if (action === 'ACCESS') {
+                        setShowAccess(true);
+                        // Keep showLanding true so Access renders on top of landing page
                         return;
                     }
                     ensureSession(() => {
@@ -1560,12 +1971,24 @@ const GameApp: React.FC = () => {
                             case 'DELETE_GAMES': setShowDeleteGames(true); break;
                             case 'PLAYGROUNDS': setShowPlaygroundManager(true); break;
                             case 'DATABASE': setShowDatabaseTools(true); break;
+                            case 'DIAGNOSTICS': setShowSupabaseDiagnostic(true); break;
+                            case 'TRANSLATIONS': setShowTranslationsManager(true); break;
+                            case 'MEDIA': setShowMediaManager(true); break;
                             case 'GAMESTATS':
                                 setShowGameStats(true);
+                                break;
+                            case 'MAP_STYLES':
+                                setShowMapStyleLibrary(true);
+                                break;
+                            case 'QR_CODES':
+                                setShowQRCodesTool(true);
                                 break;
                             case 'CLIENT_PORTAL':
                                 setDashboardTab('client');
                                 setShowDashboard(true);
+                                break;
+                            case 'CLIENT':
+                                setShowClientGameChooser(true);
                                 break;
                         }
                     });
@@ -1576,7 +1999,6 @@ const GameApp: React.FC = () => {
                     games={games}
                     onClose={() => setShowDatabaseTools(false)}
                     onDeleteGame={handleDeleteGame}
-                    initialShowSql={true}
                     onLibraryUpdated={async () => {
                         const updatedLib = await db.fetchLibrary();
                         setTaskLibrary(updatedLib);
@@ -1584,20 +2006,99 @@ const GameApp: React.FC = () => {
                 />
             )}
             {showGameStats && (
-                <GameStatsModal
+                <GameStatsTool
+                    games={playableGames}
+                    activeGameId={activeGameId}
+                    onSelectGame={setActiveGameId}
                     onClose={() => setShowGameStats(false)}
-                    game={activeGame}
-                    teams={gameStatsTeams.map(team => ({
-                        team,
-                        location: undefined, // Teams don't store location in DB
-                        memberCount: team.members?.length || 1
-                    }))}
+                />
+            )}
+            {showMediaManager && (
+                <MediaManager
+                    onClose={() => setShowMediaManager(false)}
+                    games={games}
+                />
+            )}
+            {showMapStyleLibrary && (
+                <MapStyleLibrary
+                    onClose={() => setShowMapStyleLibrary(false)}
+                />
+            )}
+
+            {showQRCodesTool && (
+                <QRCodesTool
+                    games={playableGames}
+                    activeGameId={activeGameId}
+                    onSelectGame={setActiveGameId}
+                    onClose={() => setShowQRCodesTool(false)}
                 />
             )}
 
             {showSupabaseDiagnostic && (
-                <SupabaseDiagnostic
+                <SupabaseToolsModal
                     onClose={() => setShowSupabaseDiagnostic(false)}
+                />
+            )}
+
+            {showTranslationsManager && (
+                <TranslationsManager
+                    onClose={() => setShowTranslationsManager(false)}
+                    onEditTask={(gameId, pointId) => {
+                        // Close translations manager
+                        setShowTranslationsManager(false);
+
+                        // Load the game and open the task editor
+                        const game = games.find(g => g.id === gameId);
+                        if (game) {
+                            setActiveGameId(gameId);
+                            setActiveGame(game);
+                            setMode(GameMode.EDIT);
+                            setShowLanding(false);
+
+                            // Note: The task editor will need to be opened from GameHUD
+                            // For now, we just navigate to the game in edit mode
+                            // The user can then find and edit the task
+                        }
+                    }}
+                />
+            )}
+
+            {/* CLIENT ZONE */}
+            {showClientGameChooser && (
+                <ClientGameChooser
+                    onClose={() => setShowClientGameChooser(false)}
+                    onSelectGame={(gameId) => {
+                        setClientGameId(gameId);
+                        setShowClientGameChooser(false);
+                        setShowClientLobby(true);
+                    }}
+                />
+            )}
+
+            {showClientLobby && clientGameId && (
+                <div className="fixed inset-0 z-[9998]">
+                    <ClientLobby
+                        gameId={clientGameId}
+                        onBack={() => {
+                            setShowClientLobby(false);
+                            setClientGameId(null);
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* ACCESS SCREEN - Player game code entry */}
+            {showAccess && (
+                <Access
+                    onGameSelected={(gameId) => {
+                        setActiveGameId(gameId);
+                        setShowAccess(false);
+                        setMode(GameMode.PLAY);
+                        setShowLanding(false);
+                    }}
+                    onBack={() => {
+                        setShowAccess(false);
+                    }}
                 />
             )}
 
@@ -1622,6 +2123,7 @@ const GameApp: React.FC = () => {
                 mode={mode}
                 mapStyle={localMapStyle || 'osm'}
                 onPointClick={handlePointClick}
+                onAreaColorClick={handleAreaColorClick}
                 onZoneClick={(z) => setActiveDangerZone(z)}
                 onZoneMove={async (zoneId, newLoc) => {
                     if (!activeGame) return;
@@ -1686,6 +2188,19 @@ const GameApp: React.FC = () => {
                 hoveredPointId={hoveredPointId}
                 hoveredDangerZoneId={hoveredDangerZoneId}
                 onPointHover={(point) => setMapHoveredPointId(point?.id || null)}
+                teamHistory={demoTeamHistory}
+                showTeamPaths={showTeamPaths}
+                gameStartTime={teamsForFogOfWar.length > 0 && teamsForFogOfWar[0]?.startedAt ? teamsForFogOfWar[0].startedAt : activeGame?.createdAt}
+                fogOfWarEnabled={fogOfWarEnabled}
+                selectedTeamId={selectedTeamForFogOfWar}
+                selectedTeamCompletedPointIds={
+                    fogOfWarEnabled && selectedTeamForFogOfWar
+                        ? teamsForFogOfWar.find(t => t.id === selectedTeamForFogOfWar)?.completedPointIds || []
+                        : []
+                }
+                showZoneLayer={showZoneLayer}
+                showTaskLayer={showTaskLayer}
+                showLiveLayer={showLiveLayer}
             />
             </div>
         )}
@@ -1745,6 +2260,8 @@ const GameApp: React.FC = () => {
             measurePointsCount={measurePointsCount}
             playgrounds={activeGame?.playgrounds}
             onOpenPlayground={(id) => setViewingPlaygroundId(id)}
+            hoveredPlaygroundId={hoveredPlaygroundId}
+            onHoverPlayground={setHoveredPlaygroundId}
             onOpenTeamDashboard={() => setShowTeamDashboard(true)}
             onRelocateGame={handleRelocateGame}
             isRelocating={isRelocating}
@@ -1789,7 +2306,64 @@ const GameApp: React.FC = () => {
             onStartSimulation={handleStartSimulation}
             onToggleSnapToRoad={handleToggleSnapToRoad}
             snapToRoadMode={snapToRoadMode}
+            showTeamPaths={showTeamPaths}
+            onToggleTeamPaths={() => setShowTeamPaths(!showTeamPaths)}
+            showTeamPathSelector={showTeamPathSelector}
+            selectedTeamPaths={selectedTeamPaths}
+            onToggleTeamPathSelector={handleToggleTeamPathSelector}
+            onSelectTeamPath={handleSelectTeamPath}
+            fogOfWarEnabled={fogOfWarEnabled}
+            selectedTeamForFogOfWar={selectedTeamForFogOfWar}
+            onToggleFogOfWar={() => setFogOfWarEnabled(!fogOfWarEnabled)}
+            onSelectTeamForFogOfWar={setSelectedTeamForFogOfWar}
+            teams={teamsForFogOfWar}
+            onOpenRemoteOverride={() => setShowRemoteOverride(true)}
+            showMapLayer={showMapLayer}
+            showZoneLayer={showZoneLayer}
+            showTaskLayer={showTaskLayer}
+            showLiveLayer={showLiveLayer}
+            onToggleMapLayer={() => setShowMapLayer(!showMapLayer)}
+            onToggleZoneLayer={() => setShowZoneLayer(!showZoneLayer)}
+            onToggleTaskLayer={() => setShowTaskLayer(!showTaskLayer)}
+            onToggleLiveLayer={() => setShowLiveLayer(!showLiveLayer)}
+            collapsedSections={collapsedSections}
+            onCollapsedSectionsChange={setCollapsedSections}
         />
+
+        {/* Impossible Travel Warnings - EDIT and INSTRUCTOR modes only */}
+        {(mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && activeGame && (
+            <ImpossibleTravelWarnings
+                gameId={activeGame.id}
+                onJumpToLocation={(loc) => mapRef.current?.jumpTo(loc)}
+            />
+        )}
+
+        {/* Remote Override Modal - Emergency controls for Game Master */}
+        {showRemoteOverride && activeGame && (
+            <RemoteOverrideModal
+                isOpen={showRemoteOverride}
+                onClose={() => setShowRemoteOverride(false)}
+                gameId={activeGame.id}
+                teams={teamsForFogOfWar}
+                tasks={activeGame.points || []}
+                onJumpToLocation={(loc) => mapRef.current?.jumpTo(loc)}
+                onTaskForceComplete={async (teamId, taskId) => {
+                    // Update team's completed points
+                    const team = teamsForFogOfWar.find(t => t.id === teamId);
+                    if (team) {
+                        const updatedCompletedIds = [...(team.completedPointIds || []), taskId];
+                        await db.updateTeam(teamId, {
+                            ...team,
+                            completedPointIds: updatedCompletedIds,
+                        });
+
+                        // Refresh teams list
+                        const updatedTeams = await db.fetchTeams(activeGame.id);
+                        setTeamsForFogOfWar(updatedTeams);
+                    }
+                }}
+            />
+        )}
 
         {(mode === GameMode.EDIT || playgroundTemplateToEdit) && (
             <EditorDrawer 
@@ -1809,7 +2383,17 @@ const GameApp: React.FC = () => {
                 onDeletePoint={handleDeleteItem}
                 onReorderPoints={async (pts) => { if (activeGame) await updateActiveGame({ ...activeGame, points: pts }); }}
                 onClearMap={() => { if (activeGame && confirm("Clear all points?")) updateActiveGame({ ...activeGame, points: [] }); }}
-                onSaveGame={() => updateActiveGame(activeGame!)}
+                onSaveGame={() => {
+                    if (activeGame) {
+                        updateActiveGame({
+                            ...activeGame,
+                            drawerStates: {
+                                settingsCollapsedSections: collapsedSections,
+                                visibleToolbars: activeGame.drawerStates?.visibleToolbars || {}
+                            }
+                        });
+                    }
+                }}
                 onOpenTaskMaster={() => setShowTaskMaster(true)}
                 onFitBounds={(coords) => {
                     if (coords && coords.length > 0) mapRef.current?.fitBounds(coords);
@@ -1895,10 +2479,112 @@ const GameApp: React.FC = () => {
                         setShowTaskMaster(true);
                     }
                 }}
+                onShowPlayzoneChoice={() => setShowPlayzoneChoiceModal(true)}
+                hoveredPlaygroundId={hoveredPlaygroundId}
+                onHoverPlayground={setHoveredPlaygroundId}
+                collapsedZones={collapsedZones}
+                onCollapsedZonesChange={setCollapsedZones}
             />
         )}
 
-        {!activeGameId && mode === GameMode.PLAY && !showLanding && !playgroundTemplateToEdit && (
+        {/* Playzone Choice Modal */}
+        {showPlayzoneChoiceModal && (
+            <div className="fixed inset-0 z-[5000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 pointer-events-auto">
+                <div className="bg-gradient-to-br from-slate-900 to-slate-950 border-2 border-emerald-600 rounded-2xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95">
+                    <h2 className="text-2xl font-black text-white mb-2">ADD PLAYZONE</h2>
+                    <p className="text-sm text-slate-400 mb-6">Choose how you want to create your playzone</p>
+
+                    <div className="space-y-3">
+                        <button
+                            onClick={() => {
+                                setShowPlayzoneChoiceModal(false);
+                                // Create new playzone
+                                if (!activeGame) return;
+                                const newPlaygroundId = `pg-${Date.now()}`;
+                                const center = mapRef.current?.getCenter() || { lat: 55.6761, lng: 12.5683 };
+                                const newPlayground = {
+                                    id: newPlaygroundId,
+                                    title: 'New Playzone',
+                                    buttonVisible: true,
+                                    iconId: 'default',
+                                    location: center
+                                };
+                                updateActiveGame({
+                                    ...activeGame,
+                                    playgrounds: [...(activeGame.playgrounds || []), newPlayground]
+                                }).then(() => {
+                                    setViewingPlaygroundId(newPlaygroundId);
+                                });
+                            }}
+                            className="w-full px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+                        >
+                            <Plus className="w-5 h-5" />
+                            CREATE NEW
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                setShowPlayzoneChoiceModal(false);
+                                setShowPlayzoneSelector(true);
+                            }}
+                            className="w-full px-4 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-black uppercase tracking-widest rounded-lg transition-all duration-200 flex items-center justify-center gap-2 group"
+                        >
+                            <Library className="w-5 h-5" />
+                            ADD EXISTING PLAYZONE(S)
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={() => setShowPlayzoneChoiceModal(false)}
+                        className="w-full mt-4 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold uppercase tracking-widest rounded-lg transition-all duration-200"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {showPlayzoneSelector && (
+            <PlayzoneSelector
+                onClose={() => setShowPlayzoneSelector(false)}
+                onBack={() => {
+                    setShowPlayzoneSelector(false);
+                    setShowPlayzoneChoiceModal(true);
+                }}
+                onAddToGame={async (templates) => {
+                    if (!activeGame) return;
+
+                    // Copy playzones from templates into the active game
+                    const newPlaygrounds = templates.map(tpl => ({
+                        id: `pg-${Date.now()}-${Math.random()}`,
+                        ...tpl.playgroundData,
+                        title: tpl.title,
+                        buttonVisible: true
+                    }));
+
+                    await updateActiveGame({
+                        ...activeGame,
+                        playgrounds: [...(activeGame.playgrounds || []), ...newPlaygrounds]
+                    });
+                }}
+            />
+        )}
+
+        {showAccess && (
+            <Access
+                onGameSelected={(gameId) => {
+                    setActiveGameId(gameId);
+                    setShowAccess(false);
+                    setMode(GameMode.PLAY);
+                }}
+                onBack={() => {
+                    setShowAccess(false);
+                    setShowLanding(true);
+                }}
+            />
+        )}
+
+        {!activeGameId && mode === GameMode.PLAY && !showLanding && !showAccess && !playgroundTemplateToEdit && (
             <WelcomeScreen
                 games={playableGames}
                 userLocation={userLocation}
@@ -1911,6 +2597,31 @@ const GameApp: React.FC = () => {
         )}
 
         {renderModals()}
+
+        {/* Media Approval Notifications for Editor/Instructor */}
+        {activeGame && (mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR) && (
+            <MediaApprovalNotification
+                gameId={activeGame.id}
+                onApprove={async (submissionId, partialScore) => {
+                    const reviewedBy = authUser?.name || 'Instructor';
+                    await approveMediaSubmission(submissionId, reviewedBy, partialScore);
+
+                    // TODO: Award points to the team
+                    // Get submission details and award points based on partialScore
+                    alert('✅ Media approved! Points awarded to team.');
+                }}
+                onReject={async (submissionId, message) => {
+                    const reviewedBy = authUser?.name || 'Instructor';
+
+                    // TODO: Get media URL from submission before deleting
+                    // For now, passing empty string (will need to fetch submission first)
+                    await rejectMediaSubmission(submissionId, reviewedBy, message, '');
+
+                    // TODO: Notify team and reopen task on map
+                    alert('❌ Media rejected. Team has been notified.');
+                }}
+            />
+        )}
     </div>
   );
 };
@@ -1919,9 +2630,11 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary componentName="TeamChallenge App">
       <OfflineIndicator />
-      <LocationProvider>
-        <GameApp />
-      </LocationProvider>
+      <TagColorsProvider>
+        <LocationProvider>
+          <GameApp />
+        </LocationProvider>
+      </TagColorsProvider>
     </ErrorBoundary>
   );
 };

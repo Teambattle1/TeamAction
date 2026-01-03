@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GamePoint, TaskVote, GameMode, TimelineItem, Game } from '../types';
-import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown, Lightbulb, Shield } from 'lucide-react';
+import { X, CheckCircle, Lock, MapPin, Glasses, AlertCircle, ChevronDown, ChevronsUpDown, Users, AlertTriangle, Loader2, ThumbsUp, Zap, Edit2, Skull, ArrowRight, ArrowDown, Lightbulb, Shield, Camera, Video, Upload } from 'lucide-react';
 import { teamSync } from '../services/teamSync';
 import DOMPurify from 'dompurify';
+import { isAnswerAcceptable, getAttemptMessage } from '../utils/stringMatch';
+import { playSound, getGlobalCorrectSound, getGlobalIncorrectSound, getGlobalVolume } from '../utils/sounds';
+import { uploadMediaFile, createMediaSubmission } from '../services/mediaUpload';
+import { replacePlaceholders } from '../utils/placeholders';
 
 interface TaskModalProps {
   point: GamePoint | null;
@@ -44,6 +48,7 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [hintRevealed, setHintRevealed] = useState(false);
   const [showCorrectAnswer, setShowCorrectAnswer] = useState(false);
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
 
   // Voting State
   const [isVoting, setIsVoting] = useState(false);
@@ -61,6 +66,14 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const [timelineScore, setTimelineScore] = useState(0);
   const [timelineFinished, setTimelineFinished] = useState(false);
   const [lastPlacedStatus, setLastPlacedStatus] = useState<'correct' | 'incorrect' | null>(null);
+
+  // Media Capture State (Photo/Video)
+  const [capturedMedia, setCapturedMedia] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const isEditMode = mode === GameMode.EDIT;
   const isInstructor = isInstructorMode || mode === GameMode.INSTRUCTOR;
@@ -215,9 +228,68 @@ const TaskModal: React.FC<TaskModalProps> = ({
   };
 
   // --- STANDARD TASK LOGIC ---
-  const handleSubmitVote = (e: React.FormEvent) => {
+  const handleSubmitVote = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    // Handle Photo/Video tasks
+    if (point.task.type === 'photo' || point.task.type === 'video') {
+        if (!capturedMedia) {
+            setErrorMsg(`Please ${point.task.type === 'photo' ? 'take a photo' : 'record a video'} before submitting.`);
+            return;
+        }
+
+        setIsUploading(true);
+        setUploadProgress(0);
+
+        try {
+            // Get team info from teamSync
+            const teamState = teamSync.getState();
+            const teamId = teamState?.teamId || 'unknown-team';
+            const teamName = teamState?.teamName || 'Unknown Team';
+            const gameId = game?.id || 'unknown-game';
+
+            // Upload the file
+            setUploadProgress(30);
+            const mediaUrl = await uploadMediaFile(capturedMedia, gameId, teamId);
+
+            setUploadProgress(60);
+            // Create submission record
+            const submission = await createMediaSubmission(
+                gameId,
+                teamId,
+                teamName,
+                point.id,
+                point.title,
+                mediaUrl,
+                point.task.type
+            );
+
+            setUploadProgress(100);
+
+            // Check if auto-approve or requires approval
+            const requiresApproval = point.task.mediaSettings?.requireApproval !== false;
+
+            if (requiresApproval) {
+                // Show pending message
+                alert(`📸 ${point.task.type === 'photo' ? 'Photo' : 'Video'} submitted!\n\nYour submission is pending instructor approval. You'll be notified once it's reviewed.`);
+                onClose();
+            } else {
+                // Auto-approve: Award points immediately
+                const finalScore = isDoubleTrouble ? point.points * 2 : point.points;
+                onComplete(point.id, finalScore);
+                onClose();
+            }
+
+            return;
+        } catch (error: any) {
+            console.error('Media upload failed:', error);
+            setErrorMsg(`Upload failed: ${error.message || 'Please try again.'}`);
+            setIsUploading(false);
+            setUploadProgress(0);
+            return;
+        }
+    }
 
     let finalAnswer: any = answer;
     if (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') {
@@ -251,10 +323,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
   const handleSimulateSubmit = (submittedAnswer: any) => {
       // Direct validation logic for simulation
       let isCorrect = false;
+      const maxAttempts = point.settings?.maxAttempts ?? 1;
+      const matchTolerance = point.settings?.matchTolerance ?? 80;
+      const language = point.settings?.language || 'English';
 
       if (point.task.type === 'multiple_choice' || point.task.type === 'boolean' || point.task.type === 'dropdown') {
           isCorrect = submittedAnswer === point.task.answer;
-      } 
+      }
       else if (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') {
           const correct = point.task.correctAnswers || [];
           const sortedSelected = [...(submittedAnswer as string[])].sort();
@@ -268,24 +343,60 @@ const TaskModal: React.FC<TaskModalProps> = ({
           isCorrect = Math.abs(val - target) <= tolerance;
       }
       else {
+          // Text answer with fuzzy matching
           const val = submittedAnswer as string;
           const correct = point.task.answer || '';
-          isCorrect = val.toLowerCase().trim() === correct.toLowerCase().trim();
+          isCorrect = isAnswerAcceptable(val, correct, matchTolerance, false);
       }
 
       if (isCorrect) {
+          // Play correct answer sound
+          const correctSoundUrl = game?.soundSettings?.correctAnswerSound || getGlobalCorrectSound();
+          const volume = game?.soundSettings?.volume ?? getGlobalVolume();
+          playSound(correctSoundUrl, volume);
+
           const finalScore = isDoubleTrouble ? point.points * 2 : point.points;
           onComplete(point.id, finalScore);
           onClose();
       } else {
+          const newAttemptsUsed = attemptsUsed + 1;
+          setAttemptsUsed(newAttemptsUsed);
+
           if (onTaskIncorrect) onTaskIncorrect();
 
-          // Use custom incorrect message if available
-          const incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
+          // Play incorrect answer sound
+          const incorrectSoundUrl = game?.soundSettings?.incorrectAnswerSound || getGlobalIncorrectSound();
+          const volume = game?.soundSettings?.volume ?? getGlobalVolume();
+          playSound(incorrectSoundUrl, volume);
+
+          // Vibrate on incorrect answer
+          if (navigator.vibrate) {
+              navigator.vibrate([100, 50, 100]); // Short double buzz pattern for incorrect answer
+          }
+
+          // Check if attempts exhausted
+          const attemptsRemaining = maxAttempts > 0 ? maxAttempts - newAttemptsUsed : 999;
+          const attemptsExhausted = maxAttempts > 0 && newAttemptsUsed >= maxAttempts;
+
+          // If attempts exhausted, auto-close and mark as incorrect
+          if (attemptsExhausted) {
+              // Trigger incorrect completion without showing message
+              // Note: onComplete is not called, task should remain incomplete or be handled by completionLogic
+              onClose();
+              return;
+          }
+
+          // Build error message (only if attempts remain)
+          let incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
               ? point.feedback.incorrectMessage
               : (isDoubleTrouble
                   ? `DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`
                   : "Incorrect answer in simulation.");
+
+          // Add attempts message
+          if (maxAttempts > 0) {
+              incorrectMsg += ` ${getAttemptMessage(language, attemptsRemaining)}`;
+          }
 
           if (isDoubleTrouble && onPenalty) {
               onPenalty(point.points);
@@ -297,16 +408,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
           if (point.settings?.showCorrectAnswerOnMiss) {
               setShowCorrectAnswer(true);
           }
+
+          // Clear answer field
+          setAnswer('');
       }
   }
 
   const handleFinalize = () => {
       const agreedAnswer = teamVotes[0].answer;
       let isCorrect = false;
+      const maxAttempts = point.settings?.maxAttempts ?? 1;
+      const matchTolerance = point.settings?.matchTolerance ?? 80;
+      const language = point.settings?.language || 'English';
 
       if (point.task.type === 'multiple_choice' || point.task.type === 'boolean' || point.task.type === 'dropdown') {
           isCorrect = agreedAnswer === point.task.answer;
-      } 
+      }
       else if (point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown') {
           const correct = point.task.correctAnswers || [];
           const sortedSelected = [...(agreedAnswer as string[])].sort();
@@ -320,24 +437,59 @@ const TaskModal: React.FC<TaskModalProps> = ({
           isCorrect = Math.abs(val - target) <= tolerance;
       }
       else {
+          // Text answer with fuzzy matching
           const val = agreedAnswer as string;
           const correct = point.task.answer || '';
-          isCorrect = val.toLowerCase().trim() === correct.toLowerCase().trim();
+          isCorrect = isAnswerAcceptable(val, correct, matchTolerance, false);
       }
 
       if (isCorrect) {
+          // Play correct answer sound
+          const correctSoundUrl = game?.soundSettings?.correctAnswerSound || getGlobalCorrectSound();
+          const volume = game?.soundSettings?.volume ?? getGlobalVolume();
+          playSound(correctSoundUrl, volume);
+
           const finalScore = isDoubleTrouble ? point.points * 2 : point.points;
           onComplete(point.id, finalScore);
           onClose();
       } else {
+          const newAttemptsUsed = attemptsUsed + 1;
+          setAttemptsUsed(newAttemptsUsed);
+
           if (onTaskIncorrect) onTaskIncorrect();
 
-          // Use custom incorrect message if available
-          const incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
+          // Play incorrect answer sound
+          const incorrectSoundUrl = game?.soundSettings?.incorrectAnswerSound || getGlobalIncorrectSound();
+          const volume = game?.soundSettings?.volume ?? getGlobalVolume();
+          playSound(incorrectSoundUrl, volume);
+
+          // Vibrate on incorrect answer
+          if (navigator.vibrate) {
+              navigator.vibrate([100, 50, 100]); // Short double buzz pattern for incorrect answer
+          }
+
+          // Check if attempts exhausted
+          const attemptsRemaining = maxAttempts > 0 ? maxAttempts - newAttemptsUsed : 999;
+          const attemptsExhausted = maxAttempts > 0 && newAttemptsUsed >= maxAttempts;
+
+          // If attempts exhausted, auto-close and mark as incorrect
+          if (attemptsExhausted) {
+              // Trigger incorrect completion without showing message
+              onClose();
+              return;
+          }
+
+          // Build error message (only if attempts remain)
+          let incorrectMsg = point.feedback?.showIncorrectMessage && point.feedback.incorrectMessage
               ? point.feedback.incorrectMessage
               : (isDoubleTrouble
                   ? `DOUBLE TROUBLE! Incorrect answer. You lost ${point.points} points.`
-                  : "Team answer is incorrect. Try again!");
+                  : "Team answer is incorrect.");
+
+          // Add attempts message
+          if (maxAttempts > 0) {
+              incorrectMsg += ` ${getAttemptMessage(language, attemptsRemaining)}`;
+          }
 
           if (isDoubleTrouble && onPenalty) {
               onPenalty(point.points);
@@ -516,6 +668,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
           if (type === 'text') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm italic text-gray-500">Text Input Field</div>;
           if (type === 'slider') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center font-mono">SLIDER {range?.min} - {range?.max}</div>;
           if (type === 'boolean') return <div className="flex gap-2 opacity-80 pointer-events-none"><div className="flex-1 p-3 border rounded-xl text-center">True</div><div className="flex-1 p-3 border rounded-xl text-center">False</div></div>;
+          if (type === 'photo') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm font-mono uppercase flex items-center justify-center gap-2"><Camera className="w-5 h-5" /> PHOTO UPLOAD</div>;
+          if (type === 'video') return <div className="p-4 border rounded-xl opacity-80 bg-gray-100 dark:bg-gray-800 text-center text-sm font-mono uppercase flex items-center justify-center gap-2"><Video className="w-5 h-5" /> VIDEO UPLOAD</div>;
           return (
               <div className="space-y-2 opacity-80 pointer-events-none">
                   {options?.map((opt, idx) => (
@@ -549,8 +703,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
               );
           case 'text':
               return (
-                <input 
-                    type="text" 
+                <input
+                    type="text"
                     disabled={isDisabled}
                     value={answer}
                     onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
@@ -558,6 +712,215 @@ const TaskModal: React.FC<TaskModalProps> = ({
                     className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:text-gray-500"
                     autoFocus={!isInstructor && !isEditMode}
                 />
+              );
+          case 'boolean':
+              return (
+                  <div className="flex gap-3">
+                      <button
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => { setAnswer('true'); setErrorMsg(null); }}
+                          className={`flex-1 p-4 rounded-xl border-2 font-bold text-sm uppercase transition-all ${
+                              answer === 'true'
+                              ? 'border-green-600 bg-green-50 dark:bg-green-900/50 text-green-900 dark:text-green-200'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                      >
+                          ✓ TRUE
+                      </button>
+                      <button
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => { setAnswer('false'); setErrorMsg(null); }}
+                          className={`flex-1 p-4 rounded-xl border-2 font-bold text-sm uppercase transition-all ${
+                              answer === 'false'
+                              ? 'border-red-600 bg-red-50 dark:bg-red-900/50 text-red-900 dark:text-red-200'
+                              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                      >
+                          ✗ FALSE
+                      </button>
+                  </div>
+              );
+          case 'checkbox':
+          case 'multi_select_dropdown':
+              return (
+                  <div className="space-y-2">
+                      {options?.map((opt, idx) => (
+                          <label
+                              key={idx}
+                              className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                                  selectedOptions.includes(opt)
+                                  ? 'border-orange-600 bg-orange-50 dark:bg-orange-900/50'
+                                  : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              }`}
+                          >
+                              <input
+                                  type="checkbox"
+                                  disabled={isDisabled}
+                                  checked={selectedOptions.includes(opt)}
+                                  onChange={(e) => {
+                                      setErrorMsg(null);
+                                      if (e.target.checked) {
+                                          setSelectedOptions([...selectedOptions, opt]);
+                                      } else {
+                                          setSelectedOptions(selectedOptions.filter(o => o !== opt));
+                                      }
+                                  }}
+                                  className="w-5 h-5 rounded border-2 border-gray-300 text-orange-600 focus:ring-orange-500 focus:ring-2 disabled:bg-gray-100"
+                              />
+                              <span className="flex-1 text-gray-800 dark:text-gray-200">{opt}</span>
+                          </label>
+                      ))}
+                  </div>
+              );
+          case 'dropdown':
+              return (
+                  <select
+                      disabled={isDisabled}
+                      value={answer}
+                      onChange={(e) => { setAnswer(e.target.value); setErrorMsg(null); }}
+                      className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all bg-white dark:bg-gray-800 text-gray-900 dark:text-white disabled:bg-gray-100 disabled:text-gray-500"
+                  >
+                      <option value="">Select an answer...</option>
+                      {options?.map((opt, idx) => (
+                          <option key={idx} value={opt}>{opt}</option>
+                      ))}
+                  </select>
+              );
+          case 'slider':
+              return (
+                  <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{range?.min || 0}</span>
+                          <span className="text-2xl font-black text-orange-600 dark:text-orange-400">{sliderValue}</span>
+                          <span className="text-sm font-bold text-gray-500 dark:text-gray-400">{range?.max || 100}</span>
+                      </div>
+                      <input
+                          type="range"
+                          disabled={isDisabled}
+                          min={range?.min || 0}
+                          max={range?.max || 100}
+                          step={range?.step || 1}
+                          value={sliderValue}
+                          onChange={(e) => { setSliderValue(parseInt(e.target.value)); setErrorMsg(null); }}
+                          className="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-600 disabled:opacity-50"
+                      />
+                  </div>
+              );
+          case 'photo':
+          case 'video':
+              const isPhoto = type === 'photo';
+              const maxSize = point.task.mediaSettings?.maxFileSize || (isPhoto ? 10 : 50);
+
+              const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  // Check file size
+                  if (file.size > maxSize * 1024 * 1024) {
+                      setErrorMsg(`File is too large! Maximum size is ${maxSize}MB.`);
+                      return;
+                  }
+
+                  // Check file type
+                  if (isPhoto && !file.type.startsWith('image/')) {
+                      setErrorMsg('Please select a valid image file.');
+                      return;
+                  }
+                  if (!isPhoto && !file.type.startsWith('video/')) {
+                      setErrorMsg('Please select a valid video file.');
+                      return;
+                  }
+
+                  setCapturedMedia(file);
+                  setMediaPreview(URL.createObjectURL(file));
+                  setErrorMsg(null);
+              };
+
+              const handleRemoveMedia = () => {
+                  setCapturedMedia(null);
+                  if (mediaPreview) {
+                      URL.revokeObjectURL(mediaPreview);
+                      setMediaPreview(null);
+                  }
+                  if (fileInputRef.current) fileInputRef.current.value = '';
+                  if (videoInputRef.current) videoInputRef.current.value = '';
+              };
+
+              return (
+                  <div className="space-y-4">
+                      {mediaPreview ? (
+                          <div className="relative bg-black rounded-xl overflow-hidden border-2 border-green-500">
+                              {isPhoto ? (
+                                  <img
+                                      src={mediaPreview}
+                                      alt="Captured"
+                                      className="w-full h-auto max-h-96 object-contain"
+                                  />
+                              ) : (
+                                  <video
+                                      src={mediaPreview}
+                                      controls
+                                      className="w-full h-auto max-h-96"
+                                  />
+                              )}
+                              <button
+                                  type="button"
+                                  onClick={handleRemoveMedia}
+                                  className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                              >
+                                  <X className="w-4 h-4" />
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center">
+                              <div className="flex flex-col items-center gap-4">
+                                  {isPhoto ? (
+                                      <Camera className="w-12 h-12 text-gray-400" />
+                                  ) : (
+                                      <Video className="w-12 h-12 text-gray-400" />
+                                  )}
+                                  <div>
+                                      <p className="font-bold text-gray-700 dark:text-gray-300 mb-1">
+                                          {isPhoto ? 'Take or Upload Photo' : 'Record or Upload Video'}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                          Max size: {maxSize}MB
+                                      </p>
+                                  </div>
+                                  <label className="cursor-pointer bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-xl transition-colors flex items-center gap-2">
+                                      <Upload className="w-5 h-5" />
+                                      {isPhoto ? 'Choose Photo' : 'Choose Video'}
+                                      <input
+                                          ref={isPhoto ? fileInputRef : videoInputRef}
+                                          type="file"
+                                          accept={isPhoto ? 'image/*' : 'video/*'}
+                                          capture={isPhoto ? 'environment' : 'user'}
+                                          onChange={handleFileSelect}
+                                          className="hidden"
+                                          disabled={isDisabled}
+                                      />
+                                  </label>
+                              </div>
+                          </div>
+                      )}
+
+                      {isUploading && (
+                          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                              <div className="flex items-center gap-3 mb-2">
+                                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                                  <span className="font-bold text-blue-700 dark:text-blue-300">Uploading...</span>
+                              </div>
+                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                                  <div
+                                      className="bg-blue-600 h-full transition-all duration-300"
+                                      style={{ width: `${uploadProgress}%` }}
+                                  />
+                              </div>
+                          </div>
+                      )}
+                  </div>
               );
           default: return null;
       }
@@ -644,7 +1007,13 @@ const TaskModal: React.FC<TaskModalProps> = ({
       );
   };
 
-  const sanitizedQuestion = DOMPurify.sanitize(point.task.question);
+  // Get team name for placeholder replacement
+  const teamState = teamSync.getState();
+  const teamName = teamState?.teamName || 'Your Team';
+
+  // Replace placeholders in task question
+  const questionWithPlaceholders = replacePlaceholders(point.task.question, teamName);
+  const sanitizedQuestion = DOMPurify.sanitize(questionWithPlaceholders);
 
   return (
     <div className="fixed inset-0 z-[2600] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -754,6 +1123,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
                        point.task.type === 'slider' ? '🎚️ Slider' :
                        point.task.type === 'boolean' ? '✓ True/False' :
                        point.task.type === 'timeline' ? '📅 Timeline' :
+                       point.task.type === 'photo' ? '📸 Photo Task' :
+                       point.task.type === 'video' ? '🎥 Video Task' :
                        point.task.type}
                     </span>
                   </div>
@@ -893,6 +1264,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
                             >
                                 {isSimulation ? 'SUBMIT (SIMULATION)' : 'Submit to Team'}
                             </button>
+
+                            {/* Show Correct Answer at bottom in Simulation Mode */}
+                            {isSimulation && (
+                                <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
+                                    <p className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-2">
+                                        📋 Correct Answer (Simulation):
+                                    </p>
+                                    <p className="text-purple-900 dark:text-purple-200 font-bold text-lg">
+                                        {point.task.type === 'slider' ?
+                                            (point.task.range?.correctValue !== undefined ? `${point.task.range.correctValue}` : point.task.answer || "Not specified") :
+                                            point.task.type === 'checkbox' || point.task.type === 'multi_select_dropdown' ?
+                                            point.task.correctAnswers?.join(', ') || point.task.answer || "Not specified" :
+                                            point.task.answer || point.task.correctAnswers?.[0] || "Not specified"}
+                                    </p>
+                                </div>
+                            )}
                             </form>
                         )
                     )

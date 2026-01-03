@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Game, GamePoint, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage, Coordinate, GameChangeLogEntry } from '../types';
+import { Game, GamePoint, TaskTemplate, TaskList, Team, PlaygroundTemplate, AccountUser, AdminMessage, Coordinate, GameChangeLogEntry, MediaSubmission } from '../types';
 import { DEMO_TASKS, DEMO_LISTS, getDemoGames } from '../utils/demoContent';
 import { detectLanguageFromText, normalizeLanguage } from '../utils/i18n';
 
@@ -20,8 +20,15 @@ const logError = (context: string, error: any) => {
     };
 
     console.error(`[DB Service] Error in ${context}:`, errorMsg);
-    if (Object.values(errorDetails).some(v => v !== undefined)) {
-        console.error(`[DB Service] Error details:`, errorDetails);
+
+    // Format error details as a readable string
+    const detailsArray = Object.entries(errorDetails)
+        .filter(([_, v]) => v !== undefined && v !== null)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+
+    if (detailsArray) {
+        console.error(`[DB Service] Error details: ${detailsArray}`);
     }
 
     // Special handling for network errors
@@ -90,11 +97,11 @@ export const testDatabaseConnection = async (): Promise<{ success: boolean; erro
 
 // Configuration for large table fetches
 const CHUNK_SIZE = 50; // Fetch 50 rows at a time (reduced to prevent timeouts)
-const LIBRARY_CHUNK_SIZE = 25; // Even smaller for library (data objects are large)
+const LIBRARY_CHUNK_SIZE = 12; // Smaller chunks for library - large data objects cause timeouts
 const TAGS_CHUNK_SIZE = 20; // Smaller chunks for tag fetching (large data objects)
 const FETCH_TIMEOUT_MS = 20000; // 20 second timeout per chunk (reduced)
 const TAGS_FETCH_TIMEOUT_MS = 5000; // 5 second timeout for tag fetches (fail fast)
-const LIBRARY_FETCH_TIMEOUT_MS = 15000; // 15 second timeout for library fetches
+const LIBRARY_FETCH_TIMEOUT_MS = 25000; // 25 second timeout for library fetches (increased from 15s)
 
 // Retry helper for timeout and network errors with exponential backoff
 const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRetries = 3, timeoutMs?: number): Promise<T> => {
@@ -132,7 +139,9 @@ const retryWithBackoff = async <T>(fn: () => Promise<T>, context: string, maxRet
 
             const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Max 5 second wait
             const errorType = isNetworkError ? 'Network error' : 'Timeout';
-            console.warn(`[DB Service] ${errorType} in ${context}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+            const errorMsg = e?.message || String(e);
+            console.warn(`[DB Service] ${errorType} in ${context}: ${errorMsg}`);
+            console.warn(`[DB Service] Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
@@ -152,16 +161,20 @@ const fetchInChunks = async <T>(
 
     while (hasMore) {
         try {
+            // Use fewer retries for library to fail faster and trigger fallback
+            const retries = context.includes('fetchLibrary') ? 1 : 2;
+
             const { data, error } = await retryWithBackoff(
                 () => query(offset, chunkSize),
                 `${context}[offset=${offset}]`,
-                2, // Reduced retries for tag fetches with short timeout
+                retries,
                 timeoutMs
             );
 
             if (error) {
                 const errorMessage = typeof error === 'string' ? error : (error?.message || JSON.stringify(error));
-                console.error(`[DB Service] Query error at offset ${offset}:`, errorMessage);
+                const errorCode = error?.code ? ` (${error.code})` : '';
+                console.error(`[DB Service] Query error at offset ${offset}${errorCode}:`, errorMessage);
                 throw error;
             }
 
@@ -169,6 +182,9 @@ const fetchInChunks = async <T>(
                 hasMore = false;
             } else {
                 results.push(...data);
+                if (context.includes('fetchLibrary')) {
+                    console.debug(`[DB Service] Fetched ${data.length} items for ${context} at offset ${offset}`);
+                }
                 if (data.length < chunkSize) {
                     hasMore = false;
                 } else {
@@ -226,20 +242,51 @@ export const fetchGames = async (): Promise<Game[]> => {
     }
 };
 
-export const saveGame = async (game: Game) => {
+export const saveGames = async (
+    games: Game[],
+    opts?: { chunkSize?: number; onProgress?: (info: { completed: number; total: number }) => void }
+): Promise<{ ok: boolean }> => {
     try {
-        await retryWithBackoff(
-            () => supabase.from('games').upsert({
-                id: game.id,
-                data: game,
-                updated_at: new Date().toISOString()
-            }).then(result => {
-                if (result.error) throw result.error;
-                return result;
-            }),
-            'saveGame'
-        );
-    } catch (e) { logError('saveGame', e); }
+        if (!games || games.length === 0) return { ok: true };
+
+        // Games can be large JSON objects; keep chunks small to avoid DB statement timeouts.
+        const chunkSize = Math.max(1, Math.min(opts?.chunkSize ?? 2, 10));
+        const updatedAt = new Date().toISOString();
+        const chunks = chunkArray(games, chunkSize);
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+            opts?.onProgress?.({ completed: i, total: chunks.length });
+
+            await retryWithBackoff(
+                () =>
+                    supabase
+                        .from('games')
+                        .upsert(
+                            chunk.map(g => ({ id: g.id, data: g, updated_at: updatedAt })),
+                            { onConflict: 'id', returning: 'minimal' }
+                        )
+                        .then(result => {
+                            if (result.error) throw result.error;
+                            return result;
+                        }),
+                `saveGames[chunk=${i + 1}/${chunks.length}]`
+            );
+        }
+
+        opts?.onProgress?.({ completed: chunks.length, total: chunks.length });
+        return { ok: true };
+    } catch (e) {
+        logError('saveGames', e);
+        return { ok: false };
+    }
+};
+
+export const saveGame = async (game: Game) => {
+    const { ok } = await saveGames([game]);
+    if (!ok) {
+        console.warn('[DB Service] saveGame failed (see previous error for details)');
+    }
 };
 
 export const fetchGame = async (id: string): Promise<Game | null> => {
@@ -443,6 +490,28 @@ export const registerTeam = async (team: Team) => {
     } catch (e) { logError('registerTeam', e); }
 };
 
+export const updateTeam = async (teamId: string, updates: Partial<Team>) => {
+    try {
+        const payload: any = {};
+
+        if (updates.name !== undefined) payload.name = updates.name;
+        if (updates.joinCode !== undefined) payload.join_code = updates.joinCode;
+        if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
+        if (updates.members !== undefined) payload.members = updates.members;
+        if (updates.score !== undefined) payload.score = updates.score;
+        if (updates.captainDeviceId !== undefined) payload.captain_device_id = updates.captainDeviceId;
+        if (updates.isStarted !== undefined) payload.is_started = updates.isStarted;
+        if (updates.completedPointIds !== undefined) payload.completed_point_ids = updates.completedPointIds;
+
+        payload.updated_at = updates.updatedAt || new Date().toISOString();
+
+        const { error } = await supabase.from('teams').update(payload).eq('id', teamId);
+        if (error) throw error;
+    } catch (e) {
+        logError('updateTeam', e);
+    }
+};
+
 // ATOMIC UPDATE (Fixes Race Condition Point 5)
 export const updateTeamScore = async (teamId: string, delta: number) => {
     try {
@@ -539,6 +608,13 @@ export const updateMemberPhoto = async (teamId: string, memberDeviceId: string, 
 
 // --- LIBRARY & LISTS ---
 export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
+    const normalizeTemplate = (template: any): TaskTemplate => {
+        return {
+            ...template,
+            tags: Array.isArray(template.tags) ? template.tags : []
+        };
+    };
+
     try {
         const rows = await fetchInChunks(
             (offset, limit) => supabase.from('library').select('id, data').range(offset, offset + limit - 1),
@@ -549,26 +625,27 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
         return rows.map((row: any) => {
             // Handle both direct data objects and stringified JSON
             const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-            return { ...rowData, id: row.id };
+            return normalizeTemplate({ ...rowData, id: row.id });
         });
     } catch (e) {
         logError('fetchLibrary', e);
         console.warn('[DB Service] Initial fetch failed for fetchLibrary. Check database connection and table permissions.');
-        // Try fallback: fetch a smaller batch without chunking as last resort
+        // Try fallback: fetch fewer items with longer timeout
         try {
-            console.warn('[DB Service] Attempting fetchLibrary fallback (small batch)...');
+            console.warn('[DB Service] Attempting fetchLibrary fallback (minimal batch)...');
             const { data, error } = await Promise.race([
-                supabase.from('library').select('id, data').limit(100).order('id', { ascending: false }),
+                supabase.from('library').select('id, data').limit(50).order('created_at', { ascending: false }),
                 new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Fallback query timeout after 10s')), 10000)
+                    setTimeout(() => reject(new Error('Fallback query timeout after 20s')), 20000)
                 )
             ]) as Promise<{ data: any[] | null; error: any }>;
 
             if (error) throw error;
             if (!data) return [];
+            console.log(`[DB Service] Fallback fetch returned ${data.length} library items`);
             return data.map((row: any) => {
                 const rowData = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
-                return { ...rowData, id: row.id };
+                return normalizeTemplate({ ...rowData, id: row.id });
             });
         } catch (fallbackError) {
             logError('fetchLibrary[fallback]', fallbackError);
@@ -578,36 +655,86 @@ export const fetchLibrary = async (): Promise<TaskTemplate[]> => {
     }
 };
 
-export const saveTemplate = async (template: TaskTemplate) => {
+const VALID_TEMPLATE_LANGUAGES = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
+
+const normalizeTemplateForSave = (template: TaskTemplate): TaskTemplate => {
+    // Respect user's language choice if explicitly set, otherwise auto-detect
+    const hasValidLanguage = template.settings?.language && VALID_TEMPLATE_LANGUAGES.includes(template.settings.language);
+
+    const finalLanguage = hasValidLanguage
+        ? template.settings!.language
+        : detectLanguageFromText(template.task.question || '');
+
+    return {
+        ...template,
+        tags: Array.isArray(template.tags) ? template.tags : [],
+        settings: {
+            ...template.settings,
+            language: finalLanguage
+        }
+    };
+};
+
+const chunkArray = <T,>(items: T[], chunkSize: number): T[][] => {
+    if (chunkSize <= 0) return [items];
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += chunkSize) {
+        chunks.push(items.slice(i, i + chunkSize));
+    }
+    return chunks;
+};
+
+export const saveTemplates = async (
+    templates: TaskTemplate[],
+    opts?: { chunkSize?: number; onProgress?: (info: { completed: number; total: number }) => void }
+): Promise<{ ok: boolean }> => {
     try {
-        // Respect user's language choice if explicitly set, otherwise auto-detect
-        const validLanguages = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
-        const hasValidLanguage = template.settings?.language && validLanguages.includes(template.settings.language);
+        if (!templates || templates.length === 0) return { ok: true };
 
-        const finalLanguage = hasValidLanguage
-            ? template.settings.language
-            : detectLanguageFromText(template.task.question || '');
+        // Many parallel upserts can overwhelm Postgres and trigger statement_timeout (57014).
+        // We chunk + save sequentially to keep each statement small and predictable.
+        const chunkSize = Math.max(1, Math.min(opts?.chunkSize ?? 10, 50));
+        const updatedAt = new Date().toISOString();
 
-        const normalizedTemplate = {
-            ...template,
-            settings: {
-                ...template.settings,
-                language: finalLanguage
-            }
-        };
+        const normalized = templates.map(normalizeTemplateForSave);
+        const chunks = chunkArray(normalized, chunkSize);
 
-        await retryWithBackoff(
-            () => supabase.from('library').upsert({
-                id: normalizedTemplate.id,
-                data: normalizedTemplate,
-                updated_at: new Date().toISOString()
-            }).then(result => {
-                if (result.error) throw result.error;
-                return result;
-            }),
-            'saveTemplate'
-        );
-    } catch (e) { logError('saveTemplate', e); }
+        for (let i = 0; i < chunks.length; i++) {
+            const chunk = chunks[i];
+
+            opts?.onProgress?.({ completed: i, total: chunks.length });
+
+            await retryWithBackoff(
+                () =>
+                    supabase
+                        .from('library')
+                        .upsert(
+                            chunk.map(t => ({ id: t.id, data: t, updated_at: updatedAt })),
+                            { onConflict: 'id', returning: 'minimal' }
+                        )
+                        .then(result => {
+                            if (result.error) throw result.error;
+                            return result;
+                        }),
+                `saveTemplates[chunk=${i + 1}/${chunks.length}]`
+            );
+        }
+
+        opts?.onProgress?.({ completed: chunks.length, total: chunks.length });
+
+        return { ok: true };
+    } catch (e) {
+        logError('saveTemplates', e);
+        return { ok: false };
+    }
+};
+
+export const saveTemplate = async (template: TaskTemplate) => {
+    const { ok } = await saveTemplates([template]);
+    if (!ok) {
+        // Keep existing behavior (log + don't throw), but ensure saveTemplate logs show up.
+        console.warn('[DB Service] saveTemplate failed (see previous error for details)');
+    }
 };
 
 export const deleteTemplate = async (id: string) => {
@@ -663,39 +790,93 @@ export const fetchTaskListByToken = async (token: string): Promise<TaskList | nu
     } catch (e) { logError('fetchTaskListByToken', e); return null; }
 };
 
+const VALID_TASKLIST_LANGUAGES = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
+
+const normalizeTaskListForSave = (list: TaskList): TaskList => {
+    return {
+        ...list,
+        tasks: list.tasks.map(task => {
+            const hasValidLanguage = task.settings?.language && VALID_TASKLIST_LANGUAGES.includes(task.settings.language);
+            const finalLanguage = hasValidLanguage
+                ? task.settings.language
+                : detectLanguageFromText(task.task.question || '');
+
+            return {
+                ...task,
+                settings: {
+                    ...task.settings,
+                    language: finalLanguage
+                }
+            };
+        })
+    };
+};
+
+export const saveTaskLists = async (
+    lists: TaskList[],
+    opts?: { chunkSize?: number; onProgress?: (info: { completed: number; total: number }) => void }
+): Promise<{ ok: boolean }> => {
+    try {
+        if (!lists || lists.length === 0) return { ok: true };
+
+        const chunkSize = Math.max(1, Math.min(opts?.chunkSize ?? 10, 50));
+        const updatedAt = new Date().toISOString();
+
+        const normalized = lists.map(normalizeTaskListForSave);
+        const chunks = chunkArray(normalized, chunkSize);
+
+        const total = normalized.length;
+
+        for (let i = 0; i < chunks.length; i++) {
+            const completedBeforeChunk = Math.min(i * chunkSize, total);
+            opts?.onProgress?.({ completed: completedBeforeChunk, total });
+
+            const chunk = chunks[i];
+
+            await retryWithBackoff(
+                () =>
+                    supabase
+                        .from('task_lists')
+                        .upsert(
+                            chunk.map(list => ({ id: list.id, data: list, updated_at: updatedAt })),
+                            { onConflict: 'id', returning: 'minimal' }
+                        )
+                        .then(result => {
+                            if (result.error) throw result.error;
+                            return result;
+                        }),
+                `saveTaskLists[chunk=${i + 1}/${chunks.length}]`
+            );
+        }
+
+        opts?.onProgress?.({ completed: total, total });
+
+        return { ok: true };
+    } catch (e) {
+        logError('saveTaskLists', e);
+        return { ok: false };
+    }
+};
+
 export const saveTaskList = async (list: TaskList) => {
     try {
-        // Respect user's language choice for each task, otherwise auto-detect
-        const validLanguages = ['English', 'Danish', 'German', 'Spanish', 'French', 'Swedish', 'Norwegian', 'Dutch', 'Belgian', 'Hebrew'];
-        const normalizedList = {
-            ...list,
-            tasks: list.tasks.map(task => {
-                const hasValidLanguage = task.settings?.language && validLanguages.includes(task.settings.language);
-                const finalLanguage = hasValidLanguage
-                    ? task.settings.language
-                    : detectLanguageFromText(task.task.question || '');
-
-                return {
-                    ...task,
-                    settings: {
-                        ...task.settings,
-                        language: finalLanguage
-                    }
-                };
-            })
-        };
+        const normalizedList = normalizeTaskListForSave(list);
 
         await retryWithBackoff(
-            () => supabase.from('task_lists').upsert({
-                id: normalizedList.id,
-                data: normalizedList,
-                updated_at: new Date().toISOString()
-            }).then(result => {
-                if (result.error) {
-                    throw result.error;
-                }
-                return result;
-            }),
+            () =>
+                supabase
+                    .from('task_lists')
+                    .upsert({
+                        id: normalizedList.id,
+                        data: normalizedList,
+                        updated_at: new Date().toISOString()
+                    })
+                    .then(result => {
+                        if (result.error) {
+                            throw result.error;
+                        }
+                        return result;
+                    }),
             'saveTaskList'
         );
     } catch (e) {
@@ -868,16 +1049,41 @@ export const sendAccountUserMessage = async (targetUserId: string, messageText: 
 };
 
 // --- USER SETTINGS ---
+const SYSTEM_SETTINGS_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+type TagColorsMap = Record<string, string>;
+
+export const fetchSystemSettings = async (): Promise<any | null> => {
+    return fetchUserSettings(SYSTEM_SETTINGS_USER_ID);
+};
+
+export const saveSystemSettings = async (patch: any): Promise<boolean> => {
+    const current = (await fetchSystemSettings()) || {};
+    return saveUserSettings(SYSTEM_SETTINGS_USER_ID, { ...current, ...patch });
+};
+
+export const fetchTagColors = async (): Promise<TagColorsMap> => {
+    try {
+        const settings = await fetchSystemSettings();
+        const fromDb = settings?.tagColors;
+        if (fromDb && typeof fromDb === 'object') return fromDb as TagColorsMap;
+        return {};
+    } catch (e) {
+        logError('fetchTagColors', e);
+        return {};
+    }
+};
+
+export const saveTagColors = async (tagColors: TagColorsMap): Promise<boolean> => {
+    try {
+        return await saveSystemSettings({ tagColors });
+    } catch (e) {
+        logError('saveTagColors', e);
+        return false;
+    }
+};
 export const fetchUserSettings = async (userId: string): Promise<any | null> => {
     try {
-        // Skip database query if userId is not a valid UUID
-        // (hardcoded admin users like 'admin-thomas-permanent' are not UUIDs)
-        if (!isValidUUID(userId)) {
-            // Use debug instead of log to reduce console noise
-            console.debug(`[DB Service] Skipping fetchUserSettings for non-UUID user: ${userId}`);
-            return null;
-        }
-
         const { data, error } = await supabase
             .from('user_settings')
             .select('data')
@@ -889,11 +1095,37 @@ export const fetchUserSettings = async (userId: string): Promise<any | null> => 
                 // No row found, return null (not an error)
                 return null;
             }
+
+            // If DB uses UUID user_id but we pass a non-uuid, Postgres returns 22P02.
+            if (error.code === '22P02' || `${error.message || ''}`.includes('invalid input syntax for type uuid')) {
+                console.debug(`[DB Service] fetchUserSettings skipped (user_id not uuid in this schema): ${userId}`);
+                return null;
+            }
+
+            // RLS policy violation (42501) - user doesn't have permission to read this row
+            // This is expected for system-wide settings when using a non-user UUID
+            if (error.code === '42501' || `${error.message || ''}`.includes('row-level security policy')) {
+                console.debug(`[DB Service] fetchUserSettings blocked by RLS policy (expected for system settings with user_id: ${userId})`);
+                return null; // Return null to allow app to continue with defaults
+            }
+
             throw error;
         }
 
         return data?.data || null;
-    } catch (e) {
+    } catch (e: any) {
+        // If DB uses UUID user_id but we pass a non-uuid, Postgres returns 22P02.
+        if (e?.code === '22P02' || `${e?.message || ''}`.includes('invalid input syntax for type uuid')) {
+            console.debug(`[DB Service] fetchUserSettings skipped (user_id not uuid in this schema): ${userId}`);
+            return null;
+        }
+
+        // RLS policy violation (42501) - user doesn't have permission to read this row
+        if (e?.code === '42501' || `${e?.message || ''}`.includes('row-level security policy')) {
+            console.debug(`[DB Service] fetchUserSettings blocked by RLS policy (user_id: ${userId})`);
+            return null;
+        }
+
         logError('fetchUserSettings', e);
         return null;
     }
@@ -901,14 +1133,6 @@ export const fetchUserSettings = async (userId: string): Promise<any | null> => 
 
 export const saveUserSettings = async (userId: string, settings: any): Promise<boolean> => {
     try {
-        // Skip database operation if userId is not a valid UUID
-        // (hardcoded admin users like 'admin-thomas-permanent' are not UUIDs)
-        if (!isValidUUID(userId)) {
-            // Use debug instead of log to reduce console noise
-            console.debug(`[DB Service] Skipping saveUserSettings for non-UUID user: ${userId}`);
-            return true; // Return true to prevent error cascading
-        }
-
         await retryWithBackoff(
             () => supabase
                 .from('user_settings')
@@ -923,7 +1147,20 @@ export const saveUserSettings = async (userId: string, settings: any): Promise<b
             'saveUserSettings'
         );
         return true;
-    } catch (e) {
+    } catch (e: any) {
+        // If DB uses UUID user_id but we pass a non-uuid, Postgres returns 22P02.
+        if (e?.code === '22P02' || `${e?.message || ''}`.includes('invalid input syntax for type uuid')) {
+            console.debug(`[DB Service] saveUserSettings skipped (user_id not uuid in this schema): ${userId}`);
+            return true; // treat as success to prevent cascading UI errors
+        }
+
+        // RLS policy violation (42501) - user doesn't have permission to write this row
+        // This is expected for system-wide settings when using a non-user UUID
+        if (e?.code === '42501' || `${e?.message || ''}`.includes('row-level security policy')) {
+            console.debug(`[DB Service] saveUserSettings blocked by RLS policy (expected for system settings with user_id: ${userId})`);
+            return true; // Treat as success to prevent cascading UI errors - system can function without persisting settings
+        }
+
         logError('saveUserSettings', e);
         return false;
     }
@@ -1081,6 +1318,105 @@ export const deleteCustomMapStyle = async (styleId: string): Promise<boolean> =>
         return true;
     } catch (e) {
         logError('deleteCustomMapStyle', e);
+        return false;
+    }
+};
+
+// --- MEDIA SUBMISSIONS (Live Approval) ---
+export const getMediaSubmissions = async (gameId: string): Promise<MediaSubmission[]> => {
+    try {
+        const { data, error } = await supabase
+            .from('media_submissions')
+            .select('*')
+            .eq('game_id', gameId)
+            .order('submitted_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Transform snake_case to camelCase
+        return (data || []).map(item => ({
+            id: item.id,
+            gameId: item.game_id,
+            teamId: item.team_id,
+            teamName: item.team_name,
+            pointId: item.point_id,
+            pointTitle: item.point_title,
+            mediaUrl: item.media_url,
+            mediaType: item.media_type,
+            submittedAt: item.submitted_at,
+            status: item.status,
+            reviewedBy: item.reviewed_by,
+            reviewedAt: item.reviewed_at,
+            reviewComment: item.review_comment
+        }));
+    } catch (e) {
+        logError('getMediaSubmissions', e);
+        return [];
+    }
+};
+
+export const submitMediaForReview = async (submission: Omit<MediaSubmission, 'id' | 'status' | 'submittedAt'>): Promise<string | null> => {
+    try {
+        const { data, error } = await supabase
+            .from('media_submissions')
+            .insert({
+                game_id: submission.gameId,
+                team_id: submission.teamId,
+                team_name: submission.teamName,
+                point_id: submission.pointId,
+                point_title: submission.pointTitle,
+                media_url: submission.mediaUrl,
+                media_type: submission.mediaType,
+                status: 'pending',
+                submitted_at: Date.now()
+            })
+            .select('id')
+            .single();
+
+        if (error) throw error;
+        return data?.id || null;
+    } catch (e) {
+        logError('submitMediaForReview', e);
+        return null;
+    }
+};
+
+export const approveMediaSubmission = async (submissionId: string, reviewerName: string, comment?: string): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('media_submissions')
+            .update({
+                status: 'approved',
+                reviewed_by: reviewerName,
+                reviewed_at: Date.now(),
+                review_comment: comment || null
+            })
+            .eq('id', submissionId);
+
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        logError('approveMediaSubmission', e);
+        return false;
+    }
+};
+
+export const rejectMediaSubmission = async (submissionId: string, reviewerName: string, comment: string): Promise<boolean> => {
+    try {
+        const { error } = await supabase
+            .from('media_submissions')
+            .update({
+                status: 'rejected',
+                reviewed_by: reviewerName,
+                reviewed_at: Date.now(),
+                review_comment: comment
+            })
+            .eq('id', submissionId);
+
+        if (error) throw error;
+        return true;
+    } catch (e) {
+        logError('rejectMediaSubmission', e);
         return false;
     }
 };

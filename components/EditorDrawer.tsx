@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GamePoint, TaskList, Coordinate, Game, GameMode, GameRoute } from '../types';
 import { ICON_COMPONENTS } from '../utils/icons';
-import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, Eye, Filter, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid, LayoutList, Map, Wand2, ToggleLeft, ToggleRight, Radio, FilePlus, RefreshCw, Users, Shield, Route, Upload, EyeOff, Hash, PlayCircle } from 'lucide-react';
+import { X, MousePointerClick, GripVertical, Edit2, Eraser, Save, Check, ChevronDown, Plus, Library, Trash2, ChevronRight, ChevronLeft, Maximize, Gamepad2, AlertCircle, LayoutGrid, LayoutList, Map, Wand2, ToggleLeft, ToggleRight, Radio, FilePlus, RefreshCw, Users, Shield, Route, Upload, EyeOff, Hash, PlayCircle, MapPin } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, useDroppable } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -40,7 +40,7 @@ interface EditorDrawerProps {
   initialExpanded?: boolean;
   onAddTask?: (type: 'MANUAL' | 'AI' | 'LIBRARY' | 'TASKLIST', playgroundId?: string) => void;
   onExpandChange?: (expanded: boolean) => void; 
-  isGameTemplateMode?: boolean; 
+  isGameTemplateMode?: boolean;
   onSaveGameTemplate?: () => void;
   // Route Props
   routes?: GameRoute[];
@@ -52,6 +52,14 @@ interface EditorDrawerProps {
   showScores?: boolean;
   onToggleScores?: () => void;
   onStartSimulation?: () => void; // New prop
+  // Playzone Props
+  onShowPlayzoneChoice?: () => void;
+  // Playground Hover Props
+  hoveredPlaygroundId?: string | null;
+  onHoverPlayground?: (id: string | null) => void;
+  // Drawer State Props
+  collapsedZones?: Record<string, boolean>;
+  onCollapsedZonesChange?: (zones: Record<string, boolean>) => void;
 }
 
 const SortablePointItem: React.FC<{
@@ -194,34 +202,43 @@ const SortablePointItem: React.FC<{
   );
 };
 
-const ZoneSection = ({ 
+const ZoneSection = ({
     id,
-    title, 
-    icon: Icon, 
-    count, 
-    isCollapsed, 
-    onToggle, 
-    children, 
+    title,
+    icon: Icon,
+    count,
+    isCollapsed,
+    onToggle,
+    children,
     onAdd,
     activeMenu,
-    onSetActiveMenu
-}: { 
+    onSetActiveMenu,
+    isHovered,
+    onHover
+}: {
     id: string,
-    title: string, 
-    icon: any, 
-    count: number, 
-    isCollapsed: boolean, 
-    onToggle: () => void, 
-    children?: React.ReactNode, 
+    title: string,
+    icon: any,
+    count: number,
+    isCollapsed: boolean,
+    onToggle: () => void,
+    children?: React.ReactNode,
     onAdd: (type: 'MANUAL' | 'AI' | 'LIBRARY') => void,
     activeMenu: boolean,
-    onSetActiveMenu: (open: boolean) => void
+    onSetActiveMenu: (open: boolean) => void,
+    isHovered?: boolean,
+    onHover?: (id: string | null) => void
 }) => {
     const { setNodeRef, isOver } = useDroppable({ id });
 
     return (
-        <div ref={setNodeRef} className={`mb-2 rounded-xl transition-colors ${isOver ? 'bg-orange-50 dark:bg-orange-900/20 ring-2 ring-orange-500' : ''}`}>
-            <div 
+        <div
+            ref={setNodeRef}
+            className={`mb-2 rounded-xl transition-colors ${isOver ? 'bg-orange-50 dark:bg-orange-900/20 ring-2 ring-orange-500' : ''} ${isHovered ? 'ring-2 ring-orange-500' : ''}`}
+            onMouseEnter={() => onHover?.(id)}
+            onMouseLeave={() => onHover?.(null)}
+        >
+            <div
                 onClick={onToggle}
                 className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-xl cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
             >
@@ -283,15 +300,20 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   onUpdateRoute,
   showScores,
   onToggleScores,
-  onStartSimulation
+  onStartSimulation,
+  onShowPlayzoneChoice,
+  hoveredPlaygroundId,
+  onHoverPlayground,
+  collapsedZones: collapsedZonesProp,
+  onCollapsedZonesChange
 }) => {
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(initialExpanded); 
+  const [isExpanded, setIsExpanded] = useState(initialExpanded);
   const [isSaved, setIsSaved] = useState(false);
   const [isRoutesCollapsed, setIsRoutesCollapsed] = useState(true);
   const [isDangerZonesCollapsed, setIsDangerZonesCollapsed] = useState(true);
 
-  const [collapsedZones, setCollapsedZones] = useState<Record<string, boolean>>({ 'map': false });
+  const [collapsedZonesLocal, setCollapsedZonesLocal] = useState<Record<string, boolean>>({ 'map': false });
+  const collapsedZones = collapsedZonesProp || collapsedZonesLocal;
   const [activeAddMenu, setActiveAddMenu] = useState<string | null>(null);
   
   const gpxInputRef = useRef<HTMLInputElement>(null);
@@ -305,8 +327,8 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   }, [isExpanded, onExpandChange]);
 
   useEffect(() => {
-      if (activeGame?.playgrounds) {
-          setCollapsedZones(prev => {
+      if (activeGame?.playgrounds && !collapsedZonesProp) {
+          setCollapsedZonesLocal(prev => {
               const next = { ...prev };
               activeGame.playgrounds?.forEach(pg => {
                   if (next[pg.id] === undefined) next[pg.id] = false; // Default expanded now
@@ -314,7 +336,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
               return next;
           });
       }
-  }, [activeGame]);
+  }, [activeGame, collapsedZonesProp]);
   
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -392,7 +414,12 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
   };
 
   const toggleZone = (id: string) => {
-      setCollapsedZones(prev => ({ ...prev, [id]: !prev[id] }));
+      const newState = { ...collapsedZones, [id]: !collapsedZones[id] };
+      if (onCollapsedZonesChange) {
+          onCollapsedZonesChange(newState);
+      } else {
+          setCollapsedZonesLocal(newState);
+      }
   };
 
   const handleGPXUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -424,24 +451,23 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
       points: allPoints.filter(p => p.playgroundId === pg.id)
   })) || [];
 
-  const isFiltered = filterState.mode !== 'ALL';
 
   return (
-    <div 
-        className={`fixed top-0 left-0 bottom-0 z-[2100] w-full sm:w-[320px] bg-white dark:bg-gray-900 shadow-2xl flex flex-col border-r border-gray-200 dark:border-gray-800 pointer-events-auto transition-transform duration-300 ease-in-out ${isExpanded ? 'translate-x-0' : '-translate-x-full'}`}
+    <div
+        className={`fixed top-0 right-0 bottom-0 z-[2100] w-full sm:w-[320px] bg-white dark:bg-gray-900 shadow-2xl flex flex-col border-l border-gray-200 dark:border-gray-800 pointer-events-auto transition-transform duration-300 ease-in-out ${isExpanded ? 'translate-x-0' : 'translate-x-full'}`}
     >
-      {/* Toggle Button moved to the Right of the Left Drawer */}
-      <button 
+      {/* Toggle Button - Orange Arrow Handle */}
+      <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="absolute left-full top-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 w-8 h-24 rounded-r-xl shadow-lg border-y border-r border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:text-orange-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all flex items-center justify-center pointer-events-auto"
+        className="absolute right-full top-1/2 -translate-y-1/2 bg-orange-600 hover:bg-orange-700 w-8 h-24 rounded-l-xl shadow-lg border-y border-l border-orange-600 text-white transition-all flex items-center justify-center pointer-events-auto"
         title={isExpanded ? "Collapse List" : "Expand List"}
       >
-        {isExpanded ? <ChevronLeft className="w-6 h-6" /> : <ChevronRight className="w-6 h-6" />}
+        {isExpanded ? <ChevronRight className="w-6 h-6" /> : <ChevronLeft className="w-6 h-6" />}
       </button>
 
-      <button 
+      <button
           onClick={onOpenGameChooser}
-          disabled={isGameTemplateMode} 
+          disabled={isGameTemplateMode}
           className={`p-4 text-white text-left flex-shrink-0 relative z-[100] transition-all active:scale-[0.98] ${isGameTemplateMode ? 'bg-purple-600 cursor-default' : (activeGame ? 'bg-orange-600 hover:bg-orange-700' : 'bg-slate-700 hover:bg-slate-800')}`}
       >
           <div className="flex justify-between items-center mb-1">
@@ -450,7 +476,18 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
               </span>
               {!isGameTemplateMode && <ChevronDown className="w-4 h-4 opacity-50" />}
           </div>
-          <h2 className="font-black text-sm uppercase truncate pr-6">{activeGame ? activeGameName : 'SELECT A GAME'}</h2>
+          <div className="flex items-center gap-2">
+              {activeGame?.client?.logoUrl && (
+                  <div className="w-8 h-8 rounded-lg overflow-hidden bg-white/10 border border-white/20 flex-shrink-0">
+                      <img
+                          src={activeGame.client.logoUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                      />
+                  </div>
+              )}
+              <h2 className="font-black text-sm uppercase truncate pr-6">{activeGame ? activeGameName : 'SELECT A GAME'}</h2>
+          </div>
       </button>
 
       {!activeGame ? (
@@ -473,19 +510,47 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                         {activeGame.playgrounds.map((playground) => {
                             const Icon = ICON_COMPONENTS[playground.iconId];
                             const playgroundPoints = allPoints.filter(p => p.playgroundId === playground.id);
+                            const isHovered = hoveredPlaygroundId === playground.id;
                             return (
                                 <button
                                     key={playground.id}
                                     onClick={() => onOpenPlaygroundEditor && onOpenPlaygroundEditor(playground.id)}
-                                    className="p-3 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-md transition-all active:scale-[0.98] text-left group"
+                                    onMouseEnter={() => onHoverPlayground?.(playground.id)}
+                                    onMouseLeave={() => onHoverPlayground?.(null)}
+                                    className={`p-3 rounded-lg transition-all active:scale-[0.98] text-left group ${
+                                        isHovered
+                                            ? 'bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-500 ring-2 ring-orange-400 shadow-lg'
+                                            : 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-850 border border-gray-200 dark:border-gray-700 hover:border-orange-400 dark:hover:border-orange-600 hover:shadow-md'
+                                    }`}
                                 >
                                     <div className="flex items-start justify-between mb-2">
-                                        <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:scale-110 transition-transform flex-shrink-0">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                                            isHovered
+                                                ? 'bg-orange-500 text-white'
+                                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400'
+                                        } group-hover:scale-110 transition-transform`}>
                                             <Icon className="w-4 h-4" />
                                         </div>
                                     </div>
-                                    <h3 className="text-xs font-bold text-gray-800 dark:text-gray-100 mb-1 truncate">{playground.title}</h3>
-                                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{playgroundPoints.length} task{playgroundPoints.length !== 1 ? 's' : ''}</p>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={`w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 transition-colors ${
+                                            isHovered
+                                                ? 'bg-orange-600'
+                                                : 'bg-orange-500'
+                                        }`}>
+                                            <MapPin className="w-2.5 h-2.5 text-white" />
+                                        </div>
+                                        <h3 className={`text-xs font-bold truncate transition-colors ${
+                                            isHovered
+                                                ? 'text-orange-700 dark:text-orange-400'
+                                                : 'text-gray-800 dark:text-gray-100'
+                                        }`}>{playground.title}</h3>
+                                    </div>
+                                    <p className={`text-[10px] transition-colors ${
+                                        isHovered
+                                            ? 'text-orange-600 dark:text-orange-400'
+                                            : 'text-gray-500 dark:text-gray-400'
+                                    }`}>{playgroundPoints.length} task{playgroundPoints.length !== 1 ? 's' : ''}</p>
                                 </button>
                             );
                         })}
@@ -513,7 +578,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 </div>
                 {onOpenPlaygroundEditor && (
                     <button
-                        onClick={() => onOpenPlaygroundEditor()}
+                        onClick={() => onShowPlayzoneChoice?.()}
                         className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-bold text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 flex items-center gap-2"
                         title="Open Playzone Editor"
                     >
@@ -523,34 +588,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                 )}
             </div>
 
-            <div className="border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 relative z-[50]">
-                <button 
-                    onClick={() => setShowFilterMenu(!showFilterMenu)}
-                    className={`w-full p-3 flex items-center justify-between transition-colors ${isFiltered ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500'}`}
-                >
-                    <div className="flex items-center gap-2">
-                        {isFiltered ? <Eye className="w-4 h-4" /> : <Filter className="w-4 h-4 opacity-70" />}
-                        <span className="text-xs font-bold uppercase tracking-wider">
-                            {isFiltered ? 
-                                (filterState.mode === 'TAG' ? `TAG: ${filterState.value}` : `FILTER ACTIVE`) 
-                                : "FILTER MAP POINTS"}
-                        </span>
-                    </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showFilterMenu ? 'rotate-180' : ''}`} />
-                </button>
-
-                {showFilterMenu && onSetFilter && (
-                    <div className="absolute top-full left-0 right-0 z-[6000] p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-2xl animate-in slide-in-from-top-2 max-h-80 overflow-y-auto">
-                        <button 
-                            onClick={() => { onSetFilter({ mode: 'ALL', value: '' }); setShowFilterMenu(false); }}
-                            className="w-full mb-2 py-2 text-xs font-bold uppercase text-red-500 border border-red-200 dark:border-red-900/50 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-                        >
-                            Reset Filter (Show All)
-                        </button>
-                        <div className="text-center text-[10px] text-gray-400 p-2">Use map filter bar for advanced options.</div>
-                    </div>
-                )}
-            </div>
+            {/* Filter bar hidden - not functional */}
 
             <div className="flex-1 overflow-y-auto p-4 bg-gray-50 dark:bg-gray-900/50 z-0">
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -576,7 +614,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                                         index={index}
                                         isSelected={point.id === selectedPointId}
                                         isMapHovered={point.id === mapHoveredPointId}
-                                        isDragDisabled={isFiltered}
+                                        isDragDisabled={false}
                                         onEdit={onEditPoint}
                                         onSelect={onSelectPoint}
                                         onDelete={onDeletePoint}
@@ -700,16 +738,18 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                     {/* --- PLAYGROUNDS --- */}
                     {playgroundGroups.map(pg => (
                         <SortableContext key={pg.id} items={pg.points.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                            <ZoneSection 
+                            <ZoneSection
                                 id={`zone-pg-${pg.id}`}
-                                title={pg.title} 
-                                icon={Gamepad2} 
-                                count={pg.points.length} 
-                                isCollapsed={!!collapsedZones[pg.id]} 
+                                title={pg.title}
+                                icon={Gamepad2}
+                                count={pg.points.length}
+                                isCollapsed={!!collapsedZones[pg.id]}
                                 onToggle={() => toggleZone(pg.id)}
                                 activeMenu={activeAddMenu === pg.id}
                                 onSetActiveMenu={(open) => setActiveAddMenu(open ? pg.id : null)}
                                 onAdd={(type) => onAddTask && onAddTask(type, pg.id)}
+                                isHovered={hoveredPlaygroundId === pg.id}
+                                onHover={onHoverPlayground}
                             >
                                 <div className="space-y-1">
                                     {pg.points.length === 0 && <div className="text-[10px] text-gray-400 italic p-2">No tasks in this playground. Add items here.</div>}
@@ -720,7 +760,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                                             index={index}
                                             isSelected={point.id === selectedPointId}
                                             isMapHovered={point.id === mapHoveredPointId}
-                                            isDragDisabled={isFiltered}
+                                            isDragDisabled={false}
                                             onEdit={onEditPoint}
                                             onSelect={onSelectPoint}
                                             onDelete={onDeletePoint}
@@ -777,7 +817,7 @@ const EditorDrawer: React.FC<EditorDrawerProps> = ({
                     onClick={handleSaveClick}
                     className={`w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg text-sm uppercase tracking-wide ${isSaved ? 'bg-green-100 text-green-700 border-2 border-green-500' : (isGameTemplateMode ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-green-600 text-white hover:bg-green-700 shadow-green-600/20')}`}
                 >
-                    {isSaved ? <><div className="flex items-center gap-2"><Check className="w-4 h-4" /> {isGameTemplateMode ? 'TEMPLATE UPDATED!' : 'GAME SAVED!'}</div></> : (isGameTemplateMode ? <><div className="flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Update Template</div></> : <><div className="flex items-center gap-2"><Save className="w-4 h-4" /> Save Game</div></>)}
+                    {isSaved ? <><div className="flex items-center gap-2"><Check className="w-4 h-4" /> {isGameTemplateMode ? 'TEMPLATE UPDATED!' : 'GAME SAVED!'}</div></> : (isGameTemplateMode ? <><div className="flex items-center gap-2"><Save className="w-4 h-4" /> Update Template</div></> : <><div className="flex items-center gap-2"><Save className="w-4 h-4" /> Save Game</div></>)}
                 </button>
             </div>
           </>
