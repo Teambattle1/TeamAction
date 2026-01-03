@@ -163,6 +163,19 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     const qrScannerButtonDownPos = useRef({ x: 0, y: 0 });
     const qrScannerHasMoved = useRef(false);
 
+    // Title Text State
+    const [titleTextPos, setTitleTextPos] = useState({ x: 50, y: 10 }); // Percentage-based positioning
+    const [titleTextSize, setTitleTextSize] = useState({ width: 300, height: 60 }); // Pixels
+    const [titleTextContent, setTitleTextContent] = useState('');
+    const [titleTextColor, setTitleTextColor] = useState('#ffffff'); // White
+    const [titleTextFontSize, setTitleTextFontSize] = useState(28);
+    const [showTitleText, setShowTitleText] = useState(false);
+    const [isDraggingTitleText, setIsDraggingTitleText] = useState(false);
+    const [isResizingTitleText, setIsResizingTitleText] = useState(false);
+    const [showTitleTextEditor, setShowTitleTextEditor] = useState(false);
+    const titleTextDragOffset = useRef({ x: 0, y: 0 });
+    const titleTextResizeStart = useRef({ width: 0, height: 0, x: 0, y: 0 });
+
     // Device-specific layout management
     // Smart device initialization: desktop for new playgrounds, last used for existing
     const [selectedDevice, setSelectedDevice] = useState<DeviceType>(() => {
