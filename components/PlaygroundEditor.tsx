@@ -897,6 +897,14 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
             } else {
                 console.log('[PlaygroundEditor] No saved QR color, using default');
             }
+
+            // Load Title Text settings from device layout
+            if (deviceLayout.titleTextPos) {
+                setTitleTextPos(deviceLayout.titleTextPos);
+            }
+            if (deviceLayout.titleTextSize) {
+                setTitleTextSize(deviceLayout.titleTextSize);
+            }
         } else if (activePlayground.orientationLock && activePlayground.orientationLock !== 'none') {
             // Fallback to playground-level orientation for backward compatibility
             setEditorOrientation(activePlayground.orientationLock);
@@ -912,6 +920,10 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         setShowTaskStatus(activePlayground.showTaskStatus !== false);
         setShowBackground(activePlayground.showBackground !== false);
         setShowQRScanner(activePlayground.showQRScanner !== false);
+        setShowTitleText(activePlayground.showTitleText !== false);
+        setTitleTextContent(activePlayground.titleText || '');
+        setTitleTextColor(activePlayground.titleTextColor || '#ffffff');
+        setTitleTextFontSize(activePlayground.titleTextFontSize || 28);
     }, [activePlayground?.id, activePlayground?.orientationLock, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerColor, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerPos, activePlayground?.deviceLayouts?.[selectedDevice]?.qrScannerSize, selectedDevice, activePlayground?.showTaskScores, activePlayground?.showTaskOrder, activePlayground?.showTaskActions, activePlayground?.showTaskNames, activePlayground?.showTaskStatus, activePlayground?.showBackground, activePlayground?.showQRScanner]);
 
     // Load last used device when switching playgrounds
