@@ -1138,6 +1138,8 @@ const TaskEditor: React.FC<TaskEditorProps> = ({ point, onSave, onDelete, onClos
                                           <option value="checkbox">CHECKBOXES</option>
                                           <option value="dropdown">DROPDOWN</option>
                                           <option value="timeline">TIMELINE / ORDER</option>
+                                          <option value="photo">📸 PHOTO</option>
+                                          <option value="video">🎥 VIDEO</option>
                                       </select>
                                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                                       {showTaskTypeTooltip && (
