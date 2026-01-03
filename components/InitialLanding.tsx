@@ -1156,6 +1156,19 @@ const InitialLanding: React.FC<InitialLandingProps> = ({ onAction, version, game
             </div>
           </div>
         )}
+
+        {/* Activity Notification Modal */}
+        {showActivityNotification && activitySummary && (
+            <ActivityNotificationModal
+                activity={activitySummary}
+                onClose={() => setShowActivityNotification(false)}
+                onNavigateToGame={(gameId) => {
+                    onSelectGame(gameId);
+                    setShowActivityNotification(false);
+                    onAction('EDIT_GAME'); // Go to editor to review media
+                }}
+            />
+        )}
       </div>
     </div>
   );
