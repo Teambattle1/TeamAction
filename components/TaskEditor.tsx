@@ -64,6 +64,61 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
     document.execCommand(command, false, val || '');
   };
 
+  // Handle paste event to strip unwanted formatting (especially backgrounds from Word)
+  const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+
+    // Get text from clipboard
+    const text = e.clipboardData.getData('text/plain');
+    const html = e.clipboardData.getData('text/html');
+
+    // If HTML is available, clean it up
+    if (html) {
+      // Create a temporary div to parse the HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+
+      // Remove all inline styles that set background color
+      const elementsWithStyle = tempDiv.querySelectorAll('[style]');
+      elementsWithStyle.forEach(element => {
+        const htmlElement = element as HTMLElement;
+        // Remove background-color and background from style
+        htmlElement.style.backgroundColor = '';
+        htmlElement.style.background = '';
+        // If style is empty after cleanup, remove the attribute
+        if (!htmlElement.getAttribute('style')?.trim()) {
+          htmlElement.removeAttribute('style');
+        }
+      });
+
+      // Remove specific elements that often carry unwanted formatting
+      const unwantedSelectors = ['meta', 'link', 'style', 'script'];
+      unwantedSelectors.forEach(selector => {
+        tempDiv.querySelectorAll(selector).forEach(el => el.remove());
+      });
+
+      // Get cleaned HTML and sanitize it
+      const cleanedHtml = DOMPurify.sanitize(tempDiv.innerHTML, {
+        ALLOWED_TAGS: ['b', 'i', 'u', 'strong', 'em', 'br', 'p', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'span', 'div'],
+        ALLOWED_ATTR: ['style'],
+        ALLOWED_STYLES: {
+          '*': {
+            'color': [/^#[0-9a-fA-F]{3,6}$/], // Allow color but not background
+            'font-weight': [/^bold$/],
+            'font-style': [/^italic$/],
+            'text-decoration': [/^underline$/]
+          }
+        }
+      });
+
+      // Insert the cleaned HTML
+      document.execCommand('insertHTML', false, cleanedHtml);
+    } else {
+      // Fallback to plain text
+      document.execCommand('insertText', false, text);
+    }
+  };
+
   return (
     <div className="border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-orange-500 transition-shadow bg-white dark:bg-gray-700">
       <div className="flex flex-wrap items-center gap-1 p-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-600">
@@ -86,6 +141,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: { value: string, onCha
         className="p-3 min-h-[120px] outline-none text-sm text-gray-900 dark:text-white prose dark:prose-invert max-w-none"
         contentEditable
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
+        onPaste={handlePaste}
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(value) }}
         style={{ whiteSpace: 'pre-wrap' }}
         data-placeholder={placeholder}
