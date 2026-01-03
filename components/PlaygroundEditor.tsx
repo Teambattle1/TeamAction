@@ -3789,6 +3789,53 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 )}
                             </div>
                         )}
+
+                        {/* Draggable Title Text - Inside Game Canvas */}
+                        {showTitleText && titleTextContent && (
+                            <div
+                                className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto group"
+                                style={{
+                                    left: `${titleTextPos.x}%`,
+                                    top: `${titleTextPos.y}%`,
+                                    width: `${titleTextSize.width}px`,
+                                    height: `${titleTextSize.height}px`,
+                                }}
+                                onPointerDown={isSimulationActive ? undefined : handleTitleTextPointerDown}
+                                onPointerMove={isSimulationActive ? undefined : handleTitleTextPointerMove}
+                                onPointerUp={isSimulationActive ? undefined : handleTitleTextPointerUp}
+                                onPointerCancel={isSimulationActive ? undefined : handleTitleTextPointerUp}
+                            >
+                                {/* Title Text Content */}
+                                <div
+                                    className="w-full h-full flex items-center justify-center bg-black/50 rounded-lg border-2 border-orange-500/50 hover:border-orange-400 transition-colors"
+                                    style={{
+                                        color: titleTextColor,
+                                        fontSize: `${titleTextFontSize}px`,
+                                        fontWeight: 'bold',
+                                        cursor: isSimulationActive ? 'default' : isDraggingTitleText ? 'grabbing' : 'grab',
+                                        textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+                                        overflow: 'hidden',
+                                        wordWrap: 'break-word',
+                                        padding: '8px'
+                                    }}
+                                >
+                                    {titleTextContent}
+                                </div>
+
+                                {/* Resize Handle - Only visible in editor mode */}
+                                {!isSimulationActive && (
+                                    <div
+                                        className="title-text-resize-handle absolute bottom-0 right-0 w-4 h-4 bg-yellow-400 border-2 border-yellow-600 rounded-tl rounded-br cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onPointerDown={handleTitleTextResizeDown}
+                                        onPointerMove={handleTitleTextResizeMove}
+                                        onPointerUp={handleTitleTextResizeUp}
+                                        onPointerCancel={handleTitleTextResizeUp}
+                                        title="Drag to resize"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                )}
+                            </div>
+                        )}
                         </div>
                     </div>
                     </div>
