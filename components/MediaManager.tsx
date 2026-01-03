@@ -32,11 +32,22 @@ const MediaManager: React.FC<MediaManagerProps> = ({ onClose, games }) => {
     setIsLoading(true);
     try {
       const stats = await getMediaStats(games);
-      setGameStats(stats);
+
+      // Filter out completed games with no media
+      const filteredStats = stats.filter(stat => {
+        const game = games.find(g => g.id === stat.gameId);
+        const hasNoMedia = stat.photoCount === 0 && stat.videoCount === 0;
+        const isCompleted = game?.state === 'ended';
+
+        // Hide if game is completed AND has no media
+        return !(isCompleted && hasNoMedia);
+      });
+
+      setGameStats(filteredStats);
 
       // Check if all stats are zero (might mean SQL script not run)
-      const hasAnyData = stats.some(s => s.photoCount > 0 || s.videoCount > 0);
-      if (!hasAnyData && stats.length > 0) {
+      const hasAnyData = filteredStats.some(s => s.photoCount > 0 || s.videoCount > 0);
+      if (!hasAnyData && filteredStats.length > 0) {
         console.log('[Media Manager] No media found. If you just set this up, make sure to run the SQL script in Supabase!');
       }
     } catch (error) {
