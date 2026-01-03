@@ -31,7 +31,7 @@ interface TaskEditorProps {
   onClose: () => void;
   onClone?: (point: GamePoint) => void;
   isTemplateMode?: boolean;
-  requestedTab?: 'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | 'LANGUAGES' | 'MEDIA' | null;
+  requestedTab?: 'GENERAL' | 'IMAGE' | 'SETTINGS' | 'ANSWER' | 'ACTIVATION' | 'TAGS' | 'LANGUAGES' | 'MEDIA' | 'VIEW' | null;
   gameMode?: 'standard' | 'playzone';
 }
 
