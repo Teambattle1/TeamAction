@@ -22,6 +22,7 @@ import {
   Edit2, MousePointerClick, EyeOff, Eye, Maximize, Smartphone, Monitor, QrCode, Download, Map as MapIcon, Info,
   ListOrdered, Wifi, Users
 } from 'lucide-react';
+import DevicePreviewModal from './DevicePreviewModal';
 
 interface TaskEditorProps {
   point: GamePoint;
