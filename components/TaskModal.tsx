@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify';
 import { isAnswerAcceptable, getAttemptMessage } from '../utils/stringMatch';
 import { playSound, getGlobalCorrectSound, getGlobalIncorrectSound, getGlobalVolume } from '../utils/sounds';
 import { uploadMediaFile, createMediaSubmission } from '../services/mediaUpload';
+import { replacePlaceholders } from '../utils/placeholders';
 
 interface TaskModalProps {
   point: GamePoint | null;
