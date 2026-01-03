@@ -284,6 +284,27 @@ export const deleteMediaOlderThan = async (
 };
 
 /**
+ * Mark media as downloaded by client
+ */
+export const markMediaAsDownloaded = async (submissionIds: string[]): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('media_submissions')
+      .update({ downloaded_by_client: true })
+      .in('id', submissionIds);
+
+    if (error) {
+      console.error('[Media Download] Failed to mark as downloaded:', error);
+      // Don't throw - this is a non-critical operation
+    } else {
+      console.log('[Media Download] Marked as downloaded:', submissionIds.length, 'items');
+    }
+  } catch (error) {
+    console.error('[Media Download] Error:', error);
+  }
+};
+
+/**
  * Get media statistics for all games
  */
 export const getMediaStats = async (games: { id: string; name: string }[]) => {
