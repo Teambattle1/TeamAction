@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Game, Team, MediaSubmission } from '../types';
 import * as db from '../services/db';
-import { Image as ImageIcon, Video, Play, Grid3x3, Filter, X, ChevronLeft, ChevronRight, Maximize2, Download, Trophy, Award, Medal, Crown } from 'lucide-react';
+import { markMediaAsDownloaded } from '../services/mediaUpload';
+import JSZip from 'jszip';
+import { Image as ImageIcon, Video, Play, Grid3x3, Filter, X, ChevronLeft, ChevronRight, Maximize2, Download, Trophy, Award, Medal, Crown, Package, Loader2 } from 'lucide-react';
 
 interface ClientMediaGalleryProps {
   gameId: string;
@@ -135,6 +137,7 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
   const [showRankingSlide, setShowRankingSlide] = useState(false);
   const [revealedTop3, setRevealedTop3] = useState<number>(0); // 0 = none, 1 = bronze, 2 = silver, 3 = gold
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Filters
   const [filterTask, setFilterTask] = useState<string>('all');
@@ -181,6 +184,120 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
     if (selectedMedia.length > 0) {
       setPresentationMode(true);
       setCurrentSlideIndex(0);
+    }
+  };
+
+  // Download single media
+  const downloadSingle = async (mediaItem: MediaSubmission) => {
+    try {
+      const response = await fetch(mediaItem.mediaUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const extension = mediaItem.mediaType === 'photo' ? 'jpg' : 'mp4';
+      a.download = `${mediaItem.teamName}_${mediaItem.pointTitle}.${extension}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      // Mark as downloaded
+      await markMediaAsDownloaded([mediaItem.id]);
+      await loadMedia(); // Reload to update UI
+    } catch (error) {
+      console.error('Failed to download media:', error);
+      alert('Failed to download media. Please try again.');
+    }
+  };
+
+  // Download selected media as ZIP
+  const downloadSelected = async () => {
+    if (selectedMedia.length === 0) return;
+
+    setIsDownloading(true);
+    try {
+      if (selectedMedia.length === 1) {
+        // Single file - direct download
+        await downloadSingle(selectedMedia[0]);
+      } else {
+        // Multiple files - create ZIP
+        const zip = new JSZip();
+        const downloadPromises = selectedMedia.map(async (mediaItem, index) => {
+          const response = await fetch(mediaItem.mediaUrl);
+          const blob = await response.blob();
+          const extension = mediaItem.mediaType === 'photo' ? 'jpg' : 'mp4';
+          const fileName = `${index + 1}_${mediaItem.teamName}_${mediaItem.pointTitle}.${extension}`;
+          zip.file(fileName, blob);
+        });
+
+        await Promise.all(downloadPromises);
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = window.URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${game.name}_media_${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        // Mark all as downloaded
+        await markMediaAsDownloaded(selectedMedia.map(m => m.id));
+        await loadMedia();
+      }
+
+      setSelectedMedia([]);
+    } catch (error) {
+      console.error('Failed to download media:', error);
+      alert('Failed to download media. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  // Download all filtered media
+  const downloadAll = async () => {
+    if (filteredMedia.length === 0) return;
+
+    setIsDownloading(true);
+    try {
+      if (filteredMedia.length === 1) {
+        // Single file - direct download
+        await downloadSingle(filteredMedia[0]);
+      } else {
+        // Multiple files - create ZIP
+        const zip = new JSZip();
+        const downloadPromises = filteredMedia.map(async (mediaItem, index) => {
+          const response = await fetch(mediaItem.mediaUrl);
+          const blob = await response.blob();
+          const extension = mediaItem.mediaType === 'photo' ? 'jpg' : 'mp4';
+          const fileName = `${index + 1}_${mediaItem.teamName}_${mediaItem.pointTitle}.${extension}`;
+          zip.file(fileName, blob);
+        });
+
+        await Promise.all(downloadPromises);
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const url = window.URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${game.name}_all_media_${Date.now()}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        // Mark all as downloaded
+        await markMediaAsDownloaded(filteredMedia.map(m => m.id));
+        await loadMedia();
+      }
+    } catch (error) {
+      console.error('Failed to download all media:', error);
+      alert('Failed to download media. Please try again.');
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -362,20 +479,50 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="text-2xl font-black text-white uppercase tracking-wider flex items-center gap-3">
           <Grid3x3 className="w-7 h-7 text-teal-400" />
           Media Gallery
         </h2>
-        {selectedMedia.length > 0 && (
-          <button
-            onClick={startPresentation}
-            className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold transition-colors"
-          >
-            <Play className="w-5 h-5" />
-            Play Presentation ({selectedMedia.length})
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {selectedMedia.length > 0 && (
+            <>
+              <button
+                onClick={downloadSelected}
+                disabled={isDownloading}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-bold transition-colors"
+              >
+                {isDownloading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Download className="w-5 h-5" />
+                )}
+                Download Selected ({selectedMedia.length})
+              </button>
+              <button
+                onClick={startPresentation}
+                className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold transition-colors"
+              >
+                <Play className="w-5 h-5" />
+                Present ({selectedMedia.length})
+              </button>
+            </>
+          )}
+          {filteredMedia.length > 0 && selectedMedia.length === 0 && (
+            <button
+              onClick={downloadAll}
+              disabled={isDownloading}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white rounded-lg font-bold transition-colors"
+            >
+              {isDownloading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Package className="w-5 h-5" />
+              )}
+              Download All ({filteredMedia.length})
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}
@@ -443,8 +590,7 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
             return (
               <div
                 key={mediaItem.id}
-                onClick={() => toggleMediaSelection(mediaItem)}
-                className={`relative group cursor-pointer rounded-xl overflow-hidden border-2 transition-all ${
+                className={`relative group rounded-xl overflow-hidden border-2 transition-all ${
                   isSelected ? 'border-teal-500 scale-105' : 'border-transparent hover:border-purple-500'
                 }`}
               >
@@ -465,6 +611,30 @@ const ClientMediaGallery: React.FC<ClientMediaGalleryProps> = ({ gameId, game, t
 
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-2 right-2 flex gap-2">
+                    {/* Select for Presentation */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleMediaSelection(mediaItem);
+                      }}
+                      className="p-2 bg-teal-600 hover:bg-teal-700 rounded-lg transition-colors"
+                      title="Select for presentation"
+                    >
+                      <Play className="w-4 h-4 text-white" />
+                    </button>
+                    {/* Download Single */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadSingle(mediaItem);
+                      }}
+                      className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                      title="Download"
+                    >
+                      <Download className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
                   <div className="absolute bottom-0 left-0 right-0 p-3">
                     <p className="text-white font-bold text-sm truncate">{mediaItem.teamName}</p>
                     <p className="text-gray-300 text-xs truncate">{mediaItem.pointTitle}</p>
