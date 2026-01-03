@@ -723,6 +723,112 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         }
     };
 
+    // Title Text drag handlers
+    const handleTitleTextPointerDown = (e: React.PointerEvent) => {
+        const target = e.target as HTMLElement | null;
+        // Don't drag from the text input or if resizing
+        if (target?.closest('.title-text-input') || target?.closest('.title-text-resize-handle')) return;
+
+        e.stopPropagation();
+        e.preventDefault();
+        setIsDraggingTitleText(true);
+
+        if (backgroundRef.current) {
+            const rect = backgroundRef.current.getBoundingClientRect();
+            const currentX = (titleTextPos.x / 100) * rect.width + rect.left;
+            const currentY = (titleTextPos.y / 100) * rect.height + rect.top;
+            titleTextDragOffset.current = { x: e.clientX - currentX, y: e.clientY - currentY };
+        }
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+
+    const handleTitleTextPointerMove = (e: React.PointerEvent) => {
+        if (!isDraggingTitleText || !backgroundRef.current) return;
+
+        e.stopPropagation();
+        e.preventDefault();
+
+        const rect = backgroundRef.current.getBoundingClientRect();
+        const x = ((e.clientX - titleTextDragOffset.current.x - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - titleTextDragOffset.current.y - rect.top) / rect.height) * 100;
+
+        setTitleTextPos({
+            x: Math.max(2, Math.min(98, x)),
+            y: Math.max(2, Math.min(98, y))
+        });
+    };
+
+    const handleTitleTextPointerUp = (e: React.PointerEvent) => {
+        if (!isDraggingTitleText) return;
+        setIsDraggingTitleText(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
+        saveTitleTextSettings();
+    };
+
+    // Title Text resize handlers
+    const handleTitleTextResizeDown = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizingTitleText(true);
+        titleTextResizeStart.current = {
+            width: titleTextSize.width,
+            height: titleTextSize.height,
+            x: e.clientX,
+            y: e.clientY
+        };
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+
+    const handleTitleTextResizeMove = (e: React.PointerEvent) => {
+        if (!isResizingTitleText) return;
+        e.stopPropagation();
+        e.preventDefault();
+
+        const deltaX = e.clientX - titleTextResizeStart.current.x;
+        const deltaY = e.clientY - titleTextResizeStart.current.y;
+        const newWidth = Math.max(150, titleTextResizeStart.current.width + deltaX);
+        const newHeight = Math.max(40, titleTextResizeStart.current.height + deltaY);
+
+        setTitleTextSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleTitleTextResizeUp = (e: React.PointerEvent) => {
+        if (!isResizingTitleText) return;
+        setIsResizingTitleText(false);
+        try {
+            (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        } catch {
+            // ignore
+        }
+        saveTitleTextSettings();
+    };
+
+    // Save Title Text settings to playground
+    const saveTitleTextSettings = () => {
+        if (activePlayground) {
+            const newLayouts = { ...activePlayground.deviceLayouts } || {};
+            if (!newLayouts[selectedDevice]) {
+                newLayouts[selectedDevice] = {};
+            }
+            newLayouts[selectedDevice] = {
+                ...newLayouts[selectedDevice],
+                titleTextPos: titleTextPos,
+                titleTextSize: titleTextSize
+            };
+            updatePlayground({
+                deviceLayouts: newLayouts,
+                showTitleText: showTitleText,
+                titleText: titleTextContent,
+                titleTextColor: titleTextColor,
+                titleTextFontSize: titleTextFontSize
+            });
+        }
+    };
+
     // QR Scanner function - Show color picker in editor mode, scanner in simulation mode
     const handleQRScanClick = async () => {
         // In simulation mode, show scanner
