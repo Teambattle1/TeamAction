@@ -2528,11 +2528,56 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                         <span>{isSimulationActive ? 'STOP SIMULATOR' : 'START SIMULATOR'}</span>
                     </button>
 
+                    {/* SAVE AS TEMPLATE Button */}
+                    <button
+                        onClick={async () => {
+                            if (!activePlayground) {
+                                alert('No playzone selected to save as template');
+                                return;
+                            }
+
+                            const templateName = prompt(
+                                `💾 SAVE AS GLOBAL TEMPLATE\n\n` +
+                                `This will create a reusable template that includes:\n` +
+                                `• All zone settings and design\n` +
+                                `• All ${game.points.filter(p => p.playgroundId === activePlayground.id).length} tasks\n` +
+                                `• All task actions and logic\n\n` +
+                                `Enter a name for this template:`,
+                                activePlayground.title
+                            );
+
+                            if (!templateName || !templateName.trim()) return;
+
+                            try {
+                                const zoneTasks = game.points.filter(p => p.playgroundId === activePlayground.id);
+                                const template: PlaygroundTemplate = {
+                                    id: `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                    title: templateName.trim(),
+                                    playgroundData: JSON.parse(JSON.stringify(activePlayground)),
+                                    tasks: JSON.parse(JSON.stringify(zoneTasks)),
+                                    createdAt: Date.now(),
+                                    isGlobal: true
+                                };
+                                await db.savePlaygroundTemplate(template);
+                                alert(`✅ Template "${templateName}" saved successfully!\n\nYou can now use this template to create new playzones.`);
+                            } catch (error) {
+                                console.error('Failed to save template:', error);
+                                alert('❌ Failed to save template. Please try again.');
+                            }
+                        }}
+                        className="w-full px-4 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                        title="Save this playzone with all tasks and settings as a reusable global template"
+                        type="button"
+                    >
+                        <Library className="w-5 h-5" />
+                        <span>SAVE AS TEMPLATE</span>
+                    </button>
+
                     {/* Orange Divider */}
                     <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-500 to-transparent opacity-30" />
 
                     {/* Update/Delete Buttons */}
-                    <div className="flex gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <button
                             onClick={async () => {
                                 setIsSaving(true);
