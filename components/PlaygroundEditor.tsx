@@ -296,6 +296,41 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
         moved: boolean;
     }>({ id: null, offsetX: 0, offsetY: 0, startClientX: 0, startClientY: 0, moved: false });
 
+    // Helper function to convert GamePoint to TaskTemplate for saving to global library
+    const convertPointToTemplate = (point: GamePoint): TaskTemplate => {
+        return {
+            id: point.id,
+            title: point.title,
+            task: point.task,
+            tags: [...(point.tags || []), 'playzone'], // Add 'playzone' tag automatically
+            iconId: point.iconId,
+            createdAt: Date.now(),
+            points: point.points,
+            intro: point.shortIntro,
+            feedback: point.feedback,
+            settings: point.settings,
+            logic: point.logic,
+            activationTypes: point.activationTypes,
+            qrCodeString: point.qrCodeString,
+            nfcTagId: point.nfcTagId,
+            ibeaconUUID: point.ibeaconUUID,
+            colorScheme: point.colorScheme,
+            isColorSchemeLocked: point.isColorSchemeLocked
+        };
+    };
+
+    // Helper function to save a task to the global library
+    const saveTaskToLibrary = async (point: GamePoint) => {
+        const template = convertPointToTemplate(point);
+        const { ok } = await db.saveTemplate(template);
+        if (!ok) {
+            console.error('[PlaygroundEditor] Failed to save task to global library:', point.title);
+        } else {
+            console.log('[PlaygroundEditor] ✅ Task saved to global library:', point.title);
+        }
+        return ok;
+    };
+
     // Initialize active playground
     useEffect(() => {
         if (!activePlaygroundId && game.playgrounds && game.playgrounds.length > 0) {
