@@ -1554,6 +1554,7 @@ const GameApp: React.FC = () => {
                           setShowGameCreator(true);
                       }
                   }}
+                  onExportGameToLibrary={playgroundTemplateToEdit ? handleExportTemplateToLibrary : undefined}
               />
           )}
           {showChatDrawer && activeGameId && (
