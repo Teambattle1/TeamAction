@@ -5271,6 +5271,8 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             ...game,
                             points: game.points.map(p => p.id === updatedPoint.id ? updatedPoint : p)
                         });
+                        // Save to global library
+                        saveTaskToLibrary(updatedPoint);
                         setShowTaskSettingsModal(false);
                         setSettingsModalTaskId(null);
                     }}
