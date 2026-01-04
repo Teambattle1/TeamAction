@@ -1199,10 +1199,13 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     const updateTask = (updates: Partial<GamePoint>) => {
         if (!selectedTask) return;
+        const updatedTask = { ...selectedTask, ...updates };
         onUpdateGame({
             ...game,
-            points: game.points.map(p => p.id === selectedTask.id ? { ...p, ...updates } : p)
+            points: game.points.map(p => p.id === selectedTask.id ? updatedTask : p)
         });
+        // Auto-sync to global library
+        saveTaskToLibrary(updatedTask);
     };
 
     const updatePointDirectly = (pointId: string, updates: Partial<GamePoint>) => {
