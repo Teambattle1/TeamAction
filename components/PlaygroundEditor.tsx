@@ -634,15 +634,11 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     // Drag handlers for QR Scanner (percentage-based, like tasks)
     const handleQRScannerPointerDown = (e: React.PointerEvent) => {
         const target = e.target as HTMLElement | null;
-        // Allow dragging from the QR button itself, but prevent dragging from other interactive elements
+        // Allow dragging from the QR button itself, but prevent dragging from the resize handle
         const isResizeHandle = target?.closest('.qr-resize-handle');
         if (isResizeHandle) return; // Let resize handle work
 
-        // Only start dragging if NOT clicking on the button itself
-        // The button will handle its own pointer events for click detection
-        const isButton = target?.closest('button');
-        if (isButton) return; // Button handles its own clicks
-
+        // Allow dragging from the button - we'll detect clicks vs drags in the button handlers
         e.stopPropagation();
         e.preventDefault();
         qrScannerDidDrag.current = false; // Reset drag flag
@@ -659,11 +655,6 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     };
     const handleQRScannerPointerMove = (e: React.PointerEvent) => {
         if (!isDraggingQRScanner || !backgroundRef.current) return;
-
-        const target = e.target as HTMLElement | null;
-        // Don't drag if moving from the button itself
-        const isButton = target?.closest('button');
-        if (isButton) return;
 
         e.stopPropagation();
         e.preventDefault();
