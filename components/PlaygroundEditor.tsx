@@ -298,11 +298,15 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
 
     // Helper function to convert GamePoint to TaskTemplate for saving to global library
     const convertPointToTemplate = (point: GamePoint): TaskTemplate => {
+        // Get existing tags and ensure 'playzone' tag is added (no duplicates)
+        const existingTags = Array.isArray(point.tags) ? point.tags : [];
+        const tags = [...new Set([...existingTags, 'playzone'])]; // Add 'playzone' tag and remove duplicates
+
         return {
             id: point.id,
             title: point.title,
             task: point.task,
-            tags: [...(point.tags || []), 'playzone'], // Add 'playzone' tag automatically
+            tags: tags,
             iconId: point.iconId,
             createdAt: Date.now(),
             points: point.points,
