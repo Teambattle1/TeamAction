@@ -28,8 +28,19 @@ const DevicePreviewModal: React.FC<DevicePreviewModalProps> = ({ point, onClose 
   const dimensions = getDeviceDimensions(activeDevice);
 
   return (
-    <div className="fixed inset-0 z-[9500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh]">
+    <div
+      className="fixed inset-0 z-[9500] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-auto"
+      onClick={(e) => {
+        // Only close if clicking the backdrop itself, not the modal content
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[95vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-4 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 text-white flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
