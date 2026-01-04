@@ -1209,10 +1209,16 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
     };
 
     const updatePointDirectly = (pointId: string, updates: Partial<GamePoint>) => {
+        const pointToUpdate = game.points?.find(p => p.id === pointId);
+        if (!pointToUpdate) return;
+
+        const updatedPoint = { ...pointToUpdate, ...updates };
         onUpdateGame({
             ...game,
-            points: game.points?.map(p => p.id === pointId ? { ...p, ...updates } : p)
+            points: game.points?.map(p => p.id === pointId ? updatedPoint : p)
         });
+        // Auto-sync to global library
+        saveTaskToLibrary(updatedPoint);
     };
 
     const toggleBulkIconTarget = (pointId: string) => {
