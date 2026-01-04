@@ -5591,7 +5591,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                         const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
 
                                         return {
-                                          id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                          id: t.id || `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
                                           title: t.title,
                                           shortIntro: (t as any).intro,
                                           task: t.task,
@@ -5721,7 +5721,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                             const areaColor = typeof templateAny.areaColor === 'string' ? templateAny.areaColor : undefined;
 
                             return {
-                                id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                id: t.id || `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
                                 title: t.title,
                                 shortIntro: (t as any).intro,
                                 task: t.task,
@@ -5822,7 +5822,7 @@ const PlaygroundEditor: React.FC<PlaygroundEditorProps> = ({
                                 const openingAudioUrl = typeof templateAny.openingAudioUrl === 'string' ? templateAny.openingAudioUrl : undefined;
 
                                 return {
-                                    id: `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+                                    id: t.id || `p-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
                                     title: t.title,
                                     shortIntro: (t as any).intro,
                                     task: t.task,
