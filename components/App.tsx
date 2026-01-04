@@ -1049,6 +1049,62 @@ const GameApp: React.FC = () => {
       return list;
   }, [isCaptain, onlineMembers, otherTeamsLocations, activeGame?.showOtherTeams, activeGameId]);
 
+  // Export template tasks to global library
+  const handleExportTemplateToLibrary = async () => {
+      if (!playgroundTemplateToEdit || !playgroundTemplateToEdit.tasks || playgroundTemplateToEdit.tasks.length === 0) {
+          alert('No tasks to export');
+          return;
+      }
+
+      try {
+          const taskTemplates = playgroundTemplateToEdit.tasks.map(point => {
+              // Get existing tags and ensure 'playzone' tag is added
+              const existingTags = Array.isArray(point.tags) ? point.tags : [];
+              const tags = [...new Set([...existingTags, 'playzone'])]; // Add 'playzone' tag and remove duplicates
+
+              return {
+                  id: point.id,
+                  title: point.title,
+                  task: point.task,
+                  feedback: point.feedback,
+                  points: point.points,
+                  tags: tags,
+                  iconId: point.iconId,
+                  iconUrl: point.iconUrl,
+                  completedIconId: (point as any).completedIconId,
+                  completedIconUrl: (point as any).completedIconUrl,
+                  settings: point.settings,
+                  logic: point.logic,
+                  activationTypes: point.activationTypes,
+                  qrCodeString: point.qrCodeString,
+                  nfcTagId: point.nfcTagId,
+                  ibeaconUUID: point.ibeaconUUID,
+                  colorScheme: point.colorScheme,
+                  isColorSchemeLocked: point.isColorSchemeLocked,
+                  createdAt: Date.now(),
+                  intro: point.shortIntro
+              } as TaskTemplate;
+          });
+
+          const { ok } = await db.saveTemplates(taskTemplates);
+
+          if (ok) {
+              // Reload the global library to show newly exported tasks
+              const updatedLib = await db.fetchLibrary();
+              setTaskLibrary(updatedLib);
+
+              const playzoneCount = taskTemplates.filter(t => t.tags.includes('playzone')).length;
+              alert(`✅ Exported ${taskTemplates.length} tasks to Global Library and synced to Supabase!\n${playzoneCount > 0 ? `(${playzoneCount} tagged as PLAYZONE)` : ''}`);
+              console.log('[Export Template] Tasks exported to library:', taskTemplates.length, 'Playzone tasks:', playzoneCount);
+          } else {
+              alert('❌ Failed to export tasks to library');
+          }
+      } catch (error) {
+          console.error('[Export Template] Error exporting tasks:', error);
+          alert('Error exporting tasks to library');
+      }
+  };
+
   const urlParams = new URLSearchParams(window.location.search);
   const submissionToken = urlParams.get('submitTo');
   if (submissionToken) {
