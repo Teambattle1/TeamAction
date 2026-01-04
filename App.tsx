@@ -1452,7 +1452,7 @@ const GameApp: React.FC = () => {
                           const mapCenter = mapRef.current?.getCenter();
                           const newPoints = tasks.map((t, idx) => ({
                               ...t,
-                              id: `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                              id: t.id || `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
                               location: mapCenter || null,
                               radiusMeters: 30,
                               activationTypes: ['radius'],
@@ -1517,7 +1517,7 @@ const GameApp: React.FC = () => {
                           const mapCenter = mapRef.current?.getCenter();
                           const newPoints = list.tasks.map((t, idx) => ({
                               ...t,
-                              id: `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
+                              id: t.id || `p-${Date.now()}-${Math.random().toString(36).substr(2,9)}`,
                               location: mapCenter || null,
                               radiusMeters: 30,
                               activationTypes: ['radius'],
