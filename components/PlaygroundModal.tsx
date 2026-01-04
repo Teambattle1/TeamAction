@@ -305,6 +305,34 @@ const PlaygroundModal: React.FC<PlaygroundModalProps> = ({ playground, points, o
                   <div className="absolute inset-0 flex items-center justify-center text-slate-700 font-black uppercase tracking-widest text-2xl pointer-events-none">NO BACKGROUND IMAGE</div>
               )}
 
+              {/* Title Text Overlay */}
+              {playground.showTitleText && playground.titleText && (
+                  <div
+                      className="absolute transform -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+                      style={{
+                          left: '50%',
+                          top: '10%',
+                          width: '300px',
+                          height: '60px',
+                      }}
+                  >
+                      <div
+                          className="w-full h-full flex items-center justify-center bg-black/50 rounded-lg border-2 border-orange-500/50"
+                          style={{
+                              color: playground.titleTextColor || '#ffffff',
+                              fontSize: `${playground.titleTextFontSize || 28}px`,
+                              fontWeight: 'bold',
+                              textShadow: '2px 2px 4px rgba(0,0,0,0.7)',
+                              overflow: 'hidden',
+                              wordWrap: 'break-word',
+                              padding: '8px'
+                          }}
+                      >
+                          {playground.titleText}
+                      </div>
+                  </div>
+              )}
+
               {playgroundPoints.map(point => {
                   const Icon = ICON_COMPONENTS[point.iconId] || ICON_COMPONENTS.default;
                   const isUnlocked = point.isUnlocked || mode === GameMode.EDIT || mode === GameMode.INSTRUCTOR;
