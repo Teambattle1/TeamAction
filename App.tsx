@@ -1801,9 +1801,23 @@ const GameApp: React.FC = () => {
                               isUnlocked: true,
                               isCompleted: false,
                               order: activeGame.points.length,
-                              task: { type: 'text', question: 'New Task Question' }
+                              task: { type: 'text', question: 'New Task Question' },
+                              tags: playgroundId ? ['playzone'] : []
                           };
                           await updateActiveGame({ ...activeGame, points: [...activeGame.points, newPoint] });
+
+                          // Save to global library
+                          const template: TaskTemplate = {
+                              id: newPoint.id,
+                              title: newPoint.title,
+                              task: newPoint.task,
+                              tags: newPoint.tags || (playgroundId ? ['playzone'] : []),
+                              iconId: newPoint.iconId,
+                              createdAt: Date.now(),
+                              points: newPoint.points,
+                              activationTypes: newPoint.activationTypes
+                          };
+                          await db.saveTemplate(template);
                       } else if (type === 'AI') {
                           setTaskMasterInitialTab('LIBRARY');
                           setTaskMasterInitialModal('AI');
