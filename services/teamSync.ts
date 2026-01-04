@@ -272,6 +272,7 @@ class TeamSyncService {
 
     this.gameId = null;
     this.teamKey = null;
+    this.teamName = null;
     this.lastLocationSentAt = 0;
     this.lastLocationSent = null;
     this.locationDirty = false;
