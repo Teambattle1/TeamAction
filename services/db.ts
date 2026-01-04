@@ -741,6 +741,78 @@ export const deleteTemplate = async (id: string) => {
     try { await supabase.from('library').delete().eq('id', id); } catch (e) { logError('deleteTemplate', e); }
 };
 
+/**
+ * Syncs task data from the global library to game points or playzone template tasks.
+ * This ensures that edits made in the library are reflected in games/playzones.
+ *
+ * @param tasks - Array of GamePoint tasks to sync
+ * @returns Updated tasks with library data merged in
+ */
+export const syncTasksFromLibrary = async (tasks: GamePoint[]): Promise<{ tasks: GamePoint[]; syncedCount: number }> => {
+    try {
+        // Fetch all library tasks
+        const libraryTasks = await fetchLibrary();
+
+        // Create a map for quick lookup by ID
+        const libraryMap = new Map(libraryTasks.map(t => [t.id, t]));
+
+        let syncedCount = 0;
+
+        // Update tasks with library data if available
+        const updatedTasks = tasks.map(task => {
+            const libraryTask = libraryMap.get(task.id);
+
+            if (!libraryTask) {
+                // No matching library task - keep as is
+                return task;
+            }
+
+            // Merge library data into the task, preserving game-specific fields
+            syncedCount++;
+
+            return {
+                ...task,
+                // Update from library
+                title: libraryTask.title,
+                task: libraryTask.task,
+                shortIntro: (libraryTask as any).intro || task.shortIntro,
+                iconId: libraryTask.iconId || task.iconId,
+                iconUrl: (libraryTask as any).iconUrl || task.iconUrl,
+                points: libraryTask.points ?? task.points,
+                tags: libraryTask.tags || task.tags,
+                feedback: libraryTask.feedback || task.feedback,
+                settings: libraryTask.settings || task.settings,
+                logic: libraryTask.logic || task.logic,
+                completionLogic: (libraryTask as any).completionLogic || task.completionLogic,
+                activationTypes: libraryTask.activationTypes || task.activationTypes,
+                // Preserve game-specific fields
+                location: task.location,
+                radiusMeters: task.radiusMeters,
+                playgroundId: task.playgroundId,
+                devicePositions: task.devicePositions,
+                playgroundScale: task.playgroundScale,
+                isHiddenBeforeScan: task.isHiddenBeforeScan,
+                areaColor: task.areaColor,
+                openingAudioUrl: task.openingAudioUrl,
+                isUnlocked: task.isUnlocked,
+                isCompleted: task.isCompleted,
+                order: task.order,
+                manualUnlockCode: task.manualUnlockCode,
+                colorScheme: task.colorScheme,
+                isColorSchemeLocked: task.isColorSchemeLocked
+            };
+        });
+
+        console.log(`[DB Service] ✅ Synced ${syncedCount} tasks from library`);
+
+        return { tasks: updatedTasks, syncedCount };
+    } catch (e) {
+        logError('syncTasksFromLibrary', e);
+        // Return original tasks on error
+        return { tasks, syncedCount: 0 };
+    }
+};
+
 export const fetchTaskLists = async (): Promise<TaskList[]> => {
     try {
         const rows = await fetchInChunks(
